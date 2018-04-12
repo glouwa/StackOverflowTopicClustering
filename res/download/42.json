@@ -1,0 +1,817 @@
+{
+    "items": [
+        {
+            "tags": [
+                "c#",
+                "image",
+                "image-processing",
+                "camera"
+            ],
+            "owner": {
+                "reputation": 20,
+                "user_id": 9575316,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3a27bc268fba5cb3e8fa865613771b9b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Trion",
+                "link": "https://stackoverflow.com/users/9575316/trion"
+            },
+            "is_answered": false,
+            "view_count": 5,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523541573,
+            "creation_date": 1523541573,
+            "question_id": 49798581,
+            "body_markdown": "I am working with an Allied Vision Vimba camera to monitor an experiment involving a laser.\r\n\r\nI have written a code that allows me to take one frame from the camera live imaging (displayed in `pictureBoxLiveCamera`, in black and white), put it in another PictureBox (`pictureBoxFixe1`) and work on it. The code works fine for the most part, even though it is not finished.\r\nMy problem is that, eventually, I will need to work continuously, meaning on every frame from the camera (about 15-20 per second), and I am starting to feel like this is going to be complicated.\r\n\r\nI am not asking you to help me through the whole process, but I have a precise exemple of something that is not working and I would like to understand. I am working with the Vimba .NET API, so some of the functions called might not be familiar to most of you (and they are not much more to me, really), but I&#39;ll try my best to explain them in the code (the API manual is kinda cryptic).\r\n\r\nMy code has a part that, when I isolate one frame from the camera to work on it (via a `button-click`event, draws an histogram that graphs the number of pixels on the vertical axis and digital number value on the horizontal axis. This way I know if some of the pixels are saturated (at 255), and I can lower the exposure time. This works fine, here is the code for the button that isolate one frame and draws the histogram :\r\n\r\n    private void fixButton_Click(object sender, EventArgs e)\r\n        {\r\n            if (m_Acquiring == true) //mm_Acquiring being true indicates that the camera is sending images continuously, and that they are toggled in pictureBoxLiveCamera\r\n            {\r\n                pictureBoxFixe1.Image = SaveBitmap; //SaveBitmap is the bitmap isolated from the live camera in an earlier code portion\r\n\r\n                Array.Clear(PixelColorCount, 0, 256);\r\n                foreach (var Series in chartHist.Series)\r\n                {\r\n                    Series.Points.Clear();\r\n                }\r\n\r\n                //Creating a bitmap from pictureBoxFixe1 to draw the histogram from\r\n                Bitmap Couleur = new Bitmap(pictureBoxFixe1.Image);\r\n\r\n                //Collecting data from pictureBoxFixe1\r\n                for (int i = 0; i &lt; 1023; i++)\r\n                {\r\n                    for (int j = 157; j &lt; 288; j++)\r\n                    {\r\n                        PixelColorCount[Couleur.GetPixel(i + 1, j).B] += 1;\r\n                    }\r\n\r\n                    for (int j = 484; j &lt; 615; j++)\r\n                    {\r\n                        PixelColorCount[Couleur.GetPixel(i + 1, j).B] += 1;\r\n                    }\r\n                }\r\n\r\n                //Plotting the pixel counter, to detect saturation\r\n                for (int i = 0; i &lt; 256; i++)\r\n                {\r\n                    chartHist.Series[&quot;Pixel count&quot;].Points.AddXY(i, PixelColorCount[i]);\r\n                }\r\n\r\n                //If there are saturated pixels : toggle a title on chart 1 to warn the user\r\n                if (PixelColorCount[255] &gt; 1)\r\n                {\r\n                    chartHist.Titles[&quot;Title1&quot;].Visible = false;\r\n                    chartHist.Titles[&quot;Title2&quot;].Visible = true;\r\n                }\r\n                else\r\n                {\r\n                    chartHist.Titles[&quot;Title1&quot;].Visible = true;\r\n                    chartHist.Titles[&quot;Title2&quot;].Visible = false;\r\n                }\r\n            }\r\n            else\r\n            {\r\n                MessageBox.Show(&quot;Acquisition is not running.&quot;, &quot;Something went wrong !&quot;, MessageBoxButtons.OK, MessageBoxIcon.Information);\r\n            }\r\n        }\r\n\r\nNow what I want is to make this work live, with every frame incoming from the camera. But it doesn&#39;t work and I can&#39;t find why. Here is what I tried :\r\n\r\n    private void BtAcquisitionLiveCam_Click(object sender, EventArgs e)\r\n    {\r\n        //Here is the part of the code that starts the live acquisition when I click the button, I don&#39;t copy it completely because I don&#39;t think this is relevant.\r\n        this.m_Acquiring = true;\r\n        mycamera.OnFrameReceived += new Camera.OnFrameReceivedHandler(this.OnFrameReceived); //This is the event handler for the reception of a frame for the camera, it is part of the Vimba API\r\n        mycamera.StartContinuousImageAcquisition(1); //According to the manual, this &quot;Starts streaming and allocates the needed frames&quot;, with the argument being &quot;count of Frame(s) which should be used for this method&quot;\r\n    }\r\n\r\n    private void OnFrameReceived(Frame frame) //Frame is the class in which the code puts the data from the camera, frame is the last pack of data received from the camera\r\n    {\r\n        Bitmap myBitmap = null;\r\n        if (true == m_Acquiring)\r\n        {\r\n            try\r\n            {\r\n                mycamera.QueueFrame(frame);\r\n            }\r\n\r\n            catch (Exception)\r\n            {\r\n                MessageBox.Show(&quot;Frame queuing failed.&quot;, &quot;Something went wrong !&quot;, MessageBoxButtons.OK, MessageBoxIcon.Warning);\r\n            }\r\n        }\r\n\r\n        else\r\n        {\r\n            MessageBox.Show(&quot;Acquisition is not running.&quot;, &quot;Something went wrong !&quot;, MessageBoxButtons.OK, MessageBoxIcon.Warning);\r\n        }\r\n            \r\n        featureExposureTime.FloatValue = (double)hScrollBarLiveExposureTime.Value;\r\n        frame.Fill(ref myBitmap);\r\n        pictureBoxLiveCamera.Image = myBitmap;\r\n        SaveBitmap = myBitmap; //Up until here the code works perfectly, because I can use SaveBitmap without problem later in the code (not shown here)\r\n\r\n        Array.Clear(PixelColorCount, 0, 256);\r\n        foreach (var Series in chartHist.Series)\r\n        {\r\n            Series.Points.Clear();\r\n        }\r\n\r\n        //Collecting data from pictureBoxFixe1\r\n        for (int i = 1; i &lt; 1023; i++)\r\n        {\r\n            for (int j = 1; j &lt; 767; j++)\r\n            {\r\n                PixelColorCount[SaveBitmap.GetPixel(i, j).B] += 1;\r\n            }\r\n        }\r\n\r\n        //Plotting the pixel counter, to detect saturation\r\n        for (int i = 0; i &lt; 256; i++)\r\n        {\r\n            chartHist.Series[&quot;Pixel count&quot;].Points.AddXY(i, PixelColorCount[i]);\r\n        }\r\n\r\n        //If there are saturated pixels : toggle a title on chart 1 to warn the user\r\n        if (PixelColorCount[255] &gt; 1)\r\n        {\r\n            chartInit.Titles[&quot;Title1&quot;].Visible = true;\r\n        }\r\n        else { }\r\n    }\r\n\r\nSorry for the amount of code, but I thought I couldn&#39;t do otherwise. My problem is that the histogram doesn&#39;t show at all (well it is set as Visible, I see the title, but nothing gets plotted in it). Does anyone have any idea ?\r\n\r\nThe thing that is driving me crazy is that the VimbaViewer program that&#39;s provided with the camera does exactly what I want in a flawless way, but I don&#39;t have access to it&#39;s source code...\r\n\r\nThanks !\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49798581/working-on-each-frame-from-a-vimba-camera",
+            "title": "Working on each frame from a Vimba camera",
+            "body": "<p>I am working with an Allied Vision Vimba camera to monitor an experiment involving a laser.</p>\n\n<p>I have written a code that allows me to take one frame from the camera live imaging (displayed in <code>pictureBoxLiveCamera</code>, in black and white), put it in another PictureBox (<code>pictureBoxFixe1</code>) and work on it. The code works fine for the most part, even though it is not finished.\nMy problem is that, eventually, I will need to work continuously, meaning on every frame from the camera (about 15-20 per second), and I am starting to feel like this is going to be complicated.</p>\n\n<p>I am not asking you to help me through the whole process, but I have a precise exemple of something that is not working and I would like to understand. I am working with the Vimba .NET API, so some of the functions called might not be familiar to most of you (and they are not much more to me, really), but I'll try my best to explain them in the code (the API manual is kinda cryptic).</p>\n\n<p>My code has a part that, when I isolate one frame from the camera to work on it (via a <code>button-click</code>event, draws an histogram that graphs the number of pixels on the vertical axis and digital number value on the horizontal axis. This way I know if some of the pixels are saturated (at 255), and I can lower the exposure time. This works fine, here is the code for the button that isolate one frame and draws the histogram :</p>\n\n<pre><code>private void fixButton_Click(object sender, EventArgs e)\n    {\n        if (m_Acquiring == true) //mm_Acquiring being true indicates that the camera is sending images continuously, and that they are toggled in pictureBoxLiveCamera\n        {\n            pictureBoxFixe1.Image = SaveBitmap; //SaveBitmap is the bitmap isolated from the live camera in an earlier code portion\n\n            Array.Clear(PixelColorCount, 0, 256);\n            foreach (var Series in chartHist.Series)\n            {\n                Series.Points.Clear();\n            }\n\n            //Creating a bitmap from pictureBoxFixe1 to draw the histogram from\n            Bitmap Couleur = new Bitmap(pictureBoxFixe1.Image);\n\n            //Collecting data from pictureBoxFixe1\n            for (int i = 0; i &lt; 1023; i++)\n            {\n                for (int j = 157; j &lt; 288; j++)\n                {\n                    PixelColorCount[Couleur.GetPixel(i + 1, j).B] += 1;\n                }\n\n                for (int j = 484; j &lt; 615; j++)\n                {\n                    PixelColorCount[Couleur.GetPixel(i + 1, j).B] += 1;\n                }\n            }\n\n            //Plotting the pixel counter, to detect saturation\n            for (int i = 0; i &lt; 256; i++)\n            {\n                chartHist.Series[\"Pixel count\"].Points.AddXY(i, PixelColorCount[i]);\n            }\n\n            //If there are saturated pixels : toggle a title on chart 1 to warn the user\n            if (PixelColorCount[255] &gt; 1)\n            {\n                chartHist.Titles[\"Title1\"].Visible = false;\n                chartHist.Titles[\"Title2\"].Visible = true;\n            }\n            else\n            {\n                chartHist.Titles[\"Title1\"].Visible = true;\n                chartHist.Titles[\"Title2\"].Visible = false;\n            }\n        }\n        else\n        {\n            MessageBox.Show(\"Acquisition is not running.\", \"Something went wrong !\", MessageBoxButtons.OK, MessageBoxIcon.Information);\n        }\n    }\n</code></pre>\n\n<p>Now what I want is to make this work live, with every frame incoming from the camera. But it doesn't work and I can't find why. Here is what I tried :</p>\n\n<pre><code>private void BtAcquisitionLiveCam_Click(object sender, EventArgs e)\n{\n    //Here is the part of the code that starts the live acquisition when I click the button, I don't copy it completely because I don't think this is relevant.\n    this.m_Acquiring = true;\n    mycamera.OnFrameReceived += new Camera.OnFrameReceivedHandler(this.OnFrameReceived); //This is the event handler for the reception of a frame for the camera, it is part of the Vimba API\n    mycamera.StartContinuousImageAcquisition(1); //According to the manual, this \"Starts streaming and allocates the needed frames\", with the argument being \"count of Frame(s) which should be used for this method\"\n}\n\nprivate void OnFrameReceived(Frame frame) //Frame is the class in which the code puts the data from the camera, frame is the last pack of data received from the camera\n{\n    Bitmap myBitmap = null;\n    if (true == m_Acquiring)\n    {\n        try\n        {\n            mycamera.QueueFrame(frame);\n        }\n\n        catch (Exception)\n        {\n            MessageBox.Show(\"Frame queuing failed.\", \"Something went wrong !\", MessageBoxButtons.OK, MessageBoxIcon.Warning);\n        }\n    }\n\n    else\n    {\n        MessageBox.Show(\"Acquisition is not running.\", \"Something went wrong !\", MessageBoxButtons.OK, MessageBoxIcon.Warning);\n    }\n\n    featureExposureTime.FloatValue = (double)hScrollBarLiveExposureTime.Value;\n    frame.Fill(ref myBitmap);\n    pictureBoxLiveCamera.Image = myBitmap;\n    SaveBitmap = myBitmap; //Up until here the code works perfectly, because I can use SaveBitmap without problem later in the code (not shown here)\n\n    Array.Clear(PixelColorCount, 0, 256);\n    foreach (var Series in chartHist.Series)\n    {\n        Series.Points.Clear();\n    }\n\n    //Collecting data from pictureBoxFixe1\n    for (int i = 1; i &lt; 1023; i++)\n    {\n        for (int j = 1; j &lt; 767; j++)\n        {\n            PixelColorCount[SaveBitmap.GetPixel(i, j).B] += 1;\n        }\n    }\n\n    //Plotting the pixel counter, to detect saturation\n    for (int i = 0; i &lt; 256; i++)\n    {\n        chartHist.Series[\"Pixel count\"].Points.AddXY(i, PixelColorCount[i]);\n    }\n\n    //If there are saturated pixels : toggle a title on chart 1 to warn the user\n    if (PixelColorCount[255] &gt; 1)\n    {\n        chartInit.Titles[\"Title1\"].Visible = true;\n    }\n    else { }\n}\n</code></pre>\n\n<p>Sorry for the amount of code, but I thought I couldn't do otherwise. My problem is that the histogram doesn't show at all (well it is set as Visible, I see the title, but nothing gets plotted in it). Does anyone have any idea ?</p>\n\n<p>The thing that is driving me crazy is that the VimbaViewer program that's provided with the camera does exactly what I want in a flawless way, but I don't have access to it's source code...</p>\n\n<p>Thanks !</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "firebase",
+                "caching",
+                "firebase-database"
+            ],
+            "owner": {
+                "reputation": 192,
+                "user_id": 3129644,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://www.gravatar.com/avatar/e8e427eb98dd6a996d286af24dedffa0?s=128&d=identicon&r=PG",
+                "display_name": "Andrew",
+                "link": "https://stackoverflow.com/users/3129644/andrew"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1523541571,
+            "creation_date": 1523519702,
+            "last_edit_date": 1523541571,
+            "question_id": 49790947,
+            "body_markdown": "Firebase database returns wrong data. That happens when user updates the app. For ex., he used version 36, and firebase returns 5 items (which is ok). He updates the app to 37 version - firebase start to return only 2 items (and one of the item belongs to other user/other node). In general, some kind of mess with the returned data after update.\r\n\r\nInteresting thing is, when user clear manually app cash from the settings, bug disappears.\r\n \r\nAdditional info:\r\n\r\n - The bug can be recreated only on a few devices (for now on Nexus 5X only).\r\n - I use FirebaseAuth for user sign in.\r\n - I use `FirebaseDatabase.getInstance().setPersistenceEnabled(true)`\r\n\r\nPossible workarounds, which I don&#39;t like at all and consider only as a last resort:\r\n\r\n - Clear user cache programmatically after user updates the app version.\r\n - Not use setPersistenceEnabled(true). It may help, if it&#39;s connected to the firebase cache.\r\n\r\nDealing with this for a few days, and don&#39;t know how to fix it. Appreciate any help, even remotely connected.",
+            "link": "https://stackoverflow.com/questions/49790947/firebase-database-loads-wrong-data-after-user-updated-app",
+            "title": "Firebase Database loads wrong data after user updated app",
+            "body": "<p>Firebase database returns wrong data. That happens when user updates the app. For ex., he used version 36, and firebase returns 5 items (which is ok). He updates the app to 37 version - firebase start to return only 2 items (and one of the item belongs to other user/other node). In general, some kind of mess with the returned data after update.</p>\n\n<p>Interesting thing is, when user clear manually app cash from the settings, bug disappears.</p>\n\n<p>Additional info:</p>\n\n<ul>\n<li>The bug can be recreated only on a few devices (for now on Nexus 5X only).</li>\n<li>I use FirebaseAuth for user sign in.</li>\n<li>I use <code>FirebaseDatabase.getInstance().setPersistenceEnabled(true)</code></li>\n</ul>\n\n<p>Possible workarounds, which I don't like at all and consider only as a last resort:</p>\n\n<ul>\n<li>Clear user cache programmatically after user updates the app version.</li>\n<li>Not use setPersistenceEnabled(true). It may help, if it's connected to the firebase cache.</li>\n</ul>\n\n<p>Dealing with this for a few days, and don't know how to fix it. Appreciate any help, even remotely connected.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net",
+                "gridview",
+                "webforms"
+            ],
+            "owner": {
+                "reputation": 1978,
+                "user_id": 7127182,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ffd99687a75c631577c6485931946ddc?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Wes H",
+                "link": "https://stackoverflow.com/users/7127182/wes-h"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "bounty_amount": 50,
+            "bounty_closes_date": 1524146371,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523541571,
+            "creation_date": 1523303959,
+            "last_edit_date": 1523306704,
+            "question_id": 49740767,
+            "body_markdown": "I have a gridview used to display records based on a selected value in a drop down.\r\n\r\nWithin the gridview, there are a dynamic number of bound field columns added in code behind, followed by a drop down list in a template field and a button in a second template field.\r\n\r\nThe problem is, when I click on the button, the template fields disappear.\r\n\r\n\r\nGRID VIEW\r\n\r\n    &lt;asp:UpdatePanel ID=&quot;upnlDetail&quot; runat=&quot;server&quot; UpdateMode=&quot;Conditional&quot;&gt;\r\n        &lt;ContentTemplate&gt;\r\n            &lt;asp:GridView ID=&quot;gvDetails&quot; runat=&quot;server&quot; AutoGenerateColumns=&quot;false&quot; SkinID=&quot;gridviewGray&quot; CellPadding=&quot;3&quot; OnRowCommand=&quot;gvDetails_RowCommand&quot; OnRowDataBound=&quot;gvDetails_RowDataBound&quot; AllowSorting=&quot;true&quot;&gt;\r\n                &lt;Columns&gt;\r\n                    &lt;asp:TemplateField&gt;\r\n                        &lt;ItemTemplate&gt;\r\n                            &lt;asp:DropDownList ID=&quot;ddlStatus&quot; runat=&quot;server&quot; AutoPostBack=&quot;true&quot; OnSelectedIndexChanged=&quot;ddlStatus_SelectedIndexChanged&quot;&gt;&lt;/asp:DropDownList&gt;\r\n                        &lt;/ItemTemplate&gt;\r\n                    &lt;/asp:TemplateField&gt;\r\n                    &lt;asp:TemplateField&gt;\r\n                        &lt;ItemTemplate&gt;\r\n                            &lt;asp:Button ID=&quot;btnSave&quot; runat=&quot;server&quot; CommandName=&quot;Save&quot; CommandArgument=&quot;&lt;%# ((GridViewRow) Container).RowIndex %&gt;&quot; Text=&quot;Save&quot; /&gt;\r\n                        &lt;/ItemTemplate&gt;\r\n                    &lt;/asp:TemplateField&gt;\r\n                &lt;/Columns&gt;\r\n            &lt;/asp:GridView&gt;                                \r\n        &lt;/ContentTemplate&gt;\r\n    &lt;/asp:UpdatePanel&gt;\r\n\r\n\r\nCODE BEHIND\r\n\r\n    while (gvDetails.Columns.Count &gt; 2)  //Don&#39;t remove the rightmost columns\r\n    { \r\n    \tgvDetails.Columns.RemoveAt(0);\r\n    }\r\n    \r\n    gvDetails.Columns.Insert(0, GridViewTools.CreateBoundField(&quot;Request.Amount&quot;, &quot;Amount&quot;, &quot;Money&quot;, 50));\r\n    gvDetails.Columns.Insert(0, GridViewTools.CreateBoundField(&quot;Request.CustomerName&quot;, &quot;Customer&quot;, &quot;comment&quot;, 200));\r\n    gvDetails.Columns.Insert(0, GridViewTools.CreateBoundField(&quot;Request.BillAccountFormatted&quot;, &quot;Account&quot;, &quot;text&quot;, 100));\r\n    gvDetails.Columns.Insert(0, GridViewTools.CreateBoundField(&quot;Request.Id&quot;, &quot;Request&quot;, &quot;int&quot;, 50));\r\n    \r\n    gvDetails.DataSource = dt;\r\n    gvDetails.DataBind();\r\n\r\nMethod GridViewTools.CreateBoundField is a custom method that sets my default boundfield attributes and returns the BoundField object. \r\n\r\n    public static BoundField CreateBoundField(...){...}\r\n\r\n \r\n\r\n\r\nIn testing it, the gridview populates as desired on the initial load.  However, the RowCommand event does not fire and both template fields disappear when the button is clicked.  The next gridview.RowDataBound event then throws a null object error because the drop down list is no longer found in the row.  \r\n\r\nIf I remove lines adding the bound fields [Columns.Insert], the RowCommand fires as expected when btnSave is clicked and the template fields persist.  If I add even a single bound field column again, the RowCommand does not fire and the template fields disappear.\r\n\r\nAny suggestions?  Why would adding a new column to a gridview invalidate the RowCommand event for a pre-existing button and make the template fields disappear?",
+            "link": "https://stackoverflow.com/questions/49740767/template-field-disappears",
+            "title": "Template field disappears",
+            "body": "<p>I have a gridview used to display records based on a selected value in a drop down.</p>\n\n<p>Within the gridview, there are a dynamic number of bound field columns added in code behind, followed by a drop down list in a template field and a button in a second template field.</p>\n\n<p>The problem is, when I click on the button, the template fields disappear.</p>\n\n<p>GRID VIEW</p>\n\n<pre><code>&lt;asp:UpdatePanel ID=\"upnlDetail\" runat=\"server\" UpdateMode=\"Conditional\"&gt;\n    &lt;ContentTemplate&gt;\n        &lt;asp:GridView ID=\"gvDetails\" runat=\"server\" AutoGenerateColumns=\"false\" SkinID=\"gridviewGray\" CellPadding=\"3\" OnRowCommand=\"gvDetails_RowCommand\" OnRowDataBound=\"gvDetails_RowDataBound\" AllowSorting=\"true\"&gt;\n            &lt;Columns&gt;\n                &lt;asp:TemplateField&gt;\n                    &lt;ItemTemplate&gt;\n                        &lt;asp:DropDownList ID=\"ddlStatus\" runat=\"server\" AutoPostBack=\"true\" OnSelectedIndexChanged=\"ddlStatus_SelectedIndexChanged\"&gt;&lt;/asp:DropDownList&gt;\n                    &lt;/ItemTemplate&gt;\n                &lt;/asp:TemplateField&gt;\n                &lt;asp:TemplateField&gt;\n                    &lt;ItemTemplate&gt;\n                        &lt;asp:Button ID=\"btnSave\" runat=\"server\" CommandName=\"Save\" CommandArgument=\"&lt;%# ((GridViewRow) Container).RowIndex %&gt;\" Text=\"Save\" /&gt;\n                    &lt;/ItemTemplate&gt;\n                &lt;/asp:TemplateField&gt;\n            &lt;/Columns&gt;\n        &lt;/asp:GridView&gt;                                \n    &lt;/ContentTemplate&gt;\n&lt;/asp:UpdatePanel&gt;\n</code></pre>\n\n<p>CODE BEHIND</p>\n\n<pre><code>while (gvDetails.Columns.Count &gt; 2)  //Don't remove the rightmost columns\n{ \n    gvDetails.Columns.RemoveAt(0);\n}\n\ngvDetails.Columns.Insert(0, GridViewTools.CreateBoundField(\"Request.Amount\", \"Amount\", \"Money\", 50));\ngvDetails.Columns.Insert(0, GridViewTools.CreateBoundField(\"Request.CustomerName\", \"Customer\", \"comment\", 200));\ngvDetails.Columns.Insert(0, GridViewTools.CreateBoundField(\"Request.BillAccountFormatted\", \"Account\", \"text\", 100));\ngvDetails.Columns.Insert(0, GridViewTools.CreateBoundField(\"Request.Id\", \"Request\", \"int\", 50));\n\ngvDetails.DataSource = dt;\ngvDetails.DataBind();\n</code></pre>\n\n<p>Method GridViewTools.CreateBoundField is a custom method that sets my default boundfield attributes and returns the BoundField object. </p>\n\n<pre><code>public static BoundField CreateBoundField(...){...}\n</code></pre>\n\n<p>In testing it, the gridview populates as desired on the initial load.  However, the RowCommand event does not fire and both template fields disappear when the button is clicked.  The next gridview.RowDataBound event then throws a null object error because the drop down list is no longer found in the row.  </p>\n\n<p>If I remove lines adding the bound fields [Columns.Insert], the RowCommand fires as expected when btnSave is clicked and the template fields persist.  If I add even a single bound field column again, the RowCommand does not fire and the template fields disappear.</p>\n\n<p>Any suggestions?  Why would adding a new column to a gridview invalidate the RowCommand event for a pre-existing button and make the template fields disappear?</p>\n"
+        },
+        {
+            "tags": [
+                "php"
+            ],
+            "owner": {
+                "reputation": 411,
+                "user_id": 5355145,
+                "user_type": "registered",
+                "accept_rate": 86,
+                "profile_image": "https://lh5.googleusercontent.com/-xP8pP2DuN68/AAAAAAAAAAI/AAAAAAAAAME/pkG21d9uzNA/photo.jpg?sz=128",
+                "display_name": "Jayani Sumudini",
+                "link": "https://stackoverflow.com/users/5355145/jayani-sumudini"
+            },
+            "is_answered": true,
+            "view_count": 38,
+            "closed_date": 1523518131,
+            "answer_count": 2,
+            "score": -3,
+            "last_activity_date": 1523541561,
+            "creation_date": 1523513439,
+            "question_id": 49789168,
+            "body_markdown": "Php &#39;Continue&#39; will tell it to skip the current iteration block, but continue on with the rest of the loop. Works in all scenerios (for, while, etc.).But I want to skip the rest of the loop.I tried it using break;But not work.\r\n\r\n    if ($column_names &gt; 0) {\r\n        foreach ($column_names as $heading) {\r\n            foreach ($heading as $column_heading)\r\n                if($column_heading == &quot;trip_id&quot;){\r\n                    break;\r\n                }\r\n                if($column_heading == &quot;number_of_pessengers&quot;){\r\n                    $column_heading = &quot;No. pessengers&quot;;\r\n                }\r\n                $cellWidth = $pdf-&gt;GetStringWidth($column_heading);\r\n                $pdf-&gt;Cell($cellWidth + 2, 10, $column_heading, 1);\r\n        }\r\n    }\r\n\r\n\r\nWhat&#39;s the wrong in my code.",
+            "link": "https://stackoverflow.com/questions/49789168/in-php-foreach-skip-the-current-iteration-block-and-also-rest-of-the-loop",
+            "closed_reason": "duplicate",
+            "title": "In Php &#39;foreach&#39; skip the current iteration block and also rest of the loop",
+            "body": "<p>Php 'Continue' will tell it to skip the current iteration block, but continue on with the rest of the loop. Works in all scenerios (for, while, etc.).But I want to skip the rest of the loop.I tried it using break;But not work.</p>\n\n<pre><code>if ($column_names &gt; 0) {\n    foreach ($column_names as $heading) {\n        foreach ($heading as $column_heading)\n            if($column_heading == \"trip_id\"){\n                break;\n            }\n            if($column_heading == \"number_of_pessengers\"){\n                $column_heading = \"No. pessengers\";\n            }\n            $cellWidth = $pdf-&gt;GetStringWidth($column_heading);\n            $pdf-&gt;Cell($cellWidth + 2, 10, $column_heading, 1);\n    }\n}\n</code></pre>\n\n<p>What's the wrong in my code.</p>\n"
+        },
+        {
+            "tags": [
+                "jquery"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9634450,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-__aDRc_5lyo/AAAAAAAAAAI/AAAAAAAAGq8/fyB3wZd7JkY/photo.jpg?sz=128",
+                "display_name": "Rever92",
+                "link": "https://stackoverflow.com/users/9634450/rever92"
+            },
+            "is_answered": true,
+            "view_count": 30,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523541558,
+            "creation_date": 1523515750,
+            "last_edit_date": 1523524119,
+            "question_id": 49789799,
+            "body_markdown": "I am currently learning jquery and in one of my activities I have to get the src from some images on [this][1] webpage. But I can&#39;t seem to get the img URL. \r\nI managed selecting the image and to get any attribute but not src&#39;s url.\r\nThis is the selector i am using:\r\n\r\n    $(&#39;img.thumbnail-img&#39;).attr(&quot;src&quot;);\r\n\r\nBut it gives me this back instead of the url:\r\n\r\n    data:image/gif;base64,R0lGODlhAwAEAIAAAAAAAAAAACH5BAEAAAAALAAAAAADAAQAAAIDhI9WADs=\r\n\r\nEDIT:\r\nHi! I think i didnt&#39;t quite explain myself. I want to get the image src url, and instead i get what i pasted above. By looking at the html of the page you can see that there is an actual image url like [this one][2] for example, but instead i get that data:image... thing which, by following the steps in the solution, is not the image i want to get. \r\nMaybe the selector is wrong?\r\n\r\nThanks!\r\n\r\n\r\n  [1]: http://www.sensacine.com/\r\n  [2]: http://es.web.img3.acsta.net/c_150_200/pictures/18/02/21/10/05/2137559.jpg",
+            "link": "https://stackoverflow.com/questions/49789799/getting-img-src-with-jquery",
+            "title": "Getting img src with Jquery",
+            "body": "<p>I am currently learning jquery and in one of my activities I have to get the src from some images on <a href=\"http://www.sensacine.com/\" rel=\"nofollow noreferrer\">this</a> webpage. But I can't seem to get the img URL. \nI managed selecting the image and to get any attribute but not src's url.\nThis is the selector i am using:</p>\n\n<pre><code>$('img.thumbnail-img').attr(\"src\");\n</code></pre>\n\n<p>But it gives me this back instead of the url:</p>\n\n<pre><code>data:image/gif;base64,R0lGODlhAwAEAIAAAAAAAAAAACH5BAEAAAAALAAAAAADAAQAAAIDhI9WADs=\n</code></pre>\n\n<p>EDIT:\nHi! I think i didnt't quite explain myself. I want to get the image src url, and instead i get what i pasted above. By looking at the html of the page you can see that there is an actual image url like <a href=\"http://es.web.img3.acsta.net/c_150_200/pictures/18/02/21/10/05/2137559.jpg\" rel=\"nofollow noreferrer\">this one</a> for example, but instead i get that data:image... thing which, by following the steps in the solution, is not the image i want to get. \nMaybe the selector is wrong?</p>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "wso2",
+                "wso2esb"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9596637,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XAEH86OPDRo/AAAAAAAAAAI/AAAAAAAAAs8/teFFaMBIMnw/photo.jpg?sz=128",
+                "display_name": "Vikram A S",
+                "link": "https://stackoverflow.com/users/9596637/vikram-a-s"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523541556,
+            "creation_date": 1523445675,
+            "last_edit_date": 1523541556,
+            "question_id": 49773781,
+            "body_markdown": "In Wso2 ESB when I try to connect with Https endpoint. I get \r\n\r\n    `TargetHandler I/O error: General SSLEngine problem`\r\n\r\n    javax.net.ssl.SSLHandshakeException: General SSLEngine problem \r\nHow to solve this and how to get the certificate for the endpoint \r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49773781/in-wso2-how-to-connect-to-https-endpoint",
+            "title": "In Wso2 how to connect to Https endpoint",
+            "body": "<p>In Wso2 ESB when I try to connect with Https endpoint. I get </p>\n\n<pre><code>`TargetHandler I/O error: General SSLEngine problem`\n\njavax.net.ssl.SSLHandshakeException: General SSLEngine problem \n</code></pre>\n\n<p>How to solve this and how to get the certificate for the endpoint </p>\n"
+        },
+        {
+            "tags": [
+                "amazon-cloudformation",
+                "gitlab-ci",
+                "aws-ecs"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9636652,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-KhdMLBDmDHU/AAAAAAAAAAI/AAAAAAAAIYk/SFH-aN0Wkpw/photo.jpg?sz=128",
+                "display_name": "Saideekshith",
+                "link": "https://stackoverflow.com/users/9636652/saideekshith"
+            },
+            "is_answered": false,
+            "view_count": 3,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523541554,
+            "creation_date": 1523541554,
+            "question_id": 49798572,
+            "body_markdown": "I&#39;m using cloud formation to build ECS infrastructure in AWS. we are using Gitlab-CI as our Continuous Integration tool. As a part of access to our private registry we are generating new token for every deploy,but I&#39;m facing issue like the whole EC2 instance is being replaced every time change in Access token. Is there any way I can fix the issue.",
+            "link": "https://stackoverflow.com/questions/49798572/cloudformation-creating-new-ec2-instance-by-change-of-access-token-to-private-re",
+            "title": "CloudFormation creating new EC2 instance by change of Access token to private registry",
+            "body": "<p>I'm using cloud formation to build ECS infrastructure in AWS. we are using Gitlab-CI as our Continuous Integration tool. As a part of access to our private registry we are generating new token for every deploy,but I'm facing issue like the whole EC2 instance is being replaced every time change in Access token. Is there any way I can fix the issue.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "canvas"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 5259773,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10154072121180278/picture?type=large",
+                "display_name": "Bj&#246;rn Carlsson",
+                "link": "https://stackoverflow.com/users/5259773/bj%c3%b6rn-carlsson"
+            },
+            "is_answered": false,
+            "view_count": 35,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523541549,
+            "creation_date": 1523540131,
+            "last_edit_date": 1523541549,
+            "question_id": 49798014,
+            "body_markdown": "I am doing a little project on the canvas where I have a map that I can zoom and pan, which works very well so far.\r\n\r\nNow to my problem, after I zoom in I don&#39;t want the image to be able to be dragged more than the edges of the image (never show anything but the image on canvas).\r\nThis works good for the top and left side of the image (X and Y coords can never be more than 0 (top of canvas).\r\n\r\nBut for the right and bottom parts, I need to calculate the new width and height of the scaled image and say that X and Y can never be less than canvas width and the excess of the image that is outside of the canvas.\r\n\r\nThis does not appear to be correct, made an image to illustrate since my explaining is not so good, Black rectangle being my canvas and red being my image.\r\n\r\nMy guesses are that it is not as easy as taking image width*scale for new width or that it has to do with the offset of my canvas, tried to calculate with that as well but the offset is only8px and does not seem to be the full extent of the problem as if I zoom more the problem gets bigger.\r\n\r\nThankfull for any help and sorry for the long and weird explanation =)\r\n\r\n[Problem][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/A37k0.gif\r\n\r\n    canvas.addEventListener(&quot;mousedown&quot;, mouseDown);\r\n    function mouseDown(e){\r\n    mouseX=parseInt(e.clientX);\r\n    mouseY=parseInt(e.clientY);\r\n\r\n    lastX = mouseX;\r\n    lastY = mouseY;\r\n    down = true;\r\n    }\r\n\r\n    canvas.addEventListener(&quot;mousemove&quot;, mouseMove);\r\n\r\n    function mouseMove(e){\r\n    if (!down){\r\n    return;}\r\n    mouseX=parseInt(e.clientX);\r\n    mouseY=parseInt(e.clientY);\r\n\r\n    dx = mouseX - lastX;\r\n    dy = mouseY - lastY;\r\n\r\n    x = dx;\r\n    y = dy;\r\n\r\n    if (x&gt;0){\r\n    x = 0;\r\n    }\r\n    if (y&gt;0){\r\n    y = 0;\r\n    }\r\n    draw(x,y);\r\n    }\r\n\r\n    canvas.addEventListener(&quot;mouseup&quot;, mouseUp);\r\n    function mouseUp(){\r\n    down = false;\r\n    lastX = mouseX;\r\n    lastY = mouseY;\r\n    ctx.fillText(mouseX,25,50);\r\n    ctx.fillText(dx,25,75);\r\n    }\r\n\r\n    function draw(){\r\n    ctx.clearRect(0,0,1525,850);\r\n    ctx.scale(scaleY,scaleX);\r\n    ctx.drawImage(img,x,y,1375,850);\r\n    ctx.fillRect(x+688,y+425,10,10);\r\n    ctx.setTransform(1, 0, 0, 1,0,0);\r\n\r\n    }\r\n    //Never zoom more then 2,5\r\n    function zoomIN(){\r\n    scaleY = scaleY + 0.1;\r\n    scaleX = scaleX + 0.1;\r\n    if (scaleY &gt;= 2.5){\r\n    scaleY = 2.5;\r\n    scaleX = 2.5;\r\n    }\r\n    draw(scaleY,scaleX,x,y);\r\n    }\r\n    //Never zoom less then 1\r\n    function zoomOUT(){\r\n    scaleY = scaleY - 0.1;\r\n    scaleX = scaleX - 0.1;\r\n    if (scaleY &lt;= 1){\r\n    scaleY = 1;\r\n    scaleX = 1;\r\n    }\r\n    draw(scaleY,scaleX,x,y);\r\n    }\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49798014/image-width-not-correct-after-scaling",
+            "title": "Image width not correct after scaling",
+            "body": "<p>I am doing a little project on the canvas where I have a map that I can zoom and pan, which works very well so far.</p>\n\n<p>Now to my problem, after I zoom in I don't want the image to be able to be dragged more than the edges of the image (never show anything but the image on canvas).\nThis works good for the top and left side of the image (X and Y coords can never be more than 0 (top of canvas).</p>\n\n<p>But for the right and bottom parts, I need to calculate the new width and height of the scaled image and say that X and Y can never be less than canvas width and the excess of the image that is outside of the canvas.</p>\n\n<p>This does not appear to be correct, made an image to illustrate since my explaining is not so good, Black rectangle being my canvas and red being my image.</p>\n\n<p>My guesses are that it is not as easy as taking image width*scale for new width or that it has to do with the offset of my canvas, tried to calculate with that as well but the offset is only8px and does not seem to be the full extent of the problem as if I zoom more the problem gets bigger.</p>\n\n<p>Thankfull for any help and sorry for the long and weird explanation =)</p>\n\n<p><a href=\"https://i.stack.imgur.com/A37k0.gif\" rel=\"nofollow noreferrer\">Problem</a></p>\n\n<pre><code>canvas.addEventListener(\"mousedown\", mouseDown);\nfunction mouseDown(e){\n    mouseX=parseInt(e.clientX);\n    mouseY=parseInt(e.clientY);\n    lastX = mouseX;\n    lastY = mouseY;\n    down = true;\n}\n\ncanvas.addEventListener(\"mousemove\", mouseMove);\n\nfunction mouseMove(e){\n    if (!down){\n        return;\n    }\n    mouseX=parseInt(e.clientX);\n    mouseY=parseInt(e.clientY);\n\n    dx = mouseX - lastX;\n    dy = mouseY - lastY;\n\n    x = dx;\n    y = dy;\n\n    if (x&gt;0){\n        x = 0;\n    }\n    if (y&gt;0){\n        y = 0;\n    }\n    draw(x,y);\n}\n\ncanvas.addEventListener(\"mouseup\", mouseUp);\nfunction mouseUp(){\n    down = false;\n    lastX = mouseX;\n    lastY = mouseY;\n    ctx.fillText(mouseX,25,50);\n    ctx.fillText(dx,25,75);\n}\n\nfunction draw(){\n    ctx.clearRect(0,0,1525,850);\n    ctx.scale(scaleY,scaleX);\n    ctx.drawImage(img,x,y,1375,850);\n    ctx.fillRect(x+688,y+425,10,10);\n    ctx.setTransform(1, 0, 0, 1,0,0);\n}\n//Never zoom more then 2,5\nfunction zoomIN(){\n    scaleY = scaleY + 0.1;\n    scaleX = scaleX + 0.1;\n    if (scaleY &gt;= 2.5){\n        scaleY = 2.5;\n        scaleX = 2.5;\n    }\n    draw(scaleY,scaleX,x,y);\n}\n//Never zoom less then 1\nfunction zoomOUT(){\n    scaleY = scaleY - 0.1;\n    scaleX = scaleX - 0.1;\n    if (scaleY &lt;= 1){\n        scaleY = 1;\n        scaleX = 1;\n    }\n    draw(scaleY,scaleX,x,y);\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "swift",
+                "parse.com",
+                "pfquery",
+                "operand",
+                "operands"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 6031241,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/74927768f839765beee4cad374323df8?s=128&d=identicon&r=PG&f=1",
+                "display_name": "J. K.",
+                "link": "https://stackoverflow.com/users/6031241/j-k"
+            },
+            "is_answered": false,
+            "view_count": 56,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523541548,
+            "creation_date": 1523332229,
+            "last_edit_date": 1523343055,
+            "question_id": 49745005,
+            "body_markdown": "I am trying to use an AND operand in a PFQuery but I get the following error at `query.whereKey...`  Is there a way to achieve this?\r\n\r\n&gt; No &#39;&amp;&amp;&#39; candidates produce the expected contextual result type &#39;AnyObject&#39;\r\n \r\n\r\n    let bagNumber = defaults.objectForKey(&quot;bagNumber&quot;) as! String\r\n    query.whereKey(&quot;bagNumber&quot;, equalTo: &quot;0&quot; &amp;&amp; bagNumber)",
+            "link": "https://stackoverflow.com/questions/49745005/logical-operators-in-pfquery-error",
+            "title": "Logical Operators in PFQuery Error",
+            "body": "<p>I am trying to use an AND operand in a PFQuery but I get the following error at <code>query.whereKey...</code>  Is there a way to achieve this?</p>\n\n<blockquote>\n  <p>No '&amp;&amp;' candidates produce the expected contextual result type 'AnyObject'</p>\n</blockquote>\n\n<pre><code>let bagNumber = defaults.objectForKey(\"bagNumber\") as! String\nquery.whereKey(\"bagNumber\", equalTo: \"0\" &amp;&amp; bagNumber)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "object",
+                "abstract"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9635042,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-QtOLdJ7IUsU/AAAAAAAAAAI/AAAAAAAAABg/mTeAcHkBz5I/photo.jpg?sz=128",
+                "display_name": "chris",
+                "link": "https://stackoverflow.com/users/9635042/chris"
+            },
+            "is_answered": true,
+            "view_count": 34,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523541541,
+            "creation_date": 1523525000,
+            "last_edit_date": 1523525335,
+            "question_id": 49792804,
+            "body_markdown": "I am fairly new to programming, especially the OOP concept. I created a class that should handle unique IDs for another classes objects. I just want to assign an unique ID to an object in its constructor. \r\n\r\nI have no clue if the `IdHandler` class should be abstract or not. As far as I understand, if I need different namespaces for the IDs (maybe for different warehouses), I need to create an `IdHandler` object for each one? Where do I create those objects? At the beginning of the main class or in the constructor that defines the namespace (e.g. `Warehouse()`)?\r\n\r\nThat is the ID class -&gt;\r\n\r\n    public class IdHandler {\r\n    \r\n        private String newId;\r\n        private ArrayList&lt;String&gt; idList = new ArrayList&lt;String&gt;();\r\n    \r\n    \r\n        public String getId() {\r\n    \r\n            this.newId = &quot;&quot;;\r\n            while (this.newId == &quot;&quot;) {\r\n                this.newId = UUID.randomUUID().toString();\r\n    \r\n                // if doesn&#39;t exist already , add to list, else empty String\r\n                if (!this.idList.contains(this.newId)) {\r\n                    this.idList.add(this.newId);\r\n                    break;\r\n                }\r\n    \r\n                else\r\n                    this.newId = &quot;&quot;;\r\n            }\r\n            return this.newId;\r\n    \r\n        }\r\n    }\r\n     \r\n",
+            "link": "https://stackoverflow.com/questions/49792804/class-that-handles-unique-ids-for-specific-items-abstract-or-not",
+            "title": "Class that handles unique IDs for specific Items -&gt; abstract or not?",
+            "body": "<p>I am fairly new to programming, especially the OOP concept. I created a class that should handle unique IDs for another classes objects. I just want to assign an unique ID to an object in its constructor. </p>\n\n<p>I have no clue if the <code>IdHandler</code> class should be abstract or not. As far as I understand, if I need different namespaces for the IDs (maybe for different warehouses), I need to create an <code>IdHandler</code> object for each one? Where do I create those objects? At the beginning of the main class or in the constructor that defines the namespace (e.g. <code>Warehouse()</code>)?</p>\n\n<p>That is the ID class -></p>\n\n<pre><code>public class IdHandler {\n\n    private String newId;\n    private ArrayList&lt;String&gt; idList = new ArrayList&lt;String&gt;();\n\n\n    public String getId() {\n\n        this.newId = \"\";\n        while (this.newId == \"\") {\n            this.newId = UUID.randomUUID().toString();\n\n            // if doesn't exist already , add to list, else empty String\n            if (!this.idList.contains(this.newId)) {\n                this.idList.add(this.newId);\n                break;\n            }\n\n            else\n                this.newId = \"\";\n        }\n        return this.newId;\n\n    }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "typescript"
+            ],
+            "owner": {
+                "reputation": 292,
+                "user_id": 1985273,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://www.gravatar.com/avatar/8e7d6db95f14af0f539140b9e5515e8e?s=128&d=identicon&r=PG",
+                "display_name": "user1985273",
+                "link": "https://stackoverflow.com/users/1985273/user1985273"
+            },
+            "is_answered": true,
+            "view_count": 948,
+            "answer_count": 5,
+            "score": -2,
+            "last_activity_date": 1523541532,
+            "creation_date": 1497774167,
+            "last_edit_date": 1498575362,
+            "question_id": 44613069,
+            "body_markdown": "I have a cmd where I get the content of the page from the server. Then content can include HTML and links. The problem is when I display this data the links don&#39;t work. When looking at page source it turns out that &quot;routerLink&quot; is transformed into &quot;router link&quot; and that&#39;s why it probably doesn&#39;t work. Here is my code:\r\n\r\nMy class, **notice that routerLink is in camelcase here**:\r\n\r\n    export class TwoComponent implements OnInit {\r\n      data = &#39;&lt;a routerLink=&quot;/one&quot;&gt;ONE&lt;/a&gt;&#39;; //this will actually come from backend server\r\n    \r\n      constructor() { }\r\n    \r\n      ngOnInit() {}\r\n    }\r\n\r\nAnd my html:\r\n\r\n    &lt;div [innerHTML]=&quot;data | bypassSecurity&quot;&gt;&lt;/div&gt;\r\n\r\nAnd when i load this page and look at the source **the routerLink is now in lowercase**:\r\n\r\n    &lt;a routerlink=&quot;/one&quot;&gt;ONE&lt;/a&gt;\r\n\r\nAt first, i thought it&#39;s the bypassSecurity pipe that responsible but I checked the output of the pipe and routerLink was still in camel case there. So it seems like it happens somewhere else. Just in case here is my bypassSecurity pipe too:\r\n\r\n    export class BypassSecurityPipe implements PipeTransform {\r\n      constructor(private sanitized: DomSanitizer) {}\r\n    \r\n      transform(value): any {\r\n        return this.sanitized.bypassSecurityTrustHtml(value);\r\n      }\r\n    }\r\n\r\nAny advice on where and why this lowercase transformation happens would be appreciated :) ",
+            "link": "https://stackoverflow.com/questions/44613069/angular4-routerlink-inside-innerhtml-turned-to-lowercase",
+            "title": "Angular4 routerLink inside innerHTML turned to lowercase",
+            "body": "<p>I have a cmd where I get the content of the page from the server. Then content can include HTML and links. The problem is when I display this data the links don't work. When looking at page source it turns out that \"routerLink\" is transformed into \"router link\" and that's why it probably doesn't work. Here is my code:</p>\n\n<p>My class, <strong>notice that routerLink is in camelcase here</strong>:</p>\n\n<pre><code>export class TwoComponent implements OnInit {\n  data = '&lt;a routerLink=\"/one\"&gt;ONE&lt;/a&gt;'; //this will actually come from backend server\n\n  constructor() { }\n\n  ngOnInit() {}\n}\n</code></pre>\n\n<p>And my html:</p>\n\n<pre><code>&lt;div [innerHTML]=\"data | bypassSecurity\"&gt;&lt;/div&gt;\n</code></pre>\n\n<p>And when i load this page and look at the source <strong>the routerLink is now in lowercase</strong>:</p>\n\n<pre><code>&lt;a routerlink=\"/one\"&gt;ONE&lt;/a&gt;\n</code></pre>\n\n<p>At first, i thought it's the bypassSecurity pipe that responsible but I checked the output of the pipe and routerLink was still in camel case there. So it seems like it happens somewhere else. Just in case here is my bypassSecurity pipe too:</p>\n\n<pre><code>export class BypassSecurityPipe implements PipeTransform {\n  constructor(private sanitized: DomSanitizer) {}\n\n  transform(value): any {\n    return this.sanitized.bypassSecurityTrustHtml(value);\n  }\n}\n</code></pre>\n\n<p>Any advice on where and why this lowercase transformation happens would be appreciated :) </p>\n"
+        },
+        {
+            "tags": [
+                "css",
+                "javafx"
+            ],
+            "owner": {
+                "reputation": 97,
+                "user_id": 6256758,
+                "user_type": "registered",
+                "accept_rate": 64,
+                "profile_image": "https://i.stack.imgur.com/QbMTA.jpg?s=128&g=1",
+                "display_name": "Samarek",
+                "link": "https://stackoverflow.com/users/6256758/samarek"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523541529,
+            "creation_date": 1523540693,
+            "last_edit_date": 1523541529,
+            "question_id": 49798226,
+            "body_markdown": "I am using a JavaFX TitledPane to display a couple of buttons and I would like it to look like I&#39;d like it to look, but somehow it seems that certain styles simply cannot be applied.\r\n\r\n    .controls &gt; .title\r\n    {\r\n        -fx-background-color: rgba(0, 60, 136, 0.5);\r\n        -fx-text-fill: WHITE;\r\n        -fx-font-family: &#39;Lucida Grande&#39;,Verdana,Geneva,Lucida,Arial,Helvetica,sans-serif;\r\n        -fx-font-size: 16px;\r\n        -fx-font-weight: bold;\r\n    }\r\n    .control-button\r\n    {\r\n        -fx-padding: 2px 40px;\r\n        -fx-margin: 1px;\r\n        -fx-text-fill: WHITE;\r\n        -fx-text-alignment: center;\r\n        -fx-background-radius: 2px;\r\n        -fx-font-family: &#39;Lucida Grande&#39;,Verdana,Geneva,Lucida,Arial,Helvetica,sans-serif;\r\n        -fx-font-size: 16px;\r\n        -fx-font-weight: bold;\r\n    }\r\n    .on\r\n    {\r\n        -fx-background-color: rgba(0, 60, 136, 0.8);\r\n    }\r\n    .off\r\n    {\r\n        -fx-background-color: rgba(0, 60, 136, 0.5);\r\n    }\r\n\r\nWhen I click the button, the style-class is supposed to change (on/off), which it does, but after the first click the ```-fx-text-alignment: center;``` is apparently not applied anymore. Furthermore the color of the title text won&#39;t change, eventhough all the other styles are applied. Also I seem to be unable to alter the color (or opacity) of the Pane that contains the buttons.\r\n\r\nMaybe someone has some insights into styling TitledPanes that he would like to share with me and the rest of the world, since I couldn&#39;t find much on styling when I was searching for it.\r\n\r\n---\r\nEdit:\r\nWell, there isn&#39;t much to see in the Java-Code\r\n\r\n    Button button = (Button) event.getTarget();\r\n    if (group.isVisible())\r\n    {\r\n    \tgroup.setVisible(false);\r\n    \tbutton.getStyleClass().clear();\r\n    \tbutton.getStyleClass().addAll(&quot;control-button&quot;, &quot;off&quot;);\r\n    }\r\n    else\r\n    {\r\n    \tgroup.setVisible(true);\r\n    \tbutton.getStyleClass().clear();\r\n    \tbutton.getStyleClass().addAll(&quot;control-button&quot;, &quot;on&quot;);\r\n    }",
+            "link": "https://stackoverflow.com/questions/49798226/style-a-javafx-titledpane",
+            "title": "style a javafx TitledPane",
+            "body": "<p>I am using a JavaFX TitledPane to display a couple of buttons and I would like it to look like I'd like it to look, but somehow it seems that certain styles simply cannot be applied.</p>\n\n<pre><code>.controls &gt; .title\n{\n    -fx-background-color: rgba(0, 60, 136, 0.5);\n    -fx-text-fill: WHITE;\n    -fx-font-family: 'Lucida Grande',Verdana,Geneva,Lucida,Arial,Helvetica,sans-serif;\n    -fx-font-size: 16px;\n    -fx-font-weight: bold;\n}\n.control-button\n{\n    -fx-padding: 2px 40px;\n    -fx-margin: 1px;\n    -fx-text-fill: WHITE;\n    -fx-text-alignment: center;\n    -fx-background-radius: 2px;\n    -fx-font-family: 'Lucida Grande',Verdana,Geneva,Lucida,Arial,Helvetica,sans-serif;\n    -fx-font-size: 16px;\n    -fx-font-weight: bold;\n}\n.on\n{\n    -fx-background-color: rgba(0, 60, 136, 0.8);\n}\n.off\n{\n    -fx-background-color: rgba(0, 60, 136, 0.5);\n}\n</code></pre>\n\n<p>When I click the button, the style-class is supposed to change (on/off), which it does, but after the first click the <code>-fx-text-alignment: center;</code> is apparently not applied anymore. Furthermore the color of the title text won't change, eventhough all the other styles are applied. Also I seem to be unable to alter the color (or opacity) of the Pane that contains the buttons.</p>\n\n<p>Maybe someone has some insights into styling TitledPanes that he would like to share with me and the rest of the world, since I couldn't find much on styling when I was searching for it.</p>\n\n<hr>\n\n<p>Edit:\nWell, there isn't much to see in the Java-Code</p>\n\n<pre><code>Button button = (Button) event.getTarget();\nif (group.isVisible())\n{\n    group.setVisible(false);\n    button.getStyleClass().clear();\n    button.getStyleClass().addAll(\"control-button\", \"off\");\n}\nelse\n{\n    group.setVisible(true);\n    button.getStyleClass().clear();\n    button.getStyleClass().addAll(\"control-button\", \"on\");\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "electron"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9636635,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Aitor de la Vega",
+                "link": "https://stackoverflow.com/users/9636635/aitor-de-la-vega"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1523541526,
+            "creation_date": 1523541526,
+            "question_id": 49798564,
+            "body_markdown": "I&#39;m trying to build an app made with electron but when a build the Windows version this error appears on console and the screen stay blank:\r\n\r\nNot allowed to load local resource: file:///C:/Program%20Files/8track/resources/app.asar/index.html\r\n\r\nIf I set webSecurity as false this error disappear but the blank screen continues.\r\nI have tried the solution of this issue in GitHub and even setting &quot;asar&quot; as false in package.json without success.\r\n\r\nhttps://github.com/electron/electron/issues/5107\r\n\r\nAny idea how to solve this?\r\nThanks",
+            "link": "https://stackoverflow.com/questions/49798564/electron-build-error",
+            "title": "Electron build error",
+            "body": "<p>I'm trying to build an app made with electron but when a build the Windows version this error appears on console and the screen stay blank:</p>\n\n<p>Not allowed to load local resource: file:///C:/Program%20Files/8track/resources/app.asar/index.html</p>\n\n<p>If I set webSecurity as false this error disappear but the blank screen continues.\nI have tried the solution of this issue in GitHub and even setting \"asar\" as false in package.json without success.</p>\n\n<p><a href=\"https://github.com/electron/electron/issues/5107\" rel=\"nofollow noreferrer\">https://github.com/electron/electron/issues/5107</a></p>\n\n<p>Any idea how to solve this?\nThanks</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "twig"
+            ],
+            "owner": {
+                "reputation": 539,
+                "user_id": 2493556,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/3f6111bec39e013ac0ef7c4306019227?s=128&d=identicon&r=PG",
+                "display_name": "Sergej",
+                "link": "https://stackoverflow.com/users/2493556/sergej"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523541524,
+            "creation_date": 1523541162,
+            "last_edit_date": 1523541524,
+            "question_id": 49798408,
+            "body_markdown": "I am using Twig **without** Symfony.\r\n\r\nI have configured an instance of Twig, this way:\r\n\r\n    $twig = new Twig_Environment($loader, [\r\n        &#39;autoescape&#39; =&gt; &#39;html&#39;,\r\n        &#39;cache&#39; =&gt; false,\r\n    ]);\r\n\r\nHowever, in my template, I have many output variables in many different places.\r\nTo escape the data, I have to write:\r\n\r\n    {{ var1 | e }}\r\n    {{ var2 | e }}\r\n    ..\r\n    {{ varN | e }}\r\n\r\nwithout escape filter `| e` the data is not automatically escaped despite I&#39;ve configured a Twig instance to do that.\r\n\r\nSo, my question is, how should I confiure Twig, so all my outputs inside double curly braces would be automatically escaped, using html strategy?\r\n\r\nIf I need to write unescaped data, I will use `{{ varX | raw }}`",
+            "link": "https://stackoverflow.com/questions/49798408/how-to-configure-twig-to-automatically-escape-data-inside-double-curly-braces",
+            "title": "How to configure Twig to automatically escape data inside double curly braces?",
+            "body": "<p>I am using Twig <strong>without</strong> Symfony.</p>\n\n<p>I have configured an instance of Twig, this way:</p>\n\n<pre><code>$twig = new Twig_Environment($loader, [\n    'autoescape' =&gt; 'html',\n    'cache' =&gt; false,\n]);\n</code></pre>\n\n<p>However, in my template, I have many output variables in many different places.\nTo escape the data, I have to write:</p>\n\n<pre><code>{{ var1 | e }}\n{{ var2 | e }}\n..\n{{ varN | e }}\n</code></pre>\n\n<p>without escape filter <code>| e</code> the data is not automatically escaped despite I've configured a Twig instance to do that.</p>\n\n<p>So, my question is, how should I confiure Twig, so all my outputs inside double curly braces would be automatically escaped, using html strategy?</p>\n\n<p>If I need to write unescaped data, I will use <code>{{ varX | raw }}</code></p>\n"
+        },
+        {
+            "tags": [
+                ".net-core",
+                "nuget",
+                "nuget-package",
+                ".net-standard",
+                "packagereference"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9636314,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/02423d8e13f14753e55bc139421798d5?s=128&d=identicon&r=PG&f=1",
+                "display_name": "vikpr",
+                "link": "https://stackoverflow.com/users/9636314/vikpr"
+            },
+            "is_answered": false,
+            "view_count": 3,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523541515,
+            "creation_date": 1523541515,
+            "question_id": 49798561,
+            "body_markdown": "Let&#39;s suppose I&#39;m developing a class library using the new MSBuild 15.0 project format and my library has a dependency that should be within a certain version range. For a sake of this example, let&#39;s say it needs Newtonsoft.Json version 8 but for whatever reason versions 9 and 10 aren&#39;t good for it, something like this:\r\n\r\n    &lt;Project Sdk=&quot;Microsoft.NET.Sdk&quot;&gt;\r\n      &lt;PropertyGroup&gt;\r\n        &lt;TargetFramework&gt;netstandard2.0&lt;/TargetFramework&gt;\r\n      &lt;/PropertyGroup&gt;\r\n      &lt;ItemGroup&gt;\r\n        &lt;PackageReference Include=&quot;Newtonsoft.Json&quot; Version=&quot;[8.0,9.0)&quot; /&gt;\r\n      &lt;/ItemGroup&gt;\r\n    &lt;/Project&gt;\r\nNow, when I execute `dotnet pack` for this project I get exactly what I expect in the nuspec:\r\n\r\n    &lt;dependencies&gt;\r\n      &lt;group targetFramework=&quot;.NETStandard2.0&quot;&gt;\r\n        &lt;dependency id=&quot;Newtonsoft.Json&quot; version=&quot;[8.0.0, 9.0.0)&quot; exclude=&quot;Build,Analyzers&quot; /&gt;\r\n      &lt;/group&gt;\r\n    &lt;/dependencies&gt;\r\n\r\nSo when a project uses my library they can have a version of Newtonsoft that matches their needs (whatever those might be) as long as they stay on version 8. So far so good.\r\n\r\nThe problem arises when I excecute the `update-package` command for my library. Besides the fact that it ignores the specifed version range (which is already covered [here](https://stackoverflow.com/questions/49398602/constrain-packagereference-upgrade-version-when-update-package-run/)) it also overwrites the version range to the exact version number thus losing the range, i.e. instead of `Version=[8.0, 9.0)` it becomes `Version=&quot;11.0.1&quot;` (or would have become `Version=&quot;8.0.3&quot;` if it worked correctly and didn&#39;t ignore the upper limit, thus making the versions 8.0.1 and 8.0.2 unusable). \r\n\r\nIs there a way to solve this issue besides the obvious &quot;don&#39;t use update-package&quot;? I mean, is it possible to tell the package manager to download the latest available version of the libraries (e.g. to test if it works with the latest available version within the range) but to keep the version range the way I need it in the generated nuspec descriptor? I know it&#39;s possible to specify the nuspec file instead of having one generated but I liked the whole idea of dropping the extra files and restricting the changes to one place.",
+            "link": "https://stackoverflow.com/questions/49798561/package-manager-console-update-package-overwrites-the-version-range-in-packager",
+            "title": "Package Manager Console: update-package overwrites the version range in packagereference",
+            "body": "<p>Let's suppose I'm developing a class library using the new MSBuild 15.0 project format and my library has a dependency that should be within a certain version range. For a sake of this example, let's say it needs Newtonsoft.Json version 8 but for whatever reason versions 9 and 10 aren't good for it, something like this:</p>\n\n<pre><code>&lt;Project Sdk=\"Microsoft.NET.Sdk\"&gt;\n  &lt;PropertyGroup&gt;\n    &lt;TargetFramework&gt;netstandard2.0&lt;/TargetFramework&gt;\n  &lt;/PropertyGroup&gt;\n  &lt;ItemGroup&gt;\n    &lt;PackageReference Include=\"Newtonsoft.Json\" Version=\"[8.0,9.0)\" /&gt;\n  &lt;/ItemGroup&gt;\n&lt;/Project&gt;\n</code></pre>\n\n<p>Now, when I execute <code>dotnet pack</code> for this project I get exactly what I expect in the nuspec:</p>\n\n<pre><code>&lt;dependencies&gt;\n  &lt;group targetFramework=\".NETStandard2.0\"&gt;\n    &lt;dependency id=\"Newtonsoft.Json\" version=\"[8.0.0, 9.0.0)\" exclude=\"Build,Analyzers\" /&gt;\n  &lt;/group&gt;\n&lt;/dependencies&gt;\n</code></pre>\n\n<p>So when a project uses my library they can have a version of Newtonsoft that matches their needs (whatever those might be) as long as they stay on version 8. So far so good.</p>\n\n<p>The problem arises when I excecute the <code>update-package</code> command for my library. Besides the fact that it ignores the specifed version range (which is already covered <a href=\"https://stackoverflow.com/questions/49398602/constrain-packagereference-upgrade-version-when-update-package-run/\">here</a>) it also overwrites the version range to the exact version number thus losing the range, i.e. instead of <code>Version=[8.0, 9.0)</code> it becomes <code>Version=\"11.0.1\"</code> (or would have become <code>Version=\"8.0.3\"</code> if it worked correctly and didn't ignore the upper limit, thus making the versions 8.0.1 and 8.0.2 unusable). </p>\n\n<p>Is there a way to solve this issue besides the obvious \"don't use update-package\"? I mean, is it possible to tell the package manager to download the latest available version of the libraries (e.g. to test if it works with the latest available version within the range) but to keep the version range the way I need it in the generated nuspec descriptor? I know it's possible to specify the nuspec file instead of having one generated but I liked the whole idea of dropping the extra files and restricting the changes to one place.</p>\n"
+        },
+        {
+            "tags": [
+                "azure",
+                "azure-data-factory"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 9618328,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/76b1baf5a4c726a5e2e2a86a6da6a484?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Hari CR",
+                "link": "https://stackoverflow.com/users/9618328/hari-cr"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523541515,
+            "creation_date": 1523515953,
+            "question_id": 49789859,
+            "body_markdown": "This is my file pattern: adm_domain_20180401, adm_domain_20180402, these are from one particular source. same folder also contains adm_agent_20180401, adm_agent_20180402. I want to only copy files from blob to ADL with prefix adm_domain, is there any way to define the file pattern in input data set?\r\n\r\nDATASET:\r\n\r\n{\r\n    &quot;name&quot;: &quot;CgAdmDomain&quot;,\r\n    &quot;properties&quot;: {\r\n        &quot;published&quot;: false,\r\n        &quot;type&quot;: &quot;AzureBlob&quot;,\r\n        &quot;linkedServiceName&quot;: &quot;flk_blob_dev_ls&quot;,\r\n        &quot;typeProperties&quot;: {\r\n            &quot;folderPath&quot;: &quot;incoming/{Date}/&quot;,\r\n            &quot;format&quot;: {\r\n                &quot;type&quot;: &quot;TextFormat&quot;\r\n            },\r\n            &quot;partitionedBy&quot;: [\r\n                {\r\n                    &quot;name&quot;: &quot;Date&quot;,\r\n                    &quot;value&quot;: {\r\n                        &quot;type&quot;: &quot;DateTime&quot;,\r\n                        &quot;date&quot;: &quot;SliceStart&quot;,\r\n                        &quot;format&quot;: &quot;yyyyMMdd&quot;\r\n                    }\r\n                }\r\n            ]\r\n        },\r\n        &quot;availability&quot;: {\r\n            &quot;frequency&quot;: &quot;Minute&quot;,\r\n            &quot;interval&quot;: 15\r\n        },\r\n        &quot;external&quot;: true,\r\n        &quot;policy&quot;: {}\r\n    }\r\n}",
+            "link": "https://stackoverflow.com/questions/49789859/how-to-recognize-file-pattern-in-azure-blob-input-dataset",
+            "title": "How to recognize file pattern in azure blob input dataset",
+            "body": "<p>This is my file pattern: adm_domain_20180401, adm_domain_20180402, these are from one particular source. same folder also contains adm_agent_20180401, adm_agent_20180402. I want to only copy files from blob to ADL with prefix adm_domain, is there any way to define the file pattern in input data set?</p>\n\n<p>DATASET:</p>\n\n<p>{\n    \"name\": \"CgAdmDomain\",\n    \"properties\": {\n        \"published\": false,\n        \"type\": \"AzureBlob\",\n        \"linkedServiceName\": \"flk_blob_dev_ls\",\n        \"typeProperties\": {\n            \"folderPath\": \"incoming/{Date}/\",\n            \"format\": {\n                \"type\": \"TextFormat\"\n            },\n            \"partitionedBy\": [\n                {\n                    \"name\": \"Date\",\n                    \"value\": {\n                        \"type\": \"DateTime\",\n                        \"date\": \"SliceStart\",\n                        \"format\": \"yyyyMMdd\"\n                    }\n                }\n            ]\n        },\n        \"availability\": {\n            \"frequency\": \"Minute\",\n            \"interval\": 15\n        },\n        \"external\": true,\n        \"policy\": {}\n    }\n}</p>\n"
+        },
+        {
+            "tags": [
+                "c",
+                "eclipse",
+                "editor"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8429320,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/kz91t.png?s=128&g=1",
+                "display_name": "Hatchiko",
+                "link": "https://stackoverflow.com/users/8429320/hatchiko"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523541510,
+            "creation_date": 1523541510,
+            "question_id": 49798556,
+            "body_markdown": "Eclipse highlights the closing parenthesis when I place my caret after the opening one. Is there a way to change this to highlight the closing parenthesis when I place my cursor *before* the opening parenthesis instead of after?",
+            "link": "https://stackoverflow.com/questions/49798556/eclipse-matching-parenthesis-before-caret-instead-of-after",
+            "title": "Eclipse Matching Parenthesis before caret instead of after",
+            "body": "<p>Eclipse highlights the closing parenthesis when I place my caret after the opening one. Is there a way to change this to highlight the closing parenthesis when I place my cursor <em>before</em> the opening parenthesis instead of after?</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "excel",
+                "office-interop",
+                "excel-interop"
+            ],
+            "owner": {
+                "reputation": 1280,
+                "user_id": 1462656,
+                "user_type": "registered",
+                "accept_rate": 53,
+                "profile_image": "https://i.stack.imgur.com/OwQFs.jpg?s=128&g=1",
+                "display_name": "erotavlas",
+                "link": "https://stackoverflow.com/users/1462656/erotavlas"
+            },
+            "is_answered": true,
+            "view_count": 33,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523541509,
+            "creation_date": 1523481188,
+            "last_edit_date": 1523483254,
+            "question_id": 49784560,
+            "body_markdown": "I&#39;m trying to improve the performance of an application that is reading cells from an Excel worksheet row by row.  I found this solution \r\n\r\n&gt; https://stackoverflow.com/a/25842904/1462656\r\n&gt;\r\n&gt; You want to do it in one operation:  \r\n\r\n    object[,] objectArray = cSheet.get_Range(&quot;A1:C4&quot;).Value2; \r\n    dataRange.Value2 = objectArray;\r\n\r\nIs it assuming all the cells are of type Value2?.  \r\n\r\nIn general I would like to know how to get the contents of the UsedRange into a local array for faster access (instead of keep going back and forth through the interop).  But I don&#39;t know in advance the size, but I know in advance the cell types on each column.  They are a combination of Value2 and Formula.  \r\n\r\nMy code so far\r\n\r\n            Application application = new Application();\r\n            application.Workbooks.Open(file);\r\n            Workbook workbook = application.Workbooks.get_Item(1);\r\n            Worksheet worksheet = workbook.Worksheets.get_Item(1);\r\n\r\n            Range UsedRange = worksheet.UsedRange;\r\n            int rows = UsedRange.Rows.Count;\r\n            int cols = UsedRange.Columns.Count;\r\n\r\n            object[,] objectArray = new object[rows,cols];\r\n\r\nI don&#39;t know what to do next.\r\n\r\nI was going to do this\r\n\r\n    objectArray = (object[,])UsedRange.Range[?,?];\r\n\r\nBut I don&#39;t know the syntax to specify the Range using the columns count and rows count I found above.  \r\n\r\nOriginally I had a for loop like this which was extremely slow\r\n\r\n    for (int rowIndex = 2; rowIndex &lt; UsedRange.Rows.Count; rowIndex++){\r\n\r\n        string str1= UsedRange.Rows.Cells[rowIndex, 0 + 1].Value2.ToString();\r\n        string str2= UsedRange.Rows.Cells[rowIndex, 1 + 1].Formula as string;\r\n\r\n    }\r\n",
+            "link": "https://stackoverflow.com/questions/49784560/how-to-copy-contents-of-excel-usedrange-into-an-array-for-faster-reading",
+            "title": "How to copy contents of Excel UsedRange into an array for faster reading?",
+            "body": "<p>I'm trying to improve the performance of an application that is reading cells from an Excel worksheet row by row.  I found this solution </p>\n\n<blockquote>\n  <p><a href=\"https://stackoverflow.com/a/25842904/1462656\">https://stackoverflow.com/a/25842904/1462656</a></p>\n  \n  <p>You want to do it in one operation:  </p>\n</blockquote>\n\n<pre><code>object[,] objectArray = cSheet.get_Range(\"A1:C4\").Value2; \ndataRange.Value2 = objectArray;\n</code></pre>\n\n<p>Is it assuming all the cells are of type Value2?.  </p>\n\n<p>In general I would like to know how to get the contents of the UsedRange into a local array for faster access (instead of keep going back and forth through the interop).  But I don't know in advance the size, but I know in advance the cell types on each column.  They are a combination of Value2 and Formula.  </p>\n\n<p>My code so far</p>\n\n<pre><code>        Application application = new Application();\n        application.Workbooks.Open(file);\n        Workbook workbook = application.Workbooks.get_Item(1);\n        Worksheet worksheet = workbook.Worksheets.get_Item(1);\n\n        Range UsedRange = worksheet.UsedRange;\n        int rows = UsedRange.Rows.Count;\n        int cols = UsedRange.Columns.Count;\n\n        object[,] objectArray = new object[rows,cols];\n</code></pre>\n\n<p>I don't know what to do next.</p>\n\n<p>I was going to do this</p>\n\n<pre><code>objectArray = (object[,])UsedRange.Range[?,?];\n</code></pre>\n\n<p>But I don't know the syntax to specify the Range using the columns count and rows count I found above.  </p>\n\n<p>Originally I had a for loop like this which was extremely slow</p>\n\n<pre><code>for (int rowIndex = 2; rowIndex &lt; UsedRange.Rows.Count; rowIndex++){\n\n    string str1= UsedRange.Rows.Cells[rowIndex, 0 + 1].Value2.ToString();\n    string str2= UsedRange.Rows.Cells[rowIndex, 1 + 1].Formula as string;\n\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "c#",
+                "mongodb"
+            ],
+            "owner": {
+                "reputation": 91,
+                "user_id": 8750628,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://i.stack.imgur.com/mzPAb.png?s=128&g=1",
+                "display_name": "Chitra Nandpal",
+                "link": "https://stackoverflow.com/users/8750628/chitra-nandpal"
+            },
+            "is_answered": false,
+            "view_count": 40,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1523541509,
+            "creation_date": 1523524795,
+            "last_edit_date": 1523527115,
+            "question_id": 49792726,
+            "body_markdown": "I am tring to save dates in my MongoDB table using C#.\r\n\r\nHere is a JavaScript logic that send data using Ajax to C# controller\r\n\r\n    $(function ($, w, d) {\r\n        var _user = {}\r\n        //var time =    moment(&quot;2016-04-02&quot;, &quot;YYYYMMDD&quot;).fromNow()\r\n        //var bime =    moment().endOf(&#39;day&#39;).fromNow();\r\n        //var crime =   moment(&quot;20120620&quot;, &quot;YYYYMMDD&quot;).fromNow();\r\n        //              document.getElementById(&#39;time&#39;).innerHTML = time;\r\n        var obj = {};\r\n        var holidaylist = [&quot;Mar-31-2018&quot;, &quot;Apr-01-2018&quot;,&quot;Apr-04-2018&quot;,&quot;Apr-07-2018&quot;,&quot;Apr-08-2018&quot;];\r\n        var  startdate = new Date(&quot;Apr-02-2018&quot;);\r\n      \r\n        obj.endDate = &quot;Apr-06-2018&quot;;\r\n        obj.holidaylist = holidaylist;\r\n        obj.NumberOfCount = 9;\r\n        CallAjax(&quot;POST&quot;, &#39;/LeaveManagement/&#39;, &#39;checkleavelogic&#39;, obj, onsuccessaddemployee, &#39;&#39;);\r\n\r\n\r\nhere is the C# logic that saves the data in MongoDB:\r\n\r\n    public JsonResult checkLeaveLogic(LeaveLogicModel leaveLogic)\r\n    {\r\n        string strconnectiomstring = &quot;mongodb://10.10.32.125:27017&quot;;\r\n        MongoClient Client = new MongoClient(strconnectiomstring);\r\n        var DB = Client.GetDatabase(&quot;TimeClock&quot;);\r\n\r\n        List&lt;DateTime&gt; leavesDate = new List&lt;DateTime&gt;();\r\n        var collection = DB.GetCollection&lt;LeaveLogicModel&gt;(&quot;leaves1&quot;);\r\n        collection.InsertOne(leaveLogic);\r\n    }\r\n\r\nNow this is the MongoDB table that saves as a previous date.\r\n\r\n[![Mongodb DataBase Record][1]][1]\r\n\r\n\r\nHere you can see that my `StartDate` is **Apr-02-2018** but it saves as **Apr-01-2018** and for all date it is the same.\r\n\r\nCan someone tell me where I am wrong?\r\n\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/n4Dfp.png",
+            "link": "https://stackoverflow.com/questions/49792726/insert-wrong-date-in-mongodb",
+            "title": "Insert wrong date in MongoDB",
+            "body": "<p>I am tring to save dates in my MongoDB table using C#.</p>\n\n<p>Here is a JavaScript logic that send data using Ajax to C# controller</p>\n\n<pre><code>$(function ($, w, d) {\n    var _user = {}\n    //var time =    moment(\"2016-04-02\", \"YYYYMMDD\").fromNow()\n    //var bime =    moment().endOf('day').fromNow();\n    //var crime =   moment(\"20120620\", \"YYYYMMDD\").fromNow();\n    //              document.getElementById('time').innerHTML = time;\n    var obj = {};\n    var holidaylist = [\"Mar-31-2018\", \"Apr-01-2018\",\"Apr-04-2018\",\"Apr-07-2018\",\"Apr-08-2018\"];\n    var  startdate = new Date(\"Apr-02-2018\");\n\n    obj.endDate = \"Apr-06-2018\";\n    obj.holidaylist = holidaylist;\n    obj.NumberOfCount = 9;\n    CallAjax(\"POST\", '/LeaveManagement/', 'checkleavelogic', obj, onsuccessaddemployee, '');\n</code></pre>\n\n<p>here is the C# logic that saves the data in MongoDB:</p>\n\n<pre><code>public JsonResult checkLeaveLogic(LeaveLogicModel leaveLogic)\n{\n    string strconnectiomstring = \"mongodb://10.10.32.125:27017\";\n    MongoClient Client = new MongoClient(strconnectiomstring);\n    var DB = Client.GetDatabase(\"TimeClock\");\n\n    List&lt;DateTime&gt; leavesDate = new List&lt;DateTime&gt;();\n    var collection = DB.GetCollection&lt;LeaveLogicModel&gt;(\"leaves1\");\n    collection.InsertOne(leaveLogic);\n}\n</code></pre>\n\n<p>Now this is the MongoDB table that saves as a previous date.</p>\n\n<p><a href=\"https://i.stack.imgur.com/n4Dfp.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/n4Dfp.png\" alt=\"Mongodb DataBase Record\"></a></p>\n\n<p>Here you can see that my <code>StartDate</code> is <strong>Apr-02-2018</strong> but it saves as <strong>Apr-01-2018</strong> and for all date it is the same.</p>\n\n<p>Can someone tell me where I am wrong?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "lodash"
+            ],
+            "owner": {
+                "reputation": 21,
+                "user_id": 9619912,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/003d053bf3f292039bf858a8d75f8fb3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "maxd",
+                "link": "https://stackoverflow.com/users/9619912/maxd"
+            },
+            "is_answered": true,
+            "view_count": 32,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523541505,
+            "creation_date": 1523526116,
+            "last_edit_date": 1523541505,
+            "question_id": 49793219,
+            "body_markdown": "I am trying to do a tictactoe game using browser console, step by step, and at the end improve my functions. However, i am stuck at the player 2 turn(ttt_player2_turn()), I have to check if the case is empty or not. It&#39;s seems i have a problem with arguments in this exemple. Thanks for your advices(there is lodash functions). Edit : Now the problem in the function is that it&#39;s doesn&#39;t verify the is_case_free statement.\r\n\r\n    // to have a printed board\r\n    function ttt_print_board(array){\r\n      return (&#39;\\n&#39; +\r\n            &#39; &#39; + array[0] + &#39; | &#39; + array[1] + &#39; | &#39; + array[2] + &#39;\\n&#39; +\r\n            &#39; ---------\\n&#39; +\r\n            &#39; &#39; + array[3] + &#39; | &#39; + array[4] + &#39; | &#39; + array[5] + &#39;\\n&#39; +\r\n            &#39; ---------\\n&#39; +\r\n            &#39; &#39; + array[6] + &#39; | &#39; + array[7] + &#39; | &#39; + array[8] + &#39;\\n&#39;)\r\n    }\r\n    \r\n    //display things\r\n    function ttt_display(stuff){\r\n      console.log(stuff)\r\n    }\r\n\r\n    //ask something\r\n    function ttt_ask(question) {\r\n      return prompt(question)\r\n    }\r\n    \r\n    // to verify if the answers is between 1-9\r\n    function ttt_verify_response(response) {\r\n      var integer_response = _.toInteger(response)\r\n      if(integer_response &lt; 10 &amp;&amp; integer_response &gt; 0 &amp;&amp; _.isInteger(integer_response)){\r\n        return true\r\n      } else {\r\n        return false\r\n      }\r\n    }\r\n    \r\n    // this is my function to verify if case empty or not, at the moment just for &#39;x&#39;\r\n    function ttt_verify_case (board, response) {\r\n      if(board[response] === &#39;x&#39; ){\r\n      return false\r\n      } else{\r\n      return true\r\n      }\r\n    }\r\n    \r\n    // return the player 1 choice\r\n    function ttt_player1_turn() {\r\n      var response = 0;\r\n      var is_correct_response = false\r\n      while(! is_correct_response){\r\n        response = ttt_ask(&quot;player 1 it&#39;s your turn (play 1 to 9)&quot;)\r\n        is_correct_response = ttt_verify_response(response)\r\n      }\r\n      return response\r\n    }\r\n    \r\n    //return the player 2 choice and have to check if the case is empty from &#39;x&#39;, it seems like it doesn&#39;t go through the 2nd if condition\r\n    function ttt_player2_turn(board) {\r\n      var is_correct_response = false\r\n      var is_case_free = false\r\n      while(!is_correct_response || !is_case_free){\r\n        var response_player2 = ttt_ask(&quot;player 2 it&#39;s your turn, play 1 to 9&quot;);\r\n        is_correct_response = ttt_verify_response(response_player2)\r\n        if (!is_correct_response) {\r\n          console.log(&quot;incorrect response&quot;)\r\n          continue\r\n        }\r\n        is_case_free = ttt_verify_case(board, response_player2);\r\n        if(!is_case_free) {\r\n          console.log(&quot;player 1 already put a piece on this case&quot;)\r\n        }\r\n      }\r\n      return response_player2\r\n    }\r\n\r\n \r\n    //main function\r\n    function ttt_new_game() {\r\n      var board = [&#39; &#39;, &#39; &#39;, &#39; &#39;, &#39; &#39;, &#39; &#39;, &#39; &#39;, &#39; &#39;, &#39; &#39;, &#39; &#39;]\r\n      var printed_board = ttt_print_board(board)\r\n      ttt_display(printed_board)\r\n      board[_.toInteger(ttt_player1_turn()) - 1] = &#39;x&#39;\r\n      ttt_display(ttt_print_board(board))\r\n      board[_.toInteger(ttt_player2_turn()) - 1] = &#39;o&#39;\r\n      ttt_display(ttt_print_board(board))\r\n    }\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49793219/tictactoe-game-player-2-error-with-an-if-statement-to-put-a-piece",
+            "title": "tictactoe game, player 2 error with an if statement to put a piece",
+            "body": "<p>I am trying to do a tictactoe game using browser console, step by step, and at the end improve my functions. However, i am stuck at the player 2 turn(ttt_player2_turn()), I have to check if the case is empty or not. It's seems i have a problem with arguments in this exemple. Thanks for your advices(there is lodash functions). Edit : Now the problem in the function is that it's doesn't verify the is_case_free statement.</p>\n\n<pre><code>// to have a printed board\nfunction ttt_print_board(array){\n  return ('\\n' +\n        ' ' + array[0] + ' | ' + array[1] + ' | ' + array[2] + '\\n' +\n        ' ---------\\n' +\n        ' ' + array[3] + ' | ' + array[4] + ' | ' + array[5] + '\\n' +\n        ' ---------\\n' +\n        ' ' + array[6] + ' | ' + array[7] + ' | ' + array[8] + '\\n')\n}\n\n//display things\nfunction ttt_display(stuff){\n  console.log(stuff)\n}\n\n//ask something\nfunction ttt_ask(question) {\n  return prompt(question)\n}\n\n// to verify if the answers is between 1-9\nfunction ttt_verify_response(response) {\n  var integer_response = _.toInteger(response)\n  if(integer_response &lt; 10 &amp;&amp; integer_response &gt; 0 &amp;&amp; _.isInteger(integer_response)){\n    return true\n  } else {\n    return false\n  }\n}\n\n// this is my function to verify if case empty or not, at the moment just for 'x'\nfunction ttt_verify_case (board, response) {\n  if(board[response] === 'x' ){\n  return false\n  } else{\n  return true\n  }\n}\n\n// return the player 1 choice\nfunction ttt_player1_turn() {\n  var response = 0;\n  var is_correct_response = false\n  while(! is_correct_response){\n    response = ttt_ask(\"player 1 it's your turn (play 1 to 9)\")\n    is_correct_response = ttt_verify_response(response)\n  }\n  return response\n}\n\n//return the player 2 choice and have to check if the case is empty from 'x', it seems like it doesn't go through the 2nd if condition\nfunction ttt_player2_turn(board) {\n  var is_correct_response = false\n  var is_case_free = false\n  while(!is_correct_response || !is_case_free){\n    var response_player2 = ttt_ask(\"player 2 it's your turn, play 1 to 9\");\n    is_correct_response = ttt_verify_response(response_player2)\n    if (!is_correct_response) {\n      console.log(\"incorrect response\")\n      continue\n    }\n    is_case_free = ttt_verify_case(board, response_player2);\n    if(!is_case_free) {\n      console.log(\"player 1 already put a piece on this case\")\n    }\n  }\n  return response_player2\n}\n\n\n//main function\nfunction ttt_new_game() {\n  var board = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']\n  var printed_board = ttt_print_board(board)\n  ttt_display(printed_board)\n  board[_.toInteger(ttt_player1_turn()) - 1] = 'x'\n  ttt_display(ttt_print_board(board))\n  board[_.toInteger(ttt_player2_turn()) - 1] = 'o'\n  ttt_display(ttt_print_board(board))\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pandas",
+                "dataframe",
+                "intervals"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9168968,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10210735236913500/picture?type=large",
+                "display_name": "Joe",
+                "link": "https://stackoverflow.com/users/9168968/joe"
+            },
+            "is_answered": false,
+            "view_count": 35,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523541504,
+            "creation_date": 1523536023,
+            "last_edit_date": 1523539103,
+            "question_id": 49796539,
+            "body_markdown": "Suppose I have a pandas dataframe given by:\r\n\r\n    df2 = pd.DataFrame(np.random.randint(low=0, high=10, size=(5, 4)),\r\n    columns [&#39;value&#39;, &#39;a&#39;, &#39;b&#39;, &#39;c&#39;]) \r\n    df2[&#39;low&#39;] = &#39;&#39;\r\n    df2\r\n          value  a  b  c  low\r\n       0      5  3  7  9    \r\n       1      9  3  7  9    \r\n       2      2  5  0  8    \r\n       3      2  8  2  7    \r\n       4      5  5  7  7  \r\n\r\n\r\nI need to get the letter of the interval where my value is in the column low.\r\n\r\nFor example for the first lign where value = 5.\r\nI want to indentify that value is between &quot;a&quot; and &quot;b&quot; and attribute the letter &quot;a&quot; in the column low.\r\n\r\nIf value &lt; a &lt; b &lt; c then low = &#39;None&#39;\r\nIf value &gt;a or &gt;b or &gt;c then low = Max (a;b;c)\r\n\r\nOutput expected :\r\n\r\n       value  a  b  c  low\r\n    0      5  3  7  9   a    \r\n    1      9  3  7  9   c \r\n    2      2  5  0  8   b \r\n    3      2  8  2  7   b \r\n    4      5  5  7  7   a\r\n\r\n\r\nI came with the following but not really sure how to increment the frame with that:\r\n    \r\n    if min(a, b, c)&lt;x&lt;max(a,b,c):\r\n        print(min(a,b,c))\r\n    else:\r\n        if x&lt;min(a,b,c) :\r\n            print(&#39;None&#39;)\r\n        else:\r\n            print(max(a,b,c))  \r\n\r\n\r\nAny suggestion to do it in an efficient way?",
+            "link": "https://stackoverflow.com/questions/49796539/pandas-dataframe-find-intervals-for-a-value-and-attribute-name",
+            "title": "Pandas Dataframe find intervals for a value and attribute name",
+            "body": "<p>Suppose I have a pandas dataframe given by:</p>\n\n<pre><code>df2 = pd.DataFrame(np.random.randint(low=0, high=10, size=(5, 4)),\ncolumns ['value', 'a', 'b', 'c']) \ndf2['low'] = ''\ndf2\n      value  a  b  c  low\n   0      5  3  7  9    \n   1      9  3  7  9    \n   2      2  5  0  8    \n   3      2  8  2  7    \n   4      5  5  7  7  \n</code></pre>\n\n<p>I need to get the letter of the interval where my value is in the column low.</p>\n\n<p>For example for the first lign where value = 5.\nI want to indentify that value is between \"a\" and \"b\" and attribute the letter \"a\" in the column low.</p>\n\n<p>If value &lt; a &lt; b &lt; c then low = 'None'\nIf value >a or >b or >c then low = Max (a;b;c)</p>\n\n<p>Output expected :</p>\n\n<pre><code>   value  a  b  c  low\n0      5  3  7  9   a    \n1      9  3  7  9   c \n2      2  5  0  8   b \n3      2  8  2  7   b \n4      5  5  7  7   a\n</code></pre>\n\n<p>I came with the following but not really sure how to increment the frame with that:</p>\n\n<pre><code>if min(a, b, c)&lt;x&lt;max(a,b,c):\n    print(min(a,b,c))\nelse:\n    if x&lt;min(a,b,c) :\n        print('None')\n    else:\n        print(max(a,b,c))  \n</code></pre>\n\n<p>Any suggestion to do it in an efficient way?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html",
+                "css"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 6799107,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-JZBvAJDkTyU/AAAAAAAAAAI/AAAAAAAAACw/05QwbW-S8uY/photo.jpg?sz=128",
+                "display_name": "Muhammad Naqqash",
+                "link": "https://stackoverflow.com/users/6799107/muhammad-naqqash"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523541502,
+            "creation_date": 1523541502,
+            "question_id": 49798552,
+            "body_markdown": "&quot;About&quot; section is not highlighted. When I scroll down the order of menu is not working properly. When i scroll down the menu highlight after some time. &quot;About&quot; section is not highlighted. When I scroll down the order of menu is not working properly. When i scroll down the menu highlight after some time.\r\n\r\n  \r\n\r\n    &lt;!DOCTYPE html&gt;\r\n      &lt;html lang=&quot;en&quot;&gt;\r\n    \r\n      &lt;head&gt;\r\n        &lt;title&gt;Bootstrap Example&lt;/title&gt;\r\n        &lt;meta charset=&quot;utf-8&quot;&gt;\r\n        &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;\r\n        &lt;link rel=&quot;stylesheet&quot; href=&quot;https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css&quot;&gt;\r\n        &lt;link href=&quot;https://fonts.googleapis.com/css?family=Black+Han+Sans&quot; rel=&quot;stylesheet&quot;&gt;\r\n        &lt;link href=&quot;https://fonts.googleapis.com/css?family=Montserrat:400,700&quot; rel=&quot;stylesheet&quot;&gt;\r\n        &lt;script src=&quot;https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js&quot;&gt;&lt;/script&gt;\r\n        &lt;script src=&quot;https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js&quot;&gt;&lt;/script&gt;\r\n        &lt;link href=&quot;https://fonts.googleapis.com/css?family=Lora&quot; rel=&quot;stylesheet&quot;&gt;\r\n        &lt;link href=&quot;https://fonts.googleapis.com/css?family=Gugi&quot; rel=&quot;stylesheet&quot;&gt;\r\n        &lt;script defer src=&quot;https://use.fontawesome.com/releases/v5.0.9/js/all.js&quot; integrity=&quot;sha384-8iPTk2s/jMVj81dnzb/iFR2sdA7u06vHJyyLlAd4snFpCl/SnyUjRrbdJsw1pGIl&quot; crossorigin=&quot;anonymous&quot;&gt;&lt;/script&gt;\r\n        &lt;link href=&quot;https://fonts.googleapis.com/css?family=Saira+Extra+Condensed:400,900&quot; rel=&quot;stylesheet&quot;&gt;\r\n        &lt;link rel=&quot;stylesheet&quot; href=&quot;https://cdn.rawgit.com/konpa/devicon/df6431e323547add1b4cf45992913f15286456d3/devicon.min.css&quot;&gt;\r\n    \r\n        &lt;style&gt;\r\n          body {\r\n            position: relative;\r\n          }\r\n          \r\n          ul.nav-pills {\r\n            top: 100px;\r\n            position: fixed;\r\n          }\r\n          \r\n          div.col-sm-9 div {\r\n            height: 250px;\r\n            font-size: 28px;\r\n          }\r\n          \r\n          .bg-1 {\r\n            background-color: black;\r\n          }\r\n          \r\n          .bg-1 ul li {\r\n            color: #ecf0f1;\r\n            font-family: &#39;Gugi&#39;, cursive;\r\n            font-size: 15px;\r\n          }\r\n          \r\n          .bg-2 {\r\n            width: 86%;\r\n            background-color: #d1d8e0;\r\n          }\r\n          \r\n          .col-sm-3 {\r\n            width: 14% !important;\r\n            background-color: white !important;\r\n          }\r\n          \r\n          @media screen and (max-width: 810px) {\r\n            #about,\r\n            #education,\r\n            #certifications,\r\n            #skills,\r\n            #projects,\r\n            #experience,\r\n            #interest {\r\n              margin-left: 150px;\r\n            }\r\n          }\r\n          \r\n          #myScrollspy {\r\n            position: fixed;\r\n            align-self: center;\r\n            left: 0;\r\n            top: 0;\r\n          }\r\n    \r\n          \r\n          #hello {\r\n            font-family: &#39;Black Han Sans&#39;, sans-serif;\r\n            font-size: 65px;\r\n            margin-left: 150px;\r\n            margin-top: 200px;\r\n          }\r\n          \r\n          #name {\r\n            font-family: &#39;Montserrat&#39;, sans-serif;\r\n            font-size: 55px;\r\n            font-weight: 600;\r\n            margin-left: 150px;\r\n            /*margin-top: 30px;*/\r\n          }\r\n          \r\n          #self {\r\n            font-family: &#39;Montserrat&#39;, sans-serif;\r\n            font-size: 30px;\r\n            font-weight: 500;\r\n            margin-left: 150px;\r\n            margin-top: 30px;\r\n          }\r\n          \r\n          #engineer {\r\n            font-family: &#39;Montserrat&#39;, sans-serif;\r\n            font-size: 30px;\r\n            font-weight: 500;\r\n            margin-left: 150px;\r\n            margin-top: 30px;\r\n          }\r\n          \r\n          #intro {\r\n            font-family: &#39;Lora&#39;, serif;\r\n            font-size: 20px;\r\n            color: #d1d8e0;\r\n            margin-left: 150px;\r\n            margin-top: 15px;\r\n          }\r\n          \r\n          hr {\r\n            width: 400px;\r\n            border-top: 1px solid #4b6584;\r\n            border-bottom: 1px solid #4b6584;\r\n          }\r\n          \r\n          #education {\r\n            margin-top: 300px;\r\n          }\r\n          \r\n          #email {\r\n            font-size: 10px;\r\n          }\r\n          \r\n          #headings {\r\n            font-family: &#39;Saira Extra Condensed&#39;, sans-serif;\r\n            color: #343a40;\r\n            font-weight: 700;\r\n            font-size: 50px;\r\n          }\r\n          \r\n          #social {\r\n            margin-top: -90px;\r\n            margin-left: 250px;\r\n          }\r\n          \r\n          .image {\r\n            margin-left: 20px;\r\n            padding: 1px;\r\n          }\r\n          \r\n          .subheadings {\r\n            font-family: &#39;Saira Extra Condensed&#39;, sans-serif;\r\n            color: #20bf6b;\r\n            font-weight: 500;\r\n            font-size: 40px;\r\n          }\r\n          \r\n          #certifications {\r\n            margin-top: 300px;\r\n          }\r\n          \r\n          .nav-pills&gt;li.active&gt;a,\r\n          .nav-pills&gt;li.active&gt;a:focus,\r\n          .nav-pills&gt;li.active&gt;a:hover {\r\n            color: #fff;\r\n            /* background-color: #337ab7; */\r\n            background-color: unset !important;\r\n          }\r\n          #Date{\r\n            margin-left: 60%;\r\n            margin-top: -84px;\r\n          }\r\n          h5{\r\n            font-weight: bolder;\r\n            margin-left: 50px;\r\n          }\r\n          #skills{\r\n            margin-top: 320px;\r\n          }\r\n          .devicons{\r\n            font-size: 5rem !important;\r\n          }\r\n          #projects{\r\n            margin-top: 200px;\r\n          }\r\n          #experience{\r\n            margin-top: 300px;\r\n          }\r\n          #interest{\r\n            margin-top: 300px;\r\n          }\r\n        &lt;/style&gt;\r\n      &lt;/head&gt;\r\n    \r\n      &lt;body data-spy=&quot;scroll&quot; data-target=&quot;#myScrollspy&quot; data-offset=&quot;20&quot;&gt;\r\n    \r\n        &lt;div class=&quot;container-fluid&quot;&gt;\r\n          &lt;div class=&quot;row bg-1&quot;&gt;\r\n            &lt;!--  Left Side Navigation Bar --&gt;\r\n            &lt;div class=&quot;col-sm-3 text-center&quot; id=&quot;backg&quot;&gt;\r\n              &lt;nav id=&quot;myScrollspy&quot;&gt;\r\n    \r\n                &lt;ul class=&quot;nav nav-pills nav-stacked &quot;&gt;\r\n                  &lt;img class=&quot;img-rounded img-responsive center-block image&quot; src=&quot;naqqash.png&quot; height=&quot;150&quot; width=&quot;150 &quot;&gt;\r\n                  &lt;li class=&quot;active&quot;&gt;&lt;a href=&quot;#about&quot;&gt;ABOUT&lt;/a&gt;&lt;/li&gt;\r\n                  &lt;li&gt;&lt;a href=&quot;#education&quot;&gt;EDUCATION&lt;/a&gt;&lt;/li&gt;\r\n                  &lt;li&gt;&lt;a href=&quot;#certifications&quot;&gt;CERTIFICATIONS&lt;/a&gt;&lt;/li&gt;\r\n                  &lt;li&gt;&lt;a href=&quot;#skills&quot;&gt;SKILLS&lt;/a&gt;&lt;/li&gt;\r\n                  &lt;li&gt;&lt;a href=&quot;#projects&quot;&gt;PROJECTS&lt;/a&gt;&lt;/li&gt;\r\n                  &lt;li&gt;&lt;a href=&quot;#experience&quot;&gt;EXPERIENCE&lt;/a&gt;&lt;/li&gt;\r\n                  &lt;li&gt;&lt;a href=&quot;#interest&quot;&gt;INTEREST&lt;/a&gt;&lt;/li&gt;\r\n                &lt;/ul&gt;\r\n              &lt;/nav&gt;\r\n    \r\n            &lt;/div&gt;\r\n            &lt;!--  Right Side  --&gt;\r\n            &lt;div class=&quot;col-sm-9 bg-2&quot;&gt;\r\n              &lt;!-- About --&gt;\r\n              &lt;div id=&quot;about&quot;&gt;\r\n                &lt;h1 id=&quot;hello&quot;&gt;hello&lt;/h1&gt;\r\n                &lt;h3 id=&quot;name&quot;&gt;I&#39;m Muhammad Naqqash,&lt;/h3&gt;\r\n                &lt;h3 id=&quot;self&quot;&gt;a self taught developer.&lt;/h3&gt;\r\n                &lt;h3 id=&quot;engineer&quot;&gt;I&#39;m a Computer Engineer. &lt;/h3&gt;\r\n                &lt;p id=&quot;intro&quot;&gt;I&#39;m a positive and friendly person. Also, I love to set goals and achieve them.&lt;br&gt; My important qualities: self-motivated, ability overcome difficulties and the &lt;br&gt; ability to learn.&lt;/p&gt;\r\n    \r\n                &lt;div id=&quot;social&quot;&gt;\r\n                  &lt;a href=&quot;&quot;&gt;&lt;i class=&quot;fab fa-facebook fa-lg&quot;&gt;&lt;/i&gt;&lt;span style=&quot;display:inline-block; width: 5px;&quot;&gt;&lt;/span&gt;\r\n                  &lt;a href=&quot;&quot;&gt;&lt;i class=&quot;fab fa-linkedin fa-lg&quot;&gt;&lt;/i&gt;&lt;/a&gt; &lt;span style=&quot;display:inline-block; width: 0px;&quot;&gt;&lt;/span&gt;\r\n                  &lt;a href=&quot;&quot;&gt;&lt;i class=&quot;fab fa-twitter-square fa-lg&quot;&gt;&lt;/i&gt;&lt;/a&gt;&lt;span style=&quot;display:inline-block; width: 5px;&quot;&gt;&lt;/span&gt;\r\n                  &lt;a href=&quot;&quot;&gt;&lt;i class=&quot;fab fa-github-square fa-lg&quot;&gt;&lt;/i&gt;&lt;/a&gt;&lt;span style=&quot;display:inline-block; width: 5px;&quot;&gt;&lt;/span&gt;\r\n    \r\n                &lt;/div&gt;\r\n    \r\n    \r\n              &lt;/div&gt;\r\n              \r\n              &lt;!-- education --&gt;\r\n              &lt;div id=&quot;education&quot;&gt;\r\n                &lt;div&gt;\r\n                  &lt;h1 id=&quot;headings&quot;&gt;EDUCATION&lt;/h1&gt;\r\n                  &lt;h2 class=&quot;subheadings1&quot;&gt;&lt;i class=&quot;fas fa-graduation-cap fa-sm&quot;&gt;&lt;/i&gt;&lt;span style=&quot;display:inline-block; width: 20px;&quot;&gt;&lt;/span&gt;BS Computer Engineering&lt;/h2&gt;\r\n                  &lt;h3 class=&quot;subheadings2&quot;&gt;&lt;i class=&quot;fas fa-university fa-sm&quot;&gt;&lt;/i&gt;&lt;span style=&quot;display:inline-block; width: 30px;&quot;&gt;&lt;/span&gt;NUST College of E&amp;ME&lt;/h3&gt;\r\n                  &lt;h3 id=&quot;Date&quot;&gt;2014-18&lt;/h3&gt;\r\n                &lt;/div&gt;\r\n                \r\n                \r\n              &lt;/div&gt;\r\n              &lt;div id=&quot;certifications&quot;&gt;\r\n                &lt;div&gt;\r\n                  &lt;h1 id=&quot;headings&quot;&gt;Certifications&lt;/h1&gt;\r\n                  &lt;h2 class=&quot;subheadings1&quot;&gt;&lt;i class=&quot;fas fa-certificate fa-sm&quot;&gt;&lt;/i&gt;&lt;span style=&quot;display:inline-block; width: 20px;&quot;&gt;&lt;/span&gt;Microsoft Office Specialist&lt;/h2&gt;\r\n                  &lt;h5&gt;Microsoft&lt;/h5&gt;\r\n                  &lt;h2 class=&quot;subheadings1&quot;&gt;&lt;i class=&quot;fas fa-certificate fa-sm&quot;&gt;&lt;/i&gt;&lt;span style=&quot;display:inline-block; width: 20px;&quot;&gt;&lt;/span&gt;The Web Developer Bootcamp&lt;/h2&gt;\r\n                  &lt;h5&gt;Udemy&lt;/h5&gt;\r\n                  &lt;h2 class=&quot;subheadings1&quot;&gt;&lt;i class=&quot;fas fa-certificate fa-sm&quot;&gt;&lt;/i&gt;&lt;span style=&quot;display:inline-block; width: 20px;&quot;&gt;&lt;/span&gt;Wordpress Customization&lt;/h2&gt;\r\n                  &lt;h5&gt;Udemy&lt;/h5&gt;\r\n                  \r\n                &lt;/div&gt;\r\n              &lt;/div&gt;\r\n              &lt;div id=&quot;skills&quot;&gt;\r\n                &lt;div&gt;\r\n                  &lt;h1 id=&quot;headings&quot;&gt;Skills&lt;/h1&gt;\r\n                  &lt;h3&gt;Programming Languages &amp; Tools&lt;/h3&gt;\r\n                  &lt;div class=&quot;devicons&quot;&gt;\r\n                    &lt;i class=&quot;devicon-html5-plain &quot;&gt;&lt;/i&gt;\r\n                    &lt;i class=&quot;devicon-css3-plain&quot;&gt;&lt;/i&gt;\r\n                    &lt;i class=&quot;devicon-bootstrap-plain&quot;&gt;&lt;/i&gt;\r\n                    &lt;i class=&quot;devicon-javascript-plain&quot;&gt;&lt;/i&gt;\r\n                    &lt;i class=&quot;devicon-jquery-plain&quot;&gt;&lt;/i&gt;\r\n                    &lt;i class=&quot;devicon-wordpress-plain&quot;&gt;&lt;/i&gt;\r\n                    &lt;i class=&quot;devicon-cplusplus-plain&quot;&gt;&lt;/i&gt;\r\n                    &lt;i class=&quot;devicon-illustrator-plain&quot;&gt;&lt;/i&gt;\r\n                  &lt;/div&gt;\r\n                  \r\n                  \r\n                  \r\n    \r\n                  \r\n                &lt;/div&gt;\r\n              &lt;/div&gt;\r\n              &lt;div id=&quot;projects&quot;&gt;\r\n                &lt;div&gt;\r\n                  &lt;h1 id=&quot;headings&quot;&gt;Projects&lt;/h1&gt;\r\n                  &lt;div style=&quot;font-size:3em; color: black;&quot;&gt;\r\n                    &lt;a href=&quot;#&quot;&gt;&lt;i class=&quot;fab fa-github&quot;&gt;&lt;/i&gt;\r\n    \r\n                    &lt;/a&gt;&lt;span style=&quot;display:inline-block; width: 40px;&quot;&gt;&lt;/span&gt;\r\n                  &lt;a href=&quot;#&quot;&gt;&lt;i class=&quot;fab fa-codepen&quot;&gt;&lt;/i&gt;&lt;/a&gt;\r\n                  &lt;/div&gt;\r\n                  \r\n                &lt;/div&gt;\r\n                \r\n              &lt;/div&gt;\r\n              &lt;div id=&quot;experience&quot;&gt;\r\n                &lt;div&gt;\r\n                  &lt;h1 id=&quot;headings&quot;&gt;Experience&lt;/h1&gt;\r\n                  &lt;h2 class=&quot;subheadings1&quot;&gt;&lt;i class=&quot;fas fa-globe fa-sm&quot;&gt;&lt;/i&gt;&lt;span style=&quot;display:inline-block; width: 20px;&quot;&gt;&lt;/span&gt;Teaching &amp; Management&lt;/h2&gt;\r\n                  &lt;h5&gt;Taught Physics, Chemistry &amp; Mathematics. Key role in managing test\r\n                      sessions, class schedules and Provide full learning experience and\r\n                      support for students beyond set classes, working with pupils\r\n                      experiencing barriers to learning across the academic range.&lt;/h5&gt;\r\n                      &lt;br&gt;\r\n                  &lt;h2 class=&quot;subheadings1&quot;&gt;&lt;i class=&quot;fas fa-globe fa-sm&quot;&gt;&lt;/i&gt;&lt;span style=&quot;display:inline-block; width: 20px;&quot;&gt;&lt;/span&gt;Career Counselling&lt;/h2&gt;\r\n                  &lt;h5&gt;Have done many seminars on career\r\n                      counselling and motivational lectures in\r\n                      many educational institutes.\r\n                  &lt;/h5&gt;\r\n                &lt;/div&gt;\r\n                \r\n              &lt;/div&gt;\r\n              &lt;div id=&quot;interest&quot;&gt;\r\n                &lt;div&gt;\r\n                  &lt;h1 id=&quot;headings&quot;&gt;Interest&lt;/h1&gt;\r\n                  &lt;i class=&quot;fas fa-code fa-lg&quot;&gt;&lt;/i&gt;&lt;span style=&quot;display:inline-block; width: 40px;&quot;&gt;&lt;/span&gt;\r\n                  &lt;i class=&quot;fas fa-plane fa-lg &quot;&gt;&lt;/i&gt;&lt;span style=&quot;display:inline-block; width: 40px;&quot;&gt;&lt;/span&gt;\r\n                  &lt;i class=&quot;fas fa-music fa-lg&quot;&gt;&lt;/i&gt;\r\n                &lt;/div&gt;\r\n                \r\n              &lt;/div&gt;\r\n              &lt;div&gt;\r\n    \r\n              &lt;/div&gt;\r\n            &lt;/div&gt;\r\n          &lt;/div&gt;\r\n        &lt;/div&gt;\r\n    \r\n      &lt;/body&gt;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49798552/scrollspy-bootstrap-3-does-not-work-properly",
+            "title": "Scrollspy Bootstrap 3 does not work properly",
+            "body": "<p>\"About\" section is not highlighted. When I scroll down the order of menu is not working properly. When i scroll down the menu highlight after some time. \"About\" section is not highlighted. When I scroll down the order of menu is not working properly. When i scroll down the menu highlight after some time.</p>\n\n<pre><code>&lt;!DOCTYPE html&gt;\n  &lt;html lang=\"en\"&gt;\n\n  &lt;head&gt;\n    &lt;title&gt;Bootstrap Example&lt;/title&gt;\n    &lt;meta charset=\"utf-8\"&gt;\n    &lt;meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"&gt;\n    &lt;link rel=\"stylesheet\" href=\"https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css\"&gt;\n    &lt;link href=\"https://fonts.googleapis.com/css?family=Black+Han+Sans\" rel=\"stylesheet\"&gt;\n    &lt;link href=\"https://fonts.googleapis.com/css?family=Montserrat:400,700\" rel=\"stylesheet\"&gt;\n    &lt;script src=\"https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js\"&gt;&lt;/script&gt;\n    &lt;script src=\"https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js\"&gt;&lt;/script&gt;\n    &lt;link href=\"https://fonts.googleapis.com/css?family=Lora\" rel=\"stylesheet\"&gt;\n    &lt;link href=\"https://fonts.googleapis.com/css?family=Gugi\" rel=\"stylesheet\"&gt;\n    &lt;script defer src=\"https://use.fontawesome.com/releases/v5.0.9/js/all.js\" integrity=\"sha384-8iPTk2s/jMVj81dnzb/iFR2sdA7u06vHJyyLlAd4snFpCl/SnyUjRrbdJsw1pGIl\" crossorigin=\"anonymous\"&gt;&lt;/script&gt;\n    &lt;link href=\"https://fonts.googleapis.com/css?family=Saira+Extra+Condensed:400,900\" rel=\"stylesheet\"&gt;\n    &lt;link rel=\"stylesheet\" href=\"https://cdn.rawgit.com/konpa/devicon/df6431e323547add1b4cf45992913f15286456d3/devicon.min.css\"&gt;\n\n    &lt;style&gt;\n      body {\n        position: relative;\n      }\n\n      ul.nav-pills {\n        top: 100px;\n        position: fixed;\n      }\n\n      div.col-sm-9 div {\n        height: 250px;\n        font-size: 28px;\n      }\n\n      .bg-1 {\n        background-color: black;\n      }\n\n      .bg-1 ul li {\n        color: #ecf0f1;\n        font-family: 'Gugi', cursive;\n        font-size: 15px;\n      }\n\n      .bg-2 {\n        width: 86%;\n        background-color: #d1d8e0;\n      }\n\n      .col-sm-3 {\n        width: 14% !important;\n        background-color: white !important;\n      }\n\n      @media screen and (max-width: 810px) {\n        #about,\n        #education,\n        #certifications,\n        #skills,\n        #projects,\n        #experience,\n        #interest {\n          margin-left: 150px;\n        }\n      }\n\n      #myScrollspy {\n        position: fixed;\n        align-self: center;\n        left: 0;\n        top: 0;\n      }\n\n\n      #hello {\n        font-family: 'Black Han Sans', sans-serif;\n        font-size: 65px;\n        margin-left: 150px;\n        margin-top: 200px;\n      }\n\n      #name {\n        font-family: 'Montserrat', sans-serif;\n        font-size: 55px;\n        font-weight: 600;\n        margin-left: 150px;\n        /*margin-top: 30px;*/\n      }\n\n      #self {\n        font-family: 'Montserrat', sans-serif;\n        font-size: 30px;\n        font-weight: 500;\n        margin-left: 150px;\n        margin-top: 30px;\n      }\n\n      #engineer {\n        font-family: 'Montserrat', sans-serif;\n        font-size: 30px;\n        font-weight: 500;\n        margin-left: 150px;\n        margin-top: 30px;\n      }\n\n      #intro {\n        font-family: 'Lora', serif;\n        font-size: 20px;\n        color: #d1d8e0;\n        margin-left: 150px;\n        margin-top: 15px;\n      }\n\n      hr {\n        width: 400px;\n        border-top: 1px solid #4b6584;\n        border-bottom: 1px solid #4b6584;\n      }\n\n      #education {\n        margin-top: 300px;\n      }\n\n      #email {\n        font-size: 10px;\n      }\n\n      #headings {\n        font-family: 'Saira Extra Condensed', sans-serif;\n        color: #343a40;\n        font-weight: 700;\n        font-size: 50px;\n      }\n\n      #social {\n        margin-top: -90px;\n        margin-left: 250px;\n      }\n\n      .image {\n        margin-left: 20px;\n        padding: 1px;\n      }\n\n      .subheadings {\n        font-family: 'Saira Extra Condensed', sans-serif;\n        color: #20bf6b;\n        font-weight: 500;\n        font-size: 40px;\n      }\n\n      #certifications {\n        margin-top: 300px;\n      }\n\n      .nav-pills&gt;li.active&gt;a,\n      .nav-pills&gt;li.active&gt;a:focus,\n      .nav-pills&gt;li.active&gt;a:hover {\n        color: #fff;\n        /* background-color: #337ab7; */\n        background-color: unset !important;\n      }\n      #Date{\n        margin-left: 60%;\n        margin-top: -84px;\n      }\n      h5{\n        font-weight: bolder;\n        margin-left: 50px;\n      }\n      #skills{\n        margin-top: 320px;\n      }\n      .devicons{\n        font-size: 5rem !important;\n      }\n      #projects{\n        margin-top: 200px;\n      }\n      #experience{\n        margin-top: 300px;\n      }\n      #interest{\n        margin-top: 300px;\n      }\n    &lt;/style&gt;\n  &lt;/head&gt;\n\n  &lt;body data-spy=\"scroll\" data-target=\"#myScrollspy\" data-offset=\"20\"&gt;\n\n    &lt;div class=\"container-fluid\"&gt;\n      &lt;div class=\"row bg-1\"&gt;\n        &lt;!--  Left Side Navigation Bar --&gt;\n        &lt;div class=\"col-sm-3 text-center\" id=\"backg\"&gt;\n          &lt;nav id=\"myScrollspy\"&gt;\n\n            &lt;ul class=\"nav nav-pills nav-stacked \"&gt;\n              &lt;img class=\"img-rounded img-responsive center-block image\" src=\"naqqash.png\" height=\"150\" width=\"150 \"&gt;\n              &lt;li class=\"active\"&gt;&lt;a href=\"#about\"&gt;ABOUT&lt;/a&gt;&lt;/li&gt;\n              &lt;li&gt;&lt;a href=\"#education\"&gt;EDUCATION&lt;/a&gt;&lt;/li&gt;\n              &lt;li&gt;&lt;a href=\"#certifications\"&gt;CERTIFICATIONS&lt;/a&gt;&lt;/li&gt;\n              &lt;li&gt;&lt;a href=\"#skills\"&gt;SKILLS&lt;/a&gt;&lt;/li&gt;\n              &lt;li&gt;&lt;a href=\"#projects\"&gt;PROJECTS&lt;/a&gt;&lt;/li&gt;\n              &lt;li&gt;&lt;a href=\"#experience\"&gt;EXPERIENCE&lt;/a&gt;&lt;/li&gt;\n              &lt;li&gt;&lt;a href=\"#interest\"&gt;INTEREST&lt;/a&gt;&lt;/li&gt;\n            &lt;/ul&gt;\n          &lt;/nav&gt;\n\n        &lt;/div&gt;\n        &lt;!--  Right Side  --&gt;\n        &lt;div class=\"col-sm-9 bg-2\"&gt;\n          &lt;!-- About --&gt;\n          &lt;div id=\"about\"&gt;\n            &lt;h1 id=\"hello\"&gt;hello&lt;/h1&gt;\n            &lt;h3 id=\"name\"&gt;I'm Muhammad Naqqash,&lt;/h3&gt;\n            &lt;h3 id=\"self\"&gt;a self taught developer.&lt;/h3&gt;\n            &lt;h3 id=\"engineer\"&gt;I'm a Computer Engineer. &lt;/h3&gt;\n            &lt;p id=\"intro\"&gt;I'm a positive and friendly person. Also, I love to set goals and achieve them.&lt;br&gt; My important qualities: self-motivated, ability overcome difficulties and the &lt;br&gt; ability to learn.&lt;/p&gt;\n\n            &lt;div id=\"social\"&gt;\n              &lt;a href=\"\"&gt;&lt;i class=\"fab fa-facebook fa-lg\"&gt;&lt;/i&gt;&lt;span style=\"display:inline-block; width: 5px;\"&gt;&lt;/span&gt;\n              &lt;a href=\"\"&gt;&lt;i class=\"fab fa-linkedin fa-lg\"&gt;&lt;/i&gt;&lt;/a&gt; &lt;span style=\"display:inline-block; width: 0px;\"&gt;&lt;/span&gt;\n              &lt;a href=\"\"&gt;&lt;i class=\"fab fa-twitter-square fa-lg\"&gt;&lt;/i&gt;&lt;/a&gt;&lt;span style=\"display:inline-block; width: 5px;\"&gt;&lt;/span&gt;\n              &lt;a href=\"\"&gt;&lt;i class=\"fab fa-github-square fa-lg\"&gt;&lt;/i&gt;&lt;/a&gt;&lt;span style=\"display:inline-block; width: 5px;\"&gt;&lt;/span&gt;\n\n            &lt;/div&gt;\n\n\n          &lt;/div&gt;\n\n          &lt;!-- education --&gt;\n          &lt;div id=\"education\"&gt;\n            &lt;div&gt;\n              &lt;h1 id=\"headings\"&gt;EDUCATION&lt;/h1&gt;\n              &lt;h2 class=\"subheadings1\"&gt;&lt;i class=\"fas fa-graduation-cap fa-sm\"&gt;&lt;/i&gt;&lt;span style=\"display:inline-block; width: 20px;\"&gt;&lt;/span&gt;BS Computer Engineering&lt;/h2&gt;\n              &lt;h3 class=\"subheadings2\"&gt;&lt;i class=\"fas fa-university fa-sm\"&gt;&lt;/i&gt;&lt;span style=\"display:inline-block; width: 30px;\"&gt;&lt;/span&gt;NUST College of E&amp;ME&lt;/h3&gt;\n              &lt;h3 id=\"Date\"&gt;2014-18&lt;/h3&gt;\n            &lt;/div&gt;\n\n\n          &lt;/div&gt;\n          &lt;div id=\"certifications\"&gt;\n            &lt;div&gt;\n              &lt;h1 id=\"headings\"&gt;Certifications&lt;/h1&gt;\n              &lt;h2 class=\"subheadings1\"&gt;&lt;i class=\"fas fa-certificate fa-sm\"&gt;&lt;/i&gt;&lt;span style=\"display:inline-block; width: 20px;\"&gt;&lt;/span&gt;Microsoft Office Specialist&lt;/h2&gt;\n              &lt;h5&gt;Microsoft&lt;/h5&gt;\n              &lt;h2 class=\"subheadings1\"&gt;&lt;i class=\"fas fa-certificate fa-sm\"&gt;&lt;/i&gt;&lt;span style=\"display:inline-block; width: 20px;\"&gt;&lt;/span&gt;The Web Developer Bootcamp&lt;/h2&gt;\n              &lt;h5&gt;Udemy&lt;/h5&gt;\n              &lt;h2 class=\"subheadings1\"&gt;&lt;i class=\"fas fa-certificate fa-sm\"&gt;&lt;/i&gt;&lt;span style=\"display:inline-block; width: 20px;\"&gt;&lt;/span&gt;Wordpress Customization&lt;/h2&gt;\n              &lt;h5&gt;Udemy&lt;/h5&gt;\n\n            &lt;/div&gt;\n          &lt;/div&gt;\n          &lt;div id=\"skills\"&gt;\n            &lt;div&gt;\n              &lt;h1 id=\"headings\"&gt;Skills&lt;/h1&gt;\n              &lt;h3&gt;Programming Languages &amp; Tools&lt;/h3&gt;\n              &lt;div class=\"devicons\"&gt;\n                &lt;i class=\"devicon-html5-plain \"&gt;&lt;/i&gt;\n                &lt;i class=\"devicon-css3-plain\"&gt;&lt;/i&gt;\n                &lt;i class=\"devicon-bootstrap-plain\"&gt;&lt;/i&gt;\n                &lt;i class=\"devicon-javascript-plain\"&gt;&lt;/i&gt;\n                &lt;i class=\"devicon-jquery-plain\"&gt;&lt;/i&gt;\n                &lt;i class=\"devicon-wordpress-plain\"&gt;&lt;/i&gt;\n                &lt;i class=\"devicon-cplusplus-plain\"&gt;&lt;/i&gt;\n                &lt;i class=\"devicon-illustrator-plain\"&gt;&lt;/i&gt;\n              &lt;/div&gt;\n\n\n\n\n\n            &lt;/div&gt;\n          &lt;/div&gt;\n          &lt;div id=\"projects\"&gt;\n            &lt;div&gt;\n              &lt;h1 id=\"headings\"&gt;Projects&lt;/h1&gt;\n              &lt;div style=\"font-size:3em; color: black;\"&gt;\n                &lt;a href=\"#\"&gt;&lt;i class=\"fab fa-github\"&gt;&lt;/i&gt;\n\n                &lt;/a&gt;&lt;span style=\"display:inline-block; width: 40px;\"&gt;&lt;/span&gt;\n              &lt;a href=\"#\"&gt;&lt;i class=\"fab fa-codepen\"&gt;&lt;/i&gt;&lt;/a&gt;\n              &lt;/div&gt;\n\n            &lt;/div&gt;\n\n          &lt;/div&gt;\n          &lt;div id=\"experience\"&gt;\n            &lt;div&gt;\n              &lt;h1 id=\"headings\"&gt;Experience&lt;/h1&gt;\n              &lt;h2 class=\"subheadings1\"&gt;&lt;i class=\"fas fa-globe fa-sm\"&gt;&lt;/i&gt;&lt;span style=\"display:inline-block; width: 20px;\"&gt;&lt;/span&gt;Teaching &amp; Management&lt;/h2&gt;\n              &lt;h5&gt;Taught Physics, Chemistry &amp; Mathematics. Key role in managing test\n                  sessions, class schedules and Provide full learning experience and\n                  support for students beyond set classes, working with pupils\n                  experiencing barriers to learning across the academic range.&lt;/h5&gt;\n                  &lt;br&gt;\n              &lt;h2 class=\"subheadings1\"&gt;&lt;i class=\"fas fa-globe fa-sm\"&gt;&lt;/i&gt;&lt;span style=\"display:inline-block; width: 20px;\"&gt;&lt;/span&gt;Career Counselling&lt;/h2&gt;\n              &lt;h5&gt;Have done many seminars on career\n                  counselling and motivational lectures in\n                  many educational institutes.\n              &lt;/h5&gt;\n            &lt;/div&gt;\n\n          &lt;/div&gt;\n          &lt;div id=\"interest\"&gt;\n            &lt;div&gt;\n              &lt;h1 id=\"headings\"&gt;Interest&lt;/h1&gt;\n              &lt;i class=\"fas fa-code fa-lg\"&gt;&lt;/i&gt;&lt;span style=\"display:inline-block; width: 40px;\"&gt;&lt;/span&gt;\n              &lt;i class=\"fas fa-plane fa-lg \"&gt;&lt;/i&gt;&lt;span style=\"display:inline-block; width: 40px;\"&gt;&lt;/span&gt;\n              &lt;i class=\"fas fa-music fa-lg\"&gt;&lt;/i&gt;\n            &lt;/div&gt;\n\n          &lt;/div&gt;\n          &lt;div&gt;\n\n          &lt;/div&gt;\n        &lt;/div&gt;\n      &lt;/div&gt;\n    &lt;/div&gt;\n\n  &lt;/body&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "objective-c",
+                "audio",
+                "sine",
+                "synthesizer"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9347214,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/f9794c7d0e8c7a0cfde9f0868ab69e7d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "studenttttt",
+                "link": "https://stackoverflow.com/users/9347214/studenttttt"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1523541499,
+            "creation_date": 1523324272,
+            "question_id": 49743979,
+            "body_markdown": "I am trying to generate different wave shapes for a simple wavetable synth iOS app I am working on. This is how I am generating the sine wave:\r\n\r\n            if (waveType == 1) // sine wave\r\n        {\r\n            //NSLog(@&quot;sine in AU&quot;);\r\n            for (int i=0;i&lt;n;i++)\r\n            {\r\n                float x = 0.0;        // default to silence\r\n                if (toneCount &gt; 0)  // or create a sinewave\r\n                {\r\n                    x = testVolume * sinf(ph);\r\n                    ph = ph + dp;\r\n                    \r\n                    if (ph &gt; M_PI) { ph -= 2.0 * M_PI; } // sine wave\r\n                    \r\n                    toneCount -= 1;    // decrement tone length counter\r\n                }\r\n                if (ptrLeft  != NULL){\r\n                    ptrLeft[ i] = x;\r\n                }\r\n                if (ptrRight != NULL) {\r\n                    ptrRight[i] = x;\r\n                }\r\n            }\r\n        }\r\n\r\nFor a square wave I was assuming this would work but it hasn&#39;t: \r\n\r\n    if (ph &gt; M_PI) { \r\n    ph -= 2.0 * M_PI;\r\n    ph &gt;= 0 ? 1.0 : -1.0;\r\n    }\r\n\r\nHow would I go about creating sawtooth and triangles waves and where is the square wave going wrong?\r\n\r\nThanks, I&#39;m new to iOS programming and love working with audio. ",
+            "link": "https://stackoverflow.com/questions/49743979/creating-square-sawtooth-and-triangle-wave-in-objective-c",
+            "title": "Creating square, sawtooth and triangle wave in Objective-C",
+            "body": "<p>I am trying to generate different wave shapes for a simple wavetable synth iOS app I am working on. This is how I am generating the sine wave:</p>\n\n<pre><code>        if (waveType == 1) // sine wave\n    {\n        //NSLog(@\"sine in AU\");\n        for (int i=0;i&lt;n;i++)\n        {\n            float x = 0.0;        // default to silence\n            if (toneCount &gt; 0)  // or create a sinewave\n            {\n                x = testVolume * sinf(ph);\n                ph = ph + dp;\n\n                if (ph &gt; M_PI) { ph -= 2.0 * M_PI; } // sine wave\n\n                toneCount -= 1;    // decrement tone length counter\n            }\n            if (ptrLeft  != NULL){\n                ptrLeft[ i] = x;\n            }\n            if (ptrRight != NULL) {\n                ptrRight[i] = x;\n            }\n        }\n    }\n</code></pre>\n\n<p>For a square wave I was assuming this would work but it hasn't: </p>\n\n<pre><code>if (ph &gt; M_PI) { \nph -= 2.0 * M_PI;\nph &gt;= 0 ? 1.0 : -1.0;\n}\n</code></pre>\n\n<p>How would I go about creating sawtooth and triangles waves and where is the square wave going wrong?</p>\n\n<p>Thanks, I'm new to iOS programming and love working with audio. </p>\n"
+        },
+        {
+            "tags": [
+                "jenkins"
+            ],
+            "owner": {
+                "reputation": 23,
+                "user_id": 9230302,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ee81432e9fe63ae2ad53384baa15c676?s=128&d=identicon&r=PG&f=1",
+                "display_name": "psychotiq",
+                "link": "https://stackoverflow.com/users/9230302/psychotiq"
+            },
+            "is_answered": false,
+            "view_count": 5,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523541495,
+            "creation_date": 1523541495,
+            "question_id": 49798549,
+            "body_markdown": "As far as declarative pipelines go in Jenkins, I&#39;m having trouble with the *when* keyword.\r\n\r\nI keep getting the error `No such DSL method &#39;when&#39; found among steps`.  I&#39;m sort of new to Jenkins 2 declarative pipelines and don&#39;t think I am mixing up scripted pipelines with declarative ones.\r\n\r\nThe goal of this pipeline is to run `mvn deploy` after a successful Sonar run and send out mail notifications of a failure or success.  I only want the artifacts to be deployed when on master or a release branch.\r\n\r\nThe part I&#39;m having difficulties with is in the *post* section.  The **Notifications** stage is working great.  Note that I got this to work without the *when* clause, but really need it or an equivalent.\r\n\r\n    pipeline {\r\n      agent any\r\n      tools {\r\n        maven &#39;M3&#39;\r\n        jdk &#39;JDK8&#39;\r\n      }\r\n      stages {\r\n        stage(&#39;Notifications&#39;) {\r\n          steps {\r\n            sh &#39;mkdir tmpPom&#39;\r\n            sh &#39;mv pom.xml tmpPom/pom.xml&#39;\r\n            checkout([$class: &#39;GitSCM&#39;, branches: [[name: &#39;origin/master&#39;]], doGenerateSubmoduleConfigurations: false, submoduleCfg: [], userRemoteConfigs: [[url: &#39;https://repository.git&#39;]]])\r\n            sh &#39;mvn clean test&#39;\r\n            sh &#39;rm pom.xml&#39;\r\n            sh &#39;mv tmpPom/pom.xml ../pom.xml&#39;\r\n          }\r\n        }\r\n      }\r\n      post {\r\n        success {\r\n          script {\r\n            currentBuild.result = &#39;SUCCESS&#39;\r\n          }\r\n          when { \r\n            branch &#39;master|release/*&#39; \r\n          }\r\n          steps {\r\n            sh &#39;mvn deploy&#39;\r\n          }     \r\n          sendNotification(recipients,\r\n            null,             \r\n            &#39;https://link.to.sonar&#39;,\r\n            currentBuild.result,\r\n          )\r\n        }\r\n        failure {\r\n          script {\r\n            currentBuild.result = &#39;FAILURE&#39;\r\n          }    \r\n          sendNotification(recipients,\r\n            null,             \r\n            &#39;https://link.to.sonar&#39;,\r\n            currentBuild.result\r\n          )\r\n        }\r\n      }\r\n    }",
+            "link": "https://stackoverflow.com/questions/49798549/declarative-pipeline-when-condition-in-post",
+            "title": "Declarative pipeline when condition in post",
+            "body": "<p>As far as declarative pipelines go in Jenkins, I'm having trouble with the <em>when</em> keyword.</p>\n\n<p>I keep getting the error <code>No such DSL method 'when' found among steps</code>.  I'm sort of new to Jenkins 2 declarative pipelines and don't think I am mixing up scripted pipelines with declarative ones.</p>\n\n<p>The goal of this pipeline is to run <code>mvn deploy</code> after a successful Sonar run and send out mail notifications of a failure or success.  I only want the artifacts to be deployed when on master or a release branch.</p>\n\n<p>The part I'm having difficulties with is in the <em>post</em> section.  The <strong>Notifications</strong> stage is working great.  Note that I got this to work without the <em>when</em> clause, but really need it or an equivalent.</p>\n\n<pre><code>pipeline {\n  agent any\n  tools {\n    maven 'M3'\n    jdk 'JDK8'\n  }\n  stages {\n    stage('Notifications') {\n      steps {\n        sh 'mkdir tmpPom'\n        sh 'mv pom.xml tmpPom/pom.xml'\n        checkout([$class: 'GitSCM', branches: [[name: 'origin/master']], doGenerateSubmoduleConfigurations: false, submoduleCfg: [], userRemoteConfigs: [[url: 'https://repository.git']]])\n        sh 'mvn clean test'\n        sh 'rm pom.xml'\n        sh 'mv tmpPom/pom.xml ../pom.xml'\n      }\n    }\n  }\n  post {\n    success {\n      script {\n        currentBuild.result = 'SUCCESS'\n      }\n      when { \n        branch 'master|release/*' \n      }\n      steps {\n        sh 'mvn deploy'\n      }     \n      sendNotification(recipients,\n        null,             \n        'https://link.to.sonar',\n        currentBuild.result,\n      )\n    }\n    failure {\n      script {\n        currentBuild.result = 'FAILURE'\n      }    \n      sendNotification(recipients,\n        null,             \n        'https://link.to.sonar',\n        currentBuild.result\n      )\n    }\n  }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "hadoop",
+                "view",
+                "hive",
+                "bigdata",
+                "hiveql"
+            ],
+            "owner": {
+                "reputation": 9,
+                "user_id": 6573852,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5c57d271f55f11aac7d88f09273eeb23?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Ganesh Dogiparthi",
+                "link": "https://stackoverflow.com/users/6573852/ganesh-dogiparthi"
+            },
+            "is_answered": false,
+            "view_count": 23,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523541492,
+            "creation_date": 1523529170,
+            "last_edit_date": 1523535552,
+            "question_id": 49794299,
+            "body_markdown": "How to create a static view in Hive? Like I am creating below view, \r\n\r\n    CREATE OR REPLACE VIEW V_TMP AS \r\n    SELECT 1 AS LEVEL_ID,&#39;URBAN&#39; AS ITEM_CODE\r\n    UNION ALL\r\n    SELECT 1 AS LEVEL_ID,&#39;RURAL&#39; AS ITEM_CODE\r\n    UNION ALL\r\n    SELECT 9999 AS LEVEL_ID,&#39;ALL&#39; AS ITEM_CODE;\r\n\r\nit is throwing below error:\r\n\r\n&gt; Error while compiling statement: FAILED: SemanticException No valid\r\n&gt; privileges Required privilege( Table) not available in input\r\n&gt; privileges The required privileges:\r\n\r\nCan someone help?",
+            "link": "https://stackoverflow.com/questions/49794299/how-to-create-static-views-in-hive",
+            "title": "How to create static views in Hive?",
+            "body": "<p>How to create a static view in Hive? Like I am creating below view, </p>\n\n<pre><code>CREATE OR REPLACE VIEW V_TMP AS \nSELECT 1 AS LEVEL_ID,'URBAN' AS ITEM_CODE\nUNION ALL\nSELECT 1 AS LEVEL_ID,'RURAL' AS ITEM_CODE\nUNION ALL\nSELECT 9999 AS LEVEL_ID,'ALL' AS ITEM_CODE;\n</code></pre>\n\n<p>it is throwing below error:</p>\n\n<blockquote>\n  <p>Error while compiling statement: FAILED: SemanticException No valid\n  privileges Required privilege( Table) not available in input\n  privileges The required privileges:</p>\n</blockquote>\n\n<p>Can someone help?</p>\n"
+        },
+        {
+            "tags": [
+                "push",
+                "pubnub"
+            ],
+            "owner": {
+                "reputation": 446,
+                "user_id": 646542,
+                "user_type": "registered",
+                "accept_rate": 65,
+                "profile_image": "https://www.gravatar.com/avatar/3f894dbb9383dab1696efa2174b35e4a?s=128&d=identicon&r=PG",
+                "display_name": "Emanuel",
+                "link": "https://stackoverflow.com/users/646542/emanuel"
+            },
+            "is_answered": false,
+            "view_count": 36,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523541490,
+            "creation_date": 1465415478,
+            "question_id": 37711680,
+            "body_markdown": "- Channels would be created by the server when specific things happen\r\n- The cellphones (users/devises) invited to that channel get notified in-app or by push notification.\r\n- Users join that channel and are subscribed to it.\r\n- Users can unsubscribe from that channel.\r\n- Users can share gifs, photos and emoticons in the channel.\r\n\r\nI don&#39;t think it will matter for this question, but the server is built in ruby.",
+            "link": "https://stackoverflow.com/questions/37711680/is-pubnub-a-good-solution-for-a-mobile-app-that-creates-dynamic-chatrooms-from-a",
+            "title": "Is Pubnub a good solution for a mobile app that creates dynamic chatrooms from a server?",
+            "body": "<ul>\n<li>Channels would be created by the server when specific things happen</li>\n<li>The cellphones (users/devises) invited to that channel get notified in-app or by push notification.</li>\n<li>Users join that channel and are subscribed to it.</li>\n<li>Users can unsubscribe from that channel.</li>\n<li>Users can share gifs, photos and emoticons in the channel.</li>\n</ul>\n\n<p>I don't think it will matter for this question, but the server is built in ruby.</p>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "angular2-template"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 7603935,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/d2f9f900b905052da14694e1dbd87933?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Nagendra Devara",
+                "link": "https://stackoverflow.com/users/7603935/nagendra-devara"
+            },
+            "is_answered": true,
+            "view_count": 31,
+            "accepted_answer_id": 49572848,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1523541489,
+            "creation_date": 1522405289,
+            "last_edit_date": 1523541489,
+            "question_id": 49572644,
+            "body_markdown": "How can we disable the second value punchout by ngOnInit?   \r\n `&lt;form [formGroup]=&quot;articleForm&quot; (ngSubmit)=&quot;onArticleFormSubmit()&quot;&gt;`\r\n\r\n        &lt;div class=&quot;form-group&quot;&gt;\r\n           &lt;label&gt;Select list: &lt;/label&gt;\r\n              &lt;select name=&quot;leave&quot; class=&quot;form-control&quot; formControlName=&quot;list_type&quot; &gt;\r\n                &lt;option value=&quot;punchIn&quot;  &gt;\r\n         PunchIn\r\n       &lt;/option&gt;\r\n                &lt;option value=&quot;punchOut&quot; &gt;\r\n      PunchOut\r\n       &lt;/option&gt;\r\n     &lt;/select&gt;   \r\n      &lt;/div&gt;\r\n       &lt;/form&gt;\r\n\r\n            ",
+            "link": "https://stackoverflow.com/questions/49572644/how-to-disable-a-option-in-dropdown-by-ngoninit",
+            "title": "How to disable a option in dropdown by ngOnInit?",
+            "body": "<p>How can we disable the second value punchout by ngOnInit?<br>\n <code>&lt;form [formGroup]=\"articleForm\" (ngSubmit)=\"onArticleFormSubmit()\"&gt;</code></p>\n\n<pre><code>    &lt;div class=\"form-group\"&gt;\n       &lt;label&gt;Select list: &lt;/label&gt;\n          &lt;select name=\"leave\" class=\"form-control\" formControlName=\"list_type\" &gt;\n            &lt;option value=\"punchIn\"  &gt;\n     PunchIn\n   &lt;/option&gt;\n            &lt;option value=\"punchOut\" &gt;\n  PunchOut\n   &lt;/option&gt;\n &lt;/select&gt;   \n  &lt;/div&gt;\n   &lt;/form&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript"
+            ],
+            "owner": {
+                "reputation": 18400,
+                "user_id": 702469,
+                "user_type": "registered",
+                "accept_rate": 90,
+                "profile_image": "https://www.gravatar.com/avatar/077bc846fa7520069f19e04e8488cd13?s=128&d=identicon&r=PG",
+                "display_name": "Jashwant",
+                "link": "https://stackoverflow.com/users/702469/jashwant"
+            },
+            "is_answered": true,
+            "view_count": 14275,
+            "accepted_answer_id": 10895432,
+            "answer_count": 3,
+            "score": 15,
+            "last_activity_date": 1523541480,
+            "creation_date": 1338890632,
+            "last_edit_date": 1339876073,
+            "question_id": 10895288,
+            "body_markdown": "Take this snippet,\r\n\r\n    var a = {\r\n      \r\n    }\r\n    \r\n    if(typeof a.c === &#39;undefined&#39;){\r\n     console.log(&#39;inside if&#39;);\r\n    }\r\n    if(a.c === undefined){\r\n     console.log(&#39;inside if&#39;);\r\n    }\r\n\r\nBoth `if` results in `true`. **Is there any difference in both statements specific to some browsers?**\r\n\r\nAlso, in my last project I have already used `typeof a.c == &#39;undefined&#39;` numerous times to check values in `json` data.\r\n\r\nNow, I know that this is not good way, as some value may be `undefined` too, so my logic will fail. \r\n\r\nI should have used `hasOwnProperty` .\r\n\r\nBut I am sure that no value will be `undefined` , can I use `typeof a.c == &#39;undefined&#39;` in place of `hasOwnProperty` or should I change all my `typeof` with `hasOwnProperty`",
+            "link": "https://stackoverflow.com/questions/10895288/undefined-typeof-undefined-hasownproperty",
+            "title": "Undefined, typeof undefined, hasOwnProperty",
+            "body": "<p>Take this snippet,</p>\n\n<pre><code>var a = {\n\n}\n\nif(typeof a.c === 'undefined'){\n console.log('inside if');\n}\nif(a.c === undefined){\n console.log('inside if');\n}\n</code></pre>\n\n<p>Both <code>if</code> results in <code>true</code>. <strong>Is there any difference in both statements specific to some browsers?</strong></p>\n\n<p>Also, in my last project I have already used <code>typeof a.c == 'undefined'</code> numerous times to check values in <code>json</code> data.</p>\n\n<p>Now, I know that this is not good way, as some value may be <code>undefined</code> too, so my logic will fail. </p>\n\n<p>I should have used <code>hasOwnProperty</code> .</p>\n\n<p>But I am sure that no value will be <code>undefined</code> , can I use <code>typeof a.c == 'undefined'</code> in place of <code>hasOwnProperty</code> or should I change all my <code>typeof</code> with <code>hasOwnProperty</code></p>\n"
+        },
+        {
+            "tags": [
+                "msbuild",
+                "vsts",
+                "vsts-build"
+            ],
+            "owner": {
+                "reputation": 75,
+                "user_id": 2870964,
+                "user_type": "registered",
+                "accept_rate": 40,
+                "profile_image": "https://www.gravatar.com/avatar/04e7ca3691300c608bc586f8469c6ac1?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Netanel Stern",
+                "link": "https://stackoverflow.com/users/2870964/netanel-stern"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523541479,
+            "creation_date": 1523530926,
+            "last_edit_date": 1523541479,
+            "question_id": 49794851,
+            "body_markdown": "I have a repository that contains two solutions. One solution (in this case solution A) for a web project that has a reference to a project in the second solution (in this case solution B) (in the same repository).\r\n\r\nWhen I build the web project in VSTS I pull the repository, build solution B, and then build solution B.\r\n\r\nBuild solution B work, but, the build of solution A is failed cause the reference dll of the project in solution B didn&#39;t found",
+            "link": "https://stackoverflow.com/questions/49794851/vsts-build-project-with-reference-to-other-solution",
+            "title": "VSTS build project with reference to other solution",
+            "body": "<p>I have a repository that contains two solutions. One solution (in this case solution A) for a web project that has a reference to a project in the second solution (in this case solution B) (in the same repository).</p>\n\n<p>When I build the web project in VSTS I pull the repository, build solution B, and then build solution B.</p>\n\n<p>Build solution B work, but, the build of solution A is failed cause the reference dll of the project in solution B didn't found</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "aapt2"
+            ],
+            "owner": {
+                "reputation": 56,
+                "user_id": 4341740,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://www.gravatar.com/avatar/028470856b9167909282e874e67dbedc?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Mister Smith",
+                "link": "https://stackoverflow.com/users/4341740/mister-smith"
+            },
+            "is_answered": true,
+            "view_count": 16,
+            "accepted_answer_id": 49798370,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523541478,
+            "creation_date": 1523540148,
+            "last_edit_date": 1523541252,
+            "question_id": 49798021,
+            "body_markdown": "My app worked fine and compilated untill i added\r\n\r\n `com.android.support:recyclerview-v7:28.0.0-alpha1` in my project.\r\n\r\nHere are my errors:\r\n\r\n    Information:Gradle tasks [:app:generateDebugSources, :app:generateDebugAndroidTestSources, :app:mockableAndroidJar]\r\n    C:\\Users\\Smith\\.gradle\\caches\\transforms-1\\files-1.1\\appcompat-v7-25.3.1.aar\\455a076f8084ee34b277fdfdb97836e0\\res\\values\\values.xml\r\n    Error:(203, 5) error: resource android:attr/fontStyle not found.\r\n    Error:(203, 5) error: resource android:attr/font not found.\r\n    Error:(203, 5) error: resource android:attr/fontWeight not found.\r\n    Error:(203, 5) error: resource android:attr/fontVariationSettings not found.\r\n    Error:(203, 5) error: resource android:attr/ttcIndex not found.\r\n    C:\\Users\\Smith\\AndroidStudioProjects\\DontSleepManager\\app\\build\\intermediates\\incremental\\mergeDebugResources\\merged.dir\\values\\values.xml\r\n    Error:(314) resource android:attr/fontStyle not found.\r\n    Error:(314) resource android:attr/font not found.\r\n    Error:(314) resource android:attr/fontWeight not found.\r\n    Error:(314) resource android:attr/fontVariationSettings not found.\r\n    Error:(314) resource android:attr/ttcIndex not found.\r\n    Error:failed linking references.\r\n    Error:java.util.concurrent.ExecutionException: java.util.concurrent.ExecutionException: com.android.tools.aapt2.Aapt2Exception: AAPT2 error: check logs for details\r\n    Error:java.util.concurrent.ExecutionException: com.android.tools.aapt2.Aapt2Exception: AAPT2 error: check logs for details\r\n    Error:com.android.tools.aapt2.Aapt2Exception: AAPT2 error: check logs for details\r\n    Error:Execution failed for task &#39;:app:processDebugResources&#39;.\r\n    &gt; Failed to execute aapt\r\n    Information:BUILD FAILED in 29s\r\n    Information:15 errors\r\n    Information:0 warnings\r\n    Information:See complete output in console\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\nIf i add the line \r\n\r\n    android.enableAapt2=false\r\n\r\nin gradle-properties then i get next warnings:\r\n\r\n[![enter image description here][2]][2]\r\n\r\nPlease help me to figure out that \r\n\r\n\r\n  [1]: https://i.stack.imgur.com/8ZUef.jpg\r\n  [2]: https://i.stack.imgur.com/zwfuz.jpg",
+            "link": "https://stackoverflow.com/questions/49798021/many-errors-appeared-after-i-added-a-recycler-view-dependency-in-my-project",
+            "title": "Many errors appeared after i added a recycler-view dependency in my project",
+            "body": "<p>My app worked fine and compilated untill i added</p>\n\n<p><code>com.android.support:recyclerview-v7:28.0.0-alpha1</code> in my project.</p>\n\n<p>Here are my errors:</p>\n\n<pre><code>Information:Gradle tasks [:app:generateDebugSources, :app:generateDebugAndroidTestSources, :app:mockableAndroidJar]\nC:\\Users\\Smith\\.gradle\\caches\\transforms-1\\files-1.1\\appcompat-v7-25.3.1.aar\\455a076f8084ee34b277fdfdb97836e0\\res\\values\\values.xml\nError:(203, 5) error: resource android:attr/fontStyle not found.\nError:(203, 5) error: resource android:attr/font not found.\nError:(203, 5) error: resource android:attr/fontWeight not found.\nError:(203, 5) error: resource android:attr/fontVariationSettings not found.\nError:(203, 5) error: resource android:attr/ttcIndex not found.\nC:\\Users\\Smith\\AndroidStudioProjects\\DontSleepManager\\app\\build\\intermediates\\incremental\\mergeDebugResources\\merged.dir\\values\\values.xml\nError:(314) resource android:attr/fontStyle not found.\nError:(314) resource android:attr/font not found.\nError:(314) resource android:attr/fontWeight not found.\nError:(314) resource android:attr/fontVariationSettings not found.\nError:(314) resource android:attr/ttcIndex not found.\nError:failed linking references.\nError:java.util.concurrent.ExecutionException: java.util.concurrent.ExecutionException: com.android.tools.aapt2.Aapt2Exception: AAPT2 error: check logs for details\nError:java.util.concurrent.ExecutionException: com.android.tools.aapt2.Aapt2Exception: AAPT2 error: check logs for details\nError:com.android.tools.aapt2.Aapt2Exception: AAPT2 error: check logs for details\nError:Execution failed for task ':app:processDebugResources'.\n&gt; Failed to execute aapt\nInformation:BUILD FAILED in 29s\nInformation:15 errors\nInformation:0 warnings\nInformation:See complete output in console\n</code></pre>\n\n<p><a href=\"https://i.stack.imgur.com/8ZUef.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/8ZUef.jpg\" alt=\"enter image description here\"></a></p>\n\n<p>If i add the line </p>\n\n<pre><code>android.enableAapt2=false\n</code></pre>\n\n<p>in gradle-properties then i get next warnings:</p>\n\n<p><a href=\"https://i.stack.imgur.com/zwfuz.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/zwfuz.jpg\" alt=\"enter image description here\"></a></p>\n\n<p>Please help me to figure out that </p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 203
+}

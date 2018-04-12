@@ -1,0 +1,815 @@
+{
+    "items": [
+        {
+            "tags": [
+                "python",
+                "elasticsearch"
+            ],
+            "owner": {
+                "reputation": 28,
+                "user_id": 5677268,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://i.stack.imgur.com/H7w94.jpg?s=128&g=1",
+                "display_name": "Ahmad Hijazi",
+                "link": "https://stackoverflow.com/users/5677268/ahmad-hijazi"
+            },
+            "is_answered": true,
+            "view_count": 16,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523539535,
+            "creation_date": 1523535248,
+            "last_edit_date": 1523537719,
+            "question_id": 49796254,
+            "body_markdown": "I am running this code in Python:\r\n\r\n    es = Elasticsearch([{&#39;host&#39;: &#39;localhost&#39;, &#39;port&#39;: 9200}]).ping()\r\n    print (es)\r\n\r\n    if es:\r\n        r = requests.get(&#39;http://localhost:9200&#39;)\r\n        es.indices.delete(index=&#39;test_twitter&#39;, ignore=[400, 404])\r\n        connected = True\r\n        print(&#39;Connected to ES..&#39;)\r\n    else:\r\n        print(&#39;Not connected to ES...&#39;)\r\n\r\nWhen Elasticsearch is running, there is no problem with ping. The problem is when ES is not running, ping() is returning FALSE after a Traceback error is printed as below:\r\n\r\n\r\n            HEAD http://localhost:9200/ [status:N/A request:2.007s]\r\n    Traceback (most recent call last):\r\n    ConnectionRefusedError: [WinError 10061] No connection could be made because the target machine actively refused it\r\n    \r\n    During handling of the above exception, another exception occurred:\r\n    \r\n    Traceback (most recent call last):\r\n    urllib3.exceptions.NewConnectionError: &lt;urllib3.connection.HTTPConnection object at 0x000001E2ECBD45F8&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\r\n    HEAD http://localhost:9200/ [status:N/A request:2.003s]\r\n    Traceback (most recent call last):\r\n    ConnectionRefusedError: [WinError 10061] No connection could be made because the target machine actively refused it\r\n    \r\n    During handling of the above exception, another exception occurred:\r\n    \r\n    Traceback (most recent call last):\r\n    urllib3.exceptions.NewConnectionError: &lt;urllib3.connection.HTTPConnection object at 0x000001E2ECBD44E0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\r\n    HEAD http://localhost:9200/ [status:N/A request:2.016s]\r\n    Traceback (most recent call last):\r\n    ConnectionRefusedError: [WinError 10061] No connection could be made because the target machine actively refused it\r\n    \r\n    During handling of the above exception, another exception occurred:\r\n    \r\n    Traceback (most recent call last):\r\n    urllib3.exceptions.NewConnectionError: &lt;urllib3.connection.HTTPConnection object at 0x000001E2ECBD4668&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\r\n    False\r\n    Not connected to ES...\r\n\r\nEven if I try-except it like below, it does not work:\r\n\r\n    from elasticsearch.exceptions import ConnectionError\r\n    try:\r\n        es = Elasticsearch([{&#39;host&#39;: &#39;localhost&#39;, &#39;port&#39;: 9200}]).ping()\r\n    except ConnectionRefusedError:\r\n        print (&#39;Connection Errrorrr!&#39;)\r\n\r\n    print (es)\r\n\r\nI want ping() to return false but without printing the error log, and idea how that can be done?\r\n\r\nThe full is code is below:\r\n\r\n    from __future__ import unicode_literals\r\n\r\n    import hug\r\n    from hug_middleware_cors import CORSMiddleware\r\n    import spacy\r\n    from elasticsearch import Elasticsearch\r\n    import json\r\n    import requests\r\n    import sys\r\n    sys.tracebacklimit = 0\r\n    \r\n    MODELS = {\r\n        &#39;en_core_web_sm&#39;: spacy.load(&#39;en_core_web_sm&#39;),\r\n        # &#39;de_core_news_sm&#39;: spacy.load(&#39;de_core_news_sm&#39;),\r\n        # &#39;es_core_news_sm&#39;: spacy.load(&#39;es_core_news_sm&#39;),\r\n        # &#39;pt_core_news_sm&#39;: spacy.load(&#39;pt_core_news_sm&#39;),\r\n        # &#39;fr_core_news_sm&#39;: spacy.load(&#39;fr_core_news_sm&#39;),\r\n        # &#39;it_core_news_sm&#39;: spacy.load(&#39;it_core_news_sm&#39;),\r\n        # &#39;nl_core_news_sm&#39;: spacy.load(&#39;nl_core_news_sm&#39;)\r\n    }\r\n    \r\n    \r\n    def get_model_desc(nlp, model_name):\r\n        &quot;&quot;&quot;Get human-readable model name, language name and version.&quot;&quot;&quot;\r\n        lang_cls = spacy.util.get_lang_class(nlp.lang)\r\n        lang_name = lang_cls.__name__\r\n        model_version = nlp.meta[&#39;version&#39;]\r\n        return &#39;{} - {} (v{})&#39;.format(lang_name, model_name, model_version)\r\n    \r\n    \r\n    @hug.get(&#39;/models&#39;)\r\n    def models():\r\n        return {name: get_model_desc(nlp, name) for name, nlp in MODELS.items()}\r\n    \r\n    \r\n    @hug.post(&#39;/dep&#39;)\r\n    def dep(text: str, model: str, collapse_punctuation: bool=False,\r\n            collapse_phrases: bool=False):\r\n        &quot;&quot;&quot;Get dependencies for displaCy visualizer.&quot;&quot;&quot;\r\n        nlp = MODELS[model]\r\n        doc = nlp(text)\r\n        if collapse_phrases:\r\n            for np in list(doc.noun_chunks):\r\n                np.merge(tag=np.root.tag_, lemma=np.root.lemma_,\r\n                         ent_type=np.root.ent_type_)\r\n        options = {&#39;collapse_punct&#39;: collapse_punctuation}\r\n        return spacy.displacy.parse_deps(doc, options)\r\n    \r\n    \r\n    @hug.post(&#39;/ent&#39;)\r\n    def ent(text: str, model: str):\r\n        &quot;&quot;&quot;Get entities for displaCy ENT visualizer.&quot;&quot;&quot;\r\n        nlp = MODELS[model]\r\n        doc = nlp(text)\r\n    \r\n        for ent in doc.ents:\r\n            if connected:\r\n                es.index(index=&#39;test_twitter&#39;, doc_type=&#39;words&#39;, body={&#39;tag&#39;: ent.text})\r\n            else:\r\n                print(&#39;text :&#39;)\r\n                print(ent.text)\r\n                print(ent.label_)\r\n        # return [{&#39;text&#39;: ent.text, &#39;start&#39;: ent.start_char, &#39;end&#39;: ent.end_char, &#39;label&#39;: ent.label_}\r\n        #         for ent in doc.ents]\r\n    \r\n    \r\n    if __name__ == &#39;__main__&#39;:\r\n    \r\n        try:\r\n            es = Elasticsearch([{&#39;host&#39;: &#39;localhost&#39;, &#39;port&#39;: 9200}]).ping()\r\n        except ConnectionRefusedError:\r\n            print (&#39;Connection Errrorrr!&#39;)\r\n    \r\n        if es:\r\n            es = Elasticsearch([{&#39;host&#39;: &#39;localhost&#39;, &#39;port&#39;: 9200}])\r\n            r = requests.get(&#39;http://localhost:9200&#39;)\r\n            es.indices.delete(index=&#39;test_twitter&#39;, ignore=[400, 404])\r\n            connected = True\r\n            print(&#39;Connected to ES..&#39;)\r\n        else:\r\n            print(&#39;Not connected to ES...&#39;)\r\n    \r\n        import waitress\r\n        app = hug.API(__name__)\r\n        app.http.add_middleware(CORSMiddleware(app))\r\n        waitress.serve(__hug_wsgi__, port=8000)\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49796254/test-elasticsearch-connection-in-python",
+            "title": "Test elasticsearch connection in Python",
+            "body": "<p>I am running this code in Python:</p>\n\n<pre><code>es = Elasticsearch([{'host': 'localhost', 'port': 9200}]).ping()\nprint (es)\n\nif es:\n    r = requests.get('http://localhost:9200')\n    es.indices.delete(index='test_twitter', ignore=[400, 404])\n    connected = True\n    print('Connected to ES..')\nelse:\n    print('Not connected to ES...')\n</code></pre>\n\n<p>When Elasticsearch is running, there is no problem with ping. The problem is when ES is not running, ping() is returning FALSE after a Traceback error is printed as below:</p>\n\n<pre><code>        HEAD http://localhost:9200/ [status:N/A request:2.007s]\nTraceback (most recent call last):\nConnectionRefusedError: [WinError 10061] No connection could be made because the target machine actively refused it\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\nurllib3.exceptions.NewConnectionError: &lt;urllib3.connection.HTTPConnection object at 0x000001E2ECBD45F8&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\nHEAD http://localhost:9200/ [status:N/A request:2.003s]\nTraceback (most recent call last):\nConnectionRefusedError: [WinError 10061] No connection could be made because the target machine actively refused it\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\nurllib3.exceptions.NewConnectionError: &lt;urllib3.connection.HTTPConnection object at 0x000001E2ECBD44E0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\nHEAD http://localhost:9200/ [status:N/A request:2.016s]\nTraceback (most recent call last):\nConnectionRefusedError: [WinError 10061] No connection could be made because the target machine actively refused it\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\nurllib3.exceptions.NewConnectionError: &lt;urllib3.connection.HTTPConnection object at 0x000001E2ECBD4668&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\nFalse\nNot connected to ES...\n</code></pre>\n\n<p>Even if I try-except it like below, it does not work:</p>\n\n<pre><code>from elasticsearch.exceptions import ConnectionError\ntry:\n    es = Elasticsearch([{'host': 'localhost', 'port': 9200}]).ping()\nexcept ConnectionRefusedError:\n    print ('Connection Errrorrr!')\n\nprint (es)\n</code></pre>\n\n<p>I want ping() to return false but without printing the error log, and idea how that can be done?</p>\n\n<p>The full is code is below:</p>\n\n<pre><code>from __future__ import unicode_literals\n\nimport hug\nfrom hug_middleware_cors import CORSMiddleware\nimport spacy\nfrom elasticsearch import Elasticsearch\nimport json\nimport requests\nimport sys\nsys.tracebacklimit = 0\n\nMODELS = {\n    'en_core_web_sm': spacy.load('en_core_web_sm'),\n    # 'de_core_news_sm': spacy.load('de_core_news_sm'),\n    # 'es_core_news_sm': spacy.load('es_core_news_sm'),\n    # 'pt_core_news_sm': spacy.load('pt_core_news_sm'),\n    # 'fr_core_news_sm': spacy.load('fr_core_news_sm'),\n    # 'it_core_news_sm': spacy.load('it_core_news_sm'),\n    # 'nl_core_news_sm': spacy.load('nl_core_news_sm')\n}\n\n\ndef get_model_desc(nlp, model_name):\n    \"\"\"Get human-readable model name, language name and version.\"\"\"\n    lang_cls = spacy.util.get_lang_class(nlp.lang)\n    lang_name = lang_cls.__name__\n    model_version = nlp.meta['version']\n    return '{} - {} (v{})'.format(lang_name, model_name, model_version)\n\n\n@hug.get('/models')\ndef models():\n    return {name: get_model_desc(nlp, name) for name, nlp in MODELS.items()}\n\n\n@hug.post('/dep')\ndef dep(text: str, model: str, collapse_punctuation: bool=False,\n        collapse_phrases: bool=False):\n    \"\"\"Get dependencies for displaCy visualizer.\"\"\"\n    nlp = MODELS[model]\n    doc = nlp(text)\n    if collapse_phrases:\n        for np in list(doc.noun_chunks):\n            np.merge(tag=np.root.tag_, lemma=np.root.lemma_,\n                     ent_type=np.root.ent_type_)\n    options = {'collapse_punct': collapse_punctuation}\n    return spacy.displacy.parse_deps(doc, options)\n\n\n@hug.post('/ent')\ndef ent(text: str, model: str):\n    \"\"\"Get entities for displaCy ENT visualizer.\"\"\"\n    nlp = MODELS[model]\n    doc = nlp(text)\n\n    for ent in doc.ents:\n        if connected:\n            es.index(index='test_twitter', doc_type='words', body={'tag': ent.text})\n        else:\n            print('text :')\n            print(ent.text)\n            print(ent.label_)\n    # return [{'text': ent.text, 'start': ent.start_char, 'end': ent.end_char, 'label': ent.label_}\n    #         for ent in doc.ents]\n\n\nif __name__ == '__main__':\n\n    try:\n        es = Elasticsearch([{'host': 'localhost', 'port': 9200}]).ping()\n    except ConnectionRefusedError:\n        print ('Connection Errrorrr!')\n\n    if es:\n        es = Elasticsearch([{'host': 'localhost', 'port': 9200}])\n        r = requests.get('http://localhost:9200')\n        es.indices.delete(index='test_twitter', ignore=[400, 404])\n        connected = True\n        print('Connected to ES..')\n    else:\n        print('Not connected to ES...')\n\n    import waitress\n    app = hug.API(__name__)\n    app.http.add_middleware(CORSMiddleware(app))\n    waitress.serve(__hug_wsgi__, port=8000)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "post"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9636425,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/bb5934286ad3ed340d56f05264a4fbf5?s=128&d=identicon&r=PG&f=1",
+                "display_name": "MahaloMaDude",
+                "link": "https://stackoverflow.com/users/9636425/mahalomadude"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1523539523,
+            "creation_date": 1523539523,
+            "question_id": 49797795,
+            "body_markdown": "I know this is not a programming question, but idk where else to ask. For like 2 weeks now, both my ctrl key on my laptop stopped working. Some times they work, but most of ths time they don&#39;t. \r\n- I&#39;ve tried uninstalling the driver\r\n- updating windows\r\n- reinstall OS\r\n- update BIOS\r\n Idk whats happening. Why both of them are dead, and why they start working some times.\r\nAny advice?\r\nThanks.",
+            "link": "https://stackoverflow.com/questions/49797795/both-crtl-key-not-working",
+            "title": "Both crtl key not working",
+            "body": "<p>I know this is not a programming question, but idk where else to ask. For like 2 weeks now, both my ctrl key on my laptop stopped working. Some times they work, but most of ths time they don't. \n- I've tried uninstalling the driver\n- updating windows\n- reinstall OS\n- update BIOS\n Idk whats happening. Why both of them are dead, and why they start working some times.\nAny advice?\nThanks.</p>\n"
+        },
+        {
+            "tags": [
+                "svn"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9636349,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5160116e285dec05574c35a76df595f2?s=128&d=identicon&r=PG&f=1",
+                "display_name": "ApplArch",
+                "link": "https://stackoverflow.com/users/9636349/applarch"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523539519,
+            "creation_date": 1523538618,
+            "question_id": 49797472,
+            "body_markdown": "Is there any delay between when the svn copy finishes and when you can do an svn checkout of that new branch ? We are dealing with such an issue. It seems that when we run a script to create a new branch and check it out immediately after the svn copy finishes, the checkout is not pulling all of the files, which leads me to believe that the svn repository is not fully updated until some time after the svn copy command is completed.\r\n\r\ndoes anyone know anything about this ?",
+            "link": "https://stackoverflow.com/questions/49797472/is-there-a-delay-in-doing-svn-checkout-after-svn-copy",
+            "title": "Is there a delay in doing svn checkout after svn copy",
+            "body": "<p>Is there any delay between when the svn copy finishes and when you can do an svn checkout of that new branch ? We are dealing with such an issue. It seems that when we run a script to create a new branch and check it out immediately after the svn copy finishes, the checkout is not pulling all of the files, which leads me to believe that the svn repository is not fully updated until some time after the svn copy command is completed.</p>\n\n<p>does anyone know anything about this ?</p>\n"
+        },
+        {
+            "tags": [
+                "performance",
+                "ssl",
+                "jmeter",
+                "cloud",
+                "keystore"
+            ],
+            "owner": {
+                "reputation": 156,
+                "user_id": 643794,
+                "user_type": "registered",
+                "accept_rate": 4,
+                "profile_image": "https://www.gravatar.com/avatar/623fdec89f36865d6aa2773999c06a7a?s=128&d=identicon&r=PG",
+                "display_name": "Jai",
+                "link": "https://stackoverflow.com/users/643794/jai"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539515,
+            "creation_date": 1523539515,
+            "question_id": 49797793,
+            "body_markdown": "I am setting up JMeter 4.0 for load testing in the cloud (GCE). I am creating VM images for the master and slave with the only difference being the slaves run jmeter-server on boot. I ran `bin/create-rmi-keystore.sh` per http://jmeter.apache.org/usermanual/remote-test.html#setup_ssl and ensured the .jks file is on the master/client and all the slaves. \r\nNow, when I create multiple slave instances (new slave IPs), the load test fails due to SSL errors - \r\n\r\n`Configuring remote engine: 10.150.0.11\r\nerror during JRMP connection establishment; nested exception is:\r\n\tjavax.net.ssl.SSLHandshakeException: sun.security.validator.ValidatorException: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target\r\nFailed to configure 10.150.0.11`\r\n\r\nCan I avoid having to manually regenerate the keystore every time I plan a test run? ",
+            "link": "https://stackoverflow.com/questions/49797793/jmeter-4-remote-testing-in-cloud-with-ssl-keystore",
+            "title": "JMeter 4 remote testing in cloud with SSL keystore",
+            "body": "<p>I am setting up JMeter 4.0 for load testing in the cloud (GCE). I am creating VM images for the master and slave with the only difference being the slaves run jmeter-server on boot. I ran <code>bin/create-rmi-keystore.sh</code> per <a href=\"http://jmeter.apache.org/usermanual/remote-test.html#setup_ssl\" rel=\"nofollow noreferrer\">http://jmeter.apache.org/usermanual/remote-test.html#setup_ssl</a> and ensured the .jks file is on the master/client and all the slaves. \nNow, when I create multiple slave instances (new slave IPs), the load test fails due to SSL errors - </p>\n\n<p><code>Configuring remote engine: 10.150.0.11\nerror during JRMP connection establishment; nested exception is:\n    javax.net.ssl.SSLHandshakeException: sun.security.validator.ValidatorException: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target\nFailed to configure 10.150.0.11</code></p>\n\n<p>Can I avoid having to manually regenerate the keystore every time I plan a test run? </p>\n"
+        },
+        {
+            "tags": [
+                "google-tag-manager"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 7615127,
+                "user_type": "registered",
+                "accept_rate": 25,
+                "profile_image": "https://www.gravatar.com/avatar/1d0abf42d6e8f74fcf8dfd3506fb9ee0?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Venkat",
+                "link": "https://stackoverflow.com/users/7615127/venkat"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523539515,
+            "creation_date": 1523377317,
+            "question_id": 49758543,
+            "body_markdown": "I know the method to extract any text from the page into GTM using DOM element. However, how can we pull img src (attribute) value onto GTM using DOM element?\r\n\r\n    &lt;div class=&quot;original&quot;&gt;\r\n    &lt;img itemprop=&quot;image&quot; ng-src=&quot;https://www.123456.com/img/uploads/1/265/545265.jpg?type=product&quot; src=&quot;https://www.123456.com/img/uploads/1/265/545265.jpg?type=product&quot;&gt;\r\n    &lt;/div&gt;\r\n\r\nI&#39;m trying div.original img, but it doesn&#39;t work.[GTM example][1].\r\n\r\nExpected result: The image src value must be extracted into GTM. Any help is appreciated.\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/xWd5p.jpg",
+            "link": "https://stackoverflow.com/questions/49758543/how-to-scrape-img-src-into-gtm",
+            "title": "How to scrape img src into GTM",
+            "body": "<p>I know the method to extract any text from the page into GTM using DOM element. However, how can we pull img src (attribute) value onto GTM using DOM element?</p>\n\n<pre><code>&lt;div class=\"original\"&gt;\n&lt;img itemprop=\"image\" ng-src=\"https://www.123456.com/img/uploads/1/265/545265.jpg?type=product\" src=\"https://www.123456.com/img/uploads/1/265/545265.jpg?type=product\"&gt;\n&lt;/div&gt;\n</code></pre>\n\n<p>I'm trying div.original img, but it doesn't work.<a href=\"https://i.stack.imgur.com/xWd5p.jpg\" rel=\"nofollow noreferrer\">GTM example</a>.</p>\n\n<p>Expected result: The image src value must be extracted into GTM. Any help is appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "image",
+                "https",
+                "download"
+            ],
+            "owner": {
+                "reputation": 146,
+                "user_id": 5740428,
+                "user_type": "registered",
+                "accept_rate": 64,
+                "profile_image": "https://www.gravatar.com/avatar/955c329acc7388992f247b0b64c4e270?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Jan Schultke",
+                "link": "https://stackoverflow.com/users/5740428/jan-schultke"
+            },
+            "is_answered": true,
+            "view_count": 1920,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1523539514,
+            "creation_date": 1492484669,
+            "last_edit_date": 1492494058,
+            "question_id": 43462896,
+            "body_markdown": "I&#39;ve tried to make a short mass-downloader script in Python to store lists of images locally.\r\n\r\nIt works perfectly fine for `http` image urls, however fails to download any image with an `https` url. The lines of code in question are:\r\n\r\n    import urllib.request\r\n    urllib.request.urlretrieve(url, filename)\r\n\r\nFor instance, \r\n`https://cdn.discordapp.com/attachments/299398003486097412/303580387786096641/FB_IMG_1490534565948.jpg` results in `HTTP Error 403: Forbidden`, as well as any other `https` image.\r\n\r\nThis leaves me with two questions:\r\n\r\n 1. How am I able to download such an image using Python?\r\n 2. Why do images even have `https` urls if they are basically just files?\r\n\r\n###EDIT:\r\nHere&#39;s the stack trace:\r\n\r\n    Traceback (most recent call last):\r\n      File &quot;img_down.py&quot;, line 52, in &lt;module&gt;\r\n        main()\r\n      File &quot;img_down.py&quot;, line 38, in main\r\n        save_img(d, l)\r\n      File &quot;img_down.py&quot;, line 49, in save_img\r\n        stream = read_img(url)\r\n      File &quot;img_down.py&quot;, line 42, in read_img\r\n        with urllib.request.urlopen(url) as response:\r\n      File &quot;D:\\Users\\Jan\\AppData\\Local\\Programs\\Python\\Python36-32\\lib\\urllib\\request.py&quot;, line 223, in urlopen\r\n        return opener.open(url, data, timeout)\r\n      File &quot;D:\\Users\\Jan\\AppData\\Local\\Programs\\Python\\Python36-32\\lib\\urllib\\request.py&quot;, line 532, in open\r\n        response = meth(req, response)\r\n      File &quot;D:\\Users\\Jan\\AppData\\Local\\Programs\\Python\\Python36-32\\lib\\urllib\\request.py&quot;, line 642, in http_response\r\n        &#39;http&#39;, request, response, code, msg, hdrs)\r\n      File &quot;D:\\Users\\Jan\\AppData\\Local\\Programs\\Python\\Python36-32\\lib\\urllib\\request.py&quot;, line 570, in error\r\n        return self._call_chain(*args)\r\n      File &quot;D:\\Users\\Jan\\AppData\\Local\\Programs\\Python\\Python36-32\\lib\\urllib\\request.py&quot;, line 504, in _call_chain\r\n        result = func(*args)\r\n      File &quot;D:\\Users\\Jan\\AppData\\Local\\Programs\\Python\\Python36-32\\lib\\urllib\\request.py&quot;, line 650, in http_error_default\r\n        raise HTTPError(req.full_url, code, msg, hdrs, fp)\r\n    urllib.error.HTTPError: HTTP Error 403: Forbidden",
+            "link": "https://stackoverflow.com/questions/43462896/how-do-i-download-images-with-an-https-url-in-python-3",
+            "title": "How do I download images with an https URL in Python 3?",
+            "body": "<p>I've tried to make a short mass-downloader script in Python to store lists of images locally.</p>\n\n<p>It works perfectly fine for <code>http</code> image urls, however fails to download any image with an <code>https</code> url. The lines of code in question are:</p>\n\n<pre><code>import urllib.request\nurllib.request.urlretrieve(url, filename)\n</code></pre>\n\n<p>For instance, \n<code>https://cdn.discordapp.com/attachments/299398003486097412/303580387786096641/FB_IMG_1490534565948.jpg</code> results in <code>HTTP Error 403: Forbidden</code>, as well as any other <code>https</code> image.</p>\n\n<p>This leaves me with two questions:</p>\n\n<ol>\n<li>How am I able to download such an image using Python?</li>\n<li>Why do images even have <code>https</code> urls if they are basically just files?</li>\n</ol>\n\n<h3>EDIT:</h3>\n\n<p>Here's the stack trace:</p>\n\n<pre><code>Traceback (most recent call last):\n  File \"img_down.py\", line 52, in &lt;module&gt;\n    main()\n  File \"img_down.py\", line 38, in main\n    save_img(d, l)\n  File \"img_down.py\", line 49, in save_img\n    stream = read_img(url)\n  File \"img_down.py\", line 42, in read_img\n    with urllib.request.urlopen(url) as response:\n  File \"D:\\Users\\Jan\\AppData\\Local\\Programs\\Python\\Python36-32\\lib\\urllib\\request.py\", line 223, in urlopen\n    return opener.open(url, data, timeout)\n  File \"D:\\Users\\Jan\\AppData\\Local\\Programs\\Python\\Python36-32\\lib\\urllib\\request.py\", line 532, in open\n    response = meth(req, response)\n  File \"D:\\Users\\Jan\\AppData\\Local\\Programs\\Python\\Python36-32\\lib\\urllib\\request.py\", line 642, in http_response\n    'http', request, response, code, msg, hdrs)\n  File \"D:\\Users\\Jan\\AppData\\Local\\Programs\\Python\\Python36-32\\lib\\urllib\\request.py\", line 570, in error\n    return self._call_chain(*args)\n  File \"D:\\Users\\Jan\\AppData\\Local\\Programs\\Python\\Python36-32\\lib\\urllib\\request.py\", line 504, in _call_chain\n    result = func(*args)\n  File \"D:\\Users\\Jan\\AppData\\Local\\Programs\\Python\\Python36-32\\lib\\urllib\\request.py\", line 650, in http_error_default\n    raise HTTPError(req.full_url, code, msg, hdrs, fp)\nurllib.error.HTTPError: HTTP Error 403: Forbidden\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "mysql"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9602109,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/de4beb76c5bf9d2cfe0751f4d1931e56?s=128&d=identicon&r=PG&f=1",
+                "display_name": "JBarnard",
+                "link": "https://stackoverflow.com/users/9602109/jbarnard"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539510,
+            "creation_date": 1523539350,
+            "last_edit_date": 1523539510,
+            "question_id": 49797736,
+            "body_markdown": "I Have a table called &#39;Towns&#39; as seen below which is set up to fall within a 5x5 grid. Making the max X/Y input of 5 and the lowest of -5.  I want to run a query to find out which sections within the 5x5 have no data.  Any ideas? Thanks\r\n\r\nEXAMPLE ROW\r\n\r\n    MAP ID - 1 .\r\n    X COORD  -2 .\r\n    Y COORD  3 .\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49797736/x-y-coord-query",
+            "title": "X Y Coord Query",
+            "body": "<p>I Have a table called 'Towns' as seen below which is set up to fall within a 5x5 grid. Making the max X/Y input of 5 and the lowest of -5.  I want to run a query to find out which sections within the 5x5 have no data.  Any ideas? Thanks</p>\n\n<p>EXAMPLE ROW</p>\n\n<pre><code>MAP ID - 1 .\nX COORD  -2 .\nY COORD  3 .\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net-identity",
+                "asp.net-core-2.0"
+            ],
+            "owner": {
+                "reputation": 84,
+                "user_id": 2081568,
+                "user_type": "registered",
+                "accept_rate": 74,
+                "profile_image": "https://www.gravatar.com/avatar/45ec606478dfa3f66a1f0aa2b73a8da8?s=128&d=identicon&r=PG",
+                "display_name": "Hecatonchires",
+                "link": "https://stackoverflow.com/users/2081568/hecatonchires"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523539506,
+            "creation_date": 1523511788,
+            "question_id": 49788816,
+            "body_markdown": "Trying to implement Identity in ASP.NET Core 2.0.  Having many problems getting my head around this.\r\n\r\n**Startup.cs**\r\n\r\n    public class Startup\r\n    {\r\n        public Startup(IConfiguration configuration)\r\n        {\r\n            Configuration = configuration;\r\n        }\r\n\r\n        public IConfiguration Configuration { get; }\r\n\r\n        // This method gets called by the runtime. Use this method to add services to the container.\r\n        public void ConfigureServices(IServiceCollection services)\r\n        {\r\n            services.AddDbContext&lt;ApplicationDbContext&gt;(options =&gt;\r\n                options.UseSqlServer(Configuration.GetConnectionString(&quot;Ctrack6_Custom&quot;))\r\n            );\r\n\r\n\r\n            services.AddIdentity&lt;ApplicationUser, ApplicationRole&gt;()\r\n                .AddEntityFrameworkStores&lt;ApplicationDbContext&gt;()\r\n                .AddDefaultTokenProviders();\r\n\r\n    etc...\r\n\r\n**ApplicationUser.cs** Using Guid for key.  Also set in Role, etc\r\n\r\n    // Add profile data for application users by adding properties to the ApplicationUser class\r\n    public class ApplicationUser : IdentityUser&lt;Guid&gt;\r\n    {\r\n        [MaxLength(50)]\r\n        public string FirstName { get; set; }\r\n\r\n        [MaxLength(50)]\r\n        public string LastName { get; set; }\r\n\r\n        [MaxLength(5)]\r\n        public string OrgCode { get; set; }\r\n\r\n        public ApplicationUser() : base()\r\n        {\r\n\r\n        }\r\n\r\n    }\r\n\r\n**ApplicationDbContext.cs** Error is thrown in this file on the class definition.  ApplicationDbContext is throwing this error:\r\n\r\n&gt; The type &#39;App.Identity.ApplicationUser&#39; cannot be used as type parameter &#39;TUser&#39; in the generic type or method &#39;IdentityDbContext&lt;TUser&gt;&#39;. There is no implicit reference conversion from &#39;App.Identity.ApplicationUser&#39; to &#39;Microsoft.AspNetCore.Identity.IdentityUser&#39;.\t\r\n\r\n\r\n    public class ApplicationDbContext : IdentityDbContext&lt;ApplicationUser&gt;\r\n    {\r\n        public ApplicationDbContext(DbContextOptions&lt;ApplicationDbContext&gt; options)\r\n            : base(options)\r\n        {\r\n        }\r\n\r\n        protected override void OnModelCreating(ModelBuilder builder)\r\n        {\r\n            base.OnModelCreating(builder);\r\n            // Customize the ASP.NET Identity model and override the defaults if needed.\r\n            // For example, you can rename the ASP.NET Identity table names and more.\r\n            // Add your customizations after calling base.OnModelCreating(builder);\r\n            builder.Entity&lt;blah&gt;()\r\n            .HasKey(c =&gt; new { fields, for, key });\r\n\r\n        }\r\n\r\n        public DbSet&lt;etc&gt; Etcs {get; set; }\r\n\r\n    }",
+            "link": "https://stackoverflow.com/questions/49788816/the-type-applicationuser-cannot-be-used-as-type-parameter-tuser-in-the-generic",
+            "title": "The type ApplicationUser cannot be used as type parameter &#39;TUser&#39; in the generic type or method &#39;IdentityDbContext&lt;TUser&gt;&#39;",
+            "body": "<p>Trying to implement Identity in ASP.NET Core 2.0.  Having many problems getting my head around this.</p>\n\n<p><strong>Startup.cs</strong></p>\n\n<pre><code>public class Startup\n{\n    public Startup(IConfiguration configuration)\n    {\n        Configuration = configuration;\n    }\n\n    public IConfiguration Configuration { get; }\n\n    // This method gets called by the runtime. Use this method to add services to the container.\n    public void ConfigureServices(IServiceCollection services)\n    {\n        services.AddDbContext&lt;ApplicationDbContext&gt;(options =&gt;\n            options.UseSqlServer(Configuration.GetConnectionString(\"Ctrack6_Custom\"))\n        );\n\n\n        services.AddIdentity&lt;ApplicationUser, ApplicationRole&gt;()\n            .AddEntityFrameworkStores&lt;ApplicationDbContext&gt;()\n            .AddDefaultTokenProviders();\n\netc...\n</code></pre>\n\n<p><strong>ApplicationUser.cs</strong> Using Guid for key.  Also set in Role, etc</p>\n\n<pre><code>// Add profile data for application users by adding properties to the ApplicationUser class\npublic class ApplicationUser : IdentityUser&lt;Guid&gt;\n{\n    [MaxLength(50)]\n    public string FirstName { get; set; }\n\n    [MaxLength(50)]\n    public string LastName { get; set; }\n\n    [MaxLength(5)]\n    public string OrgCode { get; set; }\n\n    public ApplicationUser() : base()\n    {\n\n    }\n\n}\n</code></pre>\n\n<p><strong>ApplicationDbContext.cs</strong> Error is thrown in this file on the class definition.  ApplicationDbContext is throwing this error:</p>\n\n<blockquote>\n  <p>The type 'App.Identity.ApplicationUser' cannot be used as type parameter 'TUser' in the generic type or method 'IdentityDbContext'. There is no implicit reference conversion from 'App.Identity.ApplicationUser' to 'Microsoft.AspNetCore.Identity.IdentityUser'. </p>\n</blockquote>\n\n<pre><code>public class ApplicationDbContext : IdentityDbContext&lt;ApplicationUser&gt;\n{\n    public ApplicationDbContext(DbContextOptions&lt;ApplicationDbContext&gt; options)\n        : base(options)\n    {\n    }\n\n    protected override void OnModelCreating(ModelBuilder builder)\n    {\n        base.OnModelCreating(builder);\n        // Customize the ASP.NET Identity model and override the defaults if needed.\n        // For example, you can rename the ASP.NET Identity table names and more.\n        // Add your customizations after calling base.OnModelCreating(builder);\n        builder.Entity&lt;blah&gt;()\n        .HasKey(c =&gt; new { fields, for, key });\n\n    }\n\n    public DbSet&lt;etc&gt; Etcs {get; set; }\n\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "nancy"
+            ],
+            "owner": {
+                "reputation": 902,
+                "user_id": 352804,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a5743ddfde6bad4df736f74644fe87e9?s=128&d=identicon&r=PG",
+                "display_name": "Gingemonster",
+                "link": "https://stackoverflow.com/users/352804/gingemonster"
+            },
+            "is_answered": false,
+            "view_count": 5,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523539504,
+            "creation_date": 1523537322,
+            "question_id": 49797020,
+            "body_markdown": "I have written a custom IBodyDeserializer for soap messages so that I can remove the soap envelope before model binding.\r\n\r\nWhat I cannot figure out is how to make it be used instead of the XmlBodyDeserializer (which it will inherit from)?\r\n\r\nI have tried things like this in my ApplicationStartup method in bootstrapper:\r\n\r\ncontainer.Register&lt;XmlBodyDeserializer&gt;(new SoapBodyDeserializer());\r\n\r\nBut it still uses the XmlBodyDeserializer and ignores by soap one. ",
+            "link": "https://stackoverflow.com/questions/49797020/custom-ibodydeserializer-for-soap-how-to-i-get-nancy-to-use-it",
+            "title": "custom IBodyDeserializer for soap, how to I get Nancy to use it",
+            "body": "<p>I have written a custom IBodyDeserializer for soap messages so that I can remove the soap envelope before model binding.</p>\n\n<p>What I cannot figure out is how to make it be used instead of the XmlBodyDeserializer (which it will inherit from)?</p>\n\n<p>I have tried things like this in my ApplicationStartup method in bootstrapper:</p>\n\n<p>container.Register(new SoapBodyDeserializer());</p>\n\n<p>But it still uses the XmlBodyDeserializer and ignores by soap one. </p>\n"
+        },
+        {
+            "tags": [
+                "sass",
+                "environment-variables"
+            ],
+            "owner": {
+                "reputation": 83,
+                "user_id": 2934896,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/6b096c2b67fec9accfece16dfe54b241?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Mike Someone",
+                "link": "https://stackoverflow.com/users/2934896/mike-someone"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539494,
+            "creation_date": 1523539494,
+            "question_id": 49797784,
+            "body_markdown": "I have a `styles.scss` file.\r\n\r\nIn it, i have the following definition which fails to compile down to css:\r\n\r\n    .modal-dialog {\r\n      margin-top: max(6%, env(safe-area-inset-top));\r\n    }\r\n\r\nI get the following error:\r\n\r\n    &quot;env(safe-area-inset-top)&quot; is not a number for &quot;max&quot;\r\n\r\nHow do i write this correctly?",
+            "link": "https://stackoverflow.com/questions/49797784/how-do-i-include-the-env-method-inside-of-a-min-or-max-function-in-scss",
+            "title": "How do i include the env() method inside of a min or max function in SCSS?",
+            "body": "<p>I have a <code>styles.scss</code> file.</p>\n\n<p>In it, i have the following definition which fails to compile down to css:</p>\n\n<pre><code>.modal-dialog {\n  margin-top: max(6%, env(safe-area-inset-top));\n}\n</code></pre>\n\n<p>I get the following error:</p>\n\n<pre><code>\"env(safe-area-inset-top)\" is not a number for \"max\"\n</code></pre>\n\n<p>How do i write this correctly?</p>\n"
+        },
+        {
+            "tags": [
+                "matlab",
+                "image-processing",
+                "frame"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 8771491,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/63a3c98e12ca0e296e3afc1d52bf0dea?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Ying Wang",
+                "link": "https://stackoverflow.com/users/8771491/ying-wang"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1523539490,
+            "creation_date": 1523536480,
+            "last_edit_date": 1523539490,
+            "question_id": 49796712,
+            "body_markdown": "I want to read frames from a video and save each frame. But the readFrame failed to read the frames from the video. Somebody could help? Why does it not work?\r\n\r\n    clear all\r\n    close all\r\n    clc\r\n    tic\r\n    Video1 = VideoReader(&#39;D:\\ywa\\Matlab\\experiment_3\\b8_a4\\hell\\b8_a4_hell.mp4&#39;);\r\n    k = 1;\r\n    % frames = read(Video1,[5 10]);\r\n    while hasFrame(Video1)\r\n        tmp = readFrame(Video1);\r\n         frames(:,:,:,k) = tmp;\r\n        k = k+1;\r\n    end\r\nThere are 70 frames in the video and the resolution is 3840*2160.\r\nMany thanks. It seems that the while-loop dose not run in the code.",
+            "link": "https://stackoverflow.com/questions/49796712/readframe-failed-to-read-frames-from-video-in-matlab",
+            "title": "readFrame failed to read Frames from video in Matlab",
+            "body": "<p>I want to read frames from a video and save each frame. But the readFrame failed to read the frames from the video. Somebody could help? Why does it not work?</p>\n\n<pre><code>clear all\nclose all\nclc\ntic\nVideo1 = VideoReader('D:\\ywa\\Matlab\\experiment_3\\b8_a4\\hell\\b8_a4_hell.mp4');\nk = 1;\n% frames = read(Video1,[5 10]);\nwhile hasFrame(Video1)\n    tmp = readFrame(Video1);\n     frames(:,:,:,k) = tmp;\n    k = k+1;\nend\n</code></pre>\n\n<p>There are 70 frames in the video and the resolution is 3840*2160.\nMany thanks. It seems that the while-loop dose not run in the code.</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "authentication",
+                "login",
+                "passwords",
+                "username"
+            ],
+            "owner": {
+                "reputation": 188,
+                "user_id": 4432311,
+                "user_type": "registered",
+                "accept_rate": 86,
+                "profile_image": "https://i.stack.imgur.com/uTauH.png?s=128&g=1",
+                "display_name": "Alessandro",
+                "link": "https://stackoverflow.com/users/4432311/alessandro"
+            },
+            "is_answered": false,
+            "view_count": 44,
+            "answer_count": 0,
+            "score": -5,
+            "last_activity_date": 1523539488,
+            "creation_date": 1523035875,
+            "last_edit_date": 1523539488,
+            "question_id": 49698192,
+            "body_markdown": "I have a question regarding password_verify (and password_hash) that in my script doesn&#39;t work as expected... I created a login script using password_verify and password_hash. The login script works but when I try to access to protected files area (welcome.php and welcomeback.php) something goes wrong... I tried to debug my application but I cannot solve my issue. I spent several hours to debug my application and I found that the problem is in the authentication way used in welcome.php and welcomeback.php. Where is the error?\r\n\r\ndb.php\r\n\r\n    &lt;?php\r\n      $user_login = array(\r\n      &#39;gabriele&#39; =&gt;    // User 1\r\n      &#39;segreto1&#39;,      // Pass 1\r\n      &#39;alessandro&#39; =&gt;  // User 2\r\n      &#39;segreto2&#39;,      // Pass 2\r\n      &#39;marcello&#39; =&gt;    // User 3\r\n      &#39;segreto3&#39;);     // Pass 3\r\n    ?&gt;\r\n    \r\nform.php\r\n\r\n    &lt;?php\r\n      include_once(&quot;secure.php&quot;);\r\n      function check_protocol_login() {\r\n        $isSecure = false;\r\n        if (isset($_SERVER[&#39;HTTPS&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTPS&#39;]) == &#39;on&#39;) {\r\n          $isSecure = true;\r\n        } elseif (!empty($_SERVER[&#39;HTTP_X_FORWARDED_PROTO&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTP_X_FORWARDED_PROTO&#39;]) == &#39;https&#39; || !empty($_SERVER[&#39;HTTP_X_FORWARDED_SSL&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTP_X_FORWARDED_SSL&#39;]) == &#39;on&#39;) {\r\n          $isSecure = true;\r\n        }\r\n        return $isSecure;\r\n      }\r\n      $protocol = check_protocol_login() ? &#39;https://&#39; : &#39;http://&#39;;\r\n      $host = $protocol . $_SERVER[&#39;HTTP_HOST&#39;];\r\n    ?&gt;\r\n    &lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.01 Transitional//EN&quot; &quot;http://www.w3.org/TR/html4/loose.dtd&quot;&gt;\r\n    \r\n    &lt;html&gt;\r\n    \r\n    &lt;head&gt;\r\n      &lt;meta http-equiv=&quot;content-type&quot; content=&quot;text/html;charset=iso-8859-1&quot;&gt;\r\n      &lt;meta name=&quot;robots&quot; content=&quot;noindex, nofollow&quot;&gt;\r\n      &lt;title&gt;Login::Area&lt;/title&gt;\r\n      &lt;link href=&quot;../css/style.css&quot; rel=&quot;stylesheet&quot; type=&quot;text/css&quot;&gt;\r\n    &lt;/head&gt;\r\n    \r\n    &lt;body&gt;\r\n    \r\n    &lt;div id=&quot;container&quot;&gt;\r\n    &lt;div id=&quot;header&quot;&gt;&lt;div id=&quot;header_left&quot;&gt;&lt;/div&gt;\r\n    &lt;div id=&quot;header_main&quot;&gt;Pannello::Login&lt;/div&gt;&lt;div id=&quot;header_right&quot;&gt;&lt;/div&gt;&lt;/div&gt;\r\n    &lt;div id=&quot;content&quot;&gt;\r\n    &lt;form action=&quot;login.php&quot; method=&quot;post&quot;&gt;\r\n    &lt;div style=&quot;text-align: center&quot;&gt;\r\n    &lt;span class=&quot;error&quot;&gt;&lt;?php echo $error; ?&gt;&lt;/span&gt;&lt;br&gt;&lt;br&gt;\r\n    &lt;label for=&quot;user&quot;&gt;Username:&lt;/label&gt;&amp;nbsp;&lt;input name=&quot;user&quot; id=&quot;user&quot; type=&quot;text&quot; size=&quot;20&quot;&gt;&lt;br&gt;&lt;br&gt;\r\n    &lt;label for=&quot;pass&quot;&gt;Password:&lt;/label&gt;&amp;nbsp;&lt;input name=&quot;pass&quot; id=&quot;pass&quot; type=&quot;password&quot; size=&quot;20&quot;&gt;&lt;br&gt;&lt;br&gt;\r\n    &lt;label for=&quot;question&quot;&gt;Question:&lt;/label&gt;&amp;nbsp;&lt;?php echo (isset($num1) ? htmlentities($num1, ENT_QUOTES) : &#39;0&#39;) . &quot;&amp;nbsp;+&amp;nbsp;&quot; . (isset($num2) ? htmlentities($num2, ENT_QUOTES) : &#39;0&#39;) . &quot;&amp;nbsp;=&quot;; ?&gt;&amp;nbsp;&lt;input style=&quot;width: 40px&quot; id=&quot;question&quot; name=&quot;question&quot; type=&quot;text&quot; size=&quot;3&quot; title=&quot;if you are human solve this question&quot;&gt;&lt;br&gt;\r\n    &lt;label&gt;&lt;input type=&quot;submit&quot; name=&quot;login&quot; class=&quot;sbtn&quot; value=&quot;Login&quot;&lt;?php if ((isset($_COOKIE[&#39;login_attempts_delay_1&#39;])) || (!empty($_COOKIE[&#39;login_attempts_delay_1&#39;]))) { echo &quot; disabled=\\&quot;disabled\\&quot;&quot;; } ?&gt;&gt;&lt;/label&gt;\r\n    &lt;/div&gt;\r\n    &lt;/form&gt;\r\n    &lt;/div&gt;\r\n    &lt;div id=&quot;footer&quot;&gt;&lt;a href=&quot;&lt;?php echo $host; ?&gt;&quot; target=&quot;_self&quot;&gt;HomePage&lt;/a&gt;&lt;/div&gt;\r\n    &lt;/div&gt;\r\n    \r\n    &lt;/body&gt;\r\n    \r\n    &lt;/html&gt;\r\n\r\nsecure.php\r\n\r\n    &lt;?php\r\n      if (session_status() == PHP_SESSION_NONE) {\r\n        session_start();\r\n      }\r\n      function check_protocol_secure() {\r\n        $isSecure = false;\r\n        if (isset($_SERVER[&#39;HTTPS&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTPS&#39;]) == &#39;on&#39;) {\r\n          $isSecure = true;\r\n        } elseif (!empty($_SERVER[&#39;HTTP_X_FORWARDED_PROTO&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTP_X_FORWARDED_PROTO&#39;]) == &#39;https&#39; || !empty($_SERVER[&#39;HTTP_X_FORWARDED_SSL&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTP_X_FORWARDED_SSL&#39;]) == &#39;on&#39;) {\r\n          $isSecure = true;\r\n        }\r\n        return $isSecure;\r\n      }\r\n      $protocol = check_protocol_secure() ? &#39;https&#39; : &#39;http&#39;;\r\n      function get_rand_value($length) {\r\n        $rand_value = &#39;&#39;;\r\n        for ($i = 1; $i &lt;= $length; $i++) {\r\n          $rand_value .= mt_rand(1,9);\r\n        }\r\n        return $rand_value;\r\n      }\r\n      $nmb1 = get_rand_value(1);\r\n      $nmb2 = get_rand_value(1);\r\n      while ($nmb1 == $nmb2) {\r\n        $nmb1 = get_rand_value(1);\r\n        $nmb2 = get_rand_value(1);\r\n        if ($nmb1 != $nmb2) {\r\n          break;\r\n        }\r\n      }\r\n      if ((!isset($_COOKIE[&#39;num1&#39;])) || (empty($_COOKIE[&#39;num1&#39;]))) {\r\n        if ($protocol == &#39;http&#39;) {\r\n          setcookie(&#39;num1&#39;, htmlentities($nmb1, ENT_QUOTES), NULL, NULL, NULL, NULL, TRUE);\r\n        } else {\r\n          setcookie(&#39;num1&#39;, htmlentities($nmb1, ENT_QUOTES), NULL, NULL, NULL, TRUE, TRUE);\r\n        }\r\n        $_COOKIE[&#39;num1&#39;] = htmlentities($nmb1, ENT_QUOTES);\r\n        $num1 = htmlentities($_COOKIE[&#39;num1&#39;], ENT_QUOTES);\r\n      } else {\r\n        $num1 = htmlentities($_COOKIE[&#39;num1&#39;], ENT_QUOTES);\r\n      }\r\n      if ((!isset($_COOKIE[&#39;num2&#39;])) || (empty($_COOKIE[&#39;num2&#39;]))) {\r\n        if ($protocol == &#39;http&#39;) {\r\n          setcookie(&#39;num2&#39;, htmlentities($nmb2, ENT_QUOTES), NULL, NULL, NULL, NULL, TRUE);\r\n        } else {\r\n          setcookie(&#39;num2&#39;, htmlentities($nmb2, ENT_QUOTES), NULL, NULL, NULL, TRUE, TRUE);\r\n        }\r\n        $_COOKIE[&#39;num2&#39;] = htmlentities($nmb2, ENT_QUOTES);\r\n        $num2 = htmlentities($_COOKIE[&#39;num2&#39;], ENT_QUOTES);\r\n      } else {\r\n        $num2 = htmlentities($_COOKIE[&#39;num2&#39;], ENT_QUOTES);\r\n      }\r\n      $question = isset($_POST[&#39;question&#39;]) ? htmlentities($_POST[&#39;question&#39;], ENT_QUOTES) : 0;\r\n      if ($question != $num1 + $num2) { \r\n        unset($_COOKIE[&#39;num1&#39;]);\r\n        unset($_COOKIE[&#39;num2&#39;]);\r\n        $nmb1 = get_rand_value(1);\r\n        $nmb2 = get_rand_value(1);\r\n        while ($nmb1 == $nmb2) {\r\n          $nmb1 = get_rand_value(1);\r\n          $nmb2 = get_rand_value(1);\r\n          if ($nmb1 != $nmb2) {\r\n            break;\r\n          }\r\n        }\r\n        if ((!isset($_COOKIE[&#39;num1&#39;])) || (empty($_COOKIE[&#39;num1&#39;]))) {\r\n          if ($protocol == &#39;http&#39;) {\r\n            setcookie(&#39;num1&#39;, htmlentities($nmb1, ENT_QUOTES), NULL, NULL, NULL, NULL, TRUE);\r\n          } else {\r\n            setcookie(&#39;num1&#39;, htmlentities($nmb1, ENT_QUOTES), NULL, NULL, NULL, TRUE, TRUE);\r\n          }\r\n          $_COOKIE[&#39;num1&#39;] = htmlentities($nmb1, ENT_QUOTES);\r\n          $num1 = htmlentities($_COOKIE[&#39;num1&#39;], ENT_QUOTES);\r\n        } else {\r\n          $num1 = htmlentities($_COOKIE[&#39;num1&#39;], ENT_QUOTES);\r\n        }\r\n        if ((!isset($_COOKIE[&#39;num2&#39;])) || (empty($_COOKIE[&#39;num2&#39;]))) {\r\n          if ($protocol == &#39;http&#39;) {\r\n            setcookie(&#39;num2&#39;, htmlentities($nmb2, ENT_QUOTES), NULL, NULL, NULL, NULL, TRUE);\r\n          } else {\r\n            setcookie(&#39;num2&#39;, htmlentities($nmb2, ENT_QUOTES), NULL, NULL, NULL, TRUE, TRUE);\r\n          }\r\n          $_COOKIE[&#39;num2&#39;] = htmlentities($nmb2, ENT_QUOTES);\r\n          $num2 = htmlentities($_COOKIE[&#39;num2&#39;], ENT_QUOTES);\r\n        } else {\r\n          $num2 = htmlentities($_COOKIE[&#39;num2&#39;], ENT_QUOTES);\r\n        }\r\n      }\r\n    ?&gt;\r\n\r\nlogin.php\r\n\r\n    &lt;?php\r\n      if (session_status() == PHP_SESSION_NONE) {\r\n        session_start();\r\n      }\r\n      include(&quot;db.php&quot;);\r\n      include_once(&quot;secure.php&quot;);\r\n      function check_protocol() {\r\n        $isSecure = false;\r\n        if (isset($_SERVER[&#39;HTTPS&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTPS&#39;]) == &#39;on&#39;) {\r\n          $isSecure = true;\r\n        } elseif (!empty($_SERVER[&#39;HTTP_X_FORWARDED_PROTO&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTP_X_FORWARDED_PROTO&#39;]) == &#39;https&#39; || !empty($_SERVER[&#39;HTTP_X_FORWARDED_SSL&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTP_X_FORWARDED_SSL&#39;]) == &#39;on&#39;) {\r\n          $isSecure = true;\r\n        }\r\n        return $isSecure;\r\n      }\r\n      header(&quot;Expires: Mon, 26 Jul 1997 05:00:00 GMT&quot;);\r\n      header(&quot;Last-Modified: &quot; . gmdate(&quot;D, d M Y H:i:s&quot;) . &quot; GMT&quot;);\r\n      header(&quot;Cache-Control: no-store, no-cache, must-revalidate&quot;);\r\n      header(&quot;Cache-Control: post-check=0, pre-check=0&quot;, false);\r\n      header(&quot;Pragma: no-cache&quot;);\r\n      $_SESSION[&#39;login_attempts_1&#39;] = isset($_SESSION[&#39;login_attempts_1&#39;]) ? htmlentities($_SESSION[&#39;login_attempts_1&#39;] + 1, ENT_QUOTES) : 1;\r\n      if ((!isset($_POST[&#39;user&#39;])) &amp;&amp; (!isset($_POST[&#39;pass&#39;])) &amp;&amp; ((!isset($_COOKIE[&#39;login_attempts_delay_1&#39;])) || (empty($_COOKIE[&#39;login_attempts_delay_1&#39;])))) {\r\n        $error = &quot;Welcome into Your Login Area!&quot;;\r\n        include_once(&quot;form.php&quot;);\r\n      }\r\n      if ((isset($_COOKIE[&#39;login_attempts_delay_1&#39;])) || (!empty($_COOKIE[&#39;login_attempts_delay_1&#39;]))) {\r\n        $_POST[&#39;user&#39;] = &#39;blocked_user&#39;;\r\n        $_POST[&#39;pass&#39;] = &#39;blocked_pass&#39;;\r\n        $error = &quot;You are banned for 10 minutes!&quot;;\r\n        include_once(&quot;form.php&quot;);\r\n      }\r\n      foreach ($user_login as $user =&gt; $pass) {\r\n        if (((isset($_POST[&#39;user&#39;])) &amp;&amp; (isset($_POST[&#39;pass&#39;])) &amp;&amp; (isset($question))) &amp;&amp; ((password_verify($_POST[&#39;user&#39;], password_hash($user, PASSWORD_DEFAULT))) &amp;&amp; (password_verify($_POST[&#39;pass&#39;], password_hash($pass, PASSWORD_DEFAULT)))) &amp;&amp; ($question == $num1 + $num2)) {\r\n          $chek = 1;\r\n          $_SESSION[&#39;user_c&#39;] = password_hash($user, PASSWORD_DEFAULT);\r\n          $_SESSION[&#39;user_c&#39;] = htmlspecialchars($_SESSION[&#39;user_c&#39;]);\r\n          $_SESSION[&#39;pass_c&#39;] = password_hash($pass, PASSWORD_DEFAULT);\r\n          $_SESSION[&#39;pass_c&#39;] = htmlspecialchars($_SESSION[&#39;pass_c&#39;]);\r\n          $_SESSION[&#39;user_p&#39;] = $user;\r\n          $_SESSION[&#39;user_p&#39;] = htmlspecialchars($_SESSION[&#39;user_p&#39;]);\r\n          $_SESSION[&#39;chek_l&#39;] = $chek;\r\n          $_SESSION[&#39;chek_l&#39;] = htmlspecialchars($_SESSION[&#39;chek_l&#39;]);\r\n          $protocol = check_protocol() ? &#39;https://&#39; : &#39;http://&#39;;\r\n          $absolute = $protocol . $_SERVER[&#39;HTTP_HOST&#39;] . rtrim(dirname($_SERVER[&#39;PHP_SELF&#39;]), &#39;/\\\\&#39;);\r\n          header(&quot;Location: $absolute/index.php&quot;);\r\n          exit();\r\n        }\r\n      }\r\n      if ($_SESSION[&#39;login_attempts_1&#39;] &gt; 3) {\r\n        $_POST[&#39;user&#39;] = &#39;blocked_user&#39;;\r\n        $_POST[&#39;pass&#39;] = &#39;blocked_pass&#39;;\r\n        $protocol = check_protocol() ? &#39;https&#39; : &#39;http&#39;;\r\n        if ($protocol == &#39;http&#39;) {\r\n          setcookie(&#39;login_attempts_delay_1&#39;, 10, time()+600, NULL, NULL, NULL, TRUE);\r\n        } else {\r\n          setcookie(&#39;login_attempts_delay_1&#39;, 10, time()+600, NULL, NULL, TRUE, TRUE);\r\n        }\r\n        $_COOKIE[&#39;login_attempts_delay_1&#39;] = isset($_COOKIE[&#39;login_attempts_delay_1&#39;]) ? htmlentities($_COOKIE[&#39;login_attempts_delay_1&#39;], ENT_QUOTES) : 10;\r\n        $error = &quot;Too many attemps (3)! Login Blocked!&quot;;\r\n        include_once(&quot;form.php&quot;);\r\n      }\r\n      foreach ($user_login as $user =&gt; $pass) {\r\n        if (((isset($_POST[&#39;user&#39;])) &amp;&amp; (isset($_POST[&#39;pass&#39;])) &amp;&amp; (isset($question))) &amp;&amp; ((!password_verify($_POST[&#39;user&#39;], password_hash($user, PASSWORD_DEFAULT))) || (!password_verify($_POST[&#39;pass&#39;], password_hash($pass, PASSWORD_DEFAULT)))) || ($question != $num1 + $num2)) {\r\n          $error = &quot;Username or Password or Question Wrong!&quot;;\r\n          include_once(&quot;form.php&quot;);\r\n        }\r\n      }\r\n      if ((isset($_COOKIE[&#39;login_attempts_delay_1&#39;])) || (!empty($_COOKIE[&#39;login_attempts_delay_1&#39;]))) {\r\n        $_POST[&#39;user&#39;] = &#39;blocked_user&#39;;\r\n        $_POST[&#39;pass&#39;] = &#39;blocked_pass&#39;;\r\n        $error = &quot;You are banned for 10 minutes!&quot;;\r\n        include_once(&quot;form.php&quot;);\r\n      }\r\n    ?&gt;\r\n\r\nlogout.php\r\n\r\n    &lt;?php\r\n      if (session_status() == PHP_SESSION_NONE) {\r\n        session_start();\r\n      }\r\n      if (session_status() == PHP_SESSION_ACTIVE) {\r\n        session_regenerate_id(TRUE);\r\n      }\r\n      function check_protocol() {\r\n        $isSecure = false;\r\n        if (isset($_SERVER[&#39;HTTPS&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTPS&#39;]) == &#39;on&#39;) {\r\n          $isSecure = true;\r\n        } elseif (!empty($_SERVER[&#39;HTTP_X_FORWARDED_PROTO&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTP_X_FORWARDED_PROTO&#39;]) == &#39;https&#39; || !empty($_SERVER[&#39;HTTP_X_FORWARDED_SSL&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTP_X_FORWARDED_SSL&#39;]) == &#39;on&#39;) {\r\n          $isSecure = true;\r\n        }\r\n        return $isSecure;\r\n      }\r\n      header(&quot;Expires: Mon, 26 Jul 1997 05:00:00 GMT&quot;); #Data Passata\r\n      header(&quot;Last-Modified: &quot; . gmdate(&quot;D, d M Y H:i:s&quot;) . &quot; GMT&quot;); #Sempre Modificato\r\n      header(&quot;Cache-Control: no-store, no-cache, must-revalidate&quot;); #HTTP/1.1\r\n      header(&quot;Cache-Control: post-check=0, pre-check=0&quot;, false);\r\n      header(&quot;Pragma: no-cache&quot;); #HTTP/1.0\r\n      setcookie(&#39;login_attempts_delay_1&#39;, &#39;&#39;);\r\n      setcookie(&#39;num1&#39;, &#39;&#39;);\r\n      setcookie(&#39;num2&#39;, &#39;&#39;);\r\n      unset($_SESSION[&#39;user_p&#39;]);\r\n      unset($_SESSION[&#39;user_c&#39;]);\r\n      unset($_SESSION[&#39;pass_c&#39;]);\r\n      unset($_SESSION[&#39;chek_l&#39;]);\r\n      session_destroy();\r\n      $protocol = check_protocol() ? &#39;https://&#39; : &#39;http://&#39;;\r\n      $absolute = $protocol . $_SERVER[&#39;HTTP_HOST&#39;] . rtrim(dirname($_SERVER[&#39;PHP_SELF&#39;]), &#39;/\\\\&#39;);\r\n      header(&quot;Location: $absolute/login.php&quot;);\r\n      exit();\r\n    ?&gt;\r\n\r\nwelcome.php\r\n\r\n    &lt;?php\r\n      if (session_status() == PHP_SESSION_NONE) {\r\n        session_start();\r\n      }\r\n      include(&quot;db.php&quot;);\r\n      function check_protocol() {\r\n        $isSecure = false;\r\n        if (isset($_SERVER[&#39;HTTPS&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTPS&#39;]) == &#39;on&#39;) {\r\n          $isSecure = true;\r\n        } elseif (!empty($_SERVER[&#39;HTTP_X_FORWARDED_PROTO&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTP_X_FORWARDED_PROTO&#39;]) == &#39;https&#39; || !empty($_SERVER[&#39;HTTP_X_FORWARDED_SSL&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTP_X_FORWARDED_SSL&#39;]) == &#39;on&#39;) {\r\n          $isSecure = true;\r\n        }\r\n        return $isSecure;\r\n      }\r\n      header(&quot;Expires: Mon, 26 Jul 1997 05:00:00 GMT&quot;);\r\n      header(&quot;Last-Modified: &quot; . gmdate(&quot;D, d M Y H:i:s&quot;) . &quot; GMT&quot;);\r\n      header(&quot;Cache-Control: no-store, no-cache, must-revalidate&quot;);\r\n      header(&quot;Cache-Control: post-check=0, pre-check=0&quot;, false);\r\n      header(&quot;Pragma: no-cache&quot;);\r\n      /*\r\n      foreach ($user_login as $user =&gt; $pass) {\r\n        if ((!password_verify($user, isset($_SESSION[&#39;user_c&#39;]))) &amp;&amp; (!password_verify($pass, isset($_SESSION[&#39;pass_c&#39;])))) {\r\n          $protocol = check_protocol() ? &#39;https://&#39; : &#39;http://&#39;;\r\n          $absolute = $protocol . $_SERVER[&#39;HTTP_HOST&#39;] . rtrim(dirname($_SERVER[&#39;PHP_SELF&#39;]), &#39;/\\\\&#39;);\r\n          header(&quot;Location: $absolute/login.php&quot;);\r\n          exit();\r\n        }\r\n      }\r\n      */\r\n      if ((!isset($_SESSION[&#39;user_c&#39;]) &amp;&amp; (!isset($_SESSION[&#39;pass_c&#39;])))) {\r\n        if (!isset($_SESSION[&#39;chek_l&#39;]) &amp;&amp; $_SESSION[&#39;chek_l&#39;] != 1) {\r\n          $protocol = check_protocol() ? &#39;https://&#39; : &#39;http://&#39;;\r\n          $absolute = $protocol . $_SERVER[&#39;HTTP_HOST&#39;] . rtrim(dirname($_SERVER[&#39;PHP_SELF&#39;]), &#39;/\\\\&#39;);\r\n          header(&quot;Location: $absolute/login.php&quot;);\r\n          exit();\r\n        }\r\n      }\r\n    ?&gt;\r\n    &lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.01 Transitional//EN&quot; &quot;http://www.w3.org/TR/html4/loose.dtd&quot;&gt;\r\n    \r\n    &lt;html&gt;\r\n    \r\n    &lt;head&gt;\r\n      &lt;meta http-equiv=&quot;content-type&quot; content=&quot;text/html;charset=iso-8859-1&quot;&gt;\r\n      &lt;meta name=&quot;pragma&quot; content=&quot;no-cache&quot;&gt;\r\n      &lt;meta name=&quot;robots&quot; content=&quot;noindex, nofollow&quot;&gt;\r\n      &lt;title&gt;Welcome&lt;/title&gt;\r\n      &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot; href=&quot;../css/login.css&quot;&gt;\r\n    &lt;/head&gt;\r\n    &lt;body&gt;\r\n    &lt;div class=&quot;mainbox&quot;&gt;\r\n      &lt;div class=&quot;box1&quot;&gt;\r\n        &lt;span class=&quot;title&quot;&gt;Welcome&lt;/span&gt;\r\n      &lt;/div&gt;\r\n      &lt;div class=&quot;cleardiv&quot;&gt;&lt;/div&gt;\r\n      &lt;div class=&quot;sbar&quot;&gt;&lt;/div&gt;\r\n      &lt;div class=&quot;cleardiv&quot;&gt;&lt;/div&gt;\r\n      &lt;div class=&quot;box2&quot;&gt;\r\n        &lt;span class=&quot;well&quot;&gt;Welcome &lt;?php echo $_SESSION[&#39;user_p&#39;]; ?&gt;!&amp;nbsp;&amp;nbsp;&lt;a class=&quot;link&quot; href=&quot;welcomeback.php&quot;&gt;Page 2&lt;/a&gt; - &lt;a class=&quot;link&quot; href=&quot;logout.php&quot;&gt;Logout&lt;/a&gt;&lt;/span&gt;\r\n      &lt;/div&gt;\r\n      &lt;div class=&quot;cleardiv&quot;&gt;&lt;/div&gt;\r\n    &lt;/div&gt;\r\n    &lt;/body&gt;\r\n    &lt;/html&gt;\r\n\r\nwelcomeback.php\r\n\r\n    &lt;?php\r\n      if (session_status() == PHP_SESSION_NONE) {\r\n        session_start();\r\n      }\r\n      include(&quot;db.php&quot;);\r\n      function check_protocol() {\r\n        $isSecure = false;\r\n        if (isset($_SERVER[&#39;HTTPS&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTPS&#39;]) == &#39;on&#39;) {\r\n          $isSecure = true;\r\n        } elseif (!empty($_SERVER[&#39;HTTP_X_FORWARDED_PROTO&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTP_X_FORWARDED_PROTO&#39;]) == &#39;https&#39; || !empty($_SERVER[&#39;HTTP_X_FORWARDED_SSL&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTP_X_FORWARDED_SSL&#39;]) == &#39;on&#39;) {\r\n          $isSecure = true;\r\n        }\r\n        return $isSecure;\r\n      }\r\n      header(&quot;Expires: Mon, 26 Jul 1997 05:00:00 GMT&quot;);\r\n      header(&quot;Last-Modified: &quot; . gmdate(&quot;D, d M Y H:i:s&quot;) . &quot; GMT&quot;);\r\n      header(&quot;Cache-Control: no-store, no-cache, must-revalidate&quot;);\r\n      header(&quot;Cache-Control: post-check=0, pre-check=0&quot;, false);\r\n      header(&quot;Pragma: no-cache&quot;);\r\n      /*\r\n      foreach ($user_login as $user =&gt; $pass) {\r\n        if ((!password_verify($user, isset($_SESSION[&#39;user_c&#39;]))) &amp;&amp; (!password_verify($pass, isset($_SESSION[&#39;pass_c&#39;])))) {\r\n          $protocol = check_protocol() ? &#39;https://&#39; : &#39;http://&#39;;\r\n          $absolute = $protocol . $_SERVER[&#39;HTTP_HOST&#39;] . rtrim(dirname($_SERVER[&#39;PHP_SELF&#39;]), &#39;/\\\\&#39;);\r\n          header(&quot;Location: $absolute/login.php&quot;);\r\n          exit();\r\n        }\r\n      }\r\n      */\r\n      if ((!isset($_SESSION[&#39;user_c&#39;]) &amp;&amp; (!isset($_SESSION[&#39;pass_c&#39;])))) {\r\n        if (!isset($_SESSION[&#39;chek_l&#39;]) &amp;&amp; $_SESSION[&#39;chek_l&#39;] != 1) {\r\n          $protocol = check_protocol() ? &#39;https://&#39; : &#39;http://&#39;;\r\n          $absolute = $protocol . $_SERVER[&#39;HTTP_HOST&#39;] . rtrim(dirname($_SERVER[&#39;PHP_SELF&#39;]), &#39;/\\\\&#39;);\r\n          header(&quot;Location: $absolute/login.php&quot;);\r\n          exit();\r\n        }\r\n      }\r\n    ?&gt;\r\n    &lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.01 Transitional//EN&quot; &quot;http://www.w3.org/TR/html4/loose.dtd&quot;&gt;\r\n    \r\n    &lt;html&gt;\r\n    \r\n    &lt;head&gt;\r\n      &lt;meta http-equiv=&quot;content-type&quot; content=&quot;text/html;charset=iso-8859-1&quot;&gt;\r\n      &lt;meta name=&quot;pragma&quot; content=&quot;no-cache&quot;&gt;\r\n      &lt;meta name=&quot;robots&quot; content=&quot;noindex, nofollow&quot;&gt;\r\n      &lt;title&gt;Welcome Back&lt;/title&gt;\r\n      &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot; href=&quot;../css/login.css&quot;&gt;\r\n    &lt;/head&gt;\r\n    &lt;body&gt;\r\n    &lt;div class=&quot;mainbox&quot;&gt;\r\n      &lt;div class=&quot;box1&quot;&gt;\r\n        &lt;span class=&quot;title&quot;&gt;Welcome Back&lt;/span&gt;\r\n      &lt;/div&gt;\r\n      &lt;div class=&quot;cleardiv&quot;&gt;&lt;/div&gt;\r\n      &lt;div class=&quot;sbar&quot;&gt;&lt;/div&gt;\r\n      &lt;div class=&quot;cleardiv&quot;&gt;&lt;/div&gt;\r\n      &lt;div class=&quot;box2&quot;&gt;\r\n        &lt;span class=&quot;well&quot;&gt;Welcome Back &lt;?php echo $_SESSION[&#39;user_p&#39;]; ?&gt;!&amp;nbsp;&amp;nbsp;&lt;a class=&quot;link&quot; href=&quot;welcome.php&quot;&gt;Page 1&lt;/a&gt; - &lt;a class=&quot;link&quot; href=&quot;logout.php&quot;&gt;Logout&lt;/a&gt;&lt;/span&gt;\r\n      &lt;/div&gt;\r\n      &lt;div class=&quot;cleardiv&quot;&gt;&lt;/div&gt;\r\n    &lt;/div&gt;\r\n    &lt;/body&gt;\r\n    &lt;/html&gt;\r\n\r\nindex.php\r\n\r\n    &lt;?php\r\n      if (session_status() == PHP_SESSION_NONE) {\r\n        session_start();\r\n      }\r\n      if (session_status() == PHP_SESSION_ACTIVE) {\r\n        session_regenerate_id(TRUE);\r\n      }\r\n      function check_protocol() {\r\n        $isSecure = false;\r\n        if (isset($_SERVER[&#39;HTTPS&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTPS&#39;]) == &#39;on&#39;) {\r\n          $isSecure = true;\r\n        } elseif (!empty($_SERVER[&#39;HTTP_X_FORWARDED_PROTO&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTP_X_FORWARDED_PROTO&#39;]) == &#39;https&#39; || !empty($_SERVER[&#39;HTTP_X_FORWARDED_SSL&#39;]) &amp;&amp; strtolower($_SERVER[&#39;HTTP_X_FORWARDED_SSL&#39;]) == &#39;on&#39;) {\r\n          $isSecure = true;\r\n        }\r\n        return $isSecure;\r\n      }\r\n      $protocol = check_protocol() ? &#39;https://&#39; : &#39;http://&#39;;\r\n      $absolute = $protocol . $_SERVER[&#39;HTTP_HOST&#39;] . rtrim(dirname($_SERVER[&#39;PHP_SELF&#39;]), &#39;/\\\\&#39;);\r\n      header(&quot;Location: $absolute/welcome.php&quot;);\r\n      exit();\r\n    ?&gt;\r\n\r\nSolved! The code commented is outdated and obsolete, new code added, now works fine... if you want let me some tips you are welcome!\r\n------------------------------------------------------------------------",
+            "link": "https://stackoverflow.com/questions/49698192/password-verify-and-password-hash-mismatch-on-php-7-2-solved",
+            "title": "password_verify (and password_hash) mismatch on php 7.2 (Solved)",
+            "body": "<p>I have a question regarding password_verify (and password_hash) that in my script doesn't work as expected... I created a login script using password_verify and password_hash. The login script works but when I try to access to protected files area (welcome.php and welcomeback.php) something goes wrong... I tried to debug my application but I cannot solve my issue. I spent several hours to debug my application and I found that the problem is in the authentication way used in welcome.php and welcomeback.php. Where is the error?</p>\n\n<p>db.php</p>\n\n<pre><code>&lt;?php\n  $user_login = array(\n  'gabriele' =&gt;    // User 1\n  'segreto1',      // Pass 1\n  'alessandro' =&gt;  // User 2\n  'segreto2',      // Pass 2\n  'marcello' =&gt;    // User 3\n  'segreto3');     // Pass 3\n?&gt;\n</code></pre>\n\n<p>form.php</p>\n\n<pre><code>&lt;?php\n  include_once(\"secure.php\");\n  function check_protocol_login() {\n    $isSecure = false;\n    if (isset($_SERVER['HTTPS']) &amp;&amp; strtolower($_SERVER['HTTPS']) == 'on') {\n      $isSecure = true;\n    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) &amp;&amp; strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) == 'https' || !empty($_SERVER['HTTP_X_FORWARDED_SSL']) &amp;&amp; strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) == 'on') {\n      $isSecure = true;\n    }\n    return $isSecure;\n  }\n  $protocol = check_protocol_login() ? 'https://' : 'http://';\n  $host = $protocol . $_SERVER['HTTP_HOST'];\n?&gt;\n&lt;!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\"&gt;\n\n&lt;html&gt;\n\n&lt;head&gt;\n  &lt;meta http-equiv=\"content-type\" content=\"text/html;charset=iso-8859-1\"&gt;\n  &lt;meta name=\"robots\" content=\"noindex, nofollow\"&gt;\n  &lt;title&gt;Login::Area&lt;/title&gt;\n  &lt;link href=\"../css/style.css\" rel=\"stylesheet\" type=\"text/css\"&gt;\n&lt;/head&gt;\n\n&lt;body&gt;\n\n&lt;div id=\"container\"&gt;\n&lt;div id=\"header\"&gt;&lt;div id=\"header_left\"&gt;&lt;/div&gt;\n&lt;div id=\"header_main\"&gt;Pannello::Login&lt;/div&gt;&lt;div id=\"header_right\"&gt;&lt;/div&gt;&lt;/div&gt;\n&lt;div id=\"content\"&gt;\n&lt;form action=\"login.php\" method=\"post\"&gt;\n&lt;div style=\"text-align: center\"&gt;\n&lt;span class=\"error\"&gt;&lt;?php echo $error; ?&gt;&lt;/span&gt;&lt;br&gt;&lt;br&gt;\n&lt;label for=\"user\"&gt;Username:&lt;/label&gt;&amp;nbsp;&lt;input name=\"user\" id=\"user\" type=\"text\" size=\"20\"&gt;&lt;br&gt;&lt;br&gt;\n&lt;label for=\"pass\"&gt;Password:&lt;/label&gt;&amp;nbsp;&lt;input name=\"pass\" id=\"pass\" type=\"password\" size=\"20\"&gt;&lt;br&gt;&lt;br&gt;\n&lt;label for=\"question\"&gt;Question:&lt;/label&gt;&amp;nbsp;&lt;?php echo (isset($num1) ? htmlentities($num1, ENT_QUOTES) : '0') . \"&amp;nbsp;+&amp;nbsp;\" . (isset($num2) ? htmlentities($num2, ENT_QUOTES) : '0') . \"&amp;nbsp;=\"; ?&gt;&amp;nbsp;&lt;input style=\"width: 40px\" id=\"question\" name=\"question\" type=\"text\" size=\"3\" title=\"if you are human solve this question\"&gt;&lt;br&gt;\n&lt;label&gt;&lt;input type=\"submit\" name=\"login\" class=\"sbtn\" value=\"Login\"&lt;?php if ((isset($_COOKIE['login_attempts_delay_1'])) || (!empty($_COOKIE['login_attempts_delay_1']))) { echo \" disabled=\\\"disabled\\\"\"; } ?&gt;&gt;&lt;/label&gt;\n&lt;/div&gt;\n&lt;/form&gt;\n&lt;/div&gt;\n&lt;div id=\"footer\"&gt;&lt;a href=\"&lt;?php echo $host; ?&gt;\" target=\"_self\"&gt;HomePage&lt;/a&gt;&lt;/div&gt;\n&lt;/div&gt;\n\n&lt;/body&gt;\n\n&lt;/html&gt;\n</code></pre>\n\n<p>secure.php</p>\n\n<pre><code>&lt;?php\n  if (session_status() == PHP_SESSION_NONE) {\n    session_start();\n  }\n  function check_protocol_secure() {\n    $isSecure = false;\n    if (isset($_SERVER['HTTPS']) &amp;&amp; strtolower($_SERVER['HTTPS']) == 'on') {\n      $isSecure = true;\n    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) &amp;&amp; strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) == 'https' || !empty($_SERVER['HTTP_X_FORWARDED_SSL']) &amp;&amp; strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) == 'on') {\n      $isSecure = true;\n    }\n    return $isSecure;\n  }\n  $protocol = check_protocol_secure() ? 'https' : 'http';\n  function get_rand_value($length) {\n    $rand_value = '';\n    for ($i = 1; $i &lt;= $length; $i++) {\n      $rand_value .= mt_rand(1,9);\n    }\n    return $rand_value;\n  }\n  $nmb1 = get_rand_value(1);\n  $nmb2 = get_rand_value(1);\n  while ($nmb1 == $nmb2) {\n    $nmb1 = get_rand_value(1);\n    $nmb2 = get_rand_value(1);\n    if ($nmb1 != $nmb2) {\n      break;\n    }\n  }\n  if ((!isset($_COOKIE['num1'])) || (empty($_COOKIE['num1']))) {\n    if ($protocol == 'http') {\n      setcookie('num1', htmlentities($nmb1, ENT_QUOTES), NULL, NULL, NULL, NULL, TRUE);\n    } else {\n      setcookie('num1', htmlentities($nmb1, ENT_QUOTES), NULL, NULL, NULL, TRUE, TRUE);\n    }\n    $_COOKIE['num1'] = htmlentities($nmb1, ENT_QUOTES);\n    $num1 = htmlentities($_COOKIE['num1'], ENT_QUOTES);\n  } else {\n    $num1 = htmlentities($_COOKIE['num1'], ENT_QUOTES);\n  }\n  if ((!isset($_COOKIE['num2'])) || (empty($_COOKIE['num2']))) {\n    if ($protocol == 'http') {\n      setcookie('num2', htmlentities($nmb2, ENT_QUOTES), NULL, NULL, NULL, NULL, TRUE);\n    } else {\n      setcookie('num2', htmlentities($nmb2, ENT_QUOTES), NULL, NULL, NULL, TRUE, TRUE);\n    }\n    $_COOKIE['num2'] = htmlentities($nmb2, ENT_QUOTES);\n    $num2 = htmlentities($_COOKIE['num2'], ENT_QUOTES);\n  } else {\n    $num2 = htmlentities($_COOKIE['num2'], ENT_QUOTES);\n  }\n  $question = isset($_POST['question']) ? htmlentities($_POST['question'], ENT_QUOTES) : 0;\n  if ($question != $num1 + $num2) { \n    unset($_COOKIE['num1']);\n    unset($_COOKIE['num2']);\n    $nmb1 = get_rand_value(1);\n    $nmb2 = get_rand_value(1);\n    while ($nmb1 == $nmb2) {\n      $nmb1 = get_rand_value(1);\n      $nmb2 = get_rand_value(1);\n      if ($nmb1 != $nmb2) {\n        break;\n      }\n    }\n    if ((!isset($_COOKIE['num1'])) || (empty($_COOKIE['num1']))) {\n      if ($protocol == 'http') {\n        setcookie('num1', htmlentities($nmb1, ENT_QUOTES), NULL, NULL, NULL, NULL, TRUE);\n      } else {\n        setcookie('num1', htmlentities($nmb1, ENT_QUOTES), NULL, NULL, NULL, TRUE, TRUE);\n      }\n      $_COOKIE['num1'] = htmlentities($nmb1, ENT_QUOTES);\n      $num1 = htmlentities($_COOKIE['num1'], ENT_QUOTES);\n    } else {\n      $num1 = htmlentities($_COOKIE['num1'], ENT_QUOTES);\n    }\n    if ((!isset($_COOKIE['num2'])) || (empty($_COOKIE['num2']))) {\n      if ($protocol == 'http') {\n        setcookie('num2', htmlentities($nmb2, ENT_QUOTES), NULL, NULL, NULL, NULL, TRUE);\n      } else {\n        setcookie('num2', htmlentities($nmb2, ENT_QUOTES), NULL, NULL, NULL, TRUE, TRUE);\n      }\n      $_COOKIE['num2'] = htmlentities($nmb2, ENT_QUOTES);\n      $num2 = htmlentities($_COOKIE['num2'], ENT_QUOTES);\n    } else {\n      $num2 = htmlentities($_COOKIE['num2'], ENT_QUOTES);\n    }\n  }\n?&gt;\n</code></pre>\n\n<p>login.php</p>\n\n<pre><code>&lt;?php\n  if (session_status() == PHP_SESSION_NONE) {\n    session_start();\n  }\n  include(\"db.php\");\n  include_once(\"secure.php\");\n  function check_protocol() {\n    $isSecure = false;\n    if (isset($_SERVER['HTTPS']) &amp;&amp; strtolower($_SERVER['HTTPS']) == 'on') {\n      $isSecure = true;\n    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) &amp;&amp; strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) == 'https' || !empty($_SERVER['HTTP_X_FORWARDED_SSL']) &amp;&amp; strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) == 'on') {\n      $isSecure = true;\n    }\n    return $isSecure;\n  }\n  header(\"Expires: Mon, 26 Jul 1997 05:00:00 GMT\");\n  header(\"Last-Modified: \" . gmdate(\"D, d M Y H:i:s\") . \" GMT\");\n  header(\"Cache-Control: no-store, no-cache, must-revalidate\");\n  header(\"Cache-Control: post-check=0, pre-check=0\", false);\n  header(\"Pragma: no-cache\");\n  $_SESSION['login_attempts_1'] = isset($_SESSION['login_attempts_1']) ? htmlentities($_SESSION['login_attempts_1'] + 1, ENT_QUOTES) : 1;\n  if ((!isset($_POST['user'])) &amp;&amp; (!isset($_POST['pass'])) &amp;&amp; ((!isset($_COOKIE['login_attempts_delay_1'])) || (empty($_COOKIE['login_attempts_delay_1'])))) {\n    $error = \"Welcome into Your Login Area!\";\n    include_once(\"form.php\");\n  }\n  if ((isset($_COOKIE['login_attempts_delay_1'])) || (!empty($_COOKIE['login_attempts_delay_1']))) {\n    $_POST['user'] = 'blocked_user';\n    $_POST['pass'] = 'blocked_pass';\n    $error = \"You are banned for 10 minutes!\";\n    include_once(\"form.php\");\n  }\n  foreach ($user_login as $user =&gt; $pass) {\n    if (((isset($_POST['user'])) &amp;&amp; (isset($_POST['pass'])) &amp;&amp; (isset($question))) &amp;&amp; ((password_verify($_POST['user'], password_hash($user, PASSWORD_DEFAULT))) &amp;&amp; (password_verify($_POST['pass'], password_hash($pass, PASSWORD_DEFAULT)))) &amp;&amp; ($question == $num1 + $num2)) {\n      $chek = 1;\n      $_SESSION['user_c'] = password_hash($user, PASSWORD_DEFAULT);\n      $_SESSION['user_c'] = htmlspecialchars($_SESSION['user_c']);\n      $_SESSION['pass_c'] = password_hash($pass, PASSWORD_DEFAULT);\n      $_SESSION['pass_c'] = htmlspecialchars($_SESSION['pass_c']);\n      $_SESSION['user_p'] = $user;\n      $_SESSION['user_p'] = htmlspecialchars($_SESSION['user_p']);\n      $_SESSION['chek_l'] = $chek;\n      $_SESSION['chek_l'] = htmlspecialchars($_SESSION['chek_l']);\n      $protocol = check_protocol() ? 'https://' : 'http://';\n      $absolute = $protocol . $_SERVER['HTTP_HOST'] . rtrim(dirname($_SERVER['PHP_SELF']), '/\\\\');\n      header(\"Location: $absolute/index.php\");\n      exit();\n    }\n  }\n  if ($_SESSION['login_attempts_1'] &gt; 3) {\n    $_POST['user'] = 'blocked_user';\n    $_POST['pass'] = 'blocked_pass';\n    $protocol = check_protocol() ? 'https' : 'http';\n    if ($protocol == 'http') {\n      setcookie('login_attempts_delay_1', 10, time()+600, NULL, NULL, NULL, TRUE);\n    } else {\n      setcookie('login_attempts_delay_1', 10, time()+600, NULL, NULL, TRUE, TRUE);\n    }\n    $_COOKIE['login_attempts_delay_1'] = isset($_COOKIE['login_attempts_delay_1']) ? htmlentities($_COOKIE['login_attempts_delay_1'], ENT_QUOTES) : 10;\n    $error = \"Too many attemps (3)! Login Blocked!\";\n    include_once(\"form.php\");\n  }\n  foreach ($user_login as $user =&gt; $pass) {\n    if (((isset($_POST['user'])) &amp;&amp; (isset($_POST['pass'])) &amp;&amp; (isset($question))) &amp;&amp; ((!password_verify($_POST['user'], password_hash($user, PASSWORD_DEFAULT))) || (!password_verify($_POST['pass'], password_hash($pass, PASSWORD_DEFAULT)))) || ($question != $num1 + $num2)) {\n      $error = \"Username or Password or Question Wrong!\";\n      include_once(\"form.php\");\n    }\n  }\n  if ((isset($_COOKIE['login_attempts_delay_1'])) || (!empty($_COOKIE['login_attempts_delay_1']))) {\n    $_POST['user'] = 'blocked_user';\n    $_POST['pass'] = 'blocked_pass';\n    $error = \"You are banned for 10 minutes!\";\n    include_once(\"form.php\");\n  }\n?&gt;\n</code></pre>\n\n<p>logout.php</p>\n\n<pre><code>&lt;?php\n  if (session_status() == PHP_SESSION_NONE) {\n    session_start();\n  }\n  if (session_status() == PHP_SESSION_ACTIVE) {\n    session_regenerate_id(TRUE);\n  }\n  function check_protocol() {\n    $isSecure = false;\n    if (isset($_SERVER['HTTPS']) &amp;&amp; strtolower($_SERVER['HTTPS']) == 'on') {\n      $isSecure = true;\n    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) &amp;&amp; strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) == 'https' || !empty($_SERVER['HTTP_X_FORWARDED_SSL']) &amp;&amp; strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) == 'on') {\n      $isSecure = true;\n    }\n    return $isSecure;\n  }\n  header(\"Expires: Mon, 26 Jul 1997 05:00:00 GMT\"); #Data Passata\n  header(\"Last-Modified: \" . gmdate(\"D, d M Y H:i:s\") . \" GMT\"); #Sempre Modificato\n  header(\"Cache-Control: no-store, no-cache, must-revalidate\"); #HTTP/1.1\n  header(\"Cache-Control: post-check=0, pre-check=0\", false);\n  header(\"Pragma: no-cache\"); #HTTP/1.0\n  setcookie('login_attempts_delay_1', '');\n  setcookie('num1', '');\n  setcookie('num2', '');\n  unset($_SESSION['user_p']);\n  unset($_SESSION['user_c']);\n  unset($_SESSION['pass_c']);\n  unset($_SESSION['chek_l']);\n  session_destroy();\n  $protocol = check_protocol() ? 'https://' : 'http://';\n  $absolute = $protocol . $_SERVER['HTTP_HOST'] . rtrim(dirname($_SERVER['PHP_SELF']), '/\\\\');\n  header(\"Location: $absolute/login.php\");\n  exit();\n?&gt;\n</code></pre>\n\n<p>welcome.php</p>\n\n<pre><code>&lt;?php\n  if (session_status() == PHP_SESSION_NONE) {\n    session_start();\n  }\n  include(\"db.php\");\n  function check_protocol() {\n    $isSecure = false;\n    if (isset($_SERVER['HTTPS']) &amp;&amp; strtolower($_SERVER['HTTPS']) == 'on') {\n      $isSecure = true;\n    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) &amp;&amp; strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) == 'https' || !empty($_SERVER['HTTP_X_FORWARDED_SSL']) &amp;&amp; strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) == 'on') {\n      $isSecure = true;\n    }\n    return $isSecure;\n  }\n  header(\"Expires: Mon, 26 Jul 1997 05:00:00 GMT\");\n  header(\"Last-Modified: \" . gmdate(\"D, d M Y H:i:s\") . \" GMT\");\n  header(\"Cache-Control: no-store, no-cache, must-revalidate\");\n  header(\"Cache-Control: post-check=0, pre-check=0\", false);\n  header(\"Pragma: no-cache\");\n  /*\n  foreach ($user_login as $user =&gt; $pass) {\n    if ((!password_verify($user, isset($_SESSION['user_c']))) &amp;&amp; (!password_verify($pass, isset($_SESSION['pass_c'])))) {\n      $protocol = check_protocol() ? 'https://' : 'http://';\n      $absolute = $protocol . $_SERVER['HTTP_HOST'] . rtrim(dirname($_SERVER['PHP_SELF']), '/\\\\');\n      header(\"Location: $absolute/login.php\");\n      exit();\n    }\n  }\n  */\n  if ((!isset($_SESSION['user_c']) &amp;&amp; (!isset($_SESSION['pass_c'])))) {\n    if (!isset($_SESSION['chek_l']) &amp;&amp; $_SESSION['chek_l'] != 1) {\n      $protocol = check_protocol() ? 'https://' : 'http://';\n      $absolute = $protocol . $_SERVER['HTTP_HOST'] . rtrim(dirname($_SERVER['PHP_SELF']), '/\\\\');\n      header(\"Location: $absolute/login.php\");\n      exit();\n    }\n  }\n?&gt;\n&lt;!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\"&gt;\n\n&lt;html&gt;\n\n&lt;head&gt;\n  &lt;meta http-equiv=\"content-type\" content=\"text/html;charset=iso-8859-1\"&gt;\n  &lt;meta name=\"pragma\" content=\"no-cache\"&gt;\n  &lt;meta name=\"robots\" content=\"noindex, nofollow\"&gt;\n  &lt;title&gt;Welcome&lt;/title&gt;\n  &lt;link rel=\"stylesheet\" type=\"text/css\" href=\"../css/login.css\"&gt;\n&lt;/head&gt;\n&lt;body&gt;\n&lt;div class=\"mainbox\"&gt;\n  &lt;div class=\"box1\"&gt;\n    &lt;span class=\"title\"&gt;Welcome&lt;/span&gt;\n  &lt;/div&gt;\n  &lt;div class=\"cleardiv\"&gt;&lt;/div&gt;\n  &lt;div class=\"sbar\"&gt;&lt;/div&gt;\n  &lt;div class=\"cleardiv\"&gt;&lt;/div&gt;\n  &lt;div class=\"box2\"&gt;\n    &lt;span class=\"well\"&gt;Welcome &lt;?php echo $_SESSION['user_p']; ?&gt;!&amp;nbsp;&amp;nbsp;&lt;a class=\"link\" href=\"welcomeback.php\"&gt;Page 2&lt;/a&gt; - &lt;a class=\"link\" href=\"logout.php\"&gt;Logout&lt;/a&gt;&lt;/span&gt;\n  &lt;/div&gt;\n  &lt;div class=\"cleardiv\"&gt;&lt;/div&gt;\n&lt;/div&gt;\n&lt;/body&gt;\n&lt;/html&gt;\n</code></pre>\n\n<p>welcomeback.php</p>\n\n<pre><code>&lt;?php\n  if (session_status() == PHP_SESSION_NONE) {\n    session_start();\n  }\n  include(\"db.php\");\n  function check_protocol() {\n    $isSecure = false;\n    if (isset($_SERVER['HTTPS']) &amp;&amp; strtolower($_SERVER['HTTPS']) == 'on') {\n      $isSecure = true;\n    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) &amp;&amp; strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) == 'https' || !empty($_SERVER['HTTP_X_FORWARDED_SSL']) &amp;&amp; strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) == 'on') {\n      $isSecure = true;\n    }\n    return $isSecure;\n  }\n  header(\"Expires: Mon, 26 Jul 1997 05:00:00 GMT\");\n  header(\"Last-Modified: \" . gmdate(\"D, d M Y H:i:s\") . \" GMT\");\n  header(\"Cache-Control: no-store, no-cache, must-revalidate\");\n  header(\"Cache-Control: post-check=0, pre-check=0\", false);\n  header(\"Pragma: no-cache\");\n  /*\n  foreach ($user_login as $user =&gt; $pass) {\n    if ((!password_verify($user, isset($_SESSION['user_c']))) &amp;&amp; (!password_verify($pass, isset($_SESSION['pass_c'])))) {\n      $protocol = check_protocol() ? 'https://' : 'http://';\n      $absolute = $protocol . $_SERVER['HTTP_HOST'] . rtrim(dirname($_SERVER['PHP_SELF']), '/\\\\');\n      header(\"Location: $absolute/login.php\");\n      exit();\n    }\n  }\n  */\n  if ((!isset($_SESSION['user_c']) &amp;&amp; (!isset($_SESSION['pass_c'])))) {\n    if (!isset($_SESSION['chek_l']) &amp;&amp; $_SESSION['chek_l'] != 1) {\n      $protocol = check_protocol() ? 'https://' : 'http://';\n      $absolute = $protocol . $_SERVER['HTTP_HOST'] . rtrim(dirname($_SERVER['PHP_SELF']), '/\\\\');\n      header(\"Location: $absolute/login.php\");\n      exit();\n    }\n  }\n?&gt;\n&lt;!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\"&gt;\n\n&lt;html&gt;\n\n&lt;head&gt;\n  &lt;meta http-equiv=\"content-type\" content=\"text/html;charset=iso-8859-1\"&gt;\n  &lt;meta name=\"pragma\" content=\"no-cache\"&gt;\n  &lt;meta name=\"robots\" content=\"noindex, nofollow\"&gt;\n  &lt;title&gt;Welcome Back&lt;/title&gt;\n  &lt;link rel=\"stylesheet\" type=\"text/css\" href=\"../css/login.css\"&gt;\n&lt;/head&gt;\n&lt;body&gt;\n&lt;div class=\"mainbox\"&gt;\n  &lt;div class=\"box1\"&gt;\n    &lt;span class=\"title\"&gt;Welcome Back&lt;/span&gt;\n  &lt;/div&gt;\n  &lt;div class=\"cleardiv\"&gt;&lt;/div&gt;\n  &lt;div class=\"sbar\"&gt;&lt;/div&gt;\n  &lt;div class=\"cleardiv\"&gt;&lt;/div&gt;\n  &lt;div class=\"box2\"&gt;\n    &lt;span class=\"well\"&gt;Welcome Back &lt;?php echo $_SESSION['user_p']; ?&gt;!&amp;nbsp;&amp;nbsp;&lt;a class=\"link\" href=\"welcome.php\"&gt;Page 1&lt;/a&gt; - &lt;a class=\"link\" href=\"logout.php\"&gt;Logout&lt;/a&gt;&lt;/span&gt;\n  &lt;/div&gt;\n  &lt;div class=\"cleardiv\"&gt;&lt;/div&gt;\n&lt;/div&gt;\n&lt;/body&gt;\n&lt;/html&gt;\n</code></pre>\n\n<p>index.php</p>\n\n<pre><code>&lt;?php\n  if (session_status() == PHP_SESSION_NONE) {\n    session_start();\n  }\n  if (session_status() == PHP_SESSION_ACTIVE) {\n    session_regenerate_id(TRUE);\n  }\n  function check_protocol() {\n    $isSecure = false;\n    if (isset($_SERVER['HTTPS']) &amp;&amp; strtolower($_SERVER['HTTPS']) == 'on') {\n      $isSecure = true;\n    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) &amp;&amp; strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) == 'https' || !empty($_SERVER['HTTP_X_FORWARDED_SSL']) &amp;&amp; strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) == 'on') {\n      $isSecure = true;\n    }\n    return $isSecure;\n  }\n  $protocol = check_protocol() ? 'https://' : 'http://';\n  $absolute = $protocol . $_SERVER['HTTP_HOST'] . rtrim(dirname($_SERVER['PHP_SELF']), '/\\\\');\n  header(\"Location: $absolute/welcome.php\");\n  exit();\n?&gt;\n</code></pre>\n\n<h2>Solved! The code commented is outdated and obsolete, new code added, now works fine... if you want let me some tips you are welcome!</h2>\n"
+        },
+        {
+            "tags": [
+                "tensorflow",
+                "tensorboard"
+            ],
+            "owner": {
+                "reputation": 1658,
+                "user_id": 3584765,
+                "user_type": "registered",
+                "accept_rate": 61,
+                "profile_image": "https://i.stack.imgur.com/zyetx.png?s=128&g=1",
+                "display_name": "Eypros",
+                "link": "https://stackoverflow.com/users/3584765/eypros"
+            },
+            "is_answered": true,
+            "view_count": 14,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1523539485,
+            "creation_date": 1523519917,
+            "question_id": 49791011,
+            "body_markdown": "I would like to ask if tensorflow version could be different than tensorboard&#39;s one?\r\n\r\nI have a problem (`404 problem`) and someone suggested installing a [newer version of tensorboard][1] using:\r\n\r\n    pip uninstall tensorflow-tensorboard\r\n    pip install tensorboard\r\n\r\nI checked my versions and they are both `1.6.0`:\r\n\r\n    from tensorboard import version; print(version.VERSION)\r\n    import tensorflow as tf; print(tf.__version__)\r\n\r\n&gt; 1.6.0\r\n\r\nAlso since I don&#39;t remember installing tensorboard separately (I might be mistaken about this one though) I guess it&#39;s expected to be on the same version. \r\n\r\nSo, my question is could they be on different versions? (I guess they could since we have the opportunity to install tensorboard separately). And also is there a point in upgrading one and not the other? Could there be some conflicts in the latter case?\r\n\r\n  [1]: https://github.com/tensorflow/tensorboard/issues/982",
+            "link": "https://stackoverflow.com/questions/49791011/tensorflow-version-vs-tensorboard-version",
+            "title": "Tensorflow version vs tensorboard version",
+            "body": "<p>I would like to ask if tensorflow version could be different than tensorboard's one?</p>\n\n<p>I have a problem (<code>404 problem</code>) and someone suggested installing a <a href=\"https://github.com/tensorflow/tensorboard/issues/982\" rel=\"nofollow noreferrer\">newer version of tensorboard</a> using:</p>\n\n<pre><code>pip uninstall tensorflow-tensorboard\npip install tensorboard\n</code></pre>\n\n<p>I checked my versions and they are both <code>1.6.0</code>:</p>\n\n<pre><code>from tensorboard import version; print(version.VERSION)\nimport tensorflow as tf; print(tf.__version__)\n</code></pre>\n\n<blockquote>\n  <p>1.6.0</p>\n</blockquote>\n\n<p>Also since I don't remember installing tensorboard separately (I might be mistaken about this one though) I guess it's expected to be on the same version. </p>\n\n<p>So, my question is could they be on different versions? (I guess they could since we have the opportunity to install tensorboard separately). And also is there a point in upgrading one and not the other? Could there be some conflicts in the latter case?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "sql",
+                "oracle",
+                "spring-boot",
+                "jdbc"
+            ],
+            "owner": {
+                "reputation": 74,
+                "user_id": 7745173,
+                "user_type": "registered",
+                "accept_rate": 78,
+                "profile_image": "https://graph.facebook.com/10212655478324335/picture?type=large",
+                "display_name": "Logan Wlv",
+                "link": "https://stackoverflow.com/users/7745173/logan-wlv"
+            },
+            "is_answered": false,
+            "view_count": 35,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539485,
+            "creation_date": 1523538392,
+            "last_edit_date": 1523539485,
+            "question_id": 49797381,
+            "body_markdown": "I have an issue when executing the following SQL statement using JAVA on a ORACLE database, it works with DBeaver/SQLdeveloper but during the java process I get the following error.  Any ideas ?\r\n\r\nSQL Statement : \r\n\r\n    SELECT MIN(SUBSTR(t1.MONTH,1,4)) || &#39;A&#39; || &#39;B&#39; || &#39;CDE FGR&#39; || &#39; &#39; || &#39;AT&#39;\r\n    FROM table1 t1, table2 t2\r\n    WHERE t1.toto=t2.toto\r\n    AND t1.tata=t2.tata\r\n    AND t1.titi=t2.titi\r\n    AND t2.tutu = &#39;IMPACT_EUROPE_FLAG&#39;\r\n\r\nSQL error during java process : \r\n\r\n    org.springframework.jdbc.BadSqlGrammarException: Attempt to process next row failed; bad SQL grammar\r\n\r\n    nested exception is java.sql.SQLException: Invalid column name\r\n\r\nTables : \r\n\r\n    TABLE1 \tTABLE2 \r\n    --------------\r\n    MONTH \tTOTO\r\n    TOTO\tTATA\r\n    TATA\tTITI\r\n    TITI\tTUTU\r\n    TUTU\r\n\r\nMy java process, only the reader and stepbuilder : \r\n\r\n\t\r\n\r\n    \t\r\n     private Step insertBaseToFile() {\r\n            return stepBuilderFactory.get(&quot;insertBaseToFile&quot;).&lt;GenericRecord, GenericRecord&gt;chunk(100).reader(baseReader())\r\n                    .writer(fileWriter()).build();\r\n     }\r\n    \r\n    private JdbcCursorItemReader&lt;GenericRecord&gt; baseReader() {\r\n    \r\n            JdbcCursorItemReader&lt;GenericRecord&gt; databaseReader = new JdbcCursorItemReader&lt;&gt;();\r\n    \r\n            String sql = null;\r\n    \r\n            sql = &quot; SELECT MIN(SUBSTR(t1.MONTH,1,4)) || &#39;A&#39; || &#39;B&#39; || &#39;CDE FGR&#39; || &#39; &#39; || &#39;AT&#39; &quot; +\r\n                        &quot;FROM table1 t1, table2 t2 &quot; +\r\n                        &quot;WHERE t1.toto=t2.toto &quot; +\r\n                        &quot;AND t1.tata=t2.tata &quot; +\r\n                        &quot;AND t1.titi=t2.titi &quot; +\r\n                        &quot;AND t2.tutu = &#39;IMPACT_EUROPE_FLAG&#39;&quot; \r\n    \r\n            databaseReader.setDataSource(dataSource); //dataSource object from my class using JSON conf to get logs in to DB\r\n            databaseReader.setSql(sql);\r\n    \r\n            return databaseReader;\r\n    }\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49797381/sql-exception-column-invalid-java-sql-statement",
+            "title": "SQL exception column invalid, java sql statement",
+            "body": "<p>I have an issue when executing the following SQL statement using JAVA on a ORACLE database, it works with DBeaver/SQLdeveloper but during the java process I get the following error.  Any ideas ?</p>\n\n<p>SQL Statement : </p>\n\n<pre><code>SELECT MIN(SUBSTR(t1.MONTH,1,4)) || 'A' || 'B' || 'CDE FGR' || ' ' || 'AT'\nFROM table1 t1, table2 t2\nWHERE t1.toto=t2.toto\nAND t1.tata=t2.tata\nAND t1.titi=t2.titi\nAND t2.tutu = 'IMPACT_EUROPE_FLAG'\n</code></pre>\n\n<p>SQL error during java process : </p>\n\n<pre><code>org.springframework.jdbc.BadSqlGrammarException: Attempt to process next row failed; bad SQL grammar\n\nnested exception is java.sql.SQLException: Invalid column name\n</code></pre>\n\n<p>Tables : </p>\n\n<pre><code>TABLE1  TABLE2 \n--------------\nMONTH   TOTO\nTOTO    TATA\nTATA    TITI\nTITI    TUTU\nTUTU\n</code></pre>\n\n<p>My java process, only the reader and stepbuilder : </p>\n\n<pre><code> private Step insertBaseToFile() {\n        return stepBuilderFactory.get(\"insertBaseToFile\").&lt;GenericRecord, GenericRecord&gt;chunk(100).reader(baseReader())\n                .writer(fileWriter()).build();\n }\n\nprivate JdbcCursorItemReader&lt;GenericRecord&gt; baseReader() {\n\n        JdbcCursorItemReader&lt;GenericRecord&gt; databaseReader = new JdbcCursorItemReader&lt;&gt;();\n\n        String sql = null;\n\n        sql = \" SELECT MIN(SUBSTR(t1.MONTH,1,4)) || 'A' || 'B' || 'CDE FGR' || ' ' || 'AT' \" +\n                    \"FROM table1 t1, table2 t2 \" +\n                    \"WHERE t1.toto=t2.toto \" +\n                    \"AND t1.tata=t2.tata \" +\n                    \"AND t1.titi=t2.titi \" +\n                    \"AND t2.tutu = 'IMPACT_EUROPE_FLAG'\" \n\n        databaseReader.setDataSource(dataSource); //dataSource object from my class using JSON conf to get logs in to DB\n        databaseReader.setSql(sql);\n\n        return databaseReader;\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "ruby",
+                "hash"
+            ],
+            "owner": {
+                "reputation": 26,
+                "user_id": 5630260,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2bf5dd9a49c3c5e97cf9ef931d9a20e1?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Harry",
+                "link": "https://stackoverflow.com/users/5630260/harry"
+            },
+            "is_answered": true,
+            "view_count": 35,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523539483,
+            "creation_date": 1523436403,
+            "last_edit_date": 1523539483,
+            "question_id": 49770562,
+            "body_markdown": "I&#39;m facing a problem that I couldn&#39;t find a working solution yet.\r\n\r\nI have my YAML config file for the environment, let&#39;s call it `development.yml`.\r\n\r\nThis file is used to create the hash that should be updated:\r\n\r\n    data = YAML.load_file(File.join(Rails.root, &#39;config&#39;, &#39;environments&#39;, &#39;development.yml&#39;))\r\n\r\nWhat I&#39;m trying to accomplish is something along these lines. Let&#39;s suppose we have an element of the sort\r\n\r\n    data[&#39;server&#39;][&#39;host&#39;][&#39;user&#39;]\r\n    data[&#39;server&#39;][&#39;host&#39;][&#39;password&#39;]\r\n\r\nWhat I want to have is:\r\n\r\n    data[&#39;server&#39;][&#39;host&#39;][&#39;user&#39;] = #{Server.Host.User}\r\n    data[&#39;server&#39;][&#39;host&#39;][&#39;password&#39;] = #{Server.Host.Password}\r\n\r\nThe idea is to create a placeholder for each value that is the key mapping for that value dynamically, going until the last level of the hash and replacing the value with the mapping to this value, concatenating the keys.\r\n\r\nSorry, it doesn&#39;t solve my problem. The location `data[&#39;server&#39;][&#39;host&#39;][&#39;user&#39;]` will be built dynamically, via a loop that will go through a nested Hash. The only way I found to do it was to append to the string the key for the current iteration of the Hash. At the end, I have a string like `&quot;data[&#39;server&#39;][&#39;host&#39;][&#39;name&#39;]&quot;`, which I was thinking on converting to a variable `data[&#39;server&#39;][&#39;host&#39;][&#39;name&#39;]` and then assigning to this variable the value `#{Server.Host.Name}`. Reading my question I&#39;m not sure if this is clear, I hope this helps to clarify it.\r\n\r\nIt sounds silly, but I couldn&#39;t figure out a way to do it.\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49770562/update-hash-values-with-hash-key",
+            "title": "Update hash values with hash key",
+            "body": "<p>I'm facing a problem that I couldn't find a working solution yet.</p>\n\n<p>I have my YAML config file for the environment, let's call it <code>development.yml</code>.</p>\n\n<p>This file is used to create the hash that should be updated:</p>\n\n<pre><code>data = YAML.load_file(File.join(Rails.root, 'config', 'environments', 'development.yml'))\n</code></pre>\n\n<p>What I'm trying to accomplish is something along these lines. Let's suppose we have an element of the sort</p>\n\n<pre><code>data['server']['host']['user']\ndata['server']['host']['password']\n</code></pre>\n\n<p>What I want to have is:</p>\n\n<pre><code>data['server']['host']['user'] = #{Server.Host.User}\ndata['server']['host']['password'] = #{Server.Host.Password}\n</code></pre>\n\n<p>The idea is to create a placeholder for each value that is the key mapping for that value dynamically, going until the last level of the hash and replacing the value with the mapping to this value, concatenating the keys.</p>\n\n<p>Sorry, it doesn't solve my problem. The location <code>data['server']['host']['user']</code> will be built dynamically, via a loop that will go through a nested Hash. The only way I found to do it was to append to the string the key for the current iteration of the Hash. At the end, I have a string like <code>\"data['server']['host']['name']\"</code>, which I was thinking on converting to a variable <code>data['server']['host']['name']</code> and then assigning to this variable the value <code>#{Server.Host.Name}</code>. Reading my question I'm not sure if this is clear, I hope this helps to clarify it.</p>\n\n<p>It sounds silly, but I couldn't figure out a way to do it.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "selection",
+                "textselection"
+            ],
+            "owner": {
+                "reputation": 182,
+                "user_id": 5741324,
+                "user_type": "registered",
+                "accept_rate": 84,
+                "profile_image": "https://i.stack.imgur.com/Y8cJW.png?s=128&g=1",
+                "display_name": "Miguel Angel Frias",
+                "link": "https://stackoverflow.com/users/5741324/miguel-angel-frias"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 1,
+            "score": -2,
+            "last_activity_date": 1523539480,
+            "creation_date": 1523539143,
+            "last_edit_date": 1523539276,
+            "question_id": 49797673,
+            "body_markdown": "I&#39;m trying to get the `html` of the selected text, for this I&#39;m using this function:\r\n\r\n      public getHtmlSelection(selection: any): string {\r\n        let html: string;\r\n        const container = document.createElement(&#39;div&#39;);\r\n        for (let i = 0, len = selection.rangeCount; i &lt; len; ++i) {\r\n          container.appendChild(selection.getRangeAt(i).cloneContents());\r\n        }\r\n        html = container.innerHTML;\r\n        return html;\r\n      }\r\n\r\nso far its working perfect, but there is small issue as is show in the image:\r\n\r\n[![enter image description here][1]][1]\r\n\r\nIf I make that selection I want `vierung&lt;/strong&gt; (emp` as string but I get `&lt;strong&gt;vierung&lt;/strong&gt; (emp` the browser auto close and open the tag, is there any way to do this?\r\n  [1]: https://i.stack.imgur.com/3vNmt.png",
+            "link": "https://stackoverflow.com/questions/49797673/avoid-auto-close-tag",
+            "title": "Avoid auto close tag",
+            "body": "<p>I'm trying to get the <code>html</code> of the selected text, for this I'm using this function:</p>\n\n<pre><code>  public getHtmlSelection(selection: any): string {\n    let html: string;\n    const container = document.createElement('div');\n    for (let i = 0, len = selection.rangeCount; i &lt; len; ++i) {\n      container.appendChild(selection.getRangeAt(i).cloneContents());\n    }\n    html = container.innerHTML;\n    return html;\n  }\n</code></pre>\n\n<p>so far its working perfect, but there is small issue as is show in the image:</p>\n\n<p><a href=\"https://i.stack.imgur.com/3vNmt.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/3vNmt.png\" alt=\"enter image description here\"></a></p>\n\n<p>If I make that selection I want <code>vierung&lt;/strong&gt; (emp</code> as string but I get <code>&lt;strong&gt;vierung&lt;/strong&gt; (emp</code> the browser auto close and open the tag, is there any way to do this?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "keras",
+                "anaconda"
+            ],
+            "owner": {
+                "reputation": 109,
+                "user_id": 8018636,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/652d1a4b1c3fdec9bcaa1ab3df89cf4d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "exteralvictor",
+                "link": "https://stackoverflow.com/users/8018636/exteralvictor"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539473,
+            "creation_date": 1523528075,
+            "last_edit_date": 1523539473,
+            "question_id": 49793933,
+            "body_markdown": "I tried to run this Python (3.5) code in an Anaconda environment:\r\n\r\n    from keras import backend as K\r\n    sess = K.get_session()\r\n\r\nI firstly doubted it was my misuse of the backend function. However, I checked https://keras.io/backend/ and found that this example code didn&#180;t work either:\r\n\r\n    from keras import backend as K\r\n    tf_session = K.get_session()\r\n\r\nThe error is \r\n\r\n&gt; File &quot;C:\\python\\client\\session.py&quot;, line 1049, in _run raise\r\n&gt; RuntimeError(&#39;The Session graph is empty.  Add operations to the &#39;\r\n&gt; RuntimeError: The Session graph is empty.  Add operations to the graph\r\n&gt; before calling run().\r\n\r\n\r\nHow can I fix this?",
+            "link": "https://stackoverflow.com/questions/49793933/get-session-error-in-keras-backend",
+            "title": "get_session error in keras.backend",
+            "body": "<p>I tried to run this Python (3.5) code in an Anaconda environment:</p>\n\n<pre><code>from keras import backend as K\nsess = K.get_session()\n</code></pre>\n\n<p>I firstly doubted it was my misuse of the backend function. However, I checked <a href=\"https://keras.io/backend/\" rel=\"nofollow noreferrer\">https://keras.io/backend/</a> and found that this example code didn´t work either:</p>\n\n<pre><code>from keras import backend as K\ntf_session = K.get_session()\n</code></pre>\n\n<p>The error is </p>\n\n<blockquote>\n  <p>File \"C:\\python\\client\\session.py\", line 1049, in _run raise\n  RuntimeError('The Session graph is empty.  Add operations to the '\n  RuntimeError: The Session graph is empty.  Add operations to the graph\n  before calling run().</p>\n</blockquote>\n\n<p>How can I fix this?</p>\n"
+        },
+        {
+            "tags": [
+                "csv",
+                "naivebayes",
+                "mallet"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9087572,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/b63ba3dc3ba705ff3dc66e82bab9db37?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Rajani",
+                "link": "https://stackoverflow.com/users/9087572/rajani"
+            },
+            "is_answered": false,
+            "view_count": 3,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539468,
+            "creation_date": 1523539468,
+            "question_id": 49797776,
+            "body_markdown": "I have created the CSV file which contains label name and word frequency. \r\n\r\ne.g.    \r\n       \r\n        0, 4.0, 0.0, 0.0, 1.0, 0.0\r\n\r\n        0, 0.0, 1.0, 2.0, 0.0, 0.0\r\n\r\n        1, 1.0, 0.0, 0.0, 0.0, 3.0\r\n\r\nWhere the index zero represents the label (0 and 1)\r\n\r\nMy question is, How to import this kind CSV file into mallet to generate instance list? How to pass this file to N&#228;ive Bayes Classifier?  ",
+            "link": "https://stackoverflow.com/questions/49797776/mallet-how-to-pass-the-csv-file-which-contains-word-count-to-n%c3%a4ive-bayes-in-ma",
+            "title": "MALLET - How to pass the csv file which contains word count to n&#228;ive bayes in mallet?",
+            "body": "<p>I have created the CSV file which contains label name and word frequency. </p>\n\n<p>e.g.    </p>\n\n<pre><code>    0, 4.0, 0.0, 0.0, 1.0, 0.0\n\n    0, 0.0, 1.0, 2.0, 0.0, 0.0\n\n    1, 1.0, 0.0, 0.0, 0.0, 3.0\n</code></pre>\n\n<p>Where the index zero represents the label (0 and 1)</p>\n\n<p>My question is, How to import this kind CSV file into mallet to generate instance list? How to pass this file to Näive Bayes Classifier?  </p>\n"
+        },
+        {
+            "tags": [
+                "ionic-framework"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9451686,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Hakob Khurshudyan",
+                "link": "https://stackoverflow.com/users/9451686/hakob-khurshudyan"
+            },
+            "is_answered": true,
+            "view_count": 20,
+            "accepted_answer_id": 49797775,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523539466,
+            "creation_date": 1522754909,
+            "last_edit_date": 1522756401,
+            "question_id": 49628945,
+            "body_markdown": "I am trying put element under header but unfortunately it not working.\r\nMy element is directive and it I am using for  specific pages.\r\nI am set it `position:absolute` and `z-index:500` and for `ion-header`  i am set `z-index:1` but it not working\r\n\r\nPlease help me[enter image description here][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/TYELh.jpg",
+            "link": "https://stackoverflow.com/questions/49628945/how-to-set-element-on-ion-header-bar-becouse-it-covered-element",
+            "title": "How to set element on ion-header-bar becouse it covered element?",
+            "body": "<p>I am trying put element under header but unfortunately it not working.\nMy element is directive and it I am using for  specific pages.\nI am set it <code>position:absolute</code> and <code>z-index:500</code> and for <code>ion-header</code>  i am set <code>z-index:1</code> but it not working</p>\n\n<p>Please help me<a href=\"https://i.stack.imgur.com/TYELh.jpg\" rel=\"nofollow noreferrer\">enter image description here</a></p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "firebase",
+                "firebase-database",
+                "geolocation",
+                "geofire"
+            ],
+            "owner": {
+                "reputation": 19,
+                "user_id": 8029596,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ef10e9980f0d2109abf86f9e6f1e9f37?s=128&d=identicon&r=PG&f=1",
+                "display_name": "bbgg2017",
+                "link": "https://stackoverflow.com/users/8029596/bbgg2017"
+            },
+            "is_answered": true,
+            "view_count": 18,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523539464,
+            "creation_date": 1523535908,
+            "last_edit_date": 1523536823,
+            "question_id": 49796495,
+            "body_markdown": "It&#39;s possible to get all the GeoFire posts stored in the firebase db with a specific radius from my current position?\r\n\r\nExample: if into the node of my db I have 10 posts and only 3 are valid from my current position with a radius of 0.5km I will get the 3 posts.\r\n\r\nThis is the structure of my DB:\r\n     \r\n    {\r\n      &quot;posts&quot; : {\r\n        &quot;-L9qTBD1WPgF0h2ungz-&quot; : {\r\n          &quot;desc&quot; : &quot;lorem ipsum&quot;,\r\n          &quot;isActive&quot; : true,\r\n\t      &quot;idGeofire&quot; : &quot;ID1GEOFIRE&quot;\r\n        },\r\n        &quot;-L9qTDImKE4HHgxH5YDs&quot; : {\r\n          &quot;desc&quot; : &quot;lorem ipsum&quot;,\r\n          &quot;isActive&quot; : true,\r\n\t      &quot;idGeofire&quot; : &quot;ID2GEOFIRE&quot;\r\n        }\r\n      },\r\n      &quot;geofire&quot; : {\r\n        &quot;ID1GEOFIRE&quot; : {\r\n          &quot;IdPost&quot; : &quot;L9qTBD1WPgF0h2ungz&quot;,\r\n\t      &quot;l&quot; : {\r\n\t\t    &quot;0&quot; : 46.632347,\r\n\t\t    &quot;1&quot; : 3.6354347\r\n\t      }\r\n        },\r\n        &quot;ID2GEOFIRE&quot; : {\r\n          &quot;IdPost&quot; : &quot;L9qTDImKE4HHgxH5YDs&quot;,\r\n\t      &quot;l&quot; : {\r\n\t\t    &quot;0&quot; : 25.6314647,\r\n\t\t    &quot;1&quot; : 50.6369447\r\n\t      }\r\n        },\r\n      }\r\n    }\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49796495/firebase-geofire-retrieve-posts-with-a-specific-radius-from-my-current-position",
+            "title": "Firebase GeoFire, retrieve posts with a specific radius from my current position",
+            "body": "<p>It's possible to get all the GeoFire posts stored in the firebase db with a specific radius from my current position?</p>\n\n<p>Example: if into the node of my db I have 10 posts and only 3 are valid from my current position with a radius of 0.5km I will get the 3 posts.</p>\n\n<p>This is the structure of my DB:</p>\n\n<pre><code>{\n  \"posts\" : {\n    \"-L9qTBD1WPgF0h2ungz-\" : {\n      \"desc\" : \"lorem ipsum\",\n      \"isActive\" : true,\n      \"idGeofire\" : \"ID1GEOFIRE\"\n    },\n    \"-L9qTDImKE4HHgxH5YDs\" : {\n      \"desc\" : \"lorem ipsum\",\n      \"isActive\" : true,\n      \"idGeofire\" : \"ID2GEOFIRE\"\n    }\n  },\n  \"geofire\" : {\n    \"ID1GEOFIRE\" : {\n      \"IdPost\" : \"L9qTBD1WPgF0h2ungz\",\n      \"l\" : {\n        \"0\" : 46.632347,\n        \"1\" : 3.6354347\n      }\n    },\n    \"ID2GEOFIRE\" : {\n      \"IdPost\" : \"L9qTDImKE4HHgxH5YDs\",\n      \"l\" : {\n        \"0\" : 25.6314647,\n        \"1\" : 50.6369447\n      }\n    },\n  }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "eclipse",
+                "debugging",
+                "jdwp"
+            ],
+            "owner": {
+                "reputation": 24,
+                "user_id": 1238345,
+                "user_type": "registered",
+                "accept_rate": 20,
+                "profile_image": "https://www.gravatar.com/avatar/952076cef0240484900a1b9f33a89cad?s=128&d=identicon&r=PG",
+                "display_name": "NilKha",
+                "link": "https://stackoverflow.com/users/1238345/nilkha"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539462,
+            "creation_date": 1523539462,
+            "question_id": 49797771,
+            "body_markdown": "I want to debug a java program which is invoked by third-party Software with option \r\n\r\n    -Xrunjdwp:transport=dt_socket,address=8998,server=y,suspend=n\r\n\r\nAs suspended=n is specified in options program start to execute and finish immediately without waiting for eclipse to connect. \r\n\r\nIn this case, How can I connect Eclipse to Java Program?(I can&#39;t change suspend=n option) \r\n\r\nI also try to connect eclipse once program execution is finished but It is giving following error as program execution is finished in meantime. \r\n\r\n    Failed to connect to remote VM. Connection refused.\r\n    Connection refused: connect\r\n",
+            "link": "https://stackoverflow.com/questions/49797771/eclipse-remote-debugging-with-suspend-n-option",
+            "title": "Eclipse Remote Debugging with suspend=n Option",
+            "body": "<p>I want to debug a java program which is invoked by third-party Software with option </p>\n\n<pre><code>-Xrunjdwp:transport=dt_socket,address=8998,server=y,suspend=n\n</code></pre>\n\n<p>As suspended=n is specified in options program start to execute and finish immediately without waiting for eclipse to connect. </p>\n\n<p>In this case, How can I connect Eclipse to Java Program?(I can't change suspend=n option) </p>\n\n<p>I also try to connect eclipse once program execution is finished but It is giving following error as program execution is finished in meantime. </p>\n\n<pre><code>Failed to connect to remote VM. Connection refused.\nConnection refused: connect\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "firebase",
+                "google-cloud-firestore",
+                "algolia"
+            ],
+            "owner": {
+                "reputation": 110,
+                "user_id": 2745944,
+                "user_type": "registered",
+                "accept_rate": 84,
+                "profile_image": "https://i.stack.imgur.com/t8lJ7.jpg?s=128&g=1",
+                "display_name": "martinseal1987",
+                "link": "https://stackoverflow.com/users/2745944/martinseal1987"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539461,
+            "creation_date": 1523539461,
+            "question_id": 49797770,
+            "body_markdown": "I&#39;ve been following a tutorial here https://medium.com/@soares.rfarias/how-to-index-firestore-data-into-algolia-using-cloud-functions-9ed5b56baa57 on how to link google firestore with algolia search service and although I&#39;ve got through most the steps, (I was a little stuck at running the indexing script but im now past that) I&#39;m stuck on migrating all collections from A to B I get an error that means almost nothing to me as I&#39;m unaware of any firestore project id and i definitely dont interact directly with the folder the error points at, here is the entire error \r\n\r\n\r\n\r\n    C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\firestore\\dist\\cjs\\src\\api\\database.js:211\r\n            throw new error_1.FirestoreError(error_1.Code.INVALID_ARGUMENT, &#39;projectId must be a string in FirebaseApp.options&#39;);\r\n            ^\r\n\r\n    FirebaseError: projectId must be a string in FirebaseApp.options\r\n    at new FirestoreError (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\firestore\\dist\\cjs\\src\\util\\error.js:142:28)\r\n    at Function.Firestore.databaseIdFromApp (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\firestore\\dist\\cjs\\src\\api\\database.js:211:19)\r\n    at new Firestore (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\firestore\\dist\\cjs\\src\\api\\database.js:110:43)\r\n    at Object.firestore (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\firestore\\dist\\cjs\\src\\platform\\config.js:44:76)\r\n    at FirebaseAppImpl._getService (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\app\\dist\\cjs\\src\\firebaseApp.js:117:66)\r\n    at FirebaseAppImpl.(anonymous function) [as firestore] (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\app\\dist\\cjs\\src\\firebaseApp.js:304:31)\r\n    at Object.serviceNamespace [as firestore] (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\app\\dist\\cjs\\src\\firebaseApp.js:289:32)\r\n    at Object.&lt;anonymous&gt; (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\indexing.js:12:21)\r\n    at Module._compile (module.js:652:30)\r\n    at Object.Module._extensions..js (module.js:663:10)\r\n\r\n\r\nany help appreciated",
+            "link": "https://stackoverflow.com/questions/49797770/using-firestore-and-algolia-error-projectid-must-be-a-string-in-firebaseapp-opti",
+            "title": "Using Firestore and algolia error projectId must be a string in FirebaseApp.options",
+            "body": "<p>I've been following a tutorial here <a href=\"https://medium.com/@soares.rfarias/how-to-index-firestore-data-into-algolia-using-cloud-functions-9ed5b56baa57\" rel=\"nofollow noreferrer\">https://medium.com/@soares.rfarias/how-to-index-firestore-data-into-algolia-using-cloud-functions-9ed5b56baa57</a> on how to link google firestore with algolia search service and although I've got through most the steps, (I was a little stuck at running the indexing script but im now past that) I'm stuck on migrating all collections from A to B I get an error that means almost nothing to me as I'm unaware of any firestore project id and i definitely dont interact directly with the folder the error points at, here is the entire error </p>\n\n<pre><code>C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\firestore\\dist\\cjs\\src\\api\\database.js:211\n        throw new error_1.FirestoreError(error_1.Code.INVALID_ARGUMENT, 'projectId must be a string in FirebaseApp.options');\n        ^\n\nFirebaseError: projectId must be a string in FirebaseApp.options\nat new FirestoreError (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\firestore\\dist\\cjs\\src\\util\\error.js:142:28)\nat Function.Firestore.databaseIdFromApp (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\firestore\\dist\\cjs\\src\\api\\database.js:211:19)\nat new Firestore (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\firestore\\dist\\cjs\\src\\api\\database.js:110:43)\nat Object.firestore (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\firestore\\dist\\cjs\\src\\platform\\config.js:44:76)\nat FirebaseAppImpl._getService (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\app\\dist\\cjs\\src\\firebaseApp.js:117:66)\nat FirebaseAppImpl.(anonymous function) [as firestore] (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\app\\dist\\cjs\\src\\firebaseApp.js:304:31)\nat Object.serviceNamespace [as firestore] (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\node_modules\\@firebase\\app\\dist\\cjs\\src\\firebaseApp.js:289:32)\nat Object.&lt;anonymous&gt; (C:\\Users\\marti\\Desktop\\sealstudios\\functions\\indexing.js:12:21)\nat Module._compile (module.js:652:30)\nat Object.Module._extensions..js (module.js:663:10)\n</code></pre>\n\n<p>any help appreciated</p>\n"
+        },
+        {
+            "tags": [
+                "bash",
+                "pandas",
+                "hdf5",
+                "hdfstore"
+            ],
+            "owner": {
+                "reputation": 171,
+                "user_id": 2563693,
+                "user_type": "registered",
+                "accept_rate": 91,
+                "profile_image": "https://www.gravatar.com/avatar/f6e719499b8e964eeabb2222e6f5ac1c?s=128&d=identicon&r=PG",
+                "display_name": "szeta",
+                "link": "https://stackoverflow.com/users/2563693/szeta"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539459,
+            "creation_date": 1523525314,
+            "last_edit_date": 1523539459,
+            "question_id": 49792923,
+            "body_markdown": "I would like to select the max value from some columns of a massive HDF store.\r\n\r\nThe approach which works on a smaller dataset does not scale, as it is first reading all and then picking the max value.\r\n\r\n    myWidth = {}\r\n    store = pd.HDFStore(&#39;store_TRAIN.h5&#39;)\r\n    for i in features_cat:\r\n        myWidth.update({i:max(store.select_as_multiple([&#39;myData&#39;,&#39;myFeatures&#39;,&#39;myCount&#39;]).iloc[:,i])})\r\n        print(i)\r\n    store.close()\r\n\r\nIn the documentation for pd.HDFStore I could only find &#39;where&#39; conditions, but nothing like &#39;max()&#39;. \r\nAlso, pandas hdfsql would only work on a pandas dataframe which is already in memory.\r\n\r\nI would appreciate any hint.\r\nThanks\r\n\r\n**Edit:**\r\n\r\nFor the ones looking for a similar answer:\r\n\r\nI have come across HDFql, which looks promising. But it was not (yet?) available as pip package. That would be a method to consider in the future, or for a recurring task.\r\n\r\nFor this time I found it faster to parse the raw CSV file via bash command:\r\n\r\n    cut -d, -f2 &lt; train_data.csv |sort -nr | head -1\r\n\r\nThis example assumes comma separated file, looking for max amount in 2nd column. \r\n\r\nThis took only a few seconds on a 7GB file.\r\n\r\nRegards",
+            "link": "https://stackoverflow.com/questions/49792923/select-max-value-from-hdf-store",
+            "title": "select max value from HDF store",
+            "body": "<p>I would like to select the max value from some columns of a massive HDF store.</p>\n\n<p>The approach which works on a smaller dataset does not scale, as it is first reading all and then picking the max value.</p>\n\n<pre><code>myWidth = {}\nstore = pd.HDFStore('store_TRAIN.h5')\nfor i in features_cat:\n    myWidth.update({i:max(store.select_as_multiple(['myData','myFeatures','myCount']).iloc[:,i])})\n    print(i)\nstore.close()\n</code></pre>\n\n<p>In the documentation for pd.HDFStore I could only find 'where' conditions, but nothing like 'max()'. \nAlso, pandas hdfsql would only work on a pandas dataframe which is already in memory.</p>\n\n<p>I would appreciate any hint.\nThanks</p>\n\n<p><strong>Edit:</strong></p>\n\n<p>For the ones looking for a similar answer:</p>\n\n<p>I have come across HDFql, which looks promising. But it was not (yet?) available as pip package. That would be a method to consider in the future, or for a recurring task.</p>\n\n<p>For this time I found it faster to parse the raw CSV file via bash command:</p>\n\n<pre><code>cut -d, -f2 &lt; train_data.csv |sort -nr | head -1\n</code></pre>\n\n<p>This example assumes comma separated file, looking for max amount in 2nd column. </p>\n\n<p>This took only a few seconds on a 7GB file.</p>\n\n<p>Regards</p>\n"
+        },
+        {
+            "tags": [
+                "grouping",
+                "ag-grid",
+                "enterprise"
+            ],
+            "owner": {
+                "reputation": 476,
+                "user_id": 1103069,
+                "user_type": "registered",
+                "accept_rate": 78,
+                "profile_image": "https://i.stack.imgur.com/ePchR.jpg?s=128&g=1",
+                "display_name": "Tom Bird",
+                "link": "https://stackoverflow.com/users/1103069/tom-bird"
+            },
+            "is_answered": false,
+            "view_count": 4,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539456,
+            "creation_date": 1523539456,
+            "question_id": 49797767,
+            "body_markdown": "I&#39;m trying to figure out how AgGrid makes the request for new data when a group is expanded. I&#39;ve seen this https://www.ag-grid.com/javascript-grid-enterprise-model/#enterprise-datasource in the docs but it doesn&#39;t give a great explanation as to how you setup the `dataSource` to receive the new data. Any help or suggestions would be greatly appreciated:",
+            "link": "https://stackoverflow.com/questions/49797767/ag-grid-enterprise-grouping",
+            "title": "Ag Grid Enterprise Grouping",
+            "body": "<p>I'm trying to figure out how AgGrid makes the request for new data when a group is expanded. I've seen this <a href=\"https://www.ag-grid.com/javascript-grid-enterprise-model/#enterprise-datasource\" rel=\"nofollow noreferrer\">https://www.ag-grid.com/javascript-grid-enterprise-model/#enterprise-datasource</a> in the docs but it doesn't give a great explanation as to how you setup the <code>dataSource</code> to receive the new data. Any help or suggestions would be greatly appreciated:</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "get"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 3314333,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ee7a3b0c16b46590e1d27ca8c84051d9?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3314333",
+                "link": "https://stackoverflow.com/users/3314333/user3314333"
+            },
+            "is_answered": true,
+            "view_count": 193,
+            "answer_count": 2,
+            "score": -1,
+            "last_activity_date": 1523539451,
+            "creation_date": 1392782855,
+            "question_id": 21870826,
+            "body_markdown": "How to get somtheng form the url page name?\r\nLet&#39;s take as example: www.example.com/blabla/12345.php\r\nI want to create an $id to take the value 12345, (without that .php) \r\nAnd why stackoverflow don&#39;t let me ask this simple question, and force me to add more text to accept my queston?.. I hope now it&#39;s better.",
+            "link": "https://stackoverflow.com/questions/21870826/how-to-get-page-name-from-url-without-extension",
+            "title": "how to get page name from url (without extension)",
+            "body": "<p>How to get somtheng form the url page name?\nLet's take as example: www.example.com/blabla/12345.php\nI want to create an $id to take the value 12345, (without that .php) \nAnd why stackoverflow don't let me ask this simple question, and force me to add more text to accept my queston?.. I hope now it's better.</p>\n"
+        },
+        {
+            "tags": [
+                "amazon-web-services",
+                "aws-lambda",
+                "amazon-cloudformation"
+            ],
+            "owner": {
+                "reputation": 3430,
+                "user_id": 1105314,
+                "user_type": "registered",
+                "accept_rate": 99,
+                "profile_image": "https://i.stack.imgur.com/8PHjD.jpg?s=128&g=1",
+                "display_name": "Rohan B&#252;chner",
+                "link": "https://stackoverflow.com/users/1105314/rohan-b%c3%bcchner"
+            },
+            "is_answered": true,
+            "view_count": 14,
+            "accepted_answer_id": 49797645,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523539448,
+            "creation_date": 1523537171,
+            "last_edit_date": 1523539448,
+            "question_id": 49796951,
+            "body_markdown": "**Scenario:**\r\n\r\nI have a serverless/cloudformation script that re-deploys the same code with different configurations to AWS as lambdas and exposes each lambda via API Gateway.\r\n\r\nSo far the only way I&#39;ve been able to do this is via copious amounts of copy and paste within the same script.. but its starting to drive me up the walls... thus, as I&#39;m a complete newby to AWS and the navigating the AWS docs &amp; internet has yielded pretty bad results in answering this... I&#39;m trying my luck here.\r\n\r\n**Within a cloudformation script:**\r\n\r\n\r\n    &quot;Resources&quot;:{  \r\n       &quot;LambdaResourceNG&quot;:{  \r\n          &quot;Type&quot;:&quot;AWS::Serverless::Function&quot;,\r\n          &quot;Properties&quot;:{  \r\n             &quot;Handler&quot;:&quot;some-handlername::foo::bar&quot;,\r\n             &quot;Runtime&quot;:&quot;dotnetcore2.0&quot;,\r\n             &quot;Environment&quot;:{  \r\n                &quot;Variables&quot;:{  \r\n                   &quot;PictureOptions__OriginalPictureSuffix&quot;:{  \r\n                      &quot;Fn::Join&quot;:[  \r\n                         &quot;&quot;,\r\n                         [  \r\n                            &quot;_&quot;,\r\n                            &quot;ng&quot;,\r\n                            &quot;_&quot;,\r\n                            {  \r\n                               &quot;Fn::FindInMap&quot;:[  \r\n                                  &quot;Environments&quot;,\r\n                                  {  \r\n                                     &quot;Ref&quot;:&quot;EnvironmentValue&quot;\r\n                                  },\r\n                                  &quot;PictureOptionsOriginalPictureSuffix&quot;\r\n                               ]\r\n                            }\r\n                         ]\r\n                      ]\r\n                   },\r\n    \r\n                },\r\n                &quot;Events&quot;:{  \r\n                   &quot;Bar&quot;:{  \r\n                      &quot;Type&quot;:&quot;Api&quot;,\r\n                      &quot;Properties&quot;:{  \r\n                         &quot;Path&quot;:&quot;/ng/bar&quot;,\r\n                         &quot;Method&quot;:&quot;POST&quot;\r\n                      }\r\n                   },\r\n                   &quot;Foo&quot;:{  \r\n                      &quot;Type&quot;:&quot;Api&quot;,\r\n                      &quot;Properties&quot;:{  \r\n                         &quot;Path&quot;:&quot;/ng/foo&quot;,\r\n                         &quot;Method&quot;:&quot;POST&quot;\r\n                      }\r\n                   }\r\n                }\r\n             }\r\n          },\r\n       }\r\n\r\n**Question:**\r\n\r\nIn the script block above.. The resource is called `LambdaResourceNG`. If I wanted to have another resource...`LambdaResourceKE`... with all appropriate section changed to `KE`. How would I make a &quot;function&quot; that I could re-use within this erm... language? \r\n\r\nI&#39;ve already found out how to use maps to swap out variables based on some env value... but how would one go about creating reusable blocks of code/config?",
+            "link": "https://stackoverflow.com/questions/49796951/how-to-create-re-usable-blocks-in-cloudformation",
+            "title": "How to create re-usable blocks in CloudFormation",
+            "body": "<p><strong>Scenario:</strong></p>\n\n<p>I have a serverless/cloudformation script that re-deploys the same code with different configurations to AWS as lambdas and exposes each lambda via API Gateway.</p>\n\n<p>So far the only way I've been able to do this is via copious amounts of copy and paste within the same script.. but its starting to drive me up the walls... thus, as I'm a complete newby to AWS and the navigating the AWS docs &amp; internet has yielded pretty bad results in answering this... I'm trying my luck here.</p>\n\n<p><strong>Within a cloudformation script:</strong></p>\n\n<pre><code>\"Resources\":{  \n   \"LambdaResourceNG\":{  \n      \"Type\":\"AWS::Serverless::Function\",\n      \"Properties\":{  \n         \"Handler\":\"some-handlername::foo::bar\",\n         \"Runtime\":\"dotnetcore2.0\",\n         \"Environment\":{  \n            \"Variables\":{  \n               \"PictureOptions__OriginalPictureSuffix\":{  \n                  \"Fn::Join\":[  \n                     \"\",\n                     [  \n                        \"_\",\n                        \"ng\",\n                        \"_\",\n                        {  \n                           \"Fn::FindInMap\":[  \n                              \"Environments\",\n                              {  \n                                 \"Ref\":\"EnvironmentValue\"\n                              },\n                              \"PictureOptionsOriginalPictureSuffix\"\n                           ]\n                        }\n                     ]\n                  ]\n               },\n\n            },\n            \"Events\":{  \n               \"Bar\":{  \n                  \"Type\":\"Api\",\n                  \"Properties\":{  \n                     \"Path\":\"/ng/bar\",\n                     \"Method\":\"POST\"\n                  }\n               },\n               \"Foo\":{  \n                  \"Type\":\"Api\",\n                  \"Properties\":{  \n                     \"Path\":\"/ng/foo\",\n                     \"Method\":\"POST\"\n                  }\n               }\n            }\n         }\n      },\n   }\n</code></pre>\n\n<p><strong>Question:</strong></p>\n\n<p>In the script block above.. The resource is called <code>LambdaResourceNG</code>. If I wanted to have another resource...<code>LambdaResourceKE</code>... with all appropriate section changed to <code>KE</code>. How would I make a \"function\" that I could re-use within this erm... language? </p>\n\n<p>I've already found out how to use maps to swap out variables based on some env value... but how would one go about creating reusable blocks of code/config?</p>\n"
+        },
+        {
+            "tags": [
+                "tcpdf"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 9525644,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/4d19b2c0972c34e4f000e3a5faa5b438?s=128&d=identicon&r=PG&f=1",
+                "display_name": "mike437",
+                "link": "https://stackoverflow.com/users/9525644/mike437"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539448,
+            "creation_date": 1523539448,
+            "question_id": 49797764,
+            "body_markdown": "A developer created a TCPDF form for me because I had too many other projects to work on and no experience with TCPDF. I have a small issue that I need some help figuring out. The first line of each paragraph needs to be indented a half-inch, but the paragraph needs to be align justified. Because of the justified alignment, the indentation is thrown off and the paragraphs don&#39;t match. Is there a way to resolve this? \r\n\r\n[![Output][1]][1]\r\n\r\n    $pdf = new MyPDF();\r\n    $intergine = 10;\r\n    $indent = str_repeat(&quot; &quot;, 10);\r\n    $indent_html = str_repeat(&quot;&amp;nbsp;&quot;, 10);\r\n    $pdf-&gt;AddPage(&quot;P&quot;, array(215.9, 279.4));\r\n    $pdf-&gt;SetFont(&#39;helvetica&#39;, &#39;BU&#39;, 14);\r\n    $pdf-&gt;Cell(0, 6, &quot;TEST CONTRACT&quot;, 0, 1, &quot;C&quot;);\r\n    \r\n    $pdf-&gt;Ln(5);\r\n    $pdf-&gt;setCellHeightRatio(2.4);\r\n    $pdf-&gt;SetFont(&#39;helvetica&#39;, &#39;B&#39;, 12);\r\n    //$pdf-&gt;MultiCell(0, $intergine, $indent . &quot;Client(s): [contracts.clientName]\\n&quot;, 0, &#39;J&#39;, 0, 12);\r\n    \r\n    $clientname = &quot;Client(s): &lt;u&gt;&quot;. $row[&#39;clientName&#39;].&quot;&lt;/u&gt;&quot;;\r\n    $pdf-&gt;MultiCell(0, $intergine, $indent . $clientname . &quot;\\n&quot;, 0, &#39;J&#39;, 0, 12, &#39;45&#39;, &#39;&#39;, true, 0, true);\r\n    \r\n    \r\n    $paragraph = &quot;I hereby retain and employ the Law Office of John Smith, Attorney &quot;;\r\n    $paragraph .= &quot;at Law, 123 Main St, Tallahassee, FL 33333 &quot;;\r\n    $paragraph .= &quot;as my attorney to represent me in a cause of action against &quot;;\r\n    $paragraph .= $row[&#39;insuranceCo&#39;] . &quot; or any other entity based on my flood claim, including any &quot;;\r\n    $paragraph .= &quot;and all building, contents and ICC claims, which occurred on or about &quot;;\r\n    $paragraph .= $row[&#39;lossDate&#39;] . &quot; at or near &quot; .  $row[&#39;lossLocation&#39;] . &quot;.&quot;;\r\n    $pdf-&gt;MultiCell(0, $intergine, $indent_html . $paragraph . &quot;\\n&quot;, 0, &#39;J&#39;, 0, 1, &#39;&#39;, &#39;&#39;, true, 0, true);\r\n    \r\n    $paragraph = &quot;As compensation for their services, I agree that my attorneys may pay &quot;;\r\n    $paragraph .= &quot;themselves from the gross amount of the recovery, before any sums whatsoever &quot;;\r\n    $paragraph .= &quot;are deducted from said gross amount of recovery for costs or other items, a &quot;;\r\n    $paragraph .= &quot;contingent fee based upon the following percentages of the gross amount of such recovery:&quot;;\r\n    $pdf-&gt;MultiCell(0, $intergine, $indent . $paragraph . &quot;\\n&quot;, 0, &#39;J&#39;, 0);\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/AEKMB.png",
+            "link": "https://stackoverflow.com/questions/49797764/tcpdf-indent-issue-with-justified-align",
+            "title": "TCPDF Indent issue with justified align",
+            "body": "<p>A developer created a TCPDF form for me because I had too many other projects to work on and no experience with TCPDF. I have a small issue that I need some help figuring out. The first line of each paragraph needs to be indented a half-inch, but the paragraph needs to be align justified. Because of the justified alignment, the indentation is thrown off and the paragraphs don't match. Is there a way to resolve this? </p>\n\n<p><a href=\"https://i.stack.imgur.com/AEKMB.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/AEKMB.png\" alt=\"Output\"></a></p>\n\n<pre><code>$pdf = new MyPDF();\n$intergine = 10;\n$indent = str_repeat(\" \", 10);\n$indent_html = str_repeat(\"&amp;nbsp;\", 10);\n$pdf-&gt;AddPage(\"P\", array(215.9, 279.4));\n$pdf-&gt;SetFont('helvetica', 'BU', 14);\n$pdf-&gt;Cell(0, 6, \"TEST CONTRACT\", 0, 1, \"C\");\n\n$pdf-&gt;Ln(5);\n$pdf-&gt;setCellHeightRatio(2.4);\n$pdf-&gt;SetFont('helvetica', 'B', 12);\n//$pdf-&gt;MultiCell(0, $intergine, $indent . \"Client(s): [contracts.clientName]\\n\", 0, 'J', 0, 12);\n\n$clientname = \"Client(s): &lt;u&gt;\". $row['clientName'].\"&lt;/u&gt;\";\n$pdf-&gt;MultiCell(0, $intergine, $indent . $clientname . \"\\n\", 0, 'J', 0, 12, '45', '', true, 0, true);\n\n\n$paragraph = \"I hereby retain and employ the Law Office of John Smith, Attorney \";\n$paragraph .= \"at Law, 123 Main St, Tallahassee, FL 33333 \";\n$paragraph .= \"as my attorney to represent me in a cause of action against \";\n$paragraph .= $row['insuranceCo'] . \" or any other entity based on my flood claim, including any \";\n$paragraph .= \"and all building, contents and ICC claims, which occurred on or about \";\n$paragraph .= $row['lossDate'] . \" at or near \" .  $row['lossLocation'] . \".\";\n$pdf-&gt;MultiCell(0, $intergine, $indent_html . $paragraph . \"\\n\", 0, 'J', 0, 1, '', '', true, 0, true);\n\n$paragraph = \"As compensation for their services, I agree that my attorneys may pay \";\n$paragraph .= \"themselves from the gross amount of the recovery, before any sums whatsoever \";\n$paragraph .= \"are deducted from said gross amount of recovery for costs or other items, a \";\n$paragraph .= \"contingent fee based upon the following percentages of the gross amount of such recovery:\";\n$pdf-&gt;MultiCell(0, $intergine, $indent . $paragraph . \"\\n\", 0, 'J', 0);\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "google-vr-sdk"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9636147,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/169bca4b334a8c6ad273d121fedfc45e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "BertOne",
+                "link": "https://stackoverflow.com/users/9636147/bertone"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539443,
+            "creation_date": 1523539443,
+            "question_id": 49797763,
+            "body_markdown": "I&#39;d have a suggestion about which class use to transform a video live stream from mono to stereo using Google VR SDK.\r\n\r\nMore in detail, I&#39;ve a UIView populated with a video stream (I use another SDK that does anything like acquire the frame, compress and so on), then I&#39;d like to know what use to transform this mono view to a stereo one.\r\n\r\nFrom what I&#39;ve seen, there are GVRVideoView and GVRPanoramaView but they just want a url or path to the video or picture, then no one suited to my case.\r\n\r\nThanks in advanced to anyone that will help me.",
+            "link": "https://stackoverflow.com/questions/49797763/uiview-video-stream-from-mono-to-stereo",
+            "title": "UIView video stream from mono to stereo",
+            "body": "<p>I'd have a suggestion about which class use to transform a video live stream from mono to stereo using Google VR SDK.</p>\n\n<p>More in detail, I've a UIView populated with a video stream (I use another SDK that does anything like acquire the frame, compress and so on), then I'd like to know what use to transform this mono view to a stereo one.</p>\n\n<p>From what I've seen, there are GVRVideoView and GVRPanoramaView but they just want a url or path to the video or picture, then no one suited to my case.</p>\n\n<p>Thanks in advanced to anyone that will help me.</p>\n"
+        },
+        {
+            "tags": [
+                "python-3.x",
+                "tkinter",
+                "clr",
+                "pythonnet"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9635918,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1229299400533841/picture?type=large",
+                "display_name": "Itzik Kaplan",
+                "link": "https://stackoverflow.com/users/9635918/itzik-kaplan"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539443,
+            "creation_date": 1523534518,
+            "last_edit_date": 1523539443,
+            "question_id": 49796024,
+            "body_markdown": "I&#39;m mainly working in Spyder, building scripts that required a pop-up folder or file Browse window.\r\n\r\nThe code below works perfect in spyder.\r\nIn Pycharm, the `askopenfilename` working well, while `askdirectory` do nothing (stuck).\r\nBut, if running in debug mode - the script works well.\r\nI tried to run the script from SAS jsl - same issue.\r\n\r\nAny Idea what should I do?\r\nPython 3.6\r\nPycharm 2017.2\r\n\r\nThanks.\r\n\r\nThe Code I&#39;m using includes:\r\n\r\n    import clr #pythonnet 2.3.0\r\n    import os\r\n    import tkinter as tk\r\n    from tkinter.filedialog import (askdirectory,askopenfilename)\r\n\r\n    root = tk.Tk()\r\n    root.withdraw()\r\n    PPath=askdirectory(title=&quot;Please select your installation folder location&quot;, initialdir=r&quot;C:\\Program Files\\\\&quot;)\r\n\r\n    t=&quot;Please select jdk file&quot;\r\n    if os.path.exists(os.path.expanduser(&#39;~\\Documents&#39;)):\r\n        FFile = askopenfilename(filetypes=((&quot;jdk file&quot;, &quot;*.jdk&quot;),(&quot;All Files&quot;, &quot;*.*&quot;)),title=t, initialdir=os.path.expanduser(&#39;~\\Documents&#39;))\r\n    else:\r\n        FFile= askopenfilename(filetypes=((&quot;jdk file&quot;, &quot;*.jdk&quot;),(&quot;All Files&quot;, &quot;*.*&quot;)),title=t)\r\n    \r\n    sys.path.append(marsDllPath)\r\n    a = clr.AddReference(&#39;MatlabFunctions&#39;)\r\n    aObj = a.CreateInstance(&#39;Example.MatlabFunctions.MatLabFunctions&#39;)\r\n\r\nedit: seems like issue related to the pythonnet &quot;imoprt clr&quot;, but I do need it in the code.\r\n\r\nSimilar question asked here: https://github.com/pythonnet/pythonnet/issues/648",
+            "link": "https://stackoverflow.com/questions/49796024/python-tkinter-filedialog-askfolder-interfering-with-clr",
+            "title": "Python tkinter.filedialog askfolder interfering with clr",
+            "body": "<p>I'm mainly working in Spyder, building scripts that required a pop-up folder or file Browse window.</p>\n\n<p>The code below works perfect in spyder.\nIn Pycharm, the <code>askopenfilename</code> working well, while <code>askdirectory</code> do nothing (stuck).\nBut, if running in debug mode - the script works well.\nI tried to run the script from SAS jsl - same issue.</p>\n\n<p>Any Idea what should I do?\nPython 3.6\nPycharm 2017.2</p>\n\n<p>Thanks.</p>\n\n<p>The Code I'm using includes:</p>\n\n<pre><code>import clr #pythonnet 2.3.0\nimport os\nimport tkinter as tk\nfrom tkinter.filedialog import (askdirectory,askopenfilename)\n\nroot = tk.Tk()\nroot.withdraw()\nPPath=askdirectory(title=\"Please select your installation folder location\", initialdir=r\"C:\\Program Files\\\\\")\n\nt=\"Please select jdk file\"\nif os.path.exists(os.path.expanduser('~\\Documents')):\n    FFile = askopenfilename(filetypes=((\"jdk file\", \"*.jdk\"),(\"All Files\", \"*.*\")),title=t, initialdir=os.path.expanduser('~\\Documents'))\nelse:\n    FFile= askopenfilename(filetypes=((\"jdk file\", \"*.jdk\"),(\"All Files\", \"*.*\")),title=t)\n\nsys.path.append(marsDllPath)\na = clr.AddReference('MatlabFunctions')\naObj = a.CreateInstance('Example.MatlabFunctions.MatLabFunctions')\n</code></pre>\n\n<p>edit: seems like issue related to the pythonnet \"imoprt clr\", but I do need it in the code.</p>\n\n<p>Similar question asked here: <a href=\"https://github.com/pythonnet/pythonnet/issues/648\" rel=\"nofollow noreferrer\">https://github.com/pythonnet/pythonnet/issues/648</a></p>\n"
+        },
+        {
+            "tags": [
+                "c",
+                "parameters"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 7441472,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/41b818a4dd72f818c3b1cad2bf67cbe9?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Riki AA",
+                "link": "https://stackoverflow.com/users/7441472/riki-aa"
+            },
+            "is_answered": true,
+            "view_count": 36,
+            "closed_date": 1523488381,
+            "accepted_answer_id": 49781847,
+            "answer_count": 2,
+            "score": -2,
+            "last_activity_date": 1523539442,
+            "creation_date": 1523469808,
+            "last_edit_date": 1523539442,
+            "question_id": 49781746,
+            "body_markdown": "      char *variable;\r\n      printf(&quot;write variable&quot;);\r\n      scanf(&quot;%s&quot;,&amp;variable);\r\n\r\nThis is my code but If I print the value of variable it doesn&#39;t work, I have to pass this variable inside function, can u explain me what I am doing wrong?\r\n",
+            "link": "https://stackoverflow.com/questions/49781746/im-trying-to-get-a-char-variable-from-scanf-but-it-doesnt-work-fixed",
+            "closed_reason": "off-topic",
+            "title": "Im trying to get a char *variable from scanf but it doesn&#39;t work. [FIXED]",
+            "body": "<pre><code>  char *variable;\n  printf(\"write variable\");\n  scanf(\"%s\",&amp;variable);\n</code></pre>\n\n<p>This is my code but If I print the value of variable it doesn't work, I have to pass this variable inside function, can u explain me what I am doing wrong?</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 174
+}

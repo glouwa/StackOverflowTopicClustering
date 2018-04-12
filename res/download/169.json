@@ -1,0 +1,828 @@
+{
+    "items": [
+        {
+            "tags": [
+                "python",
+                "python-3.x",
+                "plot",
+                "synchronization",
+                "bokeh"
+            ],
+            "owner": {
+                "reputation": 4314,
+                "user_id": 4891717,
+                "user_type": "registered",
+                "accept_rate": 76,
+                "profile_image": "https://i.stack.imgur.com/ya9yo.png?s=128&g=1",
+                "display_name": "ChesuCR",
+                "link": "https://stackoverflow.com/users/4891717/chesucr"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1523528901,
+            "creation_date": 1523382034,
+            "last_edit_date": 1523528901,
+            "question_id": 49759896,
+            "body_markdown": "I am developing Bokeh Server Application. I am using Bokeh `0.12.15`.\r\n\r\n## Problem description\r\n\r\nI have a bunch of figures plotted as you can see in the following image. When I select some points points some profile lines should be drawn in all the plots. But the problem is that they crash as you can see in this image.\r\n\r\n![](https://i.stack.imgur.com/1yoyY.jpg)\r\n\r\nIf I zoom out on the two figures they become normal again. I thinks it is a synchronization issue.\r\n\r\nI have a ColumnDataSource (CDS) available for all the plots. Each profile has its own CDS.\r\n\r\nThis is the code snippet where I update the source data for the profile lines and where I recreate the CDSview with the selected indexes for the profile circles. This code is executed once per plot. If there are 4 plots in the form and there are 3 profiles per plot, there will be 24 updates (one per CDS) if the user make some selection. Is there a way to update everything at once to avoid this issue?\r\n\r\n    prof_len = len(prof_cds)\r\n    prof_to_show = []\r\n    for i in range(prof_len):\r\n        pos = NPROF - i - 1\r\n        self.prof_lines[pos].data_source.data = prof_cds[i].data\r\n        view = CDSView(source=self.env.source, filters=[IndexFilter(prof_indexes[i])])\r\n        self.prof_circles[pos].view = view\r\n        prof_to_show.append(pos)\r\n\r\nIn fact if I do this and I make a pause with sleep the profile lines are working well\r\n\r\n    prof_len = len(prof_cds)\r\n    prof_to_show = []\r\n    import time\r\n    for i in range(prof_len):\r\n        pos = NPROF - i - 1\r\n        self.prof_lines[pos].data_source.data = prof_cds[i].data\r\n\r\n        lg.info(&#39;-- WAITING FOR UPDATE&#39;)\r\n        time.sleep(2)\r\n\r\n        view = CDSView(source=self.env.source, filters=[IndexFilter(prof_indexes[i])])\r\n        self.prof_circles[pos].view = view\r\n        prof_to_show.append(pos)\r\n\r\n![](https://i.stack.imgur.com/9xOCp.png)\r\n\r\n## Failed workaround\r\n\r\nBryan (Bokeh developer) told me to use the `hold` method, but the same problem appears\r\n\r\n&gt; I&#39;ve only had a chance to barely glance at this, but offhand to answer your last question, perhaps `hold` and `unhold` would be useful to batch thing more: https://github.com/bokeh/bokeh/blob/master/examples/howto/hold_app.py\r\n\r\n    self.env.doc.hold(&#39;combine&#39;)\r\n    for p_obj in self.env.bk_plots:\r\n        p_obj.plot_profile_lines(new.indices)\r\n    self.env.doc.unhold()\r\n\r\n## Conclusion\r\n\r\nI reckon the problem here is that I am using a CDS for the points and a different CDS for the profiles lines. I would like to use the same and apply some CDSView, But it is not possible due to [**this filtering behaviour**](https://github.com/bokeh/bokeh/issues/7594). So the only way to achieve this is to use only one CDS as it is describe in [this answer](https://stackoverflow.com/a/37185548/4891717)? Then, I would need to add many columns to the current source and most of the data of these columns would have `NaN` values, it is kind of ugly.\r\n\r\nIs there a better way to do this?\r\n\r\n## Update 04/12/2018\r\n\r\n* I get errors with `time.sleep` as well.\r\n* I am going to try to plot the profiles in a different way, maybe using one CDS for them and several CDSViews, maybe using segments rather than lines.\r\n",
+            "link": "https://stackoverflow.com/questions/49759896/how-to-use-multiple-columndatasource-and-update-all-of-them-at-once",
+            "title": "How to use multiple ColumnDataSource and update all of them at once?",
+            "body": "<p>I am developing Bokeh Server Application. I am using Bokeh <code>0.12.15</code>.</p>\n\n<h2>Problem description</h2>\n\n<p>I have a bunch of figures plotted as you can see in the following image. When I select some points points some profile lines should be drawn in all the plots. But the problem is that they crash as you can see in this image.</p>\n\n<p><img src=\"https://i.stack.imgur.com/1yoyY.jpg\" alt=\"\"></p>\n\n<p>If I zoom out on the two figures they become normal again. I thinks it is a synchronization issue.</p>\n\n<p>I have a ColumnDataSource (CDS) available for all the plots. Each profile has its own CDS.</p>\n\n<p>This is the code snippet where I update the source data for the profile lines and where I recreate the CDSview with the selected indexes for the profile circles. This code is executed once per plot. If there are 4 plots in the form and there are 3 profiles per plot, there will be 24 updates (one per CDS) if the user make some selection. Is there a way to update everything at once to avoid this issue?</p>\n\n<pre><code>prof_len = len(prof_cds)\nprof_to_show = []\nfor i in range(prof_len):\n    pos = NPROF - i - 1\n    self.prof_lines[pos].data_source.data = prof_cds[i].data\n    view = CDSView(source=self.env.source, filters=[IndexFilter(prof_indexes[i])])\n    self.prof_circles[pos].view = view\n    prof_to_show.append(pos)\n</code></pre>\n\n<p>In fact if I do this and I make a pause with sleep the profile lines are working well</p>\n\n<pre><code>prof_len = len(prof_cds)\nprof_to_show = []\nimport time\nfor i in range(prof_len):\n    pos = NPROF - i - 1\n    self.prof_lines[pos].data_source.data = prof_cds[i].data\n\n    lg.info('-- WAITING FOR UPDATE')\n    time.sleep(2)\n\n    view = CDSView(source=self.env.source, filters=[IndexFilter(prof_indexes[i])])\n    self.prof_circles[pos].view = view\n    prof_to_show.append(pos)\n</code></pre>\n\n<p><img src=\"https://i.stack.imgur.com/9xOCp.png\" alt=\"\"></p>\n\n<h2>Failed workaround</h2>\n\n<p>Bryan (Bokeh developer) told me to use the <code>hold</code> method, but the same problem appears</p>\n\n<blockquote>\n  <p>I've only had a chance to barely glance at this, but offhand to answer your last question, perhaps <code>hold</code> and <code>unhold</code> would be useful to batch thing more: <a href=\"https://github.com/bokeh/bokeh/blob/master/examples/howto/hold_app.py\" rel=\"nofollow noreferrer\">https://github.com/bokeh/bokeh/blob/master/examples/howto/hold_app.py</a></p>\n</blockquote>\n\n<pre><code>self.env.doc.hold('combine')\nfor p_obj in self.env.bk_plots:\n    p_obj.plot_profile_lines(new.indices)\nself.env.doc.unhold()\n</code></pre>\n\n<h2>Conclusion</h2>\n\n<p>I reckon the problem here is that I am using a CDS for the points and a different CDS for the profiles lines. I would like to use the same and apply some CDSView, But it is not possible due to <a href=\"https://github.com/bokeh/bokeh/issues/7594\" rel=\"nofollow noreferrer\"><strong>this filtering behaviour</strong></a>. So the only way to achieve this is to use only one CDS as it is describe in <a href=\"https://stackoverflow.com/a/37185548/4891717\">this answer</a>? Then, I would need to add many columns to the current source and most of the data of these columns would have <code>NaN</code> values, it is kind of ugly.</p>\n\n<p>Is there a better way to do this?</p>\n\n<h2>Update 04/12/2018</h2>\n\n<ul>\n<li>I get errors with <code>time.sleep</code> as well.</li>\n<li>I am going to try to plot the profiles in a different way, maybe using one CDS for them and several CDSViews, maybe using segments rather than lines.</li>\n</ul>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "mysql",
+                "pdo",
+                "unique-key"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 5300954,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/c5526e458025b451e8dafacd4cdb8e14?s=128&d=identicon&r=PG",
+                "display_name": "Th&#233;o SALA",
+                "link": "https://stackoverflow.com/users/5300954/th%c3%a9o-sala"
+            },
+            "is_answered": false,
+            "view_count": 34,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523528887,
+            "creation_date": 1523518224,
+            "question_id": 49790498,
+            "body_markdown": "I would like to know if it is possible to get the column name that made the duplicate error on an INSERT ?\r\n\r\nFor example, with an unique key on username and another unique key on email :\r\n\r\n        try{\r\n            $pdo-&gt;query(&quot;INSERT INTO `table`(`username`,`email`)`VALUES(&#39;Superman&#39;,&#39;xxx@xx.com&#39;)&quot;);\r\n        } catch (PDOException $e) {\r\n            if($e-&gt;errorInfo[0] == &#39;23000&#39; &amp;&amp; $e-&gt;errorInfo[1] == &#39;1062&#39;){\r\n               throw new CustomException(&quot;Bla bla already exists&quot;);\r\n              // How does we get the duplicated column and then display &quot;Email already exists&quot; or &quot;Username already exist&quot;\r\n            } else {\r\n              throw $e;\r\n            }\r\n        }\r\n\r\nHow does we get the duplicated column info and then display &quot;Email already exists&quot; or &quot;Username already exist&quot; instead of &quot;Duplicate entry (ok but which one?)\r\n\r\nThank you,",
+            "link": "https://stackoverflow.com/questions/49790498/how-to-know-which-entry-is-duplicated-for-example-username-email",
+            "title": "How to know which entry is duplicated? (For example username + email)",
+            "body": "<p>I would like to know if it is possible to get the column name that made the duplicate error on an INSERT ?</p>\n\n<p>For example, with an unique key on username and another unique key on email :</p>\n\n<pre><code>    try{\n        $pdo-&gt;query(\"INSERT INTO `table`(`username`,`email`)`VALUES('Superman','xxx@xx.com')\");\n    } catch (PDOException $e) {\n        if($e-&gt;errorInfo[0] == '23000' &amp;&amp; $e-&gt;errorInfo[1] == '1062'){\n           throw new CustomException(\"Bla bla already exists\");\n          // How does we get the duplicated column and then display \"Email already exists\" or \"Username already exist\"\n        } else {\n          throw $e;\n        }\n    }\n</code></pre>\n\n<p>How does we get the duplicated column info and then display \"Email already exists\" or \"Username already exist\" instead of \"Duplicate entry (ok but which one?)</p>\n\n<p>Thank you,</p>\n"
+        },
+        {
+            "tags": [
+                "playframework",
+                "apache-kafka",
+                "akka-stream",
+                "akka-kafka"
+            ],
+            "owner": {
+                "reputation": 63,
+                "user_id": 3671468,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/251a67f149504d325d2c8b8a162ecd44?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Martin",
+                "link": "https://stackoverflow.com/users/3671468/martin"
+            },
+            "is_answered": false,
+            "view_count": 9,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523528882,
+            "creation_date": 1523528882,
+            "question_id": 49794201,
+            "body_markdown": "Is it at all possible to get the last message on a Kafka Topic using Akka Streams Kafka? I&#39;m creating a websocket which listens to a Kafka Topic, but currently it retrieves all prior unred messages when I connecting. This can add up to quite a lot of messages, so I&#39;m only interrested in the last message + any future messages. (or only future messages)\r\n\r\nThe source:\r\n\r\n    def source(): Flow[Any, String, NotUsed] = {\r\n      val source = Consumer.plainSource(consumerSettings, Subscriptions.topics(MyTopic))\r\n      Flow.fromSinkAndSource[Any, String](Sink.ignore, source.map(_.value)\r\n    }\r\n\r\nConsumer settings:\r\n\r\n      @Provides\r\n    def providesConsumerSettings(@Named(&quot;kafkaUrl&quot;) kafkaUrl: String): ConsumerSettings[String, String] = {\r\n      val deserializer = new StringDeserializer()\r\n      val config = configuration.getOptional[Configuration](&quot;akka.kafka.consumer&quot;)\r\n        .getOrElse(Configuration.empty)\r\n\r\n      ConsumerSettings(config.underlying, deserializer, deserializer)\r\n        .withBootstrapServers(kafkaUrl)\r\n        .withGroupId(GroupId)\r\n    }\r\n\r\n\r\n----------\r\n\r\n\r\nI&#39;ve tried adding setting the `ConsumerSettings.withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, &quot;latest&quot;)`\r\n\r\nWhich should &quot;automatically reset the offset to the latest offset&quot;, but it does not seem to have any effect.\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49794201/getting-last-message-from-kafka-topic-using-akka-stream-kafka-when-connecting-wi",
+            "title": "Getting last message from kafka Topic using akka-stream-kafka when connecting with websocket",
+            "body": "<p>Is it at all possible to get the last message on a Kafka Topic using Akka Streams Kafka? I'm creating a websocket which listens to a Kafka Topic, but currently it retrieves all prior unred messages when I connecting. This can add up to quite a lot of messages, so I'm only interrested in the last message + any future messages. (or only future messages)</p>\n\n<p>The source:</p>\n\n<pre><code>def source(): Flow[Any, String, NotUsed] = {\n  val source = Consumer.plainSource(consumerSettings, Subscriptions.topics(MyTopic))\n  Flow.fromSinkAndSource[Any, String](Sink.ignore, source.map(_.value)\n}\n</code></pre>\n\n<p>Consumer settings:</p>\n\n<pre><code>  @Provides\ndef providesConsumerSettings(@Named(\"kafkaUrl\") kafkaUrl: String): ConsumerSettings[String, String] = {\n  val deserializer = new StringDeserializer()\n  val config = configuration.getOptional[Configuration](\"akka.kafka.consumer\")\n    .getOrElse(Configuration.empty)\n\n  ConsumerSettings(config.underlying, deserializer, deserializer)\n    .withBootstrapServers(kafkaUrl)\n    .withGroupId(GroupId)\n}\n</code></pre>\n\n<hr>\n\n<p>I've tried adding setting the <code>ConsumerSettings.withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, \"latest\")</code></p>\n\n<p>Which should \"automatically reset the offset to the latest offset\", but it does not seem to have any effect.</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "laravel",
+                "routes",
+                "admin"
+            ],
+            "owner": {
+                "reputation": 14,
+                "user_id": 4805754,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://i.stack.imgur.com/tXEZ2.jpg?s=128&g=1",
+                "display_name": "BinaryNeno",
+                "link": "https://stackoverflow.com/users/4805754/binaryneno"
+            },
+            "is_answered": true,
+            "view_count": 26,
+            "accepted_answer_id": 49794200,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523528881,
+            "creation_date": 1523481710,
+            "question_id": 49784660,
+            "body_markdown": "I am building a website with **Laravel** where a user can be assigned as an admin. The admins should only navigate through the dashboard which will be under a subdomain **admin.domain.com** and the other users can only navigate through the main domain **domain.com**. \r\n\r\nMy question is how can i restrict the admin to view the section where normal users can and vice versa. I want admins to navigate only through all subdomain routes only (for example **admin.domain.com/statistics**) and not **domain.com/categories**. These are my routes for the admin and public part.\r\n\r\n    Route::group([&#39;domain&#39; =&gt; &#39;admin.domain.com&#39;], function () {\r\n        /* Admin routes */\r\n    });\r\n\r\n    Route::group([&#39;domain&#39; =&gt; &#39;domain.com&#39;], function () {\r\n        /* Public routes */\r\n    }\r\n\r\nI want when i login as an admin to be automatically redirected to the subdomain and if i type a public route i want to be redirected back to the root admin route.\r\n\r\nOne of the solutions i was thinking was to wrap the admin and public routes with a middleware that will redirect the user depending on its type whether its admin or normal user but im not sure if this is a proper solution.\r\n\r\nThanks",
+            "link": "https://stackoverflow.com/questions/49784660/laravel-route-admin-user-to-subdomain",
+            "title": "Laravel - Route admin user to subdomain",
+            "body": "<p>I am building a website with <strong>Laravel</strong> where a user can be assigned as an admin. The admins should only navigate through the dashboard which will be under a subdomain <strong>admin.domain.com</strong> and the other users can only navigate through the main domain <strong>domain.com</strong>. </p>\n\n<p>My question is how can i restrict the admin to view the section where normal users can and vice versa. I want admins to navigate only through all subdomain routes only (for example <strong>admin.domain.com/statistics</strong>) and not <strong>domain.com/categories</strong>. These are my routes for the admin and public part.</p>\n\n<pre><code>Route::group(['domain' =&gt; 'admin.domain.com'], function () {\n    /* Admin routes */\n});\n\nRoute::group(['domain' =&gt; 'domain.com'], function () {\n    /* Public routes */\n}\n</code></pre>\n\n<p>I want when i login as an admin to be automatically redirected to the subdomain and if i type a public route i want to be redirected back to the root admin route.</p>\n\n<p>One of the solutions i was thinking was to wrap the admin and public routes with a middleware that will redirect the user depending on its type whether its admin or normal user but im not sure if this is a proper solution.</p>\n\n<p>Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "wordpress",
+                "advanced-custom-fields",
+                "timber"
+            ],
+            "owner": {
+                "reputation": 97,
+                "user_id": 2753924,
+                "user_type": "registered",
+                "accept_rate": 10,
+                "profile_image": "https://www.gravatar.com/avatar/2308d70fe6155fefdf0ed735f3f1c4be?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user2753924",
+                "link": "https://stackoverflow.com/users/2753924/user2753924"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523528875,
+            "creation_date": 1523528875,
+            "question_id": 49794199,
+            "body_markdown": "I&#39;m looping through the posts from a ACF custom field using Timber. I&#39;ve included a shortcode within the loop that uses get_the_id to return some custom field data. The problem is get_the_ID returns the parent page ID, not the ID for each post in the Timber loop. How can I rectify that?\r\n\r\n    {% for each in data.books %}\r\n      &lt;h3&gt;{{ each.title }}&lt;/h3&gt;\r\n      {{ function(&#39;do_shortcode&#39;, &#39;[buy-button]&#39;) }}\r\n    {% endfor %}\r\n",
+            "link": "https://stackoverflow.com/questions/49794199/using-get-the-id-within-timber-for-each-loop",
+            "title": "Using get_the_id within Timber for each loop",
+            "body": "<p>I'm looping through the posts from a ACF custom field using Timber. I've included a shortcode within the loop that uses get_the_id to return some custom field data. The problem is get_the_ID returns the parent page ID, not the ID for each post in the Timber loop. How can I rectify that?</p>\n\n<pre><code>{% for each in data.books %}\n  &lt;h3&gt;{{ each.title }}&lt;/h3&gt;\n  {{ function('do_shortcode', '[buy-button]') }}\n{% endfor %}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "lua"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 8566980,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10155620509477789/picture?type=large",
+                "display_name": "Arda İbrahim G&#246;k&#231;e",
+                "link": "https://stackoverflow.com/users/8566980/arda-%c4%b0brahim-g%c3%b6k%c3%a7e"
+            },
+            "is_answered": true,
+            "view_count": 21,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1523528872,
+            "creation_date": 1523507729,
+            "question_id": 49788068,
+            "body_markdown": "    mytable = setmetatable({1,2,3}, {\r\n        __add = function(mytable, newtable)\r\n\r\n         for i = 1, table.maxn(newtable) do\r\n                table.insert(mytable, table.maxn(mytable)+1, newtable[i])\r\n        end\r\n        return mytable\r\n    end\r\n    })\r\n\r\n    secondtable = {4,5,6}\r\n\r\n    mytable = mytable + secondtable\r\n\r\n    for k,v in ipairs(mytable) do\r\n        print(k,v)\r\n    end\r\n\r\nI&#39;m getting this error when I run it in terminal : \r\n\r\n    lua: metatables4.lua:6: attempt to call a nil value (field &#39;maxn&#39;)\r\n    stack traceback:\r\n\t    metatables4.lua:6: in metamethod &#39;__add&#39;\r\n\t    metatables4.lua:15: in main chunk\r\n\t    [C]: in ?\r\n\r\nBut when I try to run it on tutorialspoint compiler it runs. \r\n\r\n    1\t1\r\n    2\t2\r\n    3\t3\r\n    4\t4\r\n    5\t5\r\n    6\t6\r\n\r\nThis should be my output. I couldn&#39;t pinpoint what is exactly the problem here since it runs on tutorialspoint coding ground lua compiler.\r\n\r\nWhat should I change for it to work on my terminal ? \r\n",
+            "link": "https://stackoverflow.com/questions/49788068/getting-attempt-to-call-a-nil-value-field-maxn-error",
+            "title": "Getting attempt to call a nil value (field &#39;maxn&#39;) error",
+            "body": "<pre><code>mytable = setmetatable({1,2,3}, {\n    __add = function(mytable, newtable)\n\n     for i = 1, table.maxn(newtable) do\n            table.insert(mytable, table.maxn(mytable)+1, newtable[i])\n    end\n    return mytable\nend\n})\n\nsecondtable = {4,5,6}\n\nmytable = mytable + secondtable\n\nfor k,v in ipairs(mytable) do\n    print(k,v)\nend\n</code></pre>\n\n<p>I'm getting this error when I run it in terminal : </p>\n\n<pre><code>lua: metatables4.lua:6: attempt to call a nil value (field 'maxn')\nstack traceback:\n    metatables4.lua:6: in metamethod '__add'\n    metatables4.lua:15: in main chunk\n    [C]: in ?\n</code></pre>\n\n<p>But when I try to run it on tutorialspoint compiler it runs. </p>\n\n<pre><code>1   1\n2   2\n3   3\n4   4\n5   5\n6   6\n</code></pre>\n\n<p>This should be my output. I couldn't pinpoint what is exactly the problem here since it runs on tutorialspoint coding ground lua compiler.</p>\n\n<p>What should I change for it to work on my terminal ? </p>\n"
+        },
+        {
+            "tags": [
+                "anki"
+            ],
+            "owner": {
+                "reputation": 165,
+                "user_id": 785581,
+                "user_type": "registered",
+                "accept_rate": 29,
+                "profile_image": "https://www.gravatar.com/avatar/2ae8804989a8987f96a391f57d3e27e5?s=128&d=identicon&r=PG",
+                "display_name": "Andrey Epifantsev",
+                "link": "https://stackoverflow.com/users/785581/andrey-epifantsev"
+            },
+            "is_answered": false,
+            "view_count": 4,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523528867,
+            "creation_date": 1523528867,
+            "question_id": 49794194,
+            "body_markdown": "I have 2 types of cards: cards that require answer in my mind and cards that require to write or draw something on the sheet of paper. And thees types of cards are logically linked. For example I have deck with Chinese characters. Cards of first type has Chinese character as question and word in my language as answer. Cards of second type has word in my language as question and Chinese character as answer. When I see a card of the second type I take my notebook, remember character and write it. Then I compare it with answer.\r\n\r\nAnd cards of both types are mixed during one session. It is not convenient. I need to keep ready my pen and notebook all the time but really I need it only sometimes.\r\n\r\nIs it possible to sort cards review order in one session? I want to review first cards that do not require writing an then take pen and notebook and review cards that require writing.\r\n\r\nI do not want to move these types of cards to different decks because I want to study cards related to one word in one session. If they will be in different decks reviewing of these decks can become desynchronized and I will study cards related to one word in different sessions.\r\n\r\nIs it possible?",
+            "link": "https://stackoverflow.com/questions/49794194/anki-change-cards-review-order-during-one-session",
+            "title": "Anki: change cards review order during one session",
+            "body": "<p>I have 2 types of cards: cards that require answer in my mind and cards that require to write or draw something on the sheet of paper. And thees types of cards are logically linked. For example I have deck with Chinese characters. Cards of first type has Chinese character as question and word in my language as answer. Cards of second type has word in my language as question and Chinese character as answer. When I see a card of the second type I take my notebook, remember character and write it. Then I compare it with answer.</p>\n\n<p>And cards of both types are mixed during one session. It is not convenient. I need to keep ready my pen and notebook all the time but really I need it only sometimes.</p>\n\n<p>Is it possible to sort cards review order in one session? I want to review first cards that do not require writing an then take pen and notebook and review cards that require writing.</p>\n\n<p>I do not want to move these types of cards to different decks because I want to study cards related to one word in one session. If they will be in different decks reviewing of these decks can become desynchronized and I will study cards related to one word in different sessions.</p>\n\n<p>Is it possible?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "angularjs",
+                "jasmine",
+                "karma-runner"
+            ],
+            "owner": {
+                "reputation": 5341,
+                "user_id": 231821,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/2d5bed99fd1db8db24640148a5032a47?s=128&d=identicon&r=PG",
+                "display_name": "Jim",
+                "link": "https://stackoverflow.com/users/231821/jim"
+            },
+            "is_answered": true,
+            "view_count": 65,
+            "accepted_answer_id": 49794193,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1523528867,
+            "creation_date": 1523008033,
+            "last_edit_date": 1523008431,
+            "question_id": 49689945,
+            "body_markdown": "I am using the below karma.config.js to test an angular 5 application:  \r\nThe output shows that the spec files are being built by webpack.\r\nBut they are not being executed.\r\n\r\n**Executed 0 of 0 ERROR (0.014 secs / 0 secs)**\r\n\r\n    Built at: 2018-4-6 11:41:27\r\n                                                    Asset      Size                                                 Chunks             Chunk Names\r\n    wwwroot/ts/app/modules/party/ContactComponent.spec.ts  2.36 MiB  wwwroot/ts/app/modules/party/ContactComponent.spec.ts  [emitted]  wwwroot/ts/app/modules/party/ContactComponent.spec.ts\r\n                                wwwroot/ts/sanity.spec.ts   841 KiB                              wwwroot/ts/sanity.spec.ts  [emitted]  wwwroot/ts/sanity.spec.ts\r\n    Entrypoint wwwroot/ts/app/modules/party/ContactComponent.spec.ts = wwwroot/ts/app/modules/party/ContactComponent.spec.ts\r\n    Entrypoint wwwroot/ts/sanity.spec.ts = wwwroot/ts/sanity.spec.ts\r\n    [./node_modules/@angular/core/esm5/core.js] 613 KiB {wwwroot/ts/sanity.spec.ts} {wwwroot/ts/app/modules/party/ContactComponent.spec.ts} [built] [2 warnings]\r\n    [./node_modules/@angular/core/esm5/testing.js] 48.6 KiB {wwwroot/ts/sanity.spec.ts} {wwwroot/ts/app/modules/party/ContactComponent.spec.ts}\r\n\r\nSo it seems that all (of 2) spec files are being built, but they don&#39;t appear to loading into karma.\r\n\r\n    06 04 2018 11:41:28.195:INFO [launcher]: Starting browser Chrome\r\n    06 04 2018 11:41:31.277:INFO [Chrome 65.0.3325 (Windows 10.0.0)]: Connected on socket hJfXueGxaOTtJn4SAAAA with id 21418556    \r\n    Chrome 65.0.3325 (Windows 10.0.0): Executed 0 of 0 ERROR (0.014 secs / 0 secs)\r\n\r\n\r\nfor reference my `karma.config.js` is as follows.\r\n\r\n    module.exports = function (config) {\r\n    \tconfig.set({\r\n    \t\tbasePath: &quot;&quot;,\r\n    \t\tframeworks: [&quot;jasmine&quot;],\r\n    \t\tplugins: [\r\n    \t\t\trequire(&quot;karma-jasmine&quot;),\r\n    \t\t\trequire(&quot;karma-chrome-launcher&quot;),\r\n    \t\t\trequire(&quot;karma-jasmine-html-reporter&quot;),\r\n    \t\t\trequire(&quot;karma-spec-reporter&quot;),\r\n    \t\t\trequire(&quot;karma-webpack&quot;)\r\n    \t\t],\r\n    \t\tfiles: [\r\n    \t&quot;./base.spec.ts&quot;,\r\n    \t&quot;./wwwroot/**/*.spec.*&quot;\r\n    \t\t],\r\n    \t\twebpack: {\r\n    \t\t\tmode: &quot;development&quot;,\r\n    \t\t\tmodule: {\r\n    \t\t\t\trules: [\r\n    \t\t\t\t\t{\r\n    \t\t\t\t\t\ttest: /\\.ts$/,\r\n    \t\t\t\t\t\tuse: [&quot;ts-loader&quot;],\r\n    \t\t\t\t\t\texclude: /(node_modules)/\r\n    \t\t\t\t\t},\r\n                        {\r\n                            test: require.resolve(&quot;jquery&quot;),\r\n                            use: [\r\n                               { loader: &quot;expose-loader&quot;, options: &quot;jQuery&quot; },\r\n                               { loader: &quot;expose-loader&quot;, options: &quot;$&quot; }\r\n                            ]\r\n                        }\r\n    \t\t\t\t]\r\n    \t\t\t},\r\n    \t\t\tresolve:\r\n    \t\t\t\t{\r\n    \t\t\t\t\textensions: [&quot;.ts&quot;, &quot;.js&quot;, &quot;.json&quot;],\r\n    \t\t\t\t\talias: {\r\n    \t\t\t\t\t\ttypeahead: &quot;typeahead.js&quot;\r\n    \t\t\t\t\t}\r\n    \t\t\t\t},\r\n    \t\t},\r\n    \t\tpreprocessors: {\r\n                &quot;./base.spec.ts&quot;: [&quot;webpack&quot;],\r\n    \t\t\t&quot;./wwwroot/**/*.spec.*&quot;: [&quot;webpack&quot;]\r\n    \t\t},\r\n    \t\treporters: [&quot;kjhtml&quot;, &quot;spec&quot;],\r\n    \t\tport: 9876,\r\n    \t\tcolors: true,\r\n    \t\tautoWatch: true,\r\n    \t\tbrowsers: [&quot;Chrome&quot;],\r\n    \t\tsingleRun: false\r\n    \t});\r\n    };\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49689945/karma-not-finding-any-spec-files-after-webpack-build",
+            "title": "karma not finding any spec files after webpack build",
+            "body": "<p>I am using the below karma.config.js to test an angular 5 application:<br>\nThe output shows that the spec files are being built by webpack.\nBut they are not being executed.</p>\n\n<p><strong>Executed 0 of 0 ERROR (0.014 secs / 0 secs)</strong></p>\n\n<pre><code>Built at: 2018-4-6 11:41:27\n                                                Asset      Size                                                 Chunks             Chunk Names\nwwwroot/ts/app/modules/party/ContactComponent.spec.ts  2.36 MiB  wwwroot/ts/app/modules/party/ContactComponent.spec.ts  [emitted]  wwwroot/ts/app/modules/party/ContactComponent.spec.ts\n                            wwwroot/ts/sanity.spec.ts   841 KiB                              wwwroot/ts/sanity.spec.ts  [emitted]  wwwroot/ts/sanity.spec.ts\nEntrypoint wwwroot/ts/app/modules/party/ContactComponent.spec.ts = wwwroot/ts/app/modules/party/ContactComponent.spec.ts\nEntrypoint wwwroot/ts/sanity.spec.ts = wwwroot/ts/sanity.spec.ts\n[./node_modules/@angular/core/esm5/core.js] 613 KiB {wwwroot/ts/sanity.spec.ts} {wwwroot/ts/app/modules/party/ContactComponent.spec.ts} [built] [2 warnings]\n[./node_modules/@angular/core/esm5/testing.js] 48.6 KiB {wwwroot/ts/sanity.spec.ts} {wwwroot/ts/app/modules/party/ContactComponent.spec.ts}\n</code></pre>\n\n<p>So it seems that all (of 2) spec files are being built, but they don't appear to loading into karma.</p>\n\n<pre><code>06 04 2018 11:41:28.195:INFO [launcher]: Starting browser Chrome\n06 04 2018 11:41:31.277:INFO [Chrome 65.0.3325 (Windows 10.0.0)]: Connected on socket hJfXueGxaOTtJn4SAAAA with id 21418556    \nChrome 65.0.3325 (Windows 10.0.0): Executed 0 of 0 ERROR (0.014 secs / 0 secs)\n</code></pre>\n\n<p>for reference my <code>karma.config.js</code> is as follows.</p>\n\n<pre><code>module.exports = function (config) {\n    config.set({\n        basePath: \"\",\n        frameworks: [\"jasmine\"],\n        plugins: [\n            require(\"karma-jasmine\"),\n            require(\"karma-chrome-launcher\"),\n            require(\"karma-jasmine-html-reporter\"),\n            require(\"karma-spec-reporter\"),\n            require(\"karma-webpack\")\n        ],\n        files: [\n    \"./base.spec.ts\",\n    \"./wwwroot/**/*.spec.*\"\n        ],\n        webpack: {\n            mode: \"development\",\n            module: {\n                rules: [\n                    {\n                        test: /\\.ts$/,\n                        use: [\"ts-loader\"],\n                        exclude: /(node_modules)/\n                    },\n                    {\n                        test: require.resolve(\"jquery\"),\n                        use: [\n                           { loader: \"expose-loader\", options: \"jQuery\" },\n                           { loader: \"expose-loader\", options: \"$\" }\n                        ]\n                    }\n                ]\n            },\n            resolve:\n                {\n                    extensions: [\".ts\", \".js\", \".json\"],\n                    alias: {\n                        typeahead: \"typeahead.js\"\n                    }\n                },\n        },\n        preprocessors: {\n            \"./base.spec.ts\": [\"webpack\"],\n            \"./wwwroot/**/*.spec.*\": [\"webpack\"]\n        },\n        reporters: [\"kjhtml\", \"spec\"],\n        port: 9876,\n        colors: true,\n        autoWatch: true,\n        browsers: [\"Chrome\"],\n        singleRun: false\n    });\n};\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "wordpress",
+                "buddypress",
+                "bbpress"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9635508,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Easy Money Kicks Money With Mo",
+                "link": "https://stackoverflow.com/users/9635508/easy-money-kicks-money-with-mo"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1523528866,
+            "creation_date": 1523528658,
+            "question_id": 49794107,
+            "body_markdown": "Bbpress and buddypress\r\nIs it possible to create social networking websites with WordPress.",
+            "link": "https://stackoverflow.com/questions/49794107/can-i-create-social-networking-site-with-wordpress-plugins-bbpress-and-buddy-pre",
+            "title": "Can I create social networking site with WordPress plugins bbpress and buddy press?",
+            "body": "<p>Bbpress and buddypress\nIs it possible to create social networking websites with WordPress.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "reactjs",
+                "xmlhttprequest"
+            ],
+            "owner": {
+                "reputation": 510,
+                "user_id": 5067364,
+                "user_type": "registered",
+                "accept_rate": 70,
+                "profile_image": "https://lh5.googleusercontent.com/-7_XGNKRafCo/AAAAAAAAAAI/AAAAAAAAAJs/BLcjk3tUuoI/photo.jpg?sz=128",
+                "display_name": "Daniel Thompson",
+                "link": "https://stackoverflow.com/users/5067364/daniel-thompson"
+            },
+            "is_answered": true,
+            "view_count": 24,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1523528861,
+            "creation_date": 1523525368,
+            "last_edit_date": 1523528090,
+            "question_id": 49792947,
+            "body_markdown": "    import &#39;whatwg-fetch&#39;\r\n\r\nThe incoming response looks like this (grabbed from proxy):\r\n\r\n    &quot;data&quot;: {\r\n        &quot;category_tree&quot;: [\r\n            {\r\n                &quot;category_id&quot;: &quot;1&quot;,\r\n                &quot;name&quot;: &quot;A&quot;,\r\n                &quot;children&quot;: [\r\n                    {\r\n                        &quot;category_id&quot;: 2\r\n                        &quot;name&quot;: &quot;B, child of A&quot;,\r\n                        &quot;children&quot;: [\r\n                            {\r\n                                &quot;category_id&quot;: 3,\r\n                                &quot;name&quot;: &quot;C, child of B&quot;,\r\n                            }\r\n                        ]\r\n                    }\r\n    \r\n                ]\r\n            }\r\n        ]\r\n    }\r\nAnd the handler works like this:\r\n\r\n    .then( response =&gt; response.json())\r\n    \r\n    .then( json =&gt; dispatch({\r\n        type: RECEIVE_DATA,\r\n        data: json\r\n    }))\r\n\r\nBut by the time the response.json() promise resolves, the data has already lost all of it&#39;s nested arrays:\r\n\r\n    &quot;data&quot;: {\r\n        &quot;category_tree&quot;: [\r\n            {\r\n                &quot;category_id&quot;: &quot;1&quot;,\r\n                &quot;name&quot;: &quot;A&quot;,\r\n                &quot;children&quot;: []\r\n            }\r\n        ]\r\n    }\r\n\r\nAny ideas for having this not happen?\r\n\r\n**Edit:** the response header I am getting:\r\n\r\n    HTTP/1.1 200 OK\r\n    Server: nginx/1.10.2\r\n    Date: Thu, 12 Apr 2018 09:38:32 GMT\r\n    Content-Type: text/html; charset=UTF-8\r\n    Transfer-Encoding: chunked\r\n    Connection: keep-alive\r\n    X-Powered-By: PHP/7.1.15\r\n\r\n**Edit2:** request code currently looks like this:\r\n\r\n    const fetchCategories = () =&gt; {\r\n        return dispatch =&gt; {\r\n            dispatch({\r\n                type: FETCH_CATEGORIES_REQUEST\r\n            })\r\n    \r\n            return fetch(\r\n            `${SERVICE_API_BASE_URL}/api/categorytree?ope_flg=1`)\r\n                .then(\r\n                    response =&gt;  response.json(),\r\n                    error =&gt; console.log(&quot;error in fetch cat&quot;, error)\r\n                )\r\n    \r\n                .then(\r\n                    json =&gt; console.log(json) || dispatch({\r\n                        type: FETCH_CATEGORIES_RESPONSE,\r\n                        categories: json\r\n                    })\r\n                )\r\n                .catch(\r\n                    ex =&gt; console.log(&quot;parsing failed&quot;, ex)\r\n                )\r\n        }\r\n    }",
+            "link": "https://stackoverflow.com/questions/49792947/javascript-body-json-on-response-loses-nested-arrays",
+            "title": "JavaScript Body.json() on response loses nested arrays",
+            "body": "<pre><code>import 'whatwg-fetch'\n</code></pre>\n\n<p>The incoming response looks like this (grabbed from proxy):</p>\n\n<pre><code>\"data\": {\n    \"category_tree\": [\n        {\n            \"category_id\": \"1\",\n            \"name\": \"A\",\n            \"children\": [\n                {\n                    \"category_id\": 2\n                    \"name\": \"B, child of A\",\n                    \"children\": [\n                        {\n                            \"category_id\": 3,\n                            \"name\": \"C, child of B\",\n                        }\n                    ]\n                }\n\n            ]\n        }\n    ]\n}\n</code></pre>\n\n<p>And the handler works like this:</p>\n\n<pre><code>.then( response =&gt; response.json())\n\n.then( json =&gt; dispatch({\n    type: RECEIVE_DATA,\n    data: json\n}))\n</code></pre>\n\n<p>But by the time the response.json() promise resolves, the data has already lost all of it's nested arrays:</p>\n\n<pre><code>\"data\": {\n    \"category_tree\": [\n        {\n            \"category_id\": \"1\",\n            \"name\": \"A\",\n            \"children\": []\n        }\n    ]\n}\n</code></pre>\n\n<p>Any ideas for having this not happen?</p>\n\n<p><strong>Edit:</strong> the response header I am getting:</p>\n\n<pre><code>HTTP/1.1 200 OK\nServer: nginx/1.10.2\nDate: Thu, 12 Apr 2018 09:38:32 GMT\nContent-Type: text/html; charset=UTF-8\nTransfer-Encoding: chunked\nConnection: keep-alive\nX-Powered-By: PHP/7.1.15\n</code></pre>\n\n<p><strong>Edit2:</strong> request code currently looks like this:</p>\n\n<pre><code>const fetchCategories = () =&gt; {\n    return dispatch =&gt; {\n        dispatch({\n            type: FETCH_CATEGORIES_REQUEST\n        })\n\n        return fetch(\n        `${SERVICE_API_BASE_URL}/api/categorytree?ope_flg=1`)\n            .then(\n                response =&gt;  response.json(),\n                error =&gt; console.log(\"error in fetch cat\", error)\n            )\n\n            .then(\n                json =&gt; console.log(json) || dispatch({\n                    type: FETCH_CATEGORIES_RESPONSE,\n                    categories: json\n                })\n            )\n            .catch(\n                ex =&gt; console.log(\"parsing failed\", ex)\n            )\n    }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "tsql",
+                "left-join"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9634910,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/G8tlT.gif?s=128&g=1",
+                "display_name": "grisu786",
+                "link": "https://stackoverflow.com/users/9634910/grisu786"
+            },
+            "is_answered": true,
+            "view_count": 27,
+            "accepted_answer_id": 49793873,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523528857,
+            "creation_date": 1523522531,
+            "last_edit_date": 1523526197,
+            "question_id": 49791867,
+            "body_markdown": "forgive my language, English is not my mother tongue.\r\n\r\nThe following scenario exists:\r\n\r\nAn object, let&#39;s call it an apartment for simplicity, can (but does not have to) refer to a parent object of the same type that we now call house.\r\n\r\nThe apartment may have an address (other table), if not the address of the house is relevant.\r\n\r\nFor this I try to build a join, which returns either the address of the apartment (if available), or the address of the house.\r\n\r\nMy previous approach:\r\n\r\n\t\tLEFT OUTER JOIN\r\n\t\tdbo.stelle_adressen AS ADR_Default ON \r\n\t\t\t(ADR_Default.stelle_id = stelle.stelle_id \r\n             AND ADR_Default.adress_typ_id = 1 \r\n             AND ADR_Default.aktiv = 1)\r\n\t\t\tOR\r\n\t\t\t(ADR_Default.stelle_id = stelle.referenz_id \r\n             AND ADR_Default.adress_typ_id = 1 \r\n             AND ADR_Default.aktiv = 1)\r\n\r\n\r\nAlso works, just not as needed, because if a housing address is present, also the join to the house address is formed, and therefore 2 lines are delivered as a result.\r\n\r\nAny advice?\r\n\r\n\r\nSimplified Query:\r\n\r\n\tSELECT        \r\n\t\tstelle.stelle_id, \r\n\t\tADR_DOBJ.adr_objekt_id, \r\n\t\tADR_STR.strasse, \r\n\t\tADR_STR.plz, \r\n\t\tADR_STR.ort, \r\n\t\tADR_DOBJ.hausnummer, \r\n\t\tADR_Default.aktiv\r\n\tFROM            \r\n\t\tstelle \r\n\t\tINNER JOIN\r\n\t\tstelle_adressen AS ADR_Default ON  \r\n\t\t(ADR_Default.stelle_id = stelle.stelle_id AND ADR_Default.adress_typ_id = 1 AND ADR_Default.aktiv = 1) \r\n\t\tOR \r\n\t\t(ADR_Default.stelle_id = stelle.referenz_id AND ADR_Default.adress_typ_id = 1 AND ADR_Default.aktiv = 1) \r\n\t\tLEFT OUTER JOIN\r\n\t\tadr_objekt AS ADR_DOBJ ON ADR_DOBJ.adr_objekt_id = ADR_Default.adr_objekt_id \r\n\t\tLEFT OUTER JOIN\r\n\t\tadr_objekt_strassen AS ADR_STR ON ADR_STR.strasse_id = ADR_DOBJ.strasse_id\r\n\tWHERE stelle.stelle_id = 2\r\n\r\n\r\nResult:\r\n\r\n    stelle_id\tadr_objekt_id\tstrasse\tplz\tort\thausnummer\taktiv\r\n    2\t8\tWalterh&#246;ferstra&#223;e\t14165\tBerlin\t11\t1\r\n    2\t1\tGustav-Adolf-Stra&#223;e\t13086\tBerlin\t106a\t1\r\n\r\nExpected Result:\r\n\r\n    stelle_id\tadr_objekt_id\tstrasse\tplz\tort\thausnummer\taktiv\r\n    2\t8\tWalterh&#246;ferstra&#223;e\t14165\tBerlin\t11\t1\r\n\r\nThe query return 2 rows, one with own adress, one with adress of refered object adress (which should only be returned if no own adress is available)",
+            "link": "https://stackoverflow.com/questions/49791867/t-sql-conditional-join",
+            "title": "T SQL Conditional join",
+            "body": "<p>forgive my language, English is not my mother tongue.</p>\n\n<p>The following scenario exists:</p>\n\n<p>An object, let's call it an apartment for simplicity, can (but does not have to) refer to a parent object of the same type that we now call house.</p>\n\n<p>The apartment may have an address (other table), if not the address of the house is relevant.</p>\n\n<p>For this I try to build a join, which returns either the address of the apartment (if available), or the address of the house.</p>\n\n<p>My previous approach:</p>\n\n<pre><code>    LEFT OUTER JOIN\n    dbo.stelle_adressen AS ADR_Default ON \n        (ADR_Default.stelle_id = stelle.stelle_id \n         AND ADR_Default.adress_typ_id = 1 \n         AND ADR_Default.aktiv = 1)\n        OR\n        (ADR_Default.stelle_id = stelle.referenz_id \n         AND ADR_Default.adress_typ_id = 1 \n         AND ADR_Default.aktiv = 1)\n</code></pre>\n\n<p>Also works, just not as needed, because if a housing address is present, also the join to the house address is formed, and therefore 2 lines are delivered as a result.</p>\n\n<p>Any advice?</p>\n\n<p>Simplified Query:</p>\n\n<pre><code>SELECT        \n    stelle.stelle_id, \n    ADR_DOBJ.adr_objekt_id, \n    ADR_STR.strasse, \n    ADR_STR.plz, \n    ADR_STR.ort, \n    ADR_DOBJ.hausnummer, \n    ADR_Default.aktiv\nFROM            \n    stelle \n    INNER JOIN\n    stelle_adressen AS ADR_Default ON  \n    (ADR_Default.stelle_id = stelle.stelle_id AND ADR_Default.adress_typ_id = 1 AND ADR_Default.aktiv = 1) \n    OR \n    (ADR_Default.stelle_id = stelle.referenz_id AND ADR_Default.adress_typ_id = 1 AND ADR_Default.aktiv = 1) \n    LEFT OUTER JOIN\n    adr_objekt AS ADR_DOBJ ON ADR_DOBJ.adr_objekt_id = ADR_Default.adr_objekt_id \n    LEFT OUTER JOIN\n    adr_objekt_strassen AS ADR_STR ON ADR_STR.strasse_id = ADR_DOBJ.strasse_id\nWHERE stelle.stelle_id = 2\n</code></pre>\n\n<p>Result:</p>\n\n<pre><code>stelle_id   adr_objekt_id   strasse plz ort hausnummer  aktiv\n2   8   Walterhöferstraße   14165   Berlin  11  1\n2   1   Gustav-Adolf-Straße 13086   Berlin  106a    1\n</code></pre>\n\n<p>Expected Result:</p>\n\n<pre><code>stelle_id   adr_objekt_id   strasse plz ort hausnummer  aktiv\n2   8   Walterhöferstraße   14165   Berlin  11  1\n</code></pre>\n\n<p>The query return 2 rows, one with own adress, one with adress of refered object adress (which should only be returned if no own adress is available)</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "html",
+                "modulo"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 8137103,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/c931d3fcd3e80cd3437fac771c52de7f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Moe Epo",
+                "link": "https://stackoverflow.com/users/8137103/moe-epo"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1523528851,
+            "creation_date": 1523433134,
+            "last_edit_date": 1523528851,
+            "question_id": 49769455,
+            "body_markdown": "I have a big table with 40k rows, indexed ids 1 ... 40000.\r\n\r\nI want to select like this:\r\n---------------------------\r\n\r\n1:2:3:4:5:6:7:8:9:10...200\r\n\r\n1:0-0-0-0-0-0-0-0-0-0-0...0\r\n\r\n2:0-1-0-1-0-1-0-1-0-1-0...0\r\n\r\n3:0-0-0-0-0-0-0-0-0-0-0...0\r\n\r\n4:0-1-0-1-0-1-0-1-0-1-0...0\r\n\r\n5:0-0-0-0-0-0-0-0-0-0-0...0\r\n\r\n6:0-1-0-1-0-1-0-1-0-1-0...0\r\n\r\n...\r\n200:0-0-0-0-0-0-0-0-0\r\n\r\n\r\nI only know how to skip every even id horizontally:\r\nif($n % 2) continue;\r\n\r\nBut how to do it vertically I have no idea.\r\nIds are from left to right,1:1 id is 1,200:1 id is 200, 1:2 is 201,1:3 is 401 and so on 200:200 is final 40k\r\nAnd sorry for the formating, I can&#39;t do it from my phone...",
+            "link": "https://stackoverflow.com/questions/49769455/horizontal-and-vertical-skip-of-every-other-number-in-html-table",
+            "title": "Horizontal and vertical skip of every other number in html table",
+            "body": "<p>I have a big table with 40k rows, indexed ids 1 ... 40000.</p>\n\n<p>I want to select like this:</p>\n\n<pre><code>1:2:3:4:5:6:7:8:9:10...200\n\n1:0-0-0-0-0-0-0-0-0-0-0...0\n\n2:0-1-0-1-0-1-0-1-0-1-0...0\n\n3:0-0-0-0-0-0-0-0-0-0-0...0\n\n4:0-1-0-1-0-1-0-1-0-1-0...0\n\n5:0-0-0-0-0-0-0-0-0-0-0...0\n\n6:0-1-0-1-0-1-0-1-0-1-0...0\n</code></pre>\n\n<p>...\n200:0-0-0-0-0-0-0-0-0</p>\n\n<p>I only know how to skip every even id horizontally:</p>\n\n<pre><code>if($n % 2) continue;\n</code></pre>\n\n<p>But how to do it vertically I have no idea.\nIds are from left to right,1:1 id is 1,200:1 id is 200, 1:2 is 201,1:3 is 401 and so on 200:200 is final 40k\nAnd sorry for the formating, I can't do it from my phone...</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "wpf",
+                "datagrid"
+            ],
+            "owner": {
+                "reputation": 1113,
+                "user_id": 6726592,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://i.stack.imgur.com/6xIeo.jpg?s=128&g=1",
+                "display_name": "Roxy&#39;Pro",
+                "link": "https://stackoverflow.com/users/6726592/roxypro"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523528844,
+            "creation_date": 1523528844,
+            "question_id": 49794184,
+            "body_markdown": "I&#39;m trying to select first row in my Datagrid, when users press Arrow key down that is `Key.Down` event.\r\n\r\nI&#39;ve created method SelectRowByIndex which should select a first row of my Datagrid and it looks like this:\r\n\r\n \r\n\r\n    private static void SelectRowByIndex(DataGrid dataGrid, int rowIndex)\r\n            {\r\n                if (!dataGrid.SelectionUnit.Equals(DataGridSelectionUnit.FullRow))\r\n                    throw new ArgumentException(&quot;The SelectionUnit of the DataGrid must be set to FullRow.&quot;);\r\n    \r\n                if (rowIndex &lt; 0 || rowIndex &gt; (dataGrid.Items.Count - 1))\r\n                    throw new ArgumentException(string.Format(&quot;{0} is an invalid row index.&quot;, rowIndex));\r\n    \r\n                dataGrid.SelectedItems.Clear();\r\n                object item = dataGrid.Items[rowIndex];\r\n                dataGrid.SelectedItem = item;\r\n    \r\n                DataGridRow row = dataGrid.ItemContainerGenerator.ContainerFromIndex(rowIndex) as DataGridRow;\r\n                if (row == null)\r\n                {\r\n                    //Moram dodati BillItemTemp u slučaju da je virtualized away\r\n                    dataGrid.ScrollIntoView(item);\r\n                    row = dataGrid.ItemContainerGenerator.ContainerFromIndex(rowIndex) as DataGridRow;\r\n                }\r\n                if (row != null)\r\n                {\r\n                    DataGridCell cell = GetCell(dataGrid, row, 0);\r\n                    if (cell != null)\r\n                        cell.Focus();\r\n                }\r\n            }\r\n\r\n     private static DataGridCell GetCell(DataGrid dataGrid, DataGridRow rowContainer, int column)\r\n            {\r\n                if (rowContainer != null)\r\n                {\r\n                    System.Windows.Controls.Primitives.DataGridCellsPresenter presenter\r\n                        = FindVisualChild&lt;System.Windows.Controls.Primitives.DataGridCellsPresenter&gt;(rowContainer);\r\n                    if (presenter == null)\r\n                    {\r\n    \r\n                        rowContainer.ApplyTemplate();\r\n                        presenter = FindVisualChild&lt;System.Windows.Controls.Primitives.DataGridCellsPresenter&gt;(rowContainer);\r\n                    }\r\n                    if (presenter != null)\r\n                    {\r\n                        DataGridCell cell = presenter.ItemContainerGenerator.ContainerFromIndex(column) as DataGridCell;\r\n                        if (cell == null)\r\n                        {\r\n    \r\n                            dataGrid.ScrollIntoView(rowContainer, dataGrid.Columns[column]);\r\n                            cell = presenter.ItemContainerGenerator.ContainerFromIndex(column) as DataGridCell;\r\n                        }\r\n                        return cell;\r\n                    }\r\n                }\r\n                return null;\r\n            }\r\n\r\nAnd after that I&#39;ve called it in my constructor when form is loaded:\r\n\r\n     this.PreviewKeyDown += (s, e) =&gt;\r\n     {\r\n            if (e.Key == Key.Down &amp;&amp; dtgProducts.HasItems)\r\n              SelectRowByIndex(dtgProducts, 0);\r\n     };\r\n\r\nBut somehow it&#39;s selecting second row? and not first one ... how come?\r\n\r\nAnd I need to be secured when I keep pressing Key.Down not to select same row all the time..\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49794184/how-to-select-on-arrow-key-down-first-row-in-datagrid-wpf-datagrid",
+            "title": "How to select on arrow key down first row in datagrid ? WPF / Datagrid",
+            "body": "<p>I'm trying to select first row in my Datagrid, when users press Arrow key down that is <code>Key.Down</code> event.</p>\n\n<p>I've created method SelectRowByIndex which should select a first row of my Datagrid and it looks like this:</p>\n\n<pre><code>private static void SelectRowByIndex(DataGrid dataGrid, int rowIndex)\n        {\n            if (!dataGrid.SelectionUnit.Equals(DataGridSelectionUnit.FullRow))\n                throw new ArgumentException(\"The SelectionUnit of the DataGrid must be set to FullRow.\");\n\n            if (rowIndex &lt; 0 || rowIndex &gt; (dataGrid.Items.Count - 1))\n                throw new ArgumentException(string.Format(\"{0} is an invalid row index.\", rowIndex));\n\n            dataGrid.SelectedItems.Clear();\n            object item = dataGrid.Items[rowIndex];\n            dataGrid.SelectedItem = item;\n\n            DataGridRow row = dataGrid.ItemContainerGenerator.ContainerFromIndex(rowIndex) as DataGridRow;\n            if (row == null)\n            {\n                //Moram dodati BillItemTemp u slučaju da je virtualized away\n                dataGrid.ScrollIntoView(item);\n                row = dataGrid.ItemContainerGenerator.ContainerFromIndex(rowIndex) as DataGridRow;\n            }\n            if (row != null)\n            {\n                DataGridCell cell = GetCell(dataGrid, row, 0);\n                if (cell != null)\n                    cell.Focus();\n            }\n        }\n\n private static DataGridCell GetCell(DataGrid dataGrid, DataGridRow rowContainer, int column)\n        {\n            if (rowContainer != null)\n            {\n                System.Windows.Controls.Primitives.DataGridCellsPresenter presenter\n                    = FindVisualChild&lt;System.Windows.Controls.Primitives.DataGridCellsPresenter&gt;(rowContainer);\n                if (presenter == null)\n                {\n\n                    rowContainer.ApplyTemplate();\n                    presenter = FindVisualChild&lt;System.Windows.Controls.Primitives.DataGridCellsPresenter&gt;(rowContainer);\n                }\n                if (presenter != null)\n                {\n                    DataGridCell cell = presenter.ItemContainerGenerator.ContainerFromIndex(column) as DataGridCell;\n                    if (cell == null)\n                    {\n\n                        dataGrid.ScrollIntoView(rowContainer, dataGrid.Columns[column]);\n                        cell = presenter.ItemContainerGenerator.ContainerFromIndex(column) as DataGridCell;\n                    }\n                    return cell;\n                }\n            }\n            return null;\n        }\n</code></pre>\n\n<p>And after that I've called it in my constructor when form is loaded:</p>\n\n<pre><code> this.PreviewKeyDown += (s, e) =&gt;\n {\n        if (e.Key == Key.Down &amp;&amp; dtgProducts.HasItems)\n          SelectRowByIndex(dtgProducts, 0);\n };\n</code></pre>\n\n<p>But somehow it's selecting second row? and not first one ... how come?</p>\n\n<p>And I need to be secured when I keep pressing Key.Down not to select same row all the time..</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "constructor"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 9327479,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/0cc676dde4b01f41b4d296e6d6858b67?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Dawid",
+                "link": "https://stackoverflow.com/users/9327479/dawid"
+            },
+            "is_answered": true,
+            "view_count": 68,
+            "closed_date": 1523528885,
+            "accepted_answer_id": 49793976,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523528835,
+            "creation_date": 1523527446,
+            "question_id": 49793709,
+            "body_markdown": "Hi I am a quite beginner in java.\r\n\r\nIs it a good way to create construcors with many parameters like in my BookLibrary program?\r\n\r\n    public class Book implements Serializable {\r\n\r\n    private String title;\r\n    private String directorName;\r\n    private String directorSurname;\r\n    private String type;\r\n    private int issueYear;\r\n    private List&lt;String&gt; actorNames;\r\n    private List&lt;String&gt; actorSurnames;\r\n    private Tuple&lt;String, String&gt; directorFullName;\r\n\r\n\r\n    public Book(String title, String directorName, String directorSurname, String type, int issueYear,\r\n                List&lt;String&gt; actorNames, List&lt;String&gt; actorSurnames, Tuple&lt;String, String&gt; directorFullName){\r\n        this.title = title;\r\n        this.directorName = directorName;\r\n        this.directorSurname = directorSurname;\r\n        this.type = type;\r\n        this.issueYear = issueYear;\r\n        this.actorNames = actorNames;\r\n        this.actorSurnames = actorSurnames;\r\n        this.directorFullName = directorFullName;\r\n    }\r\n\r\nOr is there any better idea to create such a constructor?",
+            "link": "https://stackoverflow.com/questions/49793709/many-parameters-in-java-constructor",
+            "closed_reason": "duplicate",
+            "title": "Many parameters in java constructor",
+            "body": "<p>Hi I am a quite beginner in java.</p>\n\n<p>Is it a good way to create construcors with many parameters like in my BookLibrary program?</p>\n\n<pre><code>public class Book implements Serializable {\n\nprivate String title;\nprivate String directorName;\nprivate String directorSurname;\nprivate String type;\nprivate int issueYear;\nprivate List&lt;String&gt; actorNames;\nprivate List&lt;String&gt; actorSurnames;\nprivate Tuple&lt;String, String&gt; directorFullName;\n\n\npublic Book(String title, String directorName, String directorSurname, String type, int issueYear,\n            List&lt;String&gt; actorNames, List&lt;String&gt; actorSurnames, Tuple&lt;String, String&gt; directorFullName){\n    this.title = title;\n    this.directorName = directorName;\n    this.directorSurname = directorSurname;\n    this.type = type;\n    this.issueYear = issueYear;\n    this.actorNames = actorNames;\n    this.actorSurnames = actorSurnames;\n    this.directorFullName = directorFullName;\n}\n</code></pre>\n\n<p>Or is there any better idea to create such a constructor?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "jackson"
+            ],
+            "owner": {
+                "reputation": 716,
+                "user_id": 2119191,
+                "user_type": "registered",
+                "accept_rate": 69,
+                "profile_image": "https://i.stack.imgur.com/HsVLd.png?s=128&g=1",
+                "display_name": "Johannes Dorn",
+                "link": "https://stackoverflow.com/users/2119191/johannes-dorn"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 0,
+            "score": 2,
+            "last_activity_date": 1523528834,
+            "creation_date": 1523528834,
+            "question_id": 49794177,
+            "body_markdown": "Suppose I have a simple class:\r\n\r\n    public class MyClass {\r\n        private final String id;\r\n        private final String additionalJson;\r\n    }\r\n\r\nI want to serialize this class to JSON so that the raw value in `additionalJson` is written directly into the JSON **without** writing the field&#39;s name.\r\nAdditionally, the `id` field should be transformed so that its name is written as `identifier`.\r\n\r\n**Example**\r\n\r\nThe values of an instance are:\r\n\r\n    id = 1234\r\n    additionalJson = &quot;someKey&quot;: &quot;someValue&quot;\r\n\r\nThe serialized JSON I want should be:\r\n\r\n    {\r\n      &quot;identifier&quot;: &quot;1234&quot;,\r\n      &quot;someKey&quot;: &quot;someValue&quot;\r\n    }\r\n\r\nChanging the name of `id` is trivial to do using Mixins:\r\n\r\n    public class MyClassMixin {\r\n        @JsonProperty(&quot;identifier&quot;)\r\n        private final String id;\r\n    }\r\n\r\nBut I don&#39;t have a good way to include the raw JSON without adding the field&#39;s name.\r\n\r\nMy current solution is to write a custom `JsonSerializer` for `MyClass` which writes the fields value using `writeRaw()`:\r\n\r\n    public class MyClassSerializer extends JsonSerializer&lt;MyClass&gt; {\r\n    @Override\r\n    public void serialize(MyClass myClass, JsonGenerator json, SerializerProvider serializerProvider) throws IOException {\r\n        try {\r\n            json.writeStartObject();\r\n            for (Field field : myClass.getClass().getDeclaredFields()) {\r\n                if (Objects.equals(field.getName(), &quot;additionalJson&quot;)) {\r\n                    json.writeRaw(&quot;, &quot; + (String)field.get(angebotsTemplate));\r\n                } else {\r\n                    json.writeObjectField(field.getName(), \r\n                }\r\n            }\r\n            json.writeEndObject();\r\n        } catch (IllegalAccessException e) {\r\n            e.printStackTrace();\r\n        }\r\n    }\r\n\r\nThis correctly includes the `additionalJson` value (after making the MyClass fields public) but doesn&#39;t make use of the Mixin. While I could add code to the serializer to transform the `id` name I would rather still do this in a Mixin as `MyClass` may have many fields, each with their own transformations I don&#39;t want to define in the Serializer.\r\n\r\nIs there a way to achieve what I want, preferably relying on Mixins?",
+            "link": "https://stackoverflow.com/questions/49794177/how-can-i-use-jackson-serialization-to-write-a-fields-value-but-not-its-key",
+            "title": "How can I use Jackson serialization to write a field&#39;s value but not its key",
+            "body": "<p>Suppose I have a simple class:</p>\n\n<pre><code>public class MyClass {\n    private final String id;\n    private final String additionalJson;\n}\n</code></pre>\n\n<p>I want to serialize this class to JSON so that the raw value in <code>additionalJson</code> is written directly into the JSON <strong>without</strong> writing the field's name.\nAdditionally, the <code>id</code> field should be transformed so that its name is written as <code>identifier</code>.</p>\n\n<p><strong>Example</strong></p>\n\n<p>The values of an instance are:</p>\n\n<pre><code>id = 1234\nadditionalJson = \"someKey\": \"someValue\"\n</code></pre>\n\n<p>The serialized JSON I want should be:</p>\n\n<pre><code>{\n  \"identifier\": \"1234\",\n  \"someKey\": \"someValue\"\n}\n</code></pre>\n\n<p>Changing the name of <code>id</code> is trivial to do using Mixins:</p>\n\n<pre><code>public class MyClassMixin {\n    @JsonProperty(\"identifier\")\n    private final String id;\n}\n</code></pre>\n\n<p>But I don't have a good way to include the raw JSON without adding the field's name.</p>\n\n<p>My current solution is to write a custom <code>JsonSerializer</code> for <code>MyClass</code> which writes the fields value using <code>writeRaw()</code>:</p>\n\n<pre><code>public class MyClassSerializer extends JsonSerializer&lt;MyClass&gt; {\n@Override\npublic void serialize(MyClass myClass, JsonGenerator json, SerializerProvider serializerProvider) throws IOException {\n    try {\n        json.writeStartObject();\n        for (Field field : myClass.getClass().getDeclaredFields()) {\n            if (Objects.equals(field.getName(), \"additionalJson\")) {\n                json.writeRaw(\", \" + (String)field.get(angebotsTemplate));\n            } else {\n                json.writeObjectField(field.getName(), \n            }\n        }\n        json.writeEndObject();\n    } catch (IllegalAccessException e) {\n        e.printStackTrace();\n    }\n}\n</code></pre>\n\n<p>This correctly includes the <code>additionalJson</code> value (after making the MyClass fields public) but doesn't make use of the Mixin. While I could add code to the serializer to transform the <code>id</code> name I would rather still do this in a Mixin as <code>MyClass</code> may have many fields, each with their own transformations I don't want to define in the Serializer.</p>\n\n<p>Is there a way to achieve what I want, preferably relying on Mixins?</p>\n"
+        },
+        {
+            "tags": [
+                "asp.net",
+                "shibboleth"
+            ],
+            "owner": {
+                "reputation": 77,
+                "user_id": 2082895,
+                "user_type": "registered",
+                "accept_rate": 11,
+                "profile_image": "https://i.stack.imgur.com/qVRqE.jpg?s=128&g=1",
+                "display_name": "Dalip Choudhary",
+                "link": "https://stackoverflow.com/users/2082895/dalip-choudhary"
+            },
+            "is_answered": false,
+            "view_count": 5,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523528831,
+            "creation_date": 1523528831,
+            "question_id": 49794174,
+            "body_markdown": "We have setup a shibboleth sp and idp. both of them working fine. We want to use multiple idp with same sp. we have achieved it by using discovery service. but we don&#39;t want to use shibboleth SP OR *.sso handler to handle login mechanism.\r\nOur use case is that: When user click on login on our custom asp.net service provider. we will redirect to user on local IDP&#39;s login page, from this login page user can select other idp to authenticate. how can we do it. please help",
+            "link": "https://stackoverflow.com/questions/49794174/how-can-we-use-multiple-shibboleth-idp-without-shibboleth-sp",
+            "title": "How can we use multiple shibboleth idp without shibboleth SP?",
+            "body": "<p>We have setup a shibboleth sp and idp. both of them working fine. We want to use multiple idp with same sp. we have achieved it by using discovery service. but we don't want to use shibboleth SP OR *.sso handler to handle login mechanism.\nOur use case is that: When user click on login on our custom asp.net service provider. we will redirect to user on local IDP's login page, from this login page user can select other idp to authenticate. how can we do it. please help</p>\n"
+        },
+        {
+            "tags": [
+                "api",
+                "limesurvey"
+            ],
+            "owner": {
+                "reputation": 523,
+                "user_id": 2584772,
+                "user_type": "registered",
+                "accept_rate": 46,
+                "profile_image": "https://www.gravatar.com/avatar/ce910c0f7a90e2e06ca9b54e213f9cb9?s=128&d=identicon&r=PG",
+                "display_name": "Caco",
+                "link": "https://stackoverflow.com/users/2584772/caco"
+            },
+            "is_answered": false,
+            "view_count": 3,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523528827,
+            "creation_date": 1523465626,
+            "question_id": 49780616,
+            "body_markdown": "Is it possible to get not selected answers in multiple choice question type marked with &quot;N&quot; when consuming Lime Survey API?\r\n\r\nThe API method `export_responses` gives all the question/subquestions/answers codes of user responses in bulk.\r\n\r\nBut the multiple choice question type signalizes only the selected answers with an &quot;Y&quot;. I&#39;d like responses bring the answers not selected with an &quot;N&quot; written. LimeSurvey can do that?\r\n\r\nExample:\r\nlistTpFisioAt is the question code; *text*, in listTpFisioAt[*text*], is an option. When I consume the API to get responses I get something like this:\r\n\r\n    lisTpFisioAt[Fototerapia]\r\n    lisTpFisioAt[Termoterapia]\r\n    lisTpFisioAt[Cinesioterapia]   Y\r\n    lisTpFisioAt[Eletroterapia]\r\n    lisTpFisioAt[Hidroterapia]   Y\r\n\r\nIn this case user selected *Cinesioterapia* and *Hidroterapia* in Lime Survey interface.\r\n\r\nI&#39;d like to get:\r\n\r\n    lisTpFisioAt[Fototerapia]   N\r\n    lisTpFisioAt[Termoterapia]   N\r\n    lisTpFisioAt[Cinesioterapia]   Y\r\n    lisTpFisioAt[Eletroterapia]   N\r\n    lisTpFisioAt[Hidroterapia]   Y\r\n",
+            "link": "https://stackoverflow.com/questions/49780616/get-limesurvey-not-selected-multiple-choice-answers-with-n-using-api-remote-co",
+            "title": "Get LimeSurvey not selected multiple choice answers with &quot;N&quot; using API Remote Control",
+            "body": "<p>Is it possible to get not selected answers in multiple choice question type marked with \"N\" when consuming Lime Survey API?</p>\n\n<p>The API method <code>export_responses</code> gives all the question/subquestions/answers codes of user responses in bulk.</p>\n\n<p>But the multiple choice question type signalizes only the selected answers with an \"Y\". I'd like responses bring the answers not selected with an \"N\" written. LimeSurvey can do that?</p>\n\n<p>Example:\nlistTpFisioAt is the question code; <em>text</em>, in listTpFisioAt[<em>text</em>], is an option. When I consume the API to get responses I get something like this:</p>\n\n<pre><code>lisTpFisioAt[Fototerapia]\nlisTpFisioAt[Termoterapia]\nlisTpFisioAt[Cinesioterapia]   Y\nlisTpFisioAt[Eletroterapia]\nlisTpFisioAt[Hidroterapia]   Y\n</code></pre>\n\n<p>In this case user selected <em>Cinesioterapia</em> and <em>Hidroterapia</em> in Lime Survey interface.</p>\n\n<p>I'd like to get:</p>\n\n<pre><code>lisTpFisioAt[Fototerapia]   N\nlisTpFisioAt[Termoterapia]   N\nlisTpFisioAt[Cinesioterapia]   Y\nlisTpFisioAt[Eletroterapia]   N\nlisTpFisioAt[Hidroterapia]   Y\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "jquery",
+                "html"
+            ],
+            "owner": {
+                "reputation": 75,
+                "user_id": 2292556,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/d4632e29574d350711a118bf6e42e262?s=128&d=identicon&r=PG",
+                "display_name": "Jason Statham",
+                "link": "https://stackoverflow.com/users/2292556/jason-statham"
+            },
+            "is_answered": true,
+            "view_count": 987,
+            "accepted_answer_id": 16070172,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1523528819,
+            "creation_date": 1366232365,
+            "question_id": 16070155,
+            "body_markdown": "I&#39;m trying to access all anchors in the page that has a certain class using jQuery\r\n\r\n*For example. access all anchors that have class &quot;bold&quot;*\r\n\r\nI tried\r\n\r\n    $(&#39;.bold&#39;);\r\n\r\nBut I only need to select the anchors, can you please help me?\r\n\r\nThank you in advance",
+            "link": "https://stackoverflow.com/questions/16070155/jquery-select-all-anchors-that-have-a-certain-class",
+            "title": "jQuery select all anchors that have a certain class",
+            "body": "<p>I'm trying to access all anchors in the page that has a certain class using jQuery</p>\n\n<p><em>For example. access all anchors that have class \"bold\"</em></p>\n\n<p>I tried</p>\n\n<pre><code>$('.bold');\n</code></pre>\n\n<p>But I only need to select the anchors, can you please help me?</p>\n\n<p>Thank you in advance</p>\n"
+        },
+        {
+            "tags": [
+                "selenium-webdriver",
+                "selenium-chromedriver",
+                "autoit"
+            ],
+            "owner": {
+                "reputation": 521,
+                "user_id": 3946482,
+                "user_type": "registered",
+                "accept_rate": 93,
+                "profile_image": "https://i.stack.imgur.com/lVkJs.jpg?s=128&g=1",
+                "display_name": "plaidshirt",
+                "link": "https://stackoverflow.com/users/3946482/plaidshirt"
+            },
+            "is_answered": false,
+            "view_count": 59,
+            "bounty_amount": 50,
+            "bounty_closes_date": 1524133599,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523528799,
+            "creation_date": 1523345861,
+            "question_id": 49747960,
+            "body_markdown": "I have a `Selenium WebDriver` based script to automate file uploading. It uploads list of files one by one. I use `AutoIT` script to handle dialog window, file chooser window. Parameter `$CmdLine[1]` contains the path of actual file.\r\n\r\n    ControlFocus(&quot;Open a file&quot;,&quot;&quot;,&quot;Edit1&quot;)\r\n    ControlSetText(&quot;Open a file&quot;,&quot;&quot;,&quot;Edit1&quot;, $CmdLine[1])\r\n    ControlClick(&quot;Open a file&quot;,&quot;&quot;,&quot;Button1&quot;)\r\n\r\nI execute it from `Java` code as following:\r\n\r\n    Runtime.getRuntime().exec(autoITExecutable);\r\n\r\nIt opens dialog window, so it can&#39;t work without focus on browser window.",
+            "link": "https://stackoverflow.com/questions/49747960/handle-browser-dialog-window-without-focus",
+            "title": "Handle browser dialog window without focus",
+            "body": "<p>I have a <code>Selenium WebDriver</code> based script to automate file uploading. It uploads list of files one by one. I use <code>AutoIT</code> script to handle dialog window, file chooser window. Parameter <code>$CmdLine[1]</code> contains the path of actual file.</p>\n\n<pre><code>ControlFocus(\"Open a file\",\"\",\"Edit1\")\nControlSetText(\"Open a file\",\"\",\"Edit1\", $CmdLine[1])\nControlClick(\"Open a file\",\"\",\"Button1\")\n</code></pre>\n\n<p>I execute it from <code>Java</code> code as following:</p>\n\n<pre><code>Runtime.getRuntime().exec(autoITExecutable);\n</code></pre>\n\n<p>It opens dialog window, so it can't work without focus on browser window.</p>\n"
+        },
+        {
+            "tags": [
+                "ansible"
+            ],
+            "owner": {
+                "reputation": 5965,
+                "user_id": 1135424,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://i.stack.imgur.com/rvwBS.jpg?s=128&g=1",
+                "display_name": "nbari",
+                "link": "https://stackoverflow.com/users/1135424/nbari"
+            },
+            "is_answered": true,
+            "view_count": 12,
+            "accepted_answer_id": 49793716,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523528797,
+            "creation_date": 1523526352,
+            "question_id": 49793299,
+            "body_markdown": "I am creating instances using the CloudStack  module [cs_instance][1], for example:\r\n\r\n    - name: create or update instance\r\n      cs_instance:\r\n        display_name: web-vm-1\r\n        template: Linux Debian 7 64-bit\r\n        service_offering: Tiny\r\n        ssh_key: john@example.com\r\n        tags:\r\n          - { key: admin, value: john }\r\n          - { key: group, value: &quot;{{ vm_group_tab }}&quot; }\r\n        user_data: |\r\n            #cloud-config\r\n            packages:\r\n              - nginx\r\n\r\nHow could I add or remove `tags` if a variable is defined or not, for example, if variable `vm_group_tab` is undefined I would just like to have:\r\n\r\n        tags:\r\n          - { key: admin, value: john }\r\n         \r\nIf variable `vm_group_tab` is defined:\r\n\r\n        tags:\r\n          - { key: admin, value: john }\r\n          - { key: group, value: &quot;{{ vm_group_tab }}&quot; }\r\n\r\n\r\nAs a workaround currently I am setting var to null `vm_group_tab: ~` but the tag is been created as `group: None` any ideas how to deal with this.\r\n\r\n\r\n  [1]: http://docs.ansible.com/ansible/latest/modules/cs_instance_module.html",
+            "link": "https://stackoverflow.com/questions/49793299/how-to-add-list-elements-tags-in-cs-instance-if-a-variable-is-defined",
+            "title": "How to add list elements &quot;tags in cs_instance&quot; if a variable is defined",
+            "body": "<p>I am creating instances using the CloudStack  module <a href=\"http://docs.ansible.com/ansible/latest/modules/cs_instance_module.html\" rel=\"nofollow noreferrer\">cs_instance</a>, for example:</p>\n\n<pre><code>- name: create or update instance\n  cs_instance:\n    display_name: web-vm-1\n    template: Linux Debian 7 64-bit\n    service_offering: Tiny\n    ssh_key: john@example.com\n    tags:\n      - { key: admin, value: john }\n      - { key: group, value: \"{{ vm_group_tab }}\" }\n    user_data: |\n        #cloud-config\n        packages:\n          - nginx\n</code></pre>\n\n<p>How could I add or remove <code>tags</code> if a variable is defined or not, for example, if variable <code>vm_group_tab</code> is undefined I would just like to have:</p>\n\n<pre><code>    tags:\n      - { key: admin, value: john }\n</code></pre>\n\n<p>If variable <code>vm_group_tab</code> is defined:</p>\n\n<pre><code>    tags:\n      - { key: admin, value: john }\n      - { key: group, value: \"{{ vm_group_tab }}\" }\n</code></pre>\n\n<p>As a workaround currently I am setting var to null <code>vm_group_tab: ~</code> but the tag is been created as <code>group: None</code> any ideas how to deal with this.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "api",
+                "twitter"
+            ],
+            "owner": {
+                "reputation": 18,
+                "user_id": 6915736,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://lh4.googleusercontent.com/-qrGUzJEDfPk/AAAAAAAAAAI/AAAAAAAAABY/Z4Heq9w6lEA/photo.jpg?sz=128",
+                "display_name": "leyh",
+                "link": "https://stackoverflow.com/users/6915736/leyh"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "closed_date": 1523538401,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1523528797,
+            "creation_date": 1523528797,
+            "question_id": 49794166,
+            "body_markdown": "I&#39;m programming a Twitter Client for Android and after many searches I don&#39;t know how to use the Twitter API without wrappers. All the tutorials use Twitter4j but I don&#39;t want to use wrappers for my project.\r\n\r\nIf someone knows how to do that or if any tutorial exists it can help me !",
+            "link": "https://stackoverflow.com/questions/49794166/how-to-use-the-twitter-api-without-wrapper-using-java",
+            "closed_reason": "too broad",
+            "title": "How to use the Twitter API without wrapper using Java",
+            "body": "<p>I'm programming a Twitter Client for Android and after many searches I don't know how to use the Twitter API without wrappers. All the tutorials use Twitter4j but I don't want to use wrappers for my project.</p>\n\n<p>If someone knows how to do that or if any tutorial exists it can help me !</p>\n"
+        },
+        {
+            "tags": [
+                "rest",
+                "soa",
+                "microservices"
+            ],
+            "owner": {
+                "reputation": 189,
+                "user_id": 2803135,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/4b472e577c6173154862f3d2547a51f8?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Lewix",
+                "link": "https://stackoverflow.com/users/2803135/lewix"
+            },
+            "is_answered": true,
+            "view_count": 16938,
+            "answer_count": 2,
+            "score": 20,
+            "last_activity_date": 1523528793,
+            "creation_date": 1416544305,
+            "last_edit_date": 1416544632,
+            "question_id": 27054162,
+            "body_markdown": "I thought I knew what REST/&quot;RESTFul&quot;, restfulservices, webservices, SOA and microservices were but I came across so many different definitions that I reached the conclusion that those terms are overused, misused , or simply badly defined.\r\n\r\nI hope to have a clear understanding of what the aforementioned terms represent, their concrete definition , their commonality and differences, advantages vs disadvantages, and most importantly the bottom line - the most important things to remember in order to use those terms appropriately. ",
+            "link": "https://stackoverflow.com/questions/27054162/what-are-rest-restful-soa-and-microservices-in-simple-terms",
+            "title": "what are REST,RESTFul, SOA and microservices in simple terms?",
+            "body": "<p>I thought I knew what REST/\"RESTFul\", restfulservices, webservices, SOA and microservices were but I came across so many different definitions that I reached the conclusion that those terms are overused, misused , or simply badly defined.</p>\n\n<p>I hope to have a clear understanding of what the aforementioned terms represent, their concrete definition , their commonality and differences, advantages vs disadvantages, and most importantly the bottom line - the most important things to remember in order to use those terms appropriately. </p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "datetime",
+                "jstl"
+            ],
+            "owner": {
+                "reputation": 707,
+                "user_id": 3458164,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://i.stack.imgur.com/eJqZS.jpg?s=128&g=1",
+                "display_name": "R.A.Munna",
+                "link": "https://stackoverflow.com/users/3458164/r-a-munna"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523528783,
+            "creation_date": 1523525742,
+            "last_edit_date": 1523528783,
+            "question_id": 49793075,
+            "body_markdown": "I like to format my DateTime in JSTL with providing timeZone. But It Does not work perfectly. I Went through lot of suggestion but can&#39;t reach the goal. What I tried this is\r\n    \r\n    &lt;fmt:formatDate value=&quot;${timeSlot.getStartTime()}&quot; \r\n    pattern=&quot;HH:mm&quot; timeZone=&quot;UTC-6&quot; var=&quot;startTime&quot; /&gt;\r\n\r\n*Edit*:-\r\n\r\nvalue=&quot;08:41:00&quot; for `timeSlot.getStartTime()`\r\n\r\nAny help or suggestion.\r\n\r\n**Update:**\r\n\r\nafter using `input type=&quot;time&quot;` it gives me like that\r\n\r\n[![img][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/Zkh6C.jpg",
+            "link": "https://stackoverflow.com/questions/49793075/format-datetime-in-custom-utc-format-using-jstl",
+            "title": "Format DateTime in custom UTC Format using JSTL",
+            "body": "<p>I like to format my DateTime in JSTL with providing timeZone. But It Does not work perfectly. I Went through lot of suggestion but can't reach the goal. What I tried this is</p>\n\n<pre><code>&lt;fmt:formatDate value=\"${timeSlot.getStartTime()}\" \npattern=\"HH:mm\" timeZone=\"UTC-6\" var=\"startTime\" /&gt;\n</code></pre>\n\n<p><em>Edit</em>:-</p>\n\n<p>value=\"08:41:00\" for <code>timeSlot.getStartTime()</code></p>\n\n<p>Any help or suggestion.</p>\n\n<p><strong>Update:</strong></p>\n\n<p>after using <code>input type=\"time\"</code> it gives me like that</p>\n\n<p><a href=\"https://i.stack.imgur.com/Zkh6C.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/Zkh6C.jpg\" alt=\"img\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "axapta",
+                "dynamics-365-operations"
+            ],
+            "owner": {
+                "reputation": 2090,
+                "user_id": 4786,
+                "user_type": "registered",
+                "accept_rate": 56,
+                "profile_image": "https://www.gravatar.com/avatar/c013dfef0cac53da858e40b05702b77a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "prodev42",
+                "link": "https://stackoverflow.com/users/4786/prodev42"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523528775,
+            "creation_date": 1522966233,
+            "last_edit_date": 1523528775,
+            "question_id": 49682308,
+            "body_markdown": "I have a form, in VS code editor, I declare an amount type right in the beginning with below code\r\n\r\n&quot;Amount  X;&quot;\r\n\r\nThen in its Datasource, in method validateWrite(), \r\n\r\nI have a line  &quot;X = element.aFunction();&quot;\r\n\r\nWhen I debug to the line above and try to add a watch to the value of X the debugger says &quot;error CS0120: An object reference is required for the non-static field, method, or property&quot;.\r\n\r\nAny way to let me see its value?\r\n",
+            "link": "https://stackoverflow.com/questions/49682308/debug-watch-not-showing-value-an-object-reference-is-required-for-the-non-stati",
+            "title": "Debug watch not showing value: An object reference is required for the non-static field",
+            "body": "<p>I have a form, in VS code editor, I declare an amount type right in the beginning with below code</p>\n\n<p>\"Amount  X;\"</p>\n\n<p>Then in its Datasource, in method validateWrite(), </p>\n\n<p>I have a line  \"X = element.aFunction();\"</p>\n\n<p>When I debug to the line above and try to add a watch to the value of X the debugger says \"error CS0120: An object reference is required for the non-static field, method, or property\".</p>\n\n<p>Any way to let me see its value?</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "android-activity",
+                "fragment",
+                "nfc",
+                "onnewintent"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 9565821,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/c906a27971dc577f81bbf88de4b29419?s=128&d=identicon&r=PG&f=1",
+                "display_name": "DaGuy",
+                "link": "https://stackoverflow.com/users/9565821/daguy"
+            },
+            "is_answered": false,
+            "view_count": 81,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523528773,
+            "creation_date": 1523202636,
+            "last_edit_date": 1523528773,
+            "question_id": 49719759,
+            "body_markdown": "I have asked multiple questions on SO regarding different problems I am having with onNewIntent method in both fragments and activities. My problem now is that onNewIntent in Activity is never being called no matter what I do. The Activity that has the onNewIntent contains multiple tabs. My tabs (Fragments) contain codes for writing and reading NFC tag.\r\n\r\nThis is the code for the Activity:\r\n\r\n        public class MyAppHome extends AppCompatActivity {\r\n    \r\n        protected DrawerLayout mDrawerLayout;\r\n        private ActionBarDrawerToggle mtoggle;\r\n        NfcAdapter nfcAdapter;\r\n        private Toolbar mtoolbar;\r\n        private TextView mName;\r\n        private SectionsPagerAdapter mSectionsPagerAdapter;\r\n        private ViewPager mViewPager;\r\n        private NavigationView mNavigationView;\r\n    \r\n        @Override\r\n        protected void onCreate(Bundle savedInstanceState) {\r\n            super.onCreate(savedInstanceState);\r\n            setContentView(R.layout.drawer_layout);\r\n\r\n            mtoolbar = (Toolbar) findViewById(R.id.nav_action);\r\n            setSupportActionBar(mtoolbar);\r\n            nfcAdapter = NfcAdapter.getDefaultAdapter(this);\r\n          \r\n            mNavigationView= (NavigationView)findViewById(R.id.nav_view);\r\n            mDrawerLayout = findViewById(R.id.drawer_layout);\r\n            mtoggle = new ActionBarDrawerToggle(this, mDrawerLayout, R.string.open, R.string.close);\r\n            mDrawerLayout.addDrawerListener(mtoggle);\r\n            mtoggle.syncState();\r\n            // Create the adapter that will return a fragment for each of the three\r\n            // primary sections of the activity.\r\n            mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());\r\n    \r\n            // Set up the ViewPager with the sections adapter.\r\n            mViewPager = (ViewPager) findViewById(R.id.container);\r\n            mViewPager.setAdapter(mSectionsPagerAdapter);\r\n    \r\n            TabLayout tabLayout = (TabLayout) findViewById(R.id.tabs);\r\n    \r\n            mViewPager.addOnPageChangeListener(new TabLayout.TabLayoutOnPageChangeListener(tabLayout));\r\n            tabLayout.addOnTabSelectedListener(new TabLayout.ViewPagerOnTabSelectedListener(mViewPager));\r\n    \r\n            tabLayout.setupWithViewPager(mViewPager);\r\n            tabLayout.setOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {\r\n                @Override\r\n                public void onTabSelected(TabLayout.Tab tab) {\r\n                    switch (tab.getPosition())\r\n                    {\r\n                        case 0:\r\n                            mViewPager.setCurrentItem(0);\r\n                            mtoolbar.setTitle(&quot;Home&quot;);\r\n                            break;\r\n    \r\n                        case 1:\r\n                            mViewPager.setCurrentItem(1);\r\n                            mtoolbar.setTitle(&quot;Writer&quot;);\r\n                            break;\r\n    \r\n                        case 2:\r\n                            mViewPager.setCurrentItem(2);\r\n                            mtoolbar.setTitle(&quot;Reader&quot;);\r\n                            break;\r\n    \r\n                        case 3:\r\n                            mViewPager.setCurrentItem(3);\r\n                            mtoolbar.setTitle(&quot;Others&quot;);\r\n                            break;\r\n    \r\n                        case 4:\r\n                            mViewPager.setCurrentItem(4);\r\n                            mtoolbar.setTitle(&quot;Alarm&quot;);\r\n                            break;\r\n    \r\n    \r\n                        default:\r\n                            mViewPager.setCurrentItem(tab.getPosition());\r\n                            mtoolbar.setTitle(&quot;My APP&quot;);\r\n                            break;\r\n                    }\r\n    \r\n                }\r\n    \r\n                @Override\r\n                public void onTabUnselected(TabLayout.Tab tab) {\r\n    \r\n                }\r\n    \r\n                @Override\r\n                public void onTabReselected(TabLayout.Tab tab) {\r\n    \r\n                }\r\n            });\r\n    \r\n            getSupportActionBar().setDisplayHomeAsUpEnabled(true);\r\n            getSupportActionBar().setHomeButtonEnabled(true);\r\n    \r\n            NavigationView navigationView = findViewById(R.id.nav_view);\r\n    \r\n            navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {\r\n                @Override\r\n                public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {\r\n                    // set item as selected to persist highlight\r\n                    menuItem.setChecked(true);\r\n    \r\n                    switch (menuItem.getItemId()){\r\n    \r\n                        case R.id.nav_home:\r\n                            mViewPager.setCurrentItem(0);\r\n                            mDrawerLayout.closeDrawers();\r\n                            mtoolbar.setTitle(&quot;Home&quot;);\r\n                            break;\r\n    \r\n                        case R.id.nav_writer:\r\n                            mViewPager.setCurrentItem(1);\r\n                            mDrawerLayout.closeDrawers();\r\n                            mtoolbar.setTitle(&quot;Writer&quot;);\r\n                            break;\r\n    \r\n                        case R.id.nav_medication:\r\n                           \r\n                            mViewPager.setCurrentItem(2);\r\n                            mDrawerLayout.closeDrawers();\r\n                            mtoolbar.setTitle(&quot;Reader&quot;);\r\n                            break;\r\n    \r\n                        case R.id.nav_missedPill:\r\n                            mViewPager.setCurrentItem(3);\r\n                            mDrawerLayout.closeDrawers();\r\n                            mtoolbar.setTitle(&quot;Others&quot;);\r\n                            break;\r\n    \r\n                        case R.id.nav_alarm:\r\n                            mViewPager.setCurrentItem(4);\r\n                            mDrawerLayout.closeDrawers();\r\n                            mtoolbar.setTitle(&quot;Alarm&quot;);\r\n                            break;\r\n    \r\n                        case R.id.nav_logout:\r\n                            FirebaseAuth.getInstance().signOut();\r\n                            finish();\r\n                            startActivity(new Intent(getApplicationContext(),Login.class));\r\n    \r\n                    }\r\n                    // close drawer when item is tapped\r\n                    mDrawerLayout.closeDrawers();\r\n                    return true;\r\n                }\r\n            });\r\n    \r\n            mDrawerLayout.addDrawerListener(\r\n                    new DrawerLayout.DrawerListener() {\r\n                        @Override\r\n                        public void onDrawerSlide(View drawerView, float slideOffset) {\r\n                            // Respond when the drawer&#39;s position changes\r\n                        }\r\n    \r\n                        @Override\r\n                        public void onDrawerOpened(View drawerView) {\r\n                            // Respond when the drawer is opened\r\n                        }\r\n    \r\n                        @Override\r\n                        public void onDrawerClosed(View drawerView) {\r\n                            // Respond when the drawer is closed\r\n                        }\r\n    \r\n                        @Override\r\n                        public void onDrawerStateChanged(int newState) {\r\n                            // Respond when the drawer motion state changes\r\n                        }\r\n                    }\r\n            );\r\n                   initNFC(getIntent());\r\n        }\r\n    \r\n     \r\n    \r\n        @Override\r\n        public boolean onCreateOptionsMenu(Menu menu) {\r\n            // Inflate the menu; this adds items to the action bar if it is present.\r\n            getMenuInflater().inflate(R.menu.menu_dosis_home, menu);\r\n            return true;\r\n        }\r\n    \r\n        @Override\r\n        public boolean onOptionsItemSelected(MenuItem item) {\r\n               if(mtoggle.onOptionsItemSelected(item)){\r\n                    return true;\r\n                }\r\n                //noinspection SimplifiableIfStatement\r\n                if (item.getItemId()== R.id.action_settings) {\r\n                    return true;\r\n                   }\r\n                return super.onOptionsItemSelected(item);\r\n                     }\r\n\r\n    @Override\r\n        public void onResume() {\r\n            super.onResume();\r\n    \r\n            IntentFilter tagDetected = new IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED);\r\n            IntentFilter ndefDetected = new IntentFilter(NfcAdapter.ACTION_NDEF_DISCOVERED);\r\n            IntentFilter techDetected = new IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED);\r\n            IntentFilter[] nfcIntentFilter = new IntentFilter[]{techDetected,tagDetected,ndefDetected};\r\n            PendingIntent pendingIntent = PendingIntent.getActivity(\r\n                    this, 0, new Intent(this.getApplicationContext(), this.getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0);\r\n    \r\n            if(nfcAdapter !=null){\r\n                Log.d(&quot;W&quot;, &quot;nfcadapter is not null&quot;);\r\n                nfcAdapter.enableForegroundDispatch(this, pendingIntent, nfcIntentFilter, null);\r\n            }\r\n    \r\n        }\r\n    \r\n     @Override\r\n        public void onPause() {\r\n            super.onPause();\r\n            if(nfcAdapter !=null){\r\n                disableForegroundDispatchSystem();\r\n            }\r\n    \r\n        }\r\n    public boolean write2NFC(MyNfcMessage m ) {\r\n    \r\n            NdefMessage ndefMessage = createNdefMessage(m.key1, m.key2,m.key3);\r\n            writeNdefMessage(tag, ndefMessage);\r\n            return true;\r\n        }\r\n    \r\n        private void initNFC(Intent intent) {\r\n            if (intent.hasExtra(NfcAdapter.EXTRA_TAG)) {\r\n                // if (nfcAdapter.ACTION_TAG_DISCOVERED.equals(intent.getAction())) {\r\n                //Toast.makeText(getActivity(), &quot;NfcIntent!&quot;, Toast.LENGTH_SHORT).show();\r\n                tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);\r\n            }\r\n        }\r\n    \r\n      protected void onNewIntent(Intent intent) {\r\n           \r\n            System.out.print(&quot;I am here in Home&quot;);\r\n            Log.d(&quot;my tag&quot;, &quot;I am here now&quot;);\r\n            initNFC(intent);\r\n            Log.d(&quot;my tag &quot;, &quot;onNewIntent: something &quot;);\r\n    \r\n    }\r\n    \r\n    \r\n\r\n         private void disableForegroundDispatchSystem() {\r\n                    nfcAdapter.disableForegroundDispatch(this);\r\n                }\r\n            \r\n                private void formatTag(Tag tag, Nde\r\n    \r\n    fMessage ndefMessage) {\r\n                try {\r\n        \r\n                    NdefFormatable ndefFormatable = NdefFormatable.get(tag);\r\n        \r\n                    if (ndefFormatable == null) {\r\n                        Toast.makeText(this, &quot;Tag is not ndef formatable!&quot;, Toast.LENGTH_SHORT).show();\r\n                    }\r\n        \r\n                    else{\r\n                        ndefFormatable.connect();\r\n                        ndefFormatable.format(ndefMessage);\r\n                        ndefFormatable.close();\r\n                        Toast.makeText(this, &quot;Tag writen!&quot;, Toast.LENGTH_SHORT).show();\r\n                    }\r\n                } catch (Exception e) {\r\n                    Log.e(&quot;formatTag&quot;, e.getMessage());\r\n                }\r\n        \r\n            }\r\n        \r\n            private void writeNdefMessage(Tag tag, NdefMessage ndefMessage) {\r\n            \r\n                    try {\r\n            \r\n                        if (tag == null) {\r\n                            Toast.makeText(this, &quot;Tag object cannot be null&quot;, Toast.LENGTH_SHORT).show();\r\n                            return;\r\n                    }\r\n        \r\n                    Ndef ndef = Ndef.get(tag);\r\n    \r\n                if (ndef == null) {\r\n                    // format tag with the ndef format and writes the message.\r\n                    formatTag(tag, ndefMessage);\r\n        \r\n\r\n            } else {\r\n                        ndef.connect();\r\n                        if (!ndef.isWritable()) {\r\n                            Toast.makeText(this, &quot;Tag is not writable!&quot;, Toast.LENGTH_SHORT).show();\r\n        \r\n                            ndef.close();\r\n                            return;\r\n                        }\r\n        \r\n                        ndef.writeNdefMessage(ndefMessage);\r\n                        ndef.close();\r\n        \r\n                        Toast.makeText(this, &quot;Tag writen!&quot;, Toast.LENGTH_SHORT).show();\r\n        \r\n                    }\r\n        \r\n                } catch (Exception e) {\r\n                    Log.e(&quot;writeNdefMessage&quot;, e.getMessage());\r\n                }\r\n        \r\n            }\r\n            \r\n            private NdefRecord createTextRecord(String content) {\r\n                    try {\r\n                        byte[] language;\r\n                        language = Locale.getDefault().getLanguage().getBytes(&quot;UTF-8&quot;);\r\n            \r\n                        final byte[] text = content.getBytes(&quot;UTF-8&quot;);\r\n                        final int languageSize = la\r\n    \r\n    nguage.length;\r\n                    final int textLength = text.length;\r\n                    final ByteArrayOutputStream payload = new ByteArrayOutputStream(1 + languageSize + textLength);\r\n        \r\n                    payload.write((byte) (languageSize &amp; 0x1F));\r\n                    payload.write(language, 0, languageSize);\r\n                    payload.write(text, 0, textLength);\r\n        \r\n                    return new NdefRecord(NdefRecord.TNF_WELL_KNOWN, NdefRecord.RTD_TEXT, new byte[0], payload.toByteArray());\r\n        \r\n                } catch (UnsupportedEncodingException e) {\r\n                    Log.e(&quot;createTextRecord&quot;, e.getMessage());\r\n                }\r\n                return null;\r\n            }\r\n            \r\n             private NdefMessage createNdefMessage(String content, String content2, String content3) {\r\n            \r\n                    NdefRecord ndefRecord = createTextRecord(content);\r\n                    NdefRecord ndefRecord2 = createTextRecord(content2);\r\n                    NdefRecord ndefRecord3 = createTextRecord(content3);\r\n            \r\n                    NdefMessage ndefMessage = new NdefMessage(new NdefRecord[]{ndefRecord, ndefRecord2, ndefRecord3});\r\n            \r\n                    return ndefMessage;\r\n                }\r\n                \r\n                    /**\r\n                     * A {@link FragmentPagerAdapter} that returns a fragment corresponding to\r\n                 * one of the sections/tabs/pages.\r\n                 */\r\n                public class SectionsPagerAdapter extends FragmentPagerAdapter {\r\n                    private List&lt;Fragment&gt; mFragments = new ArrayList&lt;&gt;();\r\n            \r\n                    public SectionsPagerAdapter(FragmentManager fm) {\r\n                        super(fm);\r\n                        mFragments.add(new Home());\r\n                        mFragments.add(new Writer());\r\n                        mFragments.add(new Reader());\r\n                        mFragments.add(new Others());\r\n                        mFragments.add(new Alarm());\r\n                }\r\n        \r\n                @Override\r\n                public Fragment getItem(int position) {\r\n                    return mFragments.get(position);\r\n                }\r\n        \r\n                @Override\r\n                public int getCount() {\r\n                    return mFragments.size();\r\n                }\r\n        \r\n                /*to set text instead of icons*/\r\n                public CharSequence getPageTitle(int position){\r\n                    return null;\r\n                }\r\n            }\r\n        \r\n        }\r\n\r\nMy AndroidManifest looks something like this:\r\n\r\n    &lt;uses-permission android:name=&quot;android.permission.INTERNET&quot; /&gt;\r\n    &lt;uses-permission android:name=&quot;android.permission.NFC&quot; /&gt;\r\n    &lt;uses-permission android:name=&quot;android.permission.USE_FINGERPRINT&quot; /&gt;\r\n\r\n    &lt;uses-feature\r\n        android:name=&quot;android.hardware.fingerprint&quot;\r\n        android:required=&quot;false&quot; /&gt;\r\n\r\n    &lt;application\r\n        android:allowBackup=&quot;true&quot;\r\n        android:icon=&quot;@mipmap/ic_launcher&quot;\r\n        android:label=&quot;@string/app_name&quot;\r\n        android:launchMode=&quot;singleTop&quot;\r\n        android:roundIcon=&quot;@mipmap/ic_launcher_round&quot;\r\n        android:supportsRtl=&quot;true&quot;\r\n        android:theme=&quot;@style/AppTheme&quot;&gt;\r\n        &lt;activity android:name=&quot;.WelcomeActivity&quot;&gt;\r\n            &lt;intent-filter&gt;\r\n                &lt;action android:name=&quot;android.intent.action.MAIN&quot; /&gt;\r\n\r\n                &lt;category android:name=&quot;android.intent.category.LAUNCHER&quot; /&gt;\r\n            &lt;/intent-filter&gt;\r\n        &lt;/activity&gt;\r\n        &lt;activity\r\n            android:name=&quot;.FingerPrint&quot;\r\n            android:screenOrientation=&quot;portrait&quot; /&gt;\r\n        &lt;activity\r\n            android:name=&quot;.MyAppHome&quot;\r\n\r\n            android:screenOrientation=&quot;portrait&quot;\r\n            android:windowSoftInputMode=&quot;adjustPan&quot;&gt;\r\n            &lt;intent-filter&gt;\r\n                &lt;category android:name=&quot;android.intent.category.DEFAULT&quot; /&gt;\r\n                &lt;category android:name=&quot;android.intent.category.LAUNCHER&quot; /&gt;\r\n                &lt;action android:name=&quot;android.nfc.action.TAG_DISCOVERED&quot; /&gt;\r\n                &lt;action android:name=&quot;android.nfc.action.NDEF_DISCOVERED&quot; /&gt;\r\n                &lt;data android:mimeType=&quot;text/plain&quot; /&gt;\r\n            &lt;/intent-filter&gt;\r\n\r\n            &lt;meta-data\r\n                android:name=&quot;android.nfc.action.TECH_DISCOVERED&quot;\r\n                android:resource=&quot;@xml/nfc_tech_filter&quot; /&gt;\r\n        &lt;/activity&gt;\r\n        &lt;activity\r\n            android:name=&quot;.Login&quot;\r\n            android:screenOrientation=&quot;portrait&quot;\r\n            android:theme=&quot;@style/AppTheme.NoActionBar&quot; /&gt;\r\n    &lt;/application&gt;\r\n\r\n\r\n\r\nHome Fragment (tab) is used to write information to NFC tag:\r\n\r\n \r\n\r\n        public class Home extends Fragment {\r\n        NfcAdapter nfcAdapter;\r\n        Button writebtn;\r\n        Tag tag;\r\n        EditText txtName, txtCountry, txtID;\r\n    \r\n        public void onViewCreated(View view, Bundle savedInstanceState) {\r\n            super.onViewCreated(view,savedInstanceState);\r\n    \r\n        }\r\n    \r\n  \r\n\r\n          @Override\r\n            public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState) {\r\n                View v= inflater.inflate(R.layout.home, container,false);\r\n                 txtName = (EditText)view.findViewById(R.id.pName);\r\n                txtCountry= (EditText)view.findViewById(R.id.pCountry);\r\n                txtID= (EditText)view.findViewById(R.id.pID);\r\n                writebtn=(Button)view.findViewById(R.id.nfcWriteBtn);\r\n    \r\n    writebtn.setOnClickListener(new View.OnClickListener() {\r\n                @Override\r\n                public void onClick(View view) {\r\n                    MyAppHome homeActivity = (MyAppHome)getActivity();\r\n    \r\n                    MyNfcMessage message = new MyNfcMessage(txtName.getText().toString(), txtCountry.getText().toString(), txtID.getText().toString());\r\n                    homeActivity.write2NFC(message);\r\n    \r\n                }\r\n            });\r\n     return v;\r\n        \r\n            }\r\n    \r\n    \r\n       \r\nI don&#39;t Understand Why onNewIntent in the Activity is never being called (No Toasts are being displayed on screen). Does it have something to do with my layout?\r\n\r\n\r\nUpdate: The problem was solved by creating a new project and copying all the code from the old project to the new one.",
+            "link": "https://stackoverflow.com/questions/49719759/onnewintent-never-being-called-in-activity",
+            "title": "onNewIntent never being called in Activity",
+            "body": "<p>I have asked multiple questions on SO regarding different problems I am having with onNewIntent method in both fragments and activities. My problem now is that onNewIntent in Activity is never being called no matter what I do. The Activity that has the onNewIntent contains multiple tabs. My tabs (Fragments) contain codes for writing and reading NFC tag.</p>\n\n<p>This is the code for the Activity:</p>\n\n<pre><code>    public class MyAppHome extends AppCompatActivity {\n\n    protected DrawerLayout mDrawerLayout;\n    private ActionBarDrawerToggle mtoggle;\n    NfcAdapter nfcAdapter;\n    private Toolbar mtoolbar;\n    private TextView mName;\n    private SectionsPagerAdapter mSectionsPagerAdapter;\n    private ViewPager mViewPager;\n    private NavigationView mNavigationView;\n\n    @Override\n    protected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        setContentView(R.layout.drawer_layout);\n\n        mtoolbar = (Toolbar) findViewById(R.id.nav_action);\n        setSupportActionBar(mtoolbar);\n        nfcAdapter = NfcAdapter.getDefaultAdapter(this);\n\n        mNavigationView= (NavigationView)findViewById(R.id.nav_view);\n        mDrawerLayout = findViewById(R.id.drawer_layout);\n        mtoggle = new ActionBarDrawerToggle(this, mDrawerLayout, R.string.open, R.string.close);\n        mDrawerLayout.addDrawerListener(mtoggle);\n        mtoggle.syncState();\n        // Create the adapter that will return a fragment for each of the three\n        // primary sections of the activity.\n        mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());\n\n        // Set up the ViewPager with the sections adapter.\n        mViewPager = (ViewPager) findViewById(R.id.container);\n        mViewPager.setAdapter(mSectionsPagerAdapter);\n\n        TabLayout tabLayout = (TabLayout) findViewById(R.id.tabs);\n\n        mViewPager.addOnPageChangeListener(new TabLayout.TabLayoutOnPageChangeListener(tabLayout));\n        tabLayout.addOnTabSelectedListener(new TabLayout.ViewPagerOnTabSelectedListener(mViewPager));\n\n        tabLayout.setupWithViewPager(mViewPager);\n        tabLayout.setOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {\n            @Override\n            public void onTabSelected(TabLayout.Tab tab) {\n                switch (tab.getPosition())\n                {\n                    case 0:\n                        mViewPager.setCurrentItem(0);\n                        mtoolbar.setTitle(\"Home\");\n                        break;\n\n                    case 1:\n                        mViewPager.setCurrentItem(1);\n                        mtoolbar.setTitle(\"Writer\");\n                        break;\n\n                    case 2:\n                        mViewPager.setCurrentItem(2);\n                        mtoolbar.setTitle(\"Reader\");\n                        break;\n\n                    case 3:\n                        mViewPager.setCurrentItem(3);\n                        mtoolbar.setTitle(\"Others\");\n                        break;\n\n                    case 4:\n                        mViewPager.setCurrentItem(4);\n                        mtoolbar.setTitle(\"Alarm\");\n                        break;\n\n\n                    default:\n                        mViewPager.setCurrentItem(tab.getPosition());\n                        mtoolbar.setTitle(\"My APP\");\n                        break;\n                }\n\n            }\n\n            @Override\n            public void onTabUnselected(TabLayout.Tab tab) {\n\n            }\n\n            @Override\n            public void onTabReselected(TabLayout.Tab tab) {\n\n            }\n        });\n\n        getSupportActionBar().setDisplayHomeAsUpEnabled(true);\n        getSupportActionBar().setHomeButtonEnabled(true);\n\n        NavigationView navigationView = findViewById(R.id.nav_view);\n\n        navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {\n            @Override\n            public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {\n                // set item as selected to persist highlight\n                menuItem.setChecked(true);\n\n                switch (menuItem.getItemId()){\n\n                    case R.id.nav_home:\n                        mViewPager.setCurrentItem(0);\n                        mDrawerLayout.closeDrawers();\n                        mtoolbar.setTitle(\"Home\");\n                        break;\n\n                    case R.id.nav_writer:\n                        mViewPager.setCurrentItem(1);\n                        mDrawerLayout.closeDrawers();\n                        mtoolbar.setTitle(\"Writer\");\n                        break;\n\n                    case R.id.nav_medication:\n\n                        mViewPager.setCurrentItem(2);\n                        mDrawerLayout.closeDrawers();\n                        mtoolbar.setTitle(\"Reader\");\n                        break;\n\n                    case R.id.nav_missedPill:\n                        mViewPager.setCurrentItem(3);\n                        mDrawerLayout.closeDrawers();\n                        mtoolbar.setTitle(\"Others\");\n                        break;\n\n                    case R.id.nav_alarm:\n                        mViewPager.setCurrentItem(4);\n                        mDrawerLayout.closeDrawers();\n                        mtoolbar.setTitle(\"Alarm\");\n                        break;\n\n                    case R.id.nav_logout:\n                        FirebaseAuth.getInstance().signOut();\n                        finish();\n                        startActivity(new Intent(getApplicationContext(),Login.class));\n\n                }\n                // close drawer when item is tapped\n                mDrawerLayout.closeDrawers();\n                return true;\n            }\n        });\n\n        mDrawerLayout.addDrawerListener(\n                new DrawerLayout.DrawerListener() {\n                    @Override\n                    public void onDrawerSlide(View drawerView, float slideOffset) {\n                        // Respond when the drawer's position changes\n                    }\n\n                    @Override\n                    public void onDrawerOpened(View drawerView) {\n                        // Respond when the drawer is opened\n                    }\n\n                    @Override\n                    public void onDrawerClosed(View drawerView) {\n                        // Respond when the drawer is closed\n                    }\n\n                    @Override\n                    public void onDrawerStateChanged(int newState) {\n                        // Respond when the drawer motion state changes\n                    }\n                }\n        );\n               initNFC(getIntent());\n    }\n\n\n\n    @Override\n    public boolean onCreateOptionsMenu(Menu menu) {\n        // Inflate the menu; this adds items to the action bar if it is present.\n        getMenuInflater().inflate(R.menu.menu_dosis_home, menu);\n        return true;\n    }\n\n    @Override\n    public boolean onOptionsItemSelected(MenuItem item) {\n           if(mtoggle.onOptionsItemSelected(item)){\n                return true;\n            }\n            //noinspection SimplifiableIfStatement\n            if (item.getItemId()== R.id.action_settings) {\n                return true;\n               }\n            return super.onOptionsItemSelected(item);\n                 }\n\n@Override\n    public void onResume() {\n        super.onResume();\n\n        IntentFilter tagDetected = new IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED);\n        IntentFilter ndefDetected = new IntentFilter(NfcAdapter.ACTION_NDEF_DISCOVERED);\n        IntentFilter techDetected = new IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED);\n        IntentFilter[] nfcIntentFilter = new IntentFilter[]{techDetected,tagDetected,ndefDetected};\n        PendingIntent pendingIntent = PendingIntent.getActivity(\n                this, 0, new Intent(this.getApplicationContext(), this.getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0);\n\n        if(nfcAdapter !=null){\n            Log.d(\"W\", \"nfcadapter is not null\");\n            nfcAdapter.enableForegroundDispatch(this, pendingIntent, nfcIntentFilter, null);\n        }\n\n    }\n\n @Override\n    public void onPause() {\n        super.onPause();\n        if(nfcAdapter !=null){\n            disableForegroundDispatchSystem();\n        }\n\n    }\npublic boolean write2NFC(MyNfcMessage m ) {\n\n        NdefMessage ndefMessage = createNdefMessage(m.key1, m.key2,m.key3);\n        writeNdefMessage(tag, ndefMessage);\n        return true;\n    }\n\n    private void initNFC(Intent intent) {\n        if (intent.hasExtra(NfcAdapter.EXTRA_TAG)) {\n            // if (nfcAdapter.ACTION_TAG_DISCOVERED.equals(intent.getAction())) {\n            //Toast.makeText(getActivity(), \"NfcIntent!\", Toast.LENGTH_SHORT).show();\n            tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);\n        }\n    }\n\n  protected void onNewIntent(Intent intent) {\n\n        System.out.print(\"I am here in Home\");\n        Log.d(\"my tag\", \"I am here now\");\n        initNFC(intent);\n        Log.d(\"my tag \", \"onNewIntent: something \");\n\n}\n\n\n\n     private void disableForegroundDispatchSystem() {\n                nfcAdapter.disableForegroundDispatch(this);\n            }\n\n            private void formatTag(Tag tag, Nde\n\nfMessage ndefMessage) {\n            try {\n\n                NdefFormatable ndefFormatable = NdefFormatable.get(tag);\n\n                if (ndefFormatable == null) {\n                    Toast.makeText(this, \"Tag is not ndef formatable!\", Toast.LENGTH_SHORT).show();\n                }\n\n                else{\n                    ndefFormatable.connect();\n                    ndefFormatable.format(ndefMessage);\n                    ndefFormatable.close();\n                    Toast.makeText(this, \"Tag writen!\", Toast.LENGTH_SHORT).show();\n                }\n            } catch (Exception e) {\n                Log.e(\"formatTag\", e.getMessage());\n            }\n\n        }\n\n        private void writeNdefMessage(Tag tag, NdefMessage ndefMessage) {\n\n                try {\n\n                    if (tag == null) {\n                        Toast.makeText(this, \"Tag object cannot be null\", Toast.LENGTH_SHORT).show();\n                        return;\n                }\n\n                Ndef ndef = Ndef.get(tag);\n\n            if (ndef == null) {\n                // format tag with the ndef format and writes the message.\n                formatTag(tag, ndefMessage);\n\n\n        } else {\n                    ndef.connect();\n                    if (!ndef.isWritable()) {\n                        Toast.makeText(this, \"Tag is not writable!\", Toast.LENGTH_SHORT).show();\n\n                        ndef.close();\n                        return;\n                    }\n\n                    ndef.writeNdefMessage(ndefMessage);\n                    ndef.close();\n\n                    Toast.makeText(this, \"Tag writen!\", Toast.LENGTH_SHORT).show();\n\n                }\n\n            } catch (Exception e) {\n                Log.e(\"writeNdefMessage\", e.getMessage());\n            }\n\n        }\n\n        private NdefRecord createTextRecord(String content) {\n                try {\n                    byte[] language;\n                    language = Locale.getDefault().getLanguage().getBytes(\"UTF-8\");\n\n                    final byte[] text = content.getBytes(\"UTF-8\");\n                    final int languageSize = la\n\nnguage.length;\n                final int textLength = text.length;\n                final ByteArrayOutputStream payload = new ByteArrayOutputStream(1 + languageSize + textLength);\n\n                payload.write((byte) (languageSize &amp; 0x1F));\n                payload.write(language, 0, languageSize);\n                payload.write(text, 0, textLength);\n\n                return new NdefRecord(NdefRecord.TNF_WELL_KNOWN, NdefRecord.RTD_TEXT, new byte[0], payload.toByteArray());\n\n            } catch (UnsupportedEncodingException e) {\n                Log.e(\"createTextRecord\", e.getMessage());\n            }\n            return null;\n        }\n\n         private NdefMessage createNdefMessage(String content, String content2, String content3) {\n\n                NdefRecord ndefRecord = createTextRecord(content);\n                NdefRecord ndefRecord2 = createTextRecord(content2);\n                NdefRecord ndefRecord3 = createTextRecord(content3);\n\n                NdefMessage ndefMessage = new NdefMessage(new NdefRecord[]{ndefRecord, ndefRecord2, ndefRecord3});\n\n                return ndefMessage;\n            }\n\n                /**\n                 * A {@link FragmentPagerAdapter} that returns a fragment corresponding to\n             * one of the sections/tabs/pages.\n             */\n            public class SectionsPagerAdapter extends FragmentPagerAdapter {\n                private List&lt;Fragment&gt; mFragments = new ArrayList&lt;&gt;();\n\n                public SectionsPagerAdapter(FragmentManager fm) {\n                    super(fm);\n                    mFragments.add(new Home());\n                    mFragments.add(new Writer());\n                    mFragments.add(new Reader());\n                    mFragments.add(new Others());\n                    mFragments.add(new Alarm());\n            }\n\n            @Override\n            public Fragment getItem(int position) {\n                return mFragments.get(position);\n            }\n\n            @Override\n            public int getCount() {\n                return mFragments.size();\n            }\n\n            /*to set text instead of icons*/\n            public CharSequence getPageTitle(int position){\n                return null;\n            }\n        }\n\n    }\n</code></pre>\n\n<p>My AndroidManifest looks something like this:</p>\n\n<pre><code>&lt;uses-permission android:name=\"android.permission.INTERNET\" /&gt;\n&lt;uses-permission android:name=\"android.permission.NFC\" /&gt;\n&lt;uses-permission android:name=\"android.permission.USE_FINGERPRINT\" /&gt;\n\n&lt;uses-feature\n    android:name=\"android.hardware.fingerprint\"\n    android:required=\"false\" /&gt;\n\n&lt;application\n    android:allowBackup=\"true\"\n    android:icon=\"@mipmap/ic_launcher\"\n    android:label=\"@string/app_name\"\n    android:launchMode=\"singleTop\"\n    android:roundIcon=\"@mipmap/ic_launcher_round\"\n    android:supportsRtl=\"true\"\n    android:theme=\"@style/AppTheme\"&gt;\n    &lt;activity android:name=\".WelcomeActivity\"&gt;\n        &lt;intent-filter&gt;\n            &lt;action android:name=\"android.intent.action.MAIN\" /&gt;\n\n            &lt;category android:name=\"android.intent.category.LAUNCHER\" /&gt;\n        &lt;/intent-filter&gt;\n    &lt;/activity&gt;\n    &lt;activity\n        android:name=\".FingerPrint\"\n        android:screenOrientation=\"portrait\" /&gt;\n    &lt;activity\n        android:name=\".MyAppHome\"\n\n        android:screenOrientation=\"portrait\"\n        android:windowSoftInputMode=\"adjustPan\"&gt;\n        &lt;intent-filter&gt;\n            &lt;category android:name=\"android.intent.category.DEFAULT\" /&gt;\n            &lt;category android:name=\"android.intent.category.LAUNCHER\" /&gt;\n            &lt;action android:name=\"android.nfc.action.TAG_DISCOVERED\" /&gt;\n            &lt;action android:name=\"android.nfc.action.NDEF_DISCOVERED\" /&gt;\n            &lt;data android:mimeType=\"text/plain\" /&gt;\n        &lt;/intent-filter&gt;\n\n        &lt;meta-data\n            android:name=\"android.nfc.action.TECH_DISCOVERED\"\n            android:resource=\"@xml/nfc_tech_filter\" /&gt;\n    &lt;/activity&gt;\n    &lt;activity\n        android:name=\".Login\"\n        android:screenOrientation=\"portrait\"\n        android:theme=\"@style/AppTheme.NoActionBar\" /&gt;\n&lt;/application&gt;\n</code></pre>\n\n<p>Home Fragment (tab) is used to write information to NFC tag:</p>\n\n<pre><code>    public class Home extends Fragment {\n    NfcAdapter nfcAdapter;\n    Button writebtn;\n    Tag tag;\n    EditText txtName, txtCountry, txtID;\n\n    public void onViewCreated(View view, Bundle savedInstanceState) {\n        super.onViewCreated(view,savedInstanceState);\n\n    }\n\n\n\n      @Override\n        public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState) {\n            View v= inflater.inflate(R.layout.home, container,false);\n             txtName = (EditText)view.findViewById(R.id.pName);\n            txtCountry= (EditText)view.findViewById(R.id.pCountry);\n            txtID= (EditText)view.findViewById(R.id.pID);\n            writebtn=(Button)view.findViewById(R.id.nfcWriteBtn);\n\nwritebtn.setOnClickListener(new View.OnClickListener() {\n            @Override\n            public void onClick(View view) {\n                MyAppHome homeActivity = (MyAppHome)getActivity();\n\n                MyNfcMessage message = new MyNfcMessage(txtName.getText().toString(), txtCountry.getText().toString(), txtID.getText().toString());\n                homeActivity.write2NFC(message);\n\n            }\n        });\n return v;\n\n        }\n</code></pre>\n\n<p>I don't Understand Why onNewIntent in the Activity is never being called (No Toasts are being displayed on screen). Does it have something to do with my layout?</p>\n\n<p>Update: The problem was solved by creating a new project and copying all the code from the old project to the new one.</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "cursor",
+                "image-capture"
+            ],
+            "owner": {
+                "reputation": 28,
+                "user_id": 4506145,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/24aa70bb6c81367b487183ba99ecbc21?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Malar Vizhi",
+                "link": "https://stackoverflow.com/users/4506145/malar-vizhi"
+            },
+            "is_answered": false,
+            "view_count": 96,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1523528772,
+            "creation_date": 1426226725,
+            "last_edit_date": 1523528772,
+            "question_id": 29025851,
+            "body_markdown": "In application I am using cursorloader to get captures image file path, it always returns `null`:\r\n\r\n    Uri file path = file:///storage/emulated/0/Pictures/BBI_Images/BBI_ORIG_20150313_112912.jpg\r\n\r\n    public static int getRotation(Context context, Uri selectedImage, String filePath) {\r\n        \ttry{\r\n            String[] projection = { MediaStore.Images.Media.DATE };\r\n          \r\n            CursorLoader loader = new CursorLoader(context, selectedImage, projection, null, null, null);\r\n            Cursor cursor = loader.loadInBackground();//here i can get only null\r\n            cursor.moveToFirst();\r\n    \r\n            int column_index_data = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);\r\n            \r\n            int rotation = 0;\r\n            String realPath = cursor.getString(column_index_data);\r\n            if (realPath != null) {\r\n                rotation = getRotationForImage(realPath);\r\n            }\r\n            return rotation;\r\n        \t}catch(Exception e){\r\n          \t  e.printStackTrace();\t\r\n          \t}\r\n    \t\treturn 0;\r\n        }\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/29025851/capturing-image-cursor-returns-null-in-android",
+            "title": "capturing image cursor returns null in android",
+            "body": "<p>In application I am using cursorloader to get captures image file path, it always returns <code>null</code>:</p>\n\n<pre><code>Uri file path = file:///storage/emulated/0/Pictures/BBI_Images/BBI_ORIG_20150313_112912.jpg\n\npublic static int getRotation(Context context, Uri selectedImage, String filePath) {\n        try{\n        String[] projection = { MediaStore.Images.Media.DATE };\n\n        CursorLoader loader = new CursorLoader(context, selectedImage, projection, null, null, null);\n        Cursor cursor = loader.loadInBackground();//here i can get only null\n        cursor.moveToFirst();\n\n        int column_index_data = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);\n\n        int rotation = 0;\n        String realPath = cursor.getString(column_index_data);\n        if (realPath != null) {\n            rotation = getRotationForImage(realPath);\n        }\n        return rotation;\n        }catch(Exception e){\n          e.printStackTrace();  \n        }\n        return 0;\n    }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "matplotlib",
+                "keras",
+                "mnist"
+            ],
+            "owner": {
+                "reputation": 63,
+                "user_id": 3243104,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/d8c3fbb06765266985a9bedb888fb008?s=128&d=identicon&r=PG&f=1",
+                "display_name": "outlier229",
+                "link": "https://stackoverflow.com/users/3243104/outlier229"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1523528769,
+            "creation_date": 1523516026,
+            "last_edit_date": 1523528769,
+            "question_id": 49789878,
+            "body_markdown": "I am exploring the MNIST dataset which is a collection of gray-scale handwritten digit images. I am using Matplotlib to plot random images from the dataset:\r\n\r\n    plt.subplot(221)\r\n    plt.imshow(X_train[1],cmap=&#39;gray&#39;)\r\n    plt.subplot(222)\r\n    plt.imshow(X_train[100])\r\n    plt.subplot(223)\r\n    plt.imshow(X_train[4559])\r\n    plt.subplot(224)\r\n    plt.imshow(X_train[50000])\r\n    plt.show()\r\n\r\n\r\n[![This is the plot I got][1]][1]\r\n\r\nMy question is why the images are coming up as colored when I don&#39;t explicitly set `cmap=&#39;gray&#39;`.\r\n\r\nShouldn&#39;t they all appear as grayscale images by default as that&#39;s their true nature?\r\n\r\n  [1]: https://i.stack.imgur.com/lGG5u.png",
+            "link": "https://stackoverflow.com/questions/49789878/mnist-matplotlib-showing-color",
+            "title": "MNIST Matplotlib: showing color",
+            "body": "<p>I am exploring the MNIST dataset which is a collection of gray-scale handwritten digit images. I am using Matplotlib to plot random images from the dataset:</p>\n\n<pre><code>plt.subplot(221)\nplt.imshow(X_train[1],cmap='gray')\nplt.subplot(222)\nplt.imshow(X_train[100])\nplt.subplot(223)\nplt.imshow(X_train[4559])\nplt.subplot(224)\nplt.imshow(X_train[50000])\nplt.show()\n</code></pre>\n\n<p><a href=\"https://i.stack.imgur.com/lGG5u.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/lGG5u.png\" alt=\"This is the plot I got\"></a></p>\n\n<p>My question is why the images are coming up as colored when I don't explicitly set <code>cmap='gray'</code>.</p>\n\n<p>Shouldn't they all appear as grayscale images by default as that's their true nature?</p>\n"
+        },
+        {
+            "tags": [
+                "hibernate",
+                "criteria",
+                "hibernate-criteria"
+            ],
+            "owner": {
+                "reputation": 157,
+                "user_id": 3529850,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://www.gravatar.com/avatar/b1b7fd022a840d69e95d812d7977ab38?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3529850",
+                "link": "https://stackoverflow.com/users/3529850/user3529850"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523528768,
+            "creation_date": 1523528768,
+            "question_id": 49794156,
+            "body_markdown": "Disclaimer: I am aware that hibernate criteria api is deprecated.\r\n\r\n**Exmaple data:**\r\n\r\nLet&#39;s say I have a table:\r\n\r\n    CREATE TABLE cars (\r\n    `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,\r\n    color VARCHAR(100) DEFAULT NULL,\r\n    creation_date TIMESTAMP NOT NULL\r\n    );\r\n\r\nWhen a new car is added, current date is put into `creation_date` column. \r\n\r\n**Goal:**\r\n\r\nI would like to get rows, without `color` specified, that (pseudocode) \r\n\r\n    (getNrOfDaysBetween(getCurrentDate(), creation_date)) % 14 == 0\r\n\r\n**What I&#39;ve already done:**\r\n\r\n    @SuppressWarnings(&quot;unchecked&quot;)\r\n    public List&lt;Car&gt; getCars() {\r\n    \r\n    \treturn (List&lt;Car&gt;) getSession().createCriteria(Car.class, &quot;car_alias&quot;)\r\n    \t\t\t.add(Restrictions.isNull(&quot;color&quot;))\r\n    \t\t\t.add(Restrictions.eq((getElapsedNrOfDaysFor(&lt;creation_date&gt;) % 14), 0))\r\n    \t\t\t.list();\r\n    }\r\n    \r\n    private long getElapsedNrOfDaysFor(Date carCreationDate){\r\n    \tDate currentDate = new Date ();\r\n    \tcurrentDate .setTime((long)currentTime * 1000);\r\n    \t\r\n    \tlong diff = currentDate.getTime() - carCreationDate.getTime();\r\n    \tlong diffDays = diff / (24 * 60 * 60 * 1000);\r\n    \t\r\n    \treturn diffDays;\r\n    }\r\n\r\n**Question:**\r\n\r\nConsidering my approach is `acceptable`, Is getting `creation_date` in above code only possible via `subquery` ? Is it optimal approach ? if it&#39;s not, could you show me another way to achive my goal ?\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49794156/get-specified-rows-every-two-weeks-via-hibernate-criteria-api",
+            "title": "Get specified rows every two weeks via Hibernate Criteria API",
+            "body": "<p>Disclaimer: I am aware that hibernate criteria api is deprecated.</p>\n\n<p><strong>Exmaple data:</strong></p>\n\n<p>Let's say I have a table:</p>\n\n<pre><code>CREATE TABLE cars (\n`id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,\ncolor VARCHAR(100) DEFAULT NULL,\ncreation_date TIMESTAMP NOT NULL\n);\n</code></pre>\n\n<p>When a new car is added, current date is put into <code>creation_date</code> column. </p>\n\n<p><strong>Goal:</strong></p>\n\n<p>I would like to get rows, without <code>color</code> specified, that (pseudocode) </p>\n\n<pre><code>(getNrOfDaysBetween(getCurrentDate(), creation_date)) % 14 == 0\n</code></pre>\n\n<p><strong>What I've already done:</strong></p>\n\n<pre><code>@SuppressWarnings(\"unchecked\")\npublic List&lt;Car&gt; getCars() {\n\n    return (List&lt;Car&gt;) getSession().createCriteria(Car.class, \"car_alias\")\n            .add(Restrictions.isNull(\"color\"))\n            .add(Restrictions.eq((getElapsedNrOfDaysFor(&lt;creation_date&gt;) % 14), 0))\n            .list();\n}\n\nprivate long getElapsedNrOfDaysFor(Date carCreationDate){\n    Date currentDate = new Date ();\n    currentDate .setTime((long)currentTime * 1000);\n\n    long diff = currentDate.getTime() - carCreationDate.getTime();\n    long diffDays = diff / (24 * 60 * 60 * 1000);\n\n    return diffDays;\n}\n</code></pre>\n\n<p><strong>Question:</strong></p>\n\n<p>Considering my approach is <code>acceptable</code>, Is getting <code>creation_date</code> in above code only possible via <code>subquery</code> ? Is it optimal approach ? if it's not, could you show me another way to achive my goal ?</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "unit-testing",
+                "autofixture",
+                "castle-dynamicproxy",
+                "automoq"
+            ],
+            "owner": {
+                "reputation": 2500,
+                "user_id": 1025407,
+                "user_type": "registered",
+                "accept_rate": 78,
+                "profile_image": "https://www.gravatar.com/avatar/b1d0712a91d7eb5dcccdfcde0e3d7bb8?s=128&d=identicon&r=PG",
+                "display_name": "SuperJMN",
+                "link": "https://stackoverflow.com/users/1025407/superjmn"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523528767,
+            "creation_date": 1523528767,
+            "question_id": 49794154,
+            "body_markdown": "I&#39;m using **AutoFixture** with **AutoMoq** to generate and configure a **Mock to an interface**. This interface uses the `MaxLength` attribute to specify the maximum length each property.\r\n\r\nHow can I make the generated mock respect the `MaxLength` attribute? \r\n\r\nPlease, consider that I have load of properties using this attribute? (not only one, like in this example).\r\n\r\nThe code to create the mock is this: \r\n\r\n    var fixture = new Fixture();\r\n    fixture.Customize(new AutoMoqCustomization() { ConfigureMembers = true });\r\n    var my = fixture.Create&lt;IMyClass&gt;();\r\n\r\nwhere MyClass is:\r\n\r\n    public interface IMyClass() \r\n    {\r\n        [MaxLength(40)]\r\n        public string Name { get; set; }\r\n        ... \r\n        ... more properties using the MaxLenght attribute\r\n        ...\r\n    }\r\n\r\n\r\nI have tried making a Custom Specimen builder like this:\r\n\r\n    public class MaxLenghtSpecimenBuilder : ISpecimenBuilder\r\n    {\r\n        public object Create(object request, ISpecimenContext context)\r\n        {\r\n            var pi = request as PropertyInfo;\r\n    \r\n            if (pi == null || pi.PropertyType != typeof(string))\r\n            {\r\n                return new NoSpecimen();\r\n            }\r\n    \r\n            var maxLengthAttribute = (MaxLengthAttribute)Attribute.GetCustomAttribute(pi, typeof(DescriptionAttribute));\r\n    \r\n            if (maxLengthAttribute != null)\r\n            {\r\n                return new ConstrainedStringGenerator().Create(new ConstrainedStringRequest(maxLengthAttribute.Length), context);\r\n            }\r\n    \r\n            return new NoSpecimen();\r\n        }\r\n    }\r\n\r\nin order to add it to the fixture with calling `fixture.Customizations.Add(new MaxLenghtSpecimenBuilder());`\r\n\r\nBut it doesn&#39;t work. It doesn&#39;t get the custom attribute. It always returns null.",
+            "link": "https://stackoverflow.com/questions/49794154/automoq-to-respect-maxlengthattribute",
+            "title": "AutoMoq to respect MaxLengthAttribute",
+            "body": "<p>I'm using <strong>AutoFixture</strong> with <strong>AutoMoq</strong> to generate and configure a <strong>Mock to an interface</strong>. This interface uses the <code>MaxLength</code> attribute to specify the maximum length each property.</p>\n\n<p>How can I make the generated mock respect the <code>MaxLength</code> attribute? </p>\n\n<p>Please, consider that I have load of properties using this attribute? (not only one, like in this example).</p>\n\n<p>The code to create the mock is this: </p>\n\n<pre><code>var fixture = new Fixture();\nfixture.Customize(new AutoMoqCustomization() { ConfigureMembers = true });\nvar my = fixture.Create&lt;IMyClass&gt;();\n</code></pre>\n\n<p>where MyClass is:</p>\n\n<pre><code>public interface IMyClass() \n{\n    [MaxLength(40)]\n    public string Name { get; set; }\n    ... \n    ... more properties using the MaxLenght attribute\n    ...\n}\n</code></pre>\n\n<p>I have tried making a Custom Specimen builder like this:</p>\n\n<pre><code>public class MaxLenghtSpecimenBuilder : ISpecimenBuilder\n{\n    public object Create(object request, ISpecimenContext context)\n    {\n        var pi = request as PropertyInfo;\n\n        if (pi == null || pi.PropertyType != typeof(string))\n        {\n            return new NoSpecimen();\n        }\n\n        var maxLengthAttribute = (MaxLengthAttribute)Attribute.GetCustomAttribute(pi, typeof(DescriptionAttribute));\n\n        if (maxLengthAttribute != null)\n        {\n            return new ConstrainedStringGenerator().Create(new ConstrainedStringRequest(maxLengthAttribute.Length), context);\n        }\n\n        return new NoSpecimen();\n    }\n}\n</code></pre>\n\n<p>in order to add it to the fixture with calling <code>fixture.Customizations.Add(new MaxLenghtSpecimenBuilder());</code></p>\n\n<p>But it doesn't work. It doesn't get the custom attribute. It always returns null.</p>\n"
+        },
+        {
+            "tags": [
+                ".net",
+                "winforms",
+                "ms-access",
+                "interop"
+            ],
+            "owner": {
+                "reputation": 56,
+                "user_id": 1538376,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/597e09b16a2ab061d6db81b7bb77d31b?s=128&d=identicon&r=PG",
+                "display_name": "Random Task",
+                "link": "https://stackoverflow.com/users/1538376/random-task"
+            },
+            "is_answered": true,
+            "view_count": 1206,
+            "accepted_answer_id": 11588819,
+            "answer_count": 3,
+            "score": 9,
+            "last_activity_date": 1523528767,
+            "creation_date": 1342713184,
+            "last_edit_date": 1342824707,
+            "question_id": 11564626,
+            "body_markdown": "I am asking if it is possible to host a Microsoft Access form inside a .Net form.\r\n\r\nNo I haven&#39;t gone mad, we are maintaining a massive system written entirely in VBA by somebody who didn&#39;t know a lot of VBA attempting to use Microsoft Access as an IDE. It&#39;s basically thousands of lines of spaghetti code and while we would love to scrap it and start from scratch, this is not an option.\r\n\r\nWe are therefore trying to improve what is there, and in this particular scenario it would be really helpful if we could somehow host the Microsoft Access forms inside a .Net Windows Form as we can interact with the proprietary hardware from .Net much more effectively than we can from VB6.\r\n\r\nWe currently have a .Net application that runs on the computer alongside the many MS-Access databases that the users have open at any one time, and the .Net application interacts with these using MS Access Interop with varying degrees of success. This is because it uses form titles and filenames/locations to get a handle on the database to do what it needs to do, and also relies on the user not interfering/switching off the application/moving the databases to their desktops etc. It&#39;s a bit of a mess.\r\n\r\nTherefore, I am asking if it is possible to somehow host a Microsoft Access form inside a .Net Windows form, by maybe adding the form itself as a control or a subform, in a way that would give me direct access to all of the controls on the form from .Net?",
+            "link": "https://stackoverflow.com/questions/11564626/is-it-possible-to-host-a-microsoft-access-form-inside-a-net-windows-form",
+            "title": "Is it possible to host a Microsoft Access form inside a .Net Windows form?",
+            "body": "<p>I am asking if it is possible to host a Microsoft Access form inside a .Net form.</p>\n\n<p>No I haven't gone mad, we are maintaining a massive system written entirely in VBA by somebody who didn't know a lot of VBA attempting to use Microsoft Access as an IDE. It's basically thousands of lines of spaghetti code and while we would love to scrap it and start from scratch, this is not an option.</p>\n\n<p>We are therefore trying to improve what is there, and in this particular scenario it would be really helpful if we could somehow host the Microsoft Access forms inside a .Net Windows Form as we can interact with the proprietary hardware from .Net much more effectively than we can from VB6.</p>\n\n<p>We currently have a .Net application that runs on the computer alongside the many MS-Access databases that the users have open at any one time, and the .Net application interacts with these using MS Access Interop with varying degrees of success. This is because it uses form titles and filenames/locations to get a handle on the database to do what it needs to do, and also relies on the user not interfering/switching off the application/moving the databases to their desktops etc. It's a bit of a mess.</p>\n\n<p>Therefore, I am asking if it is possible to somehow host a Microsoft Access form inside a .Net Windows form, by maybe adding the form itself as a control or a subform, in a way that would give me direct access to all of the controls on the form from .Net?</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 84
+}

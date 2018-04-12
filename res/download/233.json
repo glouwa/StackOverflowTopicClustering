@@ -1,0 +1,817 @@
+{
+    "items": [
+        {
+            "tags": [
+                "c#",
+                "regex",
+                "performance"
+            ],
+            "owner": {
+                "reputation": 36916,
+                "user_id": 360211,
+                "user_type": "registered",
+                "accept_rate": 76,
+                "profile_image": "https://i.stack.imgur.com/3baKW.png?s=128&g=1",
+                "display_name": "weston",
+                "link": "https://stackoverflow.com/users/360211/weston"
+            },
+            "is_answered": true,
+            "view_count": 68273,
+            "accepted_answer_id": 16621778,
+            "answer_count": 6,
+            "score": 1084,
+            "last_activity_date": 1523521989,
+            "creation_date": 1368861520,
+            "last_edit_date": 1369256760,
+            "question_id": 16621738,
+            "body_markdown": "I made a comment yesterday on an answer where someone had used `[0123456789]` in a [regular expression][1] rather than `[0-9]` or `\\d`. I said it was probably more efficient to use a range or digit specifier than a character set.\r\n\r\nI decided to test that out today and found out to my surprise that (in the C# regex engine at least) `\\d` appears to be less efficient than either of the other two which don&#39;t seem to differ much. Here is my test output over 10000 random strings of 1000 random characters with 5077 actually containing a digit:\r\n\r\n    Regular expression \\d           took 00:00:00.2141226 result: 5077/10000\r\n    Regular expression [0-9]        took 00:00:00.1357972 result: 5077/10000  63.42 % of first\r\n    Regular expression [0123456789] took 00:00:00.1388997 result: 5077/10000  64.87 % of first\r\n\r\nIt&#39;s a surprise to me for two reasons:\r\n\r\n 1. I would have thought the range would be implemented much more efficiently than the set.\r\n 2. I can&#39;t understand why `\\d` is worse than `[0-9]`. Is there more to `\\d` than simply shorthand for `[0-9]`?\r\n\r\nHere is the test code:\r\n\r\n    using System;\r\n    using System.Collections.Generic;\r\n    using System.Linq;\r\n    using System.Text;\r\n    using System.Diagnostics;\r\n    using System.Text.RegularExpressions;\r\n\r\n    namespace SO_RegexPerformance\r\n    {\r\n        class Program\r\n        {\r\n            static void Main(string[] args)\r\n            {\r\n                var rand = new Random(1234);\r\n                var strings = new List&lt;string&gt;();\r\n                //10K random strings\r\n                for (var i = 0; i &lt; 10000; i++)\r\n                {\r\n                    //Generate random string\r\n                    var sb = new StringBuilder();\r\n                    for (var c = 0; c &lt; 1000; c++)\r\n                    {\r\n                        //Add a-z randomly\r\n                        sb.Append((char)(&#39;a&#39; + rand.Next(26)));\r\n                    }\r\n                    //In roughly 50% of them, put a digit\r\n                    if (rand.Next(2) == 0)\r\n                    {\r\n                        //Replace one character with a digit, 0-9\r\n                        sb[rand.Next(sb.Length)] = (char)(&#39;0&#39; + rand.Next(10));\r\n                    }\r\n                    strings.Add(sb.ToString());\r\n                }\r\n\r\n                var baseTime = testPerfomance(strings, @&quot;\\d&quot;);\r\n                Console.WriteLine();\r\n                var testTime = testPerfomance(strings, &quot;[0-9]&quot;);\r\n                Console.WriteLine(&quot;  {0:P2} of first&quot;, testTime.TotalMilliseconds / baseTime.TotalMilliseconds);\r\n                testTime = testPerfomance(strings, &quot;[0123456789]&quot;);\r\n                Console.WriteLine(&quot;  {0:P2} of first&quot;, testTime.TotalMilliseconds / baseTime.TotalMilliseconds);\r\n            }\r\n\r\n            private static TimeSpan testPerfomance(List&lt;string&gt; strings, string regex)\r\n            {\r\n                var sw = new Stopwatch();\r\n\r\n                int successes = 0;\r\n\r\n                var rex = new Regex(regex);\r\n\r\n                sw.Start();\r\n                foreach (var str in strings)\r\n                {\r\n                    if (rex.Match(str).Success)\r\n                    {\r\n                        successes++;\r\n                    }\r\n                }\r\n                sw.Stop();\r\n\r\n                Console.Write(&quot;Regex {0,-12} took {1} result: {2}/{3}&quot;, regex, sw.Elapsed, successes, strings.Count);\r\n\r\n                return sw.Elapsed;\r\n            }\r\n        }\r\n    }\r\n\r\n  [1]: http://en.wikipedia.org/wiki/Regular_expression\r\n",
+            "link": "https://stackoverflow.com/questions/16621738/d-is-less-efficient-than-0-9",
+            "title": "\\d is less efficient than [0-9]",
+            "body": "<p>I made a comment yesterday on an answer where someone had used <code>[0123456789]</code> in a <a href=\"http://en.wikipedia.org/wiki/Regular_expression\">regular expression</a> rather than <code>[0-9]</code> or <code>\\d</code>. I said it was probably more efficient to use a range or digit specifier than a character set.</p>\n\n<p>I decided to test that out today and found out to my surprise that (in the C# regex engine at least) <code>\\d</code> appears to be less efficient than either of the other two which don't seem to differ much. Here is my test output over 10000 random strings of 1000 random characters with 5077 actually containing a digit:</p>\n\n<pre><code>Regular expression \\d           took 00:00:00.2141226 result: 5077/10000\nRegular expression [0-9]        took 00:00:00.1357972 result: 5077/10000  63.42 % of first\nRegular expression [0123456789] took 00:00:00.1388997 result: 5077/10000  64.87 % of first\n</code></pre>\n\n<p>It's a surprise to me for two reasons:</p>\n\n<ol>\n<li>I would have thought the range would be implemented much more efficiently than the set.</li>\n<li>I can't understand why <code>\\d</code> is worse than <code>[0-9]</code>. Is there more to <code>\\d</code> than simply shorthand for <code>[0-9]</code>?</li>\n</ol>\n\n<p>Here is the test code:</p>\n\n<pre><code>using System;\nusing System.Collections.Generic;\nusing System.Linq;\nusing System.Text;\nusing System.Diagnostics;\nusing System.Text.RegularExpressions;\n\nnamespace SO_RegexPerformance\n{\n    class Program\n    {\n        static void Main(string[] args)\n        {\n            var rand = new Random(1234);\n            var strings = new List&lt;string&gt;();\n            //10K random strings\n            for (var i = 0; i &lt; 10000; i++)\n            {\n                //Generate random string\n                var sb = new StringBuilder();\n                for (var c = 0; c &lt; 1000; c++)\n                {\n                    //Add a-z randomly\n                    sb.Append((char)('a' + rand.Next(26)));\n                }\n                //In roughly 50% of them, put a digit\n                if (rand.Next(2) == 0)\n                {\n                    //Replace one character with a digit, 0-9\n                    sb[rand.Next(sb.Length)] = (char)('0' + rand.Next(10));\n                }\n                strings.Add(sb.ToString());\n            }\n\n            var baseTime = testPerfomance(strings, @\"\\d\");\n            Console.WriteLine();\n            var testTime = testPerfomance(strings, \"[0-9]\");\n            Console.WriteLine(\"  {0:P2} of first\", testTime.TotalMilliseconds / baseTime.TotalMilliseconds);\n            testTime = testPerfomance(strings, \"[0123456789]\");\n            Console.WriteLine(\"  {0:P2} of first\", testTime.TotalMilliseconds / baseTime.TotalMilliseconds);\n        }\n\n        private static TimeSpan testPerfomance(List&lt;string&gt; strings, string regex)\n        {\n            var sw = new Stopwatch();\n\n            int successes = 0;\n\n            var rex = new Regex(regex);\n\n            sw.Start();\n            foreach (var str in strings)\n            {\n                if (rex.Match(str).Success)\n                {\n                    successes++;\n                }\n            }\n            sw.Stop();\n\n            Console.Write(\"Regex {0,-12} took {1} result: {2}/{3}\", regex, sw.Elapsed, successes, strings.Count);\n\n            return sw.Elapsed;\n        }\n    }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python-3.x",
+                "ubuntu-16.04",
+                "quickfix"
+            ],
+            "owner": {
+                "reputation": 1690,
+                "user_id": 3045171,
+                "user_type": "registered",
+                "accept_rate": 40,
+                "profile_image": "https://i.stack.imgur.com/le4e9.jpg?s=128&g=1",
+                "display_name": "shapiro yaacov",
+                "link": "https://stackoverflow.com/users/3045171/shapiro-yaacov"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523521988,
+            "creation_date": 1523521988,
+            "question_id": 49791679,
+            "body_markdown": "I am trying to get the `quickfix` package installed on a Ubuntu machine (Ubuntu 16.04.4 LTS) with `python3`.  \r\nThe code is taken from the quickfix [Github][1].  \r\nPrevious steps seems ok, but when I actually get to the `make` command I get this error:\r\n\r\n    QuickfixPython.cpp: In function &#39;PyObject* _wrap_ScreenLog_getMillisecondsInTimeStamp(PyObject*, PyObject*)&#39;:\r\n    QuickfixPython.cpp:252561:52: error: &#39;const class FIX::ScreenLog&#39; has no member named &#39;getMillisecondsInTimeStamp&#39;\r\n        result = (bool)((FIX::ScreenLog const *)arg1)-&gt;getMillisecondsInTimeStamp();\r\n                                                       ^\r\n\r\n(there are additional three errors but with the same or very similar method issues)\r\n\r\nCompiling without the `pyhton` options ends successfully, and also with the `ruby` option is successful (and it uses the method `getMillisecondsInTimeStamp` that seems to be the issue).\r\n\r\nThis brings me to believe that the underline issue is connected to the header files or something similar.\r\n\r\nAny and all ideas are welcome...\r\n\r\n\r\n\r\n  [1]: https://github.com/quickfix/quickfix.git",
+            "link": "https://stackoverflow.com/questions/49791679/error-while-compiling-fix-protocol-quickfix-package",
+            "title": "Error while compiling FIX protocol quickfix package",
+            "body": "<p>I am trying to get the <code>quickfix</code> package installed on a Ubuntu machine (Ubuntu 16.04.4 LTS) with <code>python3</code>.<br>\nThe code is taken from the quickfix <a href=\"https://github.com/quickfix/quickfix.git\" rel=\"nofollow noreferrer\">Github</a>.<br>\nPrevious steps seems ok, but when I actually get to the <code>make</code> command I get this error:</p>\n\n<pre><code>QuickfixPython.cpp: In function 'PyObject* _wrap_ScreenLog_getMillisecondsInTimeStamp(PyObject*, PyObject*)':\nQuickfixPython.cpp:252561:52: error: 'const class FIX::ScreenLog' has no member named 'getMillisecondsInTimeStamp'\n    result = (bool)((FIX::ScreenLog const *)arg1)-&gt;getMillisecondsInTimeStamp();\n                                                   ^\n</code></pre>\n\n<p>(there are additional three errors but with the same or very similar method issues)</p>\n\n<p>Compiling without the <code>pyhton</code> options ends successfully, and also with the <code>ruby</code> option is successful (and it uses the method <code>getMillisecondsInTimeStamp</code> that seems to be the issue).</p>\n\n<p>This brings me to believe that the underline issue is connected to the header files or something similar.</p>\n\n<p>Any and all ideas are welcome...</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "java",
+                "google-translator-toolkit",
+                "google-translation-api"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 9634579,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Tushar Bhati",
+                "link": "https://stackoverflow.com/users/9634579/tushar-bhati"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1523521986,
+            "creation_date": 1523517943,
+            "last_edit_date": 1523518239,
+            "question_id": 49790430,
+            "body_markdown": "While using the Google Translation API, I see a title bar appearing on the Top of the page (on Both Desktop and Mobile. I would like to check if there is a feasible way to hide this bar and also powered by Google.\r\n\r\nAlso, if it&#39;s legal to do so.\r\n\r\nSeeking your suggestion.Screenshot of the problem:\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/3vqHP.png",
+            "link": "https://stackoverflow.com/questions/49790430/how-to-hide-title-bar-via-google-translation-javascript-api-on-desktop-and-mobil",
+            "title": "How to hide title bar via Google Translation Javascript API on Desktop and Mobile",
+            "body": "<p>While using the Google Translation API, I see a title bar appearing on the Top of the page (on Both Desktop and Mobile. I would like to check if there is a feasible way to hide this bar and also powered by Google.</p>\n\n<p>Also, if it's legal to do so.</p>\n\n<p>Seeking your suggestion.Screenshot of the problem:</p>\n\n<p><a href=\"https://i.stack.imgur.com/3vqHP.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/3vqHP.png\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "arrays",
+                "pointers"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 4191840,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://graph.facebook.com/572927658/picture?type=large",
+                "display_name": "Tony Cossio",
+                "link": "https://stackoverflow.com/users/4191840/tony-cossio"
+            },
+            "is_answered": true,
+            "view_count": 122,
+            "accepted_answer_id": 46803391,
+            "answer_count": 1,
+            "score": -2,
+            "last_activity_date": 1523521979,
+            "creation_date": 1508299795,
+            "last_edit_date": 1508307533,
+            "question_id": 46802667,
+            "body_markdown": "I have a function (int, string) in Main:\r\n\r\n    string word(&quot;HELLO&quot;);\r\n\tint x = 0;\r\n\tchar choice;\r\n    swap(x, word);\r\n\r\nI am trying, with no success, to pass into the following function:\r\n\r\n    void swap(int, string) {\r\n\r\n\tint x = 0;\r\n\tstring word = &quot;HELLO&quot;;\r\n\r\n\tcout &lt;&lt; &quot;Would you like to change a letter? Please enter the letter \r\n    position. &quot; &lt;&lt; endl;\r\n\tcin &gt;&gt; x;\r\n\r\n\tif (x == 1) {\r\n\t\tcout &lt;&lt; &quot;What do you want to change it to?&quot; &lt;&lt; endl;\r\n\t\tcin &gt;&gt; word[0];\r\n\r\nI keep getting this error:\r\n\r\nError\tC2664\t&#39;void std::swap(std::exception_ptr &amp;,std::exception_ptr &amp;) throw()&#39;: cannot convert argument 1 from &#39;int&#39; to &#39;std::exception_ptr &amp;&#39;\r\n\r\nWhat gives?",
+            "link": "https://stackoverflow.com/questions/46802667/how-to-pass-a-string-in-a-function",
+            "title": "How to Pass a String in a function?",
+            "body": "<p>I have a function (int, string) in Main:</p>\n\n<pre><code>string word(\"HELLO\");\nint x = 0;\nchar choice;\nswap(x, word);\n</code></pre>\n\n<p>I am trying, with no success, to pass into the following function:</p>\n\n<pre><code>void swap(int, string) {\n\nint x = 0;\nstring word = \"HELLO\";\n\ncout &lt;&lt; \"Would you like to change a letter? Please enter the letter \nposition. \" &lt;&lt; endl;\ncin &gt;&gt; x;\n\nif (x == 1) {\n    cout &lt;&lt; \"What do you want to change it to?\" &lt;&lt; endl;\n    cin &gt;&gt; word[0];\n</code></pre>\n\n<p>I keep getting this error:</p>\n\n<p>Error   C2664   'void std::swap(std::exception_ptr &amp;,std::exception_ptr &amp;) throw()': cannot convert argument 1 from 'int' to 'std::exception_ptr &amp;'</p>\n\n<p>What gives?</p>\n"
+        },
+        {
+            "tags": [
+                "java-8",
+                "java-stream",
+                "collectors"
+            ],
+            "owner": {
+                "reputation": 39,
+                "user_id": 3813133,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/6342aa681ce9d5040b115576e0849625?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3813133",
+                "link": "https://stackoverflow.com/users/3813133/user3813133"
+            },
+            "is_answered": true,
+            "view_count": 27,
+            "accepted_answer_id": 49791675,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523521974,
+            "creation_date": 1523503400,
+            "last_edit_date": 1523519813,
+            "question_id": 49787458,
+            "body_markdown": "I read about concurrent collectors maintaining order of input list. So if i use a Collectors to ArrayList, it can guarantee ordered collection.  \r\nAlso map functions on ordered list maintain the order.  \r\nI could not find any documentation around order preservation in toArray\r\n\r\n&gt; Even when a pipeline is constrained to produce a result that is consistent with the encounter order of the stream source (for example, IntStream.range(0,5).parallel().map(x -&gt; x*2).toArray() must produce [0, 2, 4, 6, 8]), no guarantees are made as to the order in which the mapper function is applied to individual elements, or in what thread any behavioral parameter is executed for a given element.\r\n\r\nSo will  \r\n\r\n    Stream.map(x-&gt;x).toArray()\r\nproduce ordered results? Or should I use collectors.",
+            "link": "https://stackoverflow.com/questions/49787458/parallel-stream-toarray-maintains-order",
+            "title": "Parallel Stream toArray maintains order",
+            "body": "<p>I read about concurrent collectors maintaining order of input list. So if i use a Collectors to ArrayList, it can guarantee ordered collection.<br>\nAlso map functions on ordered list maintain the order.<br>\nI could not find any documentation around order preservation in toArray</p>\n\n<blockquote>\n  <p>Even when a pipeline is constrained to produce a result that is consistent with the encounter order of the stream source (for example, IntStream.range(0,5).parallel().map(x -> x*2).toArray() must produce [0, 2, 4, 6, 8]), no guarantees are made as to the order in which the mapper function is applied to individual elements, or in what thread any behavioral parameter is executed for a given element.</p>\n</blockquote>\n\n<p>So will  </p>\n\n<pre><code>Stream.map(x-&gt;x).toArray()\n</code></pre>\n\n<p>produce ordered results? Or should I use collectors.</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "laravel"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 9279995,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/o4dXP.jpg?s=128&g=1",
+                "display_name": "Hidayat ullah",
+                "link": "https://stackoverflow.com/users/9279995/hidayat-ullah"
+            },
+            "is_answered": true,
+            "view_count": 46,
+            "closed_date": 1523529217,
+            "answer_count": 5,
+            "score": -1,
+            "last_activity_date": 1523521973,
+            "creation_date": 1523520227,
+            "last_edit_date": 1523520326,
+            "question_id": 49791105,
+            "body_markdown": "i have the following code\r\n\r\n    @php\r\n\r\n        $id = some integer\r\n        echo  &#39;&lt;&#39;.input type=&quot;hidden&quot; class=&quot;id&quot; name=&quot;id&quot; value=&quot;$id&quot;. &#39;&gt;&#39;\r\n    @endphp\r\n\r\n\r\nhow can i use this `$id` variable inside `html` element attribute\r\n\r\nit produce  the following error\r\n\r\n&gt; Parse error: syntax error, unexpected &#39;$id&#39; (T_VARIABLE), expecting\r\n&gt; &#39;,&#39; or &#39;;&#39; (View:\r\n&gt; C:\\xampp\\htdocs\\blog\\resources\\views\\post\\userposts.blade.php)",
+            "link": "https://stackoverflow.com/questions/49791105/how-to-out-put-php-variable-in-html-element-attribute-in-laravel",
+            "closed_reason": "duplicate",
+            "title": "how to out put Php variable in html element attribute in laravel",
+            "body": "<p>i have the following code</p>\n\n<pre><code>@php\n\n    $id = some integer\n    echo  '&lt;'.input type=\"hidden\" class=\"id\" name=\"id\" value=\"$id\". '&gt;'\n@endphp\n</code></pre>\n\n<p>how can i use this <code>$id</code> variable inside <code>html</code> element attribute</p>\n\n<p>it produce  the following error</p>\n\n<blockquote>\n  <p>Parse error: syntax error, unexpected '$id' (T_VARIABLE), expecting\n  ',' or ';' (View:\n  C:\\xampp\\htdocs\\blog\\resources\\views\\post\\userposts.blade.php)</p>\n</blockquote>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "drawerlayout",
+                "navigationview"
+            ],
+            "owner": {
+                "reputation": 1368,
+                "user_id": 5373110,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://i.stack.imgur.com/Yo7Ni.jpg?s=128&g=1",
+                "display_name": "Meet",
+                "link": "https://stackoverflow.com/users/5373110/meet"
+            },
+            "is_answered": false,
+            "view_count": 22,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523521971,
+            "creation_date": 1523521971,
+            "question_id": 49791671,
+            "body_markdown": "I want to create a custom view which stays visible while side drawer is closed, but by pulling that, the drawer will slide.\r\nI had seen like this in very popular game Clash Of Clan like shown in below images:\r\n\r\n[![See the arrow on left edge][1]][1]\r\n[![Pulled side view by dragging that arrow][2]][2]\r\n\r\nNow I wonder if there is any way to achieve same by using `DrawerLayout` and `NavigationView`?\r\n\r\n  [1]: https://i.stack.imgur.com/FJf9E.png\r\n  [2]: https://i.stack.imgur.com/Mhfy1.png",
+            "link": "https://stackoverflow.com/questions/49791671/clash-of-clan-like-navigationview-pull-arrow",
+            "title": "Clash Of Clan like NavigationView Pull Arrow",
+            "body": "<p>I want to create a custom view which stays visible while side drawer is closed, but by pulling that, the drawer will slide.\nI had seen like this in very popular game Clash Of Clan like shown in below images:</p>\n\n<p><a href=\"https://i.stack.imgur.com/FJf9E.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/FJf9E.png\" alt=\"See the arrow on left edge\"></a>\n<a href=\"https://i.stack.imgur.com/Mhfy1.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/Mhfy1.png\" alt=\"Pulled side view by dragging that arrow\"></a></p>\n\n<p>Now I wonder if there is any way to achieve same by using <code>DrawerLayout</code> and <code>NavigationView</code>?</p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "sql-server"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 6243962,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/62de16bb358ed016789da33c0e4ef8ed?s=128&d=identicon&r=PG&f=1",
+                "display_name": "sy.zhang",
+                "link": "https://stackoverflow.com/users/6243962/sy-zhang"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523521967,
+            "creation_date": 1523520278,
+            "last_edit_date": 1523521967,
+            "question_id": 49791117,
+            "body_markdown": "Situation: Conduct machine learning in Microsoft SQL Server \r\nSQL Server Version: 2016 Standard\r\n\r\nProblem:\r\nI am able to load the package with T-SQL\r\n\r\n   EXECUTE sp_execute_external_script    \r\n       @language = N&#39;R&#39;    \r\n      ,@script=N&#39;library(&quot;XML&quot;)&#39;\r\nGO\r\n\r\n\r\nIt works fine\r\n\r\n&lt;img src=&quot;https://i.stack.imgur.com/enhYJ.png&quot;&gt;\r\n\r\n\r\nWhile, if I want to load another package:RecordLinkage\r\nThis package has 13 dependent packages.\r\n\r\nIt always failed with the error:\r\nMsg 39004, Level 16, State 20, Line 8\r\n\r\n**Msg 39019, Level 16, State 1, Line 8\r\nInvalid BXL stream**\r\n\r\n&lt;img src=&quot;https://i.stack.imgur.com/ERTQO.png&quot;&gt;\r\n\r\n  [1]: https://i.stack.imgur.com/enhYJ.png\r\n  [2]: https://i.stack.imgur.com/ERTQO.png\r\n\r\n\r\n\r\n\r\nI have searched all the information, one suspicious root cause is the memory allocation. \r\n\r\nhttp://henkvandervalk.com/introducing-microsoft-sql-server-2016-r-services\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49791117/fail-to-load-r-package-in-microsoft-sql-server-2016",
+            "title": "Fail to load r package in Microsoft SQL Server 2016",
+            "body": "<p>Situation: Conduct machine learning in Microsoft SQL Server \nSQL Server Version: 2016 Standard</p>\n\n<p>Problem:\nI am able to load the package with T-SQL</p>\n\n<p>EXECUTE sp_execute_external_script<br>\n       @language = N'R'<br>\n      ,@script=N'library(\"XML\")'\nGO</p>\n\n<p>It works fine</p>\n\n<p><img src=\"https://i.stack.imgur.com/enhYJ.png\"></p>\n\n<p>While, if I want to load another package:RecordLinkage\nThis package has 13 dependent packages.</p>\n\n<p>It always failed with the error:\nMsg 39004, Level 16, State 20, Line 8</p>\n\n<p><strong>Msg 39019, Level 16, State 1, Line 8\nInvalid BXL stream</strong></p>\n\n<p><img src=\"https://i.stack.imgur.com/ERTQO.png\"></p>\n\n<p>I have searched all the information, one suspicious root cause is the memory allocation. </p>\n\n<p><a href=\"http://henkvandervalk.com/introducing-microsoft-sql-server-2016-r-services\" rel=\"nofollow noreferrer\">http://henkvandervalk.com/introducing-microsoft-sql-server-2016-r-services</a></p>\n"
+        },
+        {
+            "tags": [
+                "bash"
+            ],
+            "owner": {
+                "reputation": 189,
+                "user_id": 4125723,
+                "user_type": "registered",
+                "accept_rate": 95,
+                "profile_image": "https://www.gravatar.com/avatar/5a8e8926c2c35c3f376d385343c17fb1?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Xenidious",
+                "link": "https://stackoverflow.com/users/4125723/xenidious"
+            },
+            "is_answered": true,
+            "view_count": 23,
+            "accepted_answer_id": 49791391,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523521966,
+            "creation_date": 1523521075,
+            "last_edit_date": 1523521316,
+            "question_id": 49791367,
+            "body_markdown": "I have an SQL statement which I am running in my Bash script. It contains instances of two dollar signs in a row, for example:\r\n\r\n    psql -U $username -h $DATABASE_HOST $DATABASE_NAME -c &quot;DO $$ DECLARE myVar varchar; END$$&quot;\r\n\r\nHow can both of these be escaped? \r\n",
+            "link": "https://stackoverflow.com/questions/49791367/escaping-two-dollar-signs-at-once",
+            "title": "Escaping two dollar signs at once",
+            "body": "<p>I have an SQL statement which I am running in my Bash script. It contains instances of two dollar signs in a row, for example:</p>\n\n<pre><code>psql -U $username -h $DATABASE_HOST $DATABASE_NAME -c \"DO $$ DECLARE myVar varchar; END$$\"\n</code></pre>\n\n<p>How can both of these be escaped? </p>\n"
+        },
+        {
+            "tags": [
+                "android"
+            ],
+            "owner": {
+                "reputation": 616,
+                "user_id": 6294875,
+                "user_type": "registered",
+                "accept_rate": 32,
+                "profile_image": "https://www.gravatar.com/avatar/8f37a3221df873fd26430a03fb60a735?s=128&d=identicon&r=PG&f=1",
+                "display_name": "aj0822ArpitJoshi",
+                "link": "https://stackoverflow.com/users/6294875/aj0822arpitjoshi"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1523521965,
+            "creation_date": 1523521548,
+            "question_id": 49791508,
+            "body_markdown": "I have an single`ImageView` with background image. In background image contain four objects showing on that. all are placed on four corners. First problem was detect click because i want to perform different operation on all objects so with single Image background was not possible but has done with `ImageView`  setOnTouchListener. I detect all touches and set events. Its working fine but now i need to set badgecount on all objects. How can i set this ? is there any way?",
+            "link": "https://stackoverflow.com/questions/49791508/imageview-set-badge-count",
+            "title": "ImageView set badge count",
+            "body": "<p>I have an single<code>ImageView</code> with background image. In background image contain four objects showing on that. all are placed on four corners. First problem was detect click because i want to perform different operation on all objects so with single Image background was not possible but has done with <code>ImageView</code>  setOnTouchListener. I detect all touches and set events. Its working fine but now i need to set badgecount on all objects. How can i set this ? is there any way?</p>\n"
+        },
+        {
+            "tags": [
+                "redis"
+            ],
+            "owner": {
+                "reputation": 73,
+                "user_id": 6772556,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a758d49ff9e7d9d36d30afe5a3ae9f8d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "leexiaodong",
+                "link": "https://stackoverflow.com/users/6772556/leexiaodong"
+            },
+            "is_answered": true,
+            "view_count": 286,
+            "accepted_answer_id": 47581745,
+            "answer_count": 2,
+            "score": 14,
+            "last_activity_date": 1523521964,
+            "creation_date": 1486117160,
+            "last_edit_date": 1486124221,
+            "question_id": 42021901,
+            "body_markdown": "When I start up all the redis-server of the redis cluster, all these servers continuously print logs like WSA_IO_PENDING clusterWriteDone\r\n\r\n    [9956] 03 Feb 18:17:25.044 # WSA_IO_PENDING writing to socket fd -------------------------------------------------------- \r\n    [9956] 03 Feb 18:17:25.062 # clusterWriteDone written 2520 fd 15----------------------------------------------------------‌​--- \r\n    [9956] 03 Feb 18:17:25.545 # WSA_IO_PENDING writing to socket fd -------------------------------------------------------- \r\n    [9956] 03 Feb 18:17:25.568 # WSA_IO_PENDING writing to socket fd -------------------------------------------------------- –",
+            "link": "https://stackoverflow.com/questions/42021901/redis-cluster-continuosly-print-log-wsa-io-pending",
+            "title": "redis cluster continuosly print log WSA_IO_PENDING",
+            "body": "<p>When I start up all the redis-server of the redis cluster, all these servers continuously print logs like WSA_IO_PENDING clusterWriteDone</p>\n\n<pre><code>[9956] 03 Feb 18:17:25.044 # WSA_IO_PENDING writing to socket fd -------------------------------------------------------- \n[9956] 03 Feb 18:17:25.062 # clusterWriteDone written 2520 fd 15----------------------------------------------------------‌​--- \n[9956] 03 Feb 18:17:25.545 # WSA_IO_PENDING writing to socket fd -------------------------------------------------------- \n[9956] 03 Feb 18:17:25.568 # WSA_IO_PENDING writing to socket fd -------------------------------------------------------- –\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "windows-phone-7"
+            ],
+            "owner": {
+                "reputation": 197,
+                "user_id": 2276629,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://i.stack.imgur.com/TXX51.jpg?s=128&g=1",
+                "display_name": "Jatin",
+                "link": "https://stackoverflow.com/users/2276629/jatin"
+            },
+            "is_answered": true,
+            "view_count": 525,
+            "accepted_answer_id": 17080541,
+            "answer_count": 3,
+            "score": 4,
+            "last_activity_date": 1523521956,
+            "creation_date": 1371102052,
+            "last_edit_date": 1523521835,
+            "question_id": 17079930,
+            "body_markdown": "I am using a timer as\r\n\r\n    System.Threading.Timer clipboardTimer = new Timer(ClearClipboard);\r\n\r\nNext, I change its interval as \r\n\r\n    clipboardTimer.Change(1000, 30000);\r\n\r\nIn the handle timeout function, i.e. `ClearClipboard`, I want to clear the clipboard as\r\n\r\n    void ClearClipboard(object o)\r\n    {\r\n        Clipboard.SetText(&quot;&quot;);\r\n    }\r\n\r\nbut there is `System.Unauthorised` exception. Maybe, this is because there are two different threads. So, how can I invoke clear clipboard efficiently?",
+            "link": "https://stackoverflow.com/questions/17079930/clear-clipboard-when-timer-timeouts",
+            "title": "clear clipboard when timer timeouts",
+            "body": "<p>I am using a timer as</p>\n\n<pre><code>System.Threading.Timer clipboardTimer = new Timer(ClearClipboard);\n</code></pre>\n\n<p>Next, I change its interval as </p>\n\n<pre><code>clipboardTimer.Change(1000, 30000);\n</code></pre>\n\n<p>In the handle timeout function, i.e. <code>ClearClipboard</code>, I want to clear the clipboard as</p>\n\n<pre><code>void ClearClipboard(object o)\n{\n    Clipboard.SetText(\"\");\n}\n</code></pre>\n\n<p>but there is <code>System.Unauthorised</code> exception. Maybe, this is because there are two different threads. So, how can I invoke clear clipboard efficiently?</p>\n"
+        },
+        {
+            "tags": [
+                "postscript"
+            ],
+            "owner": {
+                "reputation": 9491,
+                "user_id": 187650,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://www.gravatar.com/avatar/ff0b4cccd2393491d94dacc16ae9f31a?s=128&d=identicon&r=PG",
+                "display_name": "juFo",
+                "link": "https://stackoverflow.com/users/187650/jufo"
+            },
+            "is_answered": true,
+            "view_count": 46,
+            "accepted_answer_id": 49791663,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1523521956,
+            "creation_date": 1497519816,
+            "last_edit_date": 1497520836,
+            "question_id": 44564198,
+            "body_markdown": "I&#39;m investigating the start/server loop.\r\nThe Insi de Postscript book explains the /start procedure.\r\nOne part of that procedure is the control loop:\r\n\r\n    ...\r\n    {\r\n      //serverdict /server get exec\r\n      \r\n      //serverdict begin\r\n    \r\n      setstreams\r\n      setnulldevice\r\n      /execjob\r\n      load\r\n    \r\n      end\r\n      exec\r\n    } loop\r\n    ...\r\n\r\nNow i&#39;m trying to find out what /server exactly does and how it might look like (in its most simple form).\r\n\r\n    //serverdict /server get exec\r\n\r\nThis line above gets the server procedure and executes it immediately.\r\n\r\nNow I have a server loop like this:\r\n\r\n    /server {\r\n     { % server loop\r\n        (i&#39;m in a server loop) print flush\r\n        (%stdin) run\r\n     }\r\n     loop\r\n    } def\r\n\r\nbut i&#39;m stuck in an infinite loop. How and when can the server loop ever go to the next step *(//serverdict begin setstreams etc...)*  as it is currently in an infinite loop?",
+            "link": "https://stackoverflow.com/questions/44564198/postscript-control-loop-server-loop",
+            "title": "PostScript control loop - server loop",
+            "body": "<p>I'm investigating the start/server loop.\nThe Insi de Postscript book explains the /start procedure.\nOne part of that procedure is the control loop:</p>\n\n<pre><code>...\n{\n  //serverdict /server get exec\n\n  //serverdict begin\n\n  setstreams\n  setnulldevice\n  /execjob\n  load\n\n  end\n  exec\n} loop\n...\n</code></pre>\n\n<p>Now i'm trying to find out what /server exactly does and how it might look like (in its most simple form).</p>\n\n<pre><code>//serverdict /server get exec\n</code></pre>\n\n<p>This line above gets the server procedure and executes it immediately.</p>\n\n<p>Now I have a server loop like this:</p>\n\n<pre><code>/server {\n { % server loop\n    (i'm in a server loop) print flush\n    (%stdin) run\n }\n loop\n} def\n</code></pre>\n\n<p>but i'm stuck in an infinite loop. How and when can the server loop ever go to the next step <em>(//serverdict begin setstreams etc...)</em>  as it is currently in an infinite loop?</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "laravel",
+                "eloquent"
+            ],
+            "owner": {
+                "reputation": 71,
+                "user_id": 1663720,
+                "user_type": "registered",
+                "accept_rate": 15,
+                "profile_image": "https://www.gravatar.com/avatar/6f7f88749236077b25fb84bd6ba2ecc0?s=128&d=identicon&r=PG",
+                "display_name": "davidinho",
+                "link": "https://stackoverflow.com/users/1663720/davidinho"
+            },
+            "is_answered": true,
+            "view_count": 28,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523521946,
+            "creation_date": 1523518921,
+            "question_id": 49790687,
+            "body_markdown": "I&#39;ve 3 entity:\r\n\r\n    Owner\r\n    -id\r\n    \r\n    Car\r\n    -id\r\n    -owner_id\r\n    -brand_id\r\n    \r\n    Brand\r\n    -id\r\n\r\nI would like to retrieve all `brand` of the `cars` of an `owner`.\r\n\r\nNow, if I do in the `Owner` class\r\n\r\n    $this-&gt;cars()-&gt;with(&#39;brand&#39;);\r\n\r\nI receive a `Database/Eloquent/Collection` like this:\r\n\r\n    Illuminate\\Database\\Eloquent\\Collection {\r\n    \tall: [\r\n    \t\tApp\\Car {\r\n    \t\t\tid: 1,\r\n    \t\t\towner_id: 10,\r\n    \t\t\tbrand_id: 100,\r\n    \t\t\tbrand: App\\Brand {\r\n    \t\t\t\tid: 100\r\n    \t\t\t},\r\n    \t\t},\r\n    \t\tApp\\Car {\r\n    \t\t\tid: 2,\r\n    \t\t\towner_id: 10,\r\n    \t\t\tbrand_id: 200,\r\n    \t\t\tbrand: App\\Brand {\r\n    \t\t\t\tid: 200\r\n    \t\t\t},\r\n    \t\t},\r\n    \t\tApp\\Car {\r\n    \t\t\tid: 3,\r\n    \t\t\towner_id: 10,\r\n    \t\t\tbrand_id: 100,\r\n    \t\t\tbrand: App\\Brand {\r\n    \t\t\t\tid: 100\r\n    \t\t\t},\r\n    \t\t},\r\n    \t],\r\n    }\r\n\r\nbut I would like to have a structure like this:\r\n\r\n    Illuminate\\Database\\Eloquent\\Collection {\r\n    \tall: [\r\n    \t\tApp\\Brand {\r\n    \t\t\tid: 100\r\n    \t\t},\r\n    \t\tApp\\Brand {\r\n    \t\t\tid: 200\r\n    \t\t},\r\n    }\r\n\r\nIs it possible in some way?",
+            "link": "https://stackoverflow.com/questions/49790687/laravel-eloquent-retrieve-second-level-relationship-entity",
+            "title": "Laravel Eloquent: Retrieve &quot;second level&quot; relationship entity",
+            "body": "<p>I've 3 entity:</p>\n\n<pre><code>Owner\n-id\n\nCar\n-id\n-owner_id\n-brand_id\n\nBrand\n-id\n</code></pre>\n\n<p>I would like to retrieve all <code>brand</code> of the <code>cars</code> of an <code>owner</code>.</p>\n\n<p>Now, if I do in the <code>Owner</code> class</p>\n\n<pre><code>$this-&gt;cars()-&gt;with('brand');\n</code></pre>\n\n<p>I receive a <code>Database/Eloquent/Collection</code> like this:</p>\n\n<pre><code>Illuminate\\Database\\Eloquent\\Collection {\n    all: [\n        App\\Car {\n            id: 1,\n            owner_id: 10,\n            brand_id: 100,\n            brand: App\\Brand {\n                id: 100\n            },\n        },\n        App\\Car {\n            id: 2,\n            owner_id: 10,\n            brand_id: 200,\n            brand: App\\Brand {\n                id: 200\n            },\n        },\n        App\\Car {\n            id: 3,\n            owner_id: 10,\n            brand_id: 100,\n            brand: App\\Brand {\n                id: 100\n            },\n        },\n    ],\n}\n</code></pre>\n\n<p>but I would like to have a structure like this:</p>\n\n<pre><code>Illuminate\\Database\\Eloquent\\Collection {\n    all: [\n        App\\Brand {\n            id: 100\n        },\n        App\\Brand {\n            id: 200\n        },\n}\n</code></pre>\n\n<p>Is it possible in some way?</p>\n"
+        },
+        {
+            "tags": [
+                "google-maps-api-3"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9612894,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3219371e7143820e4002ef02b0dac86f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Sam T",
+                "link": "https://stackoverflow.com/users/9612894/sam-t"
+            },
+            "is_answered": false,
+            "view_count": 4,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1523521945,
+            "creation_date": 1523521945,
+            "question_id": 49791661,
+            "body_markdown": "I&#39;m storing user entered address in the Google Datastore but I can&#39;t figure out how to retrieve that data and display it as a marker on the Google Map API?\r\n\r\nHow can I properly retrieve the address from my google datastore and display it on the API?",
+            "link": "https://stackoverflow.com/questions/49791661/pulling-full-address-from-google-datastore",
+            "title": "Pulling full address from Google Datastore",
+            "body": "<p>I'm storing user entered address in the Google Datastore but I can't figure out how to retrieve that data and display it as a marker on the Google Map API?</p>\n\n<p>How can I properly retrieve the address from my google datastore and display it on the API?</p>\n"
+        },
+        {
+            "tags": [
+                "ajax",
+                "jsf"
+            ],
+            "owner": {
+                "reputation": 20,
+                "user_id": 8513217,
+                "user_type": "registered",
+                "accept_rate": 25,
+                "profile_image": "https://www.gravatar.com/avatar/f41e4b257b392abb9477a245507a8950?s=128&d=identicon&r=PG&f=1",
+                "display_name": "xampo",
+                "link": "https://stackoverflow.com/users/8513217/xampo"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "closed_date": 1523522066,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523521940,
+            "creation_date": 1523518913,
+            "last_edit_date": 1523521940,
+            "question_id": 49790683,
+            "body_markdown": "I have 3 fields and based on their value I would like to add another field. I&#39;m a little &quot;green&quot; in ajax. I do not know how to pass 3 values to the method and I do not know if it will work in general. Here is my code in jsf:\r\n\r\n       &lt;p:autoComplete value=&quot;#{animal.name}&quot; completeMethod=&quot;#{animals.getAnimalName}&quot;&gt;\r\n            &lt;p:ajax event=&quot;select&quot; listener=&quot;#{animals.factorComplite}&quot; update=&quot;factor&quot;\r\n       &lt;/p:autoComplete&gt;\r\n       &lt;p:autoComplete value=&quot;#{animal.weight}&quot; completeMethod=&quot;#{animals.getAnimalWeight}&quot;&gt;\r\n            &lt;p:ajax event=&quot;select&quot; listener=&quot;#{animals.factorComplite}&quot; update=&quot;factor&quot;\r\n       &lt;/p:autoComplete&gt;\r\n       &lt;p:autoComplete value=&quot;#{animal.type}&quot; completeMethod=&quot;#{animal.getAnimalType}&quot;&gt;\r\n            &lt;p:ajax event=&quot;select&quot; listener=&quot;#{animals.factorComplite}&quot; update=&quot;factor&quot;\r\n        &lt;/p:autoComplete&gt;\r\n    \t&lt;h:inputText id =&quot;factor&quot; value=&quot;animal.factor&quot;/&gt; \r\n\r\nMetod in Java:\r\n\r\n    public String factorComplite (??){\r\n    String name = ??//what to call it\r\n    ...\r\n    \r\n    }\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49790683/update-field-based-on-3-other-fields",
+            "closed_reason": "duplicate",
+            "title": "Update field based on 3 other fields",
+            "body": "<p>I have 3 fields and based on their value I would like to add another field. I'm a little \"green\" in ajax. I do not know how to pass 3 values to the method and I do not know if it will work in general. Here is my code in jsf:</p>\n\n<pre><code>   &lt;p:autoComplete value=\"#{animal.name}\" completeMethod=\"#{animals.getAnimalName}\"&gt;\n        &lt;p:ajax event=\"select\" listener=\"#{animals.factorComplite}\" update=\"factor\"\n   &lt;/p:autoComplete&gt;\n   &lt;p:autoComplete value=\"#{animal.weight}\" completeMethod=\"#{animals.getAnimalWeight}\"&gt;\n        &lt;p:ajax event=\"select\" listener=\"#{animals.factorComplite}\" update=\"factor\"\n   &lt;/p:autoComplete&gt;\n   &lt;p:autoComplete value=\"#{animal.type}\" completeMethod=\"#{animal.getAnimalType}\"&gt;\n        &lt;p:ajax event=\"select\" listener=\"#{animals.factorComplite}\" update=\"factor\"\n    &lt;/p:autoComplete&gt;\n    &lt;h:inputText id =\"factor\" value=\"animal.factor\"/&gt; \n</code></pre>\n\n<p>Metod in Java:</p>\n\n<pre><code>public String factorComplite (??){\nString name = ??//what to call it\n...\n\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "multithreading",
+                "rust",
+                "mutex"
+            ],
+            "owner": {
+                "reputation": 2463,
+                "user_id": 3964654,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://i.stack.imgur.com/ITt1C.jpg?s=128&g=1",
+                "display_name": "Winger Sendon",
+                "link": "https://stackoverflow.com/users/3964654/winger-sendon"
+            },
+            "is_answered": true,
+            "view_count": 49,
+            "accepted_answer_id": 49783414,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1523521937,
+            "creation_date": 1523473473,
+            "question_id": 49782694,
+            "body_markdown": "I am writing a game and have a player list defined as follows:\r\n\r\n\tpub struct PlayerList {\r\n\t\tby_name: HashMap&lt;String, Arc&lt;Mutex&lt;Player&gt;&gt;&gt;,\r\n\t\tby_uuid: HashMap&lt;Uuid, Arc&lt;Mutex&lt;Player&gt;&gt;&gt;,\r\n\t}\r\n\t\r\nThis struct has methods for adding, removing, getting players, and getting the player count.\r\n\t\r\nThe `NetworkServer` and `Server` shares this list as follows:\r\n\t\r\n\tNetworkServer {\r\n\t\t...\r\n\t\tplayer_list: Arc&lt;Mutex&lt;PlayerList&gt;&gt;,\r\n\t\t...\r\n\t}\r\n\t\r\n\tServer {\r\n\t\t...\r\n\t\tplayer_list: Arc&lt;Mutex&lt;PlayerList&gt;&gt;,\r\n\t\t...\r\n\t}\r\n\t\r\nThis is inside an Arc Mutex because the `NetworkServer` accesses the list in a different thread (network loop).  \r\nWhen a player joins, a thread is spawned for them and they are added to the player_list.  \r\n\r\n*The problem:* Although the only operation I&#39;m doing is adding to player_list, I&#39;m forced to use `Arc&lt;Mutex&lt;Player&gt;&gt;` instead of the more natural `Rc&lt;RefCell&lt;Player&gt;&gt;` in the hashmaps because `Mutex&lt;PlayerList&gt;` requires it. I am not accessing players from the network thread (or any other thread) so it makes no sense to put them under a mutex. Only the hashmaps need to be locked,\r\nwhich I am doing using `Mutex&lt;PlayerList&gt;`. But Rust is pedantic and wants to protect against all misuses.  \r\n\r\nAs I&#39;m only accessing `Player`s in the main thread, locking everytime to do that is both annoying and less performant. Is there a workaround instead of using `unsafe` or something?\r\n",
+            "link": "https://stackoverflow.com/questions/49782694/rust-forcing-the-use-of-mutex-when-its-not-required",
+            "title": "Rust forcing the use of Mutex when its not required",
+            "body": "<p>I am writing a game and have a player list defined as follows:</p>\n\n<pre><code>pub struct PlayerList {\n    by_name: HashMap&lt;String, Arc&lt;Mutex&lt;Player&gt;&gt;&gt;,\n    by_uuid: HashMap&lt;Uuid, Arc&lt;Mutex&lt;Player&gt;&gt;&gt;,\n}\n</code></pre>\n\n<p>This struct has methods for adding, removing, getting players, and getting the player count.</p>\n\n<p>The <code>NetworkServer</code> and <code>Server</code> shares this list as follows:</p>\n\n<pre><code>NetworkServer {\n    ...\n    player_list: Arc&lt;Mutex&lt;PlayerList&gt;&gt;,\n    ...\n}\n\nServer {\n    ...\n    player_list: Arc&lt;Mutex&lt;PlayerList&gt;&gt;,\n    ...\n}\n</code></pre>\n\n<p>This is inside an Arc Mutex because the <code>NetworkServer</code> accesses the list in a different thread (network loop).<br>\nWhen a player joins, a thread is spawned for them and they are added to the player_list.  </p>\n\n<p><em>The problem:</em> Although the only operation I'm doing is adding to player_list, I'm forced to use <code>Arc&lt;Mutex&lt;Player&gt;&gt;</code> instead of the more natural <code>Rc&lt;RefCell&lt;Player&gt;&gt;</code> in the hashmaps because <code>Mutex&lt;PlayerList&gt;</code> requires it. I am not accessing players from the network thread (or any other thread) so it makes no sense to put them under a mutex. Only the hashmaps need to be locked,\nwhich I am doing using <code>Mutex&lt;PlayerList&gt;</code>. But Rust is pedantic and wants to protect against all misuses.  </p>\n\n<p>As I'm only accessing <code>Player</code>s in the main thread, locking everytime to do that is both annoying and less performant. Is there a workaround instead of using <code>unsafe</code> or something?</p>\n"
+        },
+        {
+            "tags": [
+                "node.js",
+                "postgresql",
+                "sequelize.js"
+            ],
+            "owner": {
+                "reputation": 164,
+                "user_id": 7335455,
+                "user_type": "registered",
+                "accept_rate": 70,
+                "profile_image": "https://www.gravatar.com/avatar/73a947b04ec422b1677d20933ab4fe1e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Al-josh",
+                "link": "https://stackoverflow.com/users/7335455/al-josh"
+            },
+            "is_answered": true,
+            "view_count": 9,
+            "accepted_answer_id": 49790252,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523521931,
+            "creation_date": 1523517063,
+            "last_edit_date": 1523521931,
+            "question_id": 49790166,
+            "body_markdown": "I&#39;m building an app in express and I&#39;m using postgres and sequelize for ORM. I have two models, `User` and `Post`.\r\n\r\nIn my `user.js` and `post.js` files I have:\r\n\r\n    module.exports = function(sequelize, DataTypes) {\r\n      return sequelize.define(&#39;users&#39;, {\r\n        id: {\r\n          type: DataTypes.INTEGER,\r\n          allowNull: false,\r\n          primaryKey: true,\r\n          autoIncrement: true\r\n        },\r\n        name: {\r\n          type: DataTypes.STRING,\r\n          allowNull: false,\r\n          defaultValue: &quot;&quot;\r\n        },\r\n\r\n    module.exports = function(sequelize, DataTypes) {\r\n      return sequelize.define(&#39;posts&#39;, {\r\n        id: {\r\n          type: DataTypes.INTEGER,\r\n          allowNull: false,\r\n          primaryKey: true,\r\n          autoIncrement: true\r\n        },\r\n        user_id: {\r\n          type: DataTypes.INTEGER,\r\n          allowNull: true\r\n        },\r\n        title: {\r\n          type: DataTypes.STRING,\r\n          allowNull: false,\r\n          defaultValue: &quot;&quot;\r\n        },\r\n\r\nI imported those two models and I made the following associations:\r\n\r\n    User.hasMany(Post, { foreignKey: &#39;user_id&#39; });\r\n    \r\n    Post.belongsTo(User, { foreignKey: &#39;user_id&#39; });\r\n\r\nI am trying to render all the posts done by a user, but I&#39;m probably missing something.\r\n\r\nIn my routes I can get the correct user but I don&#39;t know how to proceed.\r\n\r\n    router.route(&#39;/:id&#39;).get(async (req, res) =&gt; {\r\n      const user = await User.findById(req.params.id);\r\n      console.log(user);\r\n      res.send(user);\r\n    })\r\n\r\nThanks!",
+            "link": "https://stackoverflow.com/questions/49790166/how-to-query-associated-models-in-node-postgres",
+            "title": "How to query associated models in Node/Postgres",
+            "body": "<p>I'm building an app in express and I'm using postgres and sequelize for ORM. I have two models, <code>User</code> and <code>Post</code>.</p>\n\n<p>In my <code>user.js</code> and <code>post.js</code> files I have:</p>\n\n<pre><code>module.exports = function(sequelize, DataTypes) {\n  return sequelize.define('users', {\n    id: {\n      type: DataTypes.INTEGER,\n      allowNull: false,\n      primaryKey: true,\n      autoIncrement: true\n    },\n    name: {\n      type: DataTypes.STRING,\n      allowNull: false,\n      defaultValue: \"\"\n    },\n\nmodule.exports = function(sequelize, DataTypes) {\n  return sequelize.define('posts', {\n    id: {\n      type: DataTypes.INTEGER,\n      allowNull: false,\n      primaryKey: true,\n      autoIncrement: true\n    },\n    user_id: {\n      type: DataTypes.INTEGER,\n      allowNull: true\n    },\n    title: {\n      type: DataTypes.STRING,\n      allowNull: false,\n      defaultValue: \"\"\n    },\n</code></pre>\n\n<p>I imported those two models and I made the following associations:</p>\n\n<pre><code>User.hasMany(Post, { foreignKey: 'user_id' });\n\nPost.belongsTo(User, { foreignKey: 'user_id' });\n</code></pre>\n\n<p>I am trying to render all the posts done by a user, but I'm probably missing something.</p>\n\n<p>In my routes I can get the correct user but I don't know how to proceed.</p>\n\n<pre><code>router.route('/:id').get(async (req, res) =&gt; {\n  const user = await User.findById(req.params.id);\n  console.log(user);\n  res.send(user);\n})\n</code></pre>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "javascript"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9634494,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Gulafsha Ali",
+                "link": "https://stackoverflow.com/users/9634494/gulafsha-ali"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1523521923,
+            "creation_date": 1523521923,
+            "question_id": 49791655,
+            "body_markdown": "What I actually want is to fetch the object data of a particular event with all its properties.I had already extract all the objects with the help of following\r\nhttps://api.keen.io/3.0/projects/PROJECT_ID/queries/extraction?api_key=READ_KEY&amp;event_collection=COLLECTION_NAME&amp;timeframe=this_7_days\r\nbut unable to fetch a single object of an event.I would like to know whether this functionality is available or not..\r\n",
+            "link": "https://stackoverflow.com/questions/49791655/in-keen-io-how-can-i-extract-an-object-data-of-an-event-with-all-its-properties",
+            "title": "in keen io how can i extract an object data of an event with all its properties",
+            "body": "<p>What I actually want is to fetch the object data of a particular event with all its properties.I had already extract all the objects with the help of following\n<a href=\"https://api.keen.io/3.0/projects/PROJECT_ID/queries/extraction?api_key=READ_KEY&amp;event_collection=COLLECTION_NAME&amp;timeframe=this_7_days\" rel=\"nofollow noreferrer\">https://api.keen.io/3.0/projects/PROJECT_ID/queries/extraction?api_key=READ_KEY&amp;event_collection=COLLECTION_NAME&amp;timeframe=this_7_days</a>\nbut unable to fetch a single object of an event.I would like to know whether this functionality is available or not..</p>\n"
+        },
+        {
+            "tags": [
+                "h2"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9634883,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/81e3382c7a65dcf3bfc643eeba083d0b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Marit Lendox",
+                "link": "https://stackoverflow.com/users/9634883/marit-lendox"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523521923,
+            "creation_date": 1523521923,
+            "question_id": 49791654,
+            "body_markdown": "h2 is using the correct index for &quot;&gt;=&quot;, when provided only with 1 index.\r\n\r\nbut after an additional irrelevant index is added, the better index is not preferred anymore (h2 version 1.4.196).\r\n(workarounds with USE INDEX would work, but are cumbersome).\r\n\r\ni would say this could and should be improved in h2 - or ?\r\n\r\n\r\n    sql&gt;   CREATE TABLE test (a BIGINT, b BIGINT, c BIGINT);\r\n\r\n    sql&gt;   CREATE INDEX ib ON test (a, b);\r\n\r\n    sql&gt;   EXPLAIN SELECT * FROM test WHERE a=1 and b&gt;=2;\r\n    PLAN\r\n    SELECT TEST.A, TEST.B, TEST.C\r\n    FROM PUBLIC.TEST /* PUBLIC.IB: A = 1 AND B &gt;= 2 */\r\n    WHERE (A = 1) AND (B &gt;= 2)\r\n\r\n    sql&gt;   CREATE INDEX ic ON test (a, c);\r\n\r\n    sql&gt;   EXPLAIN SELECT * FROM test WHERE a=1 and b&gt;=2;\r\n    PLAN\r\n    SELECT TEST.A, TEST.B, TEST.C\r\n    FROM PUBLIC.TEST /* PUBLIC.IC: A = 1 */\r\n    WHERE (A = 1) AND (B &gt;= 2)\r\n",
+            "link": "https://stackoverflow.com/questions/49791654/h2-not-using-longest-index-for",
+            "title": "h2 not using longest index for &gt;=",
+            "body": "<p>h2 is using the correct index for \">=\", when provided only with 1 index.</p>\n\n<p>but after an additional irrelevant index is added, the better index is not preferred anymore (h2 version 1.4.196).\n(workarounds with USE INDEX would work, but are cumbersome).</p>\n\n<p>i would say this could and should be improved in h2 - or ?</p>\n\n<pre><code>sql&gt;   CREATE TABLE test (a BIGINT, b BIGINT, c BIGINT);\n\nsql&gt;   CREATE INDEX ib ON test (a, b);\n\nsql&gt;   EXPLAIN SELECT * FROM test WHERE a=1 and b&gt;=2;\nPLAN\nSELECT TEST.A, TEST.B, TEST.C\nFROM PUBLIC.TEST /* PUBLIC.IB: A = 1 AND B &gt;= 2 */\nWHERE (A = 1) AND (B &gt;= 2)\n\nsql&gt;   CREATE INDEX ic ON test (a, c);\n\nsql&gt;   EXPLAIN SELECT * FROM test WHERE a=1 and b&gt;=2;\nPLAN\nSELECT TEST.A, TEST.B, TEST.C\nFROM PUBLIC.TEST /* PUBLIC.IC: A = 1 */\nWHERE (A = 1) AND (B &gt;= 2)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "linux-kernel",
+                "dma"
+            ],
+            "owner": {
+                "reputation": 36,
+                "user_id": 9261430,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/1e839972b8933f5f4b8149beae47acc3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Cquast",
+                "link": "https://stackoverflow.com/users/9261430/cquast"
+            },
+            "is_answered": false,
+            "view_count": 28,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523521915,
+            "creation_date": 1523354714,
+            "question_id": 49750861,
+            "body_markdown": "I see a timeout happening when trying to allocate a DMA memory region. While I can remove this bug by using GFP_ATOMIC instead of GFP_KERNEL als gfp flags, so that the DMA allocation becomes non-interruptible, I wonder what the reasons for the occurrence of such a timeout? The requested memory region is not known to the system bus? The bus is saturated?\r\n\r\n    [   87.400000] [&lt;c0138eec&gt;] (schedule_bug) from [&lt;c05a0774&gt;] (schedule+0x3c/0x528)\r\n    [   87.410000] [&lt;c05a0774&gt;] (__schedule) from [&lt;c05a0d0c&gt;] (schedule+0xac/0xcc)\r\n    [   87.410000] [&lt;c05a0d0c&gt;] (schedule) from [&lt;c05a3e20&gt;] (schedule_timeout+0x20/0x2b8)\r\n    [   87.420000] [&lt;c05a3e20&gt;] (schedule_timeout) from [&lt;c05a1804&gt;] (wait_for_common+0xf8/0x1a8)\r\n    [   87.430000] [&lt;c05a1804&gt;] (wait_for_common) from [&lt;c012c540&gt;] (flush_work+0x174/0x1ac)\r\n    [   87.450000] [&lt;c012c540&gt;] (flush_work) from [&lt;c01a0648&gt;] (drain_all_pages+0x108/0x130)\r\n    [   87.460000] [&lt;c01a0648&gt;] (drain_all_pages) from [&lt;c01d6d34&gt;] (start_isolate_page_range+0xbc/0x284)\r\n    [   87.470000] [&lt;c01d6d34&gt;] (start_isolate_page_range) from [&lt;c01a3310&gt;] (alloc_contig_range+0xdc/0x330)\r\n    [   87.480000] [&lt;c01a3310&gt;] (alloc_contig_range) from [&lt;c01d7658&gt;] (cma_alloc+0x170/0x308)\r\n    [   87.490000] [&lt;c01d7658&gt;] (cma_alloc) from [&lt;c011142c&gt;] (__alloc_from_contiguous+0x40/0xd8)\r\n    [   87.500000] [&lt;c011142c&gt;] (__alloc_from_contiguous) from    [&lt;c0111500&gt;] (cma_allocator_alloc+0x3c/0x44)\r\n    [   87.510000] [&lt;c0111500&gt;] (cma_allocator_alloc) from [&lt;c010f86c&gt;] (__dma_alloc+0x1d4/0x2fc)\r\n    [   87.520000] [&lt;c010f86c&gt;] (__dma_alloc) from [&lt;c010fa0c&gt;] (arm_dma_alloc+0x3c/0x48)\r\n    [   87.530000] [&lt;c010fa0c&gt;] (arm_dma_alloc) from [&lt;c03ae018&gt;] (tsg_ioctl+0x3e4/0x954)",
+            "link": "https://stackoverflow.com/questions/49750861/what-are-the-reasons-for-dma-timeouts",
+            "title": "What are the reasons for DMA timeouts?",
+            "body": "<p>I see a timeout happening when trying to allocate a DMA memory region. While I can remove this bug by using GFP_ATOMIC instead of GFP_KERNEL als gfp flags, so that the DMA allocation becomes non-interruptible, I wonder what the reasons for the occurrence of such a timeout? The requested memory region is not known to the system bus? The bus is saturated?</p>\n\n<pre><code>[   87.400000] [&lt;c0138eec&gt;] (schedule_bug) from [&lt;c05a0774&gt;] (schedule+0x3c/0x528)\n[   87.410000] [&lt;c05a0774&gt;] (__schedule) from [&lt;c05a0d0c&gt;] (schedule+0xac/0xcc)\n[   87.410000] [&lt;c05a0d0c&gt;] (schedule) from [&lt;c05a3e20&gt;] (schedule_timeout+0x20/0x2b8)\n[   87.420000] [&lt;c05a3e20&gt;] (schedule_timeout) from [&lt;c05a1804&gt;] (wait_for_common+0xf8/0x1a8)\n[   87.430000] [&lt;c05a1804&gt;] (wait_for_common) from [&lt;c012c540&gt;] (flush_work+0x174/0x1ac)\n[   87.450000] [&lt;c012c540&gt;] (flush_work) from [&lt;c01a0648&gt;] (drain_all_pages+0x108/0x130)\n[   87.460000] [&lt;c01a0648&gt;] (drain_all_pages) from [&lt;c01d6d34&gt;] (start_isolate_page_range+0xbc/0x284)\n[   87.470000] [&lt;c01d6d34&gt;] (start_isolate_page_range) from [&lt;c01a3310&gt;] (alloc_contig_range+0xdc/0x330)\n[   87.480000] [&lt;c01a3310&gt;] (alloc_contig_range) from [&lt;c01d7658&gt;] (cma_alloc+0x170/0x308)\n[   87.490000] [&lt;c01d7658&gt;] (cma_alloc) from [&lt;c011142c&gt;] (__alloc_from_contiguous+0x40/0xd8)\n[   87.500000] [&lt;c011142c&gt;] (__alloc_from_contiguous) from    [&lt;c0111500&gt;] (cma_allocator_alloc+0x3c/0x44)\n[   87.510000] [&lt;c0111500&gt;] (cma_allocator_alloc) from [&lt;c010f86c&gt;] (__dma_alloc+0x1d4/0x2fc)\n[   87.520000] [&lt;c010f86c&gt;] (__dma_alloc) from [&lt;c010fa0c&gt;] (arm_dma_alloc+0x3c/0x48)\n[   87.530000] [&lt;c010fa0c&gt;] (arm_dma_alloc) from [&lt;c03ae018&gt;] (tsg_ioctl+0x3e4/0x954)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "performance",
+                "android-studio"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 5378609,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/913550178730448/picture?type=large",
+                "display_name": "Sachin M Jain",
+                "link": "https://stackoverflow.com/users/5378609/sachin-m-jain"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 0,
+            "score": -7,
+            "last_activity_date": 1523521912,
+            "creation_date": 1523521912,
+            "question_id": 49791651,
+            "body_markdown": "org.gradle.api.tasks.TaskExecutionException: Execution failed for task &#39;:app:processDebugResources&#39;.\r\n\tat org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeActions(ExecuteActionsTaskExecuter.java:100)\r\n\tat org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:70)\r\n\tat org.gradle.api.internal.tasks.execution.OutputDirectoryCreatingTaskExecuter.execute(OutputDirectoryCreatingTaskExecuter.java:51)\r\n\tat org.gradle.api.internal.tasks.execution.SkipUpToDateTaskExecuter.execute(SkipUpToDateTaskExecuter.java:62)\r\n\tat org.gradle.api.internal.tasks.execution.ResolveTaskOutputCachingStateExecuter.execute(ResolveTaskOutputCachingStateExecuter.java:54)\r\n\tat org.gradle.api.internal.tasks.execution.ValidatingTaskExecuter.execute(ValidatingTaskExecuter.java:60)\r\n\tat org.gradle.api.internal.tasks.execution.SkipEmptySourceFilesTaskExecuter.execute(SkipEmptySourceFilesTaskExecuter.java:97)\r\n\tat org.gradle.api.internal.tasks.execution.CleanupStaleOutputsExecuter.execute(CleanupStaleOutputsExecuter.java:87)\r\n\tat org.gradle.api.internal.tasks.execution.ResolveTaskArtifactStateTaskExecuter.execute(ResolveTaskArtifactStateTaskExecuter.java:52)\r\n\tat org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:52)\r\n\tat org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:54)\r\n\tat org.gradle.api.internal.tasks.execution.ExecuteAtMostOnceTaskExecuter.execute(ExecuteAtMostOnceTaskExecuter.java:43)\r\n\tat org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:34)\r\n\tat org.gradle.execution.taskgraph.DefaultTaskGraphExecuter$EventFiringTaskWorker$1.run(DefaultTaskGraphExecuter.java:248)\r\n\tat org.gradle.internal.progress.DefaultBuildOperationExecutor$RunnableBuildOperationWorker.execute(DefaultBuildOperationExecutor.java:336)\r\n\tat org.gradle.internal.progress.DefaultBuildOperationExecutor$RunnableBuildOperationWorker.execute(DefaultBuildOperationExecutor.java:328)\r\n\tat org.gradle.internal.progress.DefaultBuildOperationExecutor.execute(DefaultBuildOperationExecutor.java:199)\r\n\tat org.gradle.internal.progress.DefaultBuildOperationExecutor.run(DefaultBuildOperationExecutor.java:110)\r\n\tat org.gradle.execution.taskgraph.DefaultTaskGraphExecuter$EventFiringTaskWorker.execute(DefaultTaskGraphExecuter.java:241)\r\n\tat org.gradle.execution.taskgraph.DefaultTaskGraphExecuter$EventFiringTaskWorker.execute(DefaultTaskGraphExecuter.java:230)\r\n\tat org.gradle.execution.taskgraph.DefaultTaskPlanExecutor$TaskExecutorWorker.processTask(DefaultTaskPlanExecutor.java:123)\r\n\tat org.gradle.execution.taskgraph.DefaultTaskPlanExecutor$TaskExecutorWorker.access$200(DefaultTaskPlanExecutor.java:79)\r\n\tat org.gradle.execution.taskgraph.DefaultTaskPlanExecutor$TaskExecutorWorker$1.execute(DefaultTaskPlanExecutor.java:104)\r\n\tat org.gradle.execution.taskgraph.DefaultTaskPlanExecutor$TaskExecutorWorker$1.execute(DefaultTaskPlanExecutor.java:98)\r\n\tat org.gradle.execution.taskgraph.DefaultTaskExecutionPlan.execute(DefaultTaskExecutionPlan.java:626)\r\n\tat org.gradle.execution.taskgraph.DefaultTaskExecutionPlan.executeWithTask(DefaultTaskExecutionPlan.java:581)\r\n\tat org.gradle.execution.taskgraph.DefaultTaskPlanExecutor$TaskExecutorWorker.run(DefaultTaskPlanExecutor.java:98)\r\n\tat org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:63)\r\n\tat org.gradle.internal.concurrent.ManagedExecutorImpl$1.run(ManagedExecutorImpl.java:46)\r\n\tat java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)\r\n\tat java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)\r\n\tat org.gradle.internal.concurrent.ThreadFactoryImpl$ManagedThreadRunnable.run(ThreadFactoryImpl.java:55)\r\n\tat java.lang.Thread.run(Thread.java:745)\r\nCaused by: org.gradle.tooling.BuildException: Failed to process resources, see aapt output above for details.\r\n\tat com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask.invokeAaptForSplit(LinkApplicationAndroidResourcesTask.java:512)\r\n\tat com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask.doFullTaskAction(LinkApplicationAndroidResourcesTask.java:249)\r\n\tat com.android.build.gradle.internal.tasks.IncrementalTask.taskAction(IncrementalTask.java:106)\r\n\tat sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)\r\n\tat sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)\r\n\tat sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)\r\n\tat java.lang.reflect.Method.invoke(Method.java:498)\r\n\tat org.gradle.internal.reflect.JavaMethod.invoke(JavaMethod.java:73)\r\n\tat org.gradle.api.internal.project.taskfactory.IncrementalTaskAction.doExecute(IncrementalTaskAction.java:46)\r\n\tat org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:39)\r\n\tat org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:26)\r\n\tat org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter$1.run(ExecuteActionsTaskExecuter.java:121)\r\n\tat org.gradle.internal.progress.DefaultBuildOperationExecutor$RunnableBuildOperationWorker.execute(DefaultBuildOperationExecutor.java:336)\r\n\tat org.gradle.internal.progress.DefaultBuildOperationExecutor$RunnableBuildOperationWorker.execute(DefaultBuildOperationExecutor.java:328)\r\n\tat org.gradle.internal.progress.DefaultBuildOperationExecutor.execute(DefaultBuildOperationExecutor.java:199)\r\n\tat org.gradle.internal.progress.DefaultBuildOperationExecutor.run(DefaultBuildOperationExecutor.java:110)\r\n\tat org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeAction(ExecuteActionsTaskExecuter.java:110)\r\n\tat org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeActions(ExecuteActionsTaskExecuter.java:92)\r\n\t... 32 more\r\n\tSuppressed: java.lang.RuntimeException: Some file processing failed, see logs for details\r\n\t\tat com.android.builder.internal.aapt.QueuedResourceProcessor.waitForAll(QueuedResourceProcessor.java:121)\r\n\t\tat com.android.builder.internal.aapt.QueuedResourceProcessor.end(QueuedResourceProcessor.java:141)\r\n\t\tat com.android.builder.internal.aapt.v2.QueueableAapt2.close(QueueableAapt2.java:104)\r\n\t\tat com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask.doFullTaskAction(LinkApplicationAndroidResourcesTask.java:293)\r\n\t\t... 48 more\r\nCaused by: com.android.ide.common.process.ProcessException: Failed to execute aapt\r\n\tat com.android.builder.core.AndroidBuilder.processResources(AndroidBuilder.java:809)\r\n\tat com.android.builder.core.AndroidBuilder.processResources(AndroidBuilder.java:797)\r\n\tat com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask.invokeAaptForSplit(LinkApplicationAndroidResourcesTask.java:491)\r\n\t... 49 more\r\nCaused by: java.util.concurrent.ExecutionException: java.util.concurrent.ExecutionException: com.android.builder.internal.aapt.v2.Aapt2Exception: AAPT2 error: check logs for details\r\n\tat com.google.common.util.concurrent.AbstractFuture.getDoneValue(AbstractFuture.java:503)\r\n\tat com.google.common.util.concurrent.AbstractFuture.get(AbstractFuture.java:482)\r\n\tat com.google.common.util.concurrent.AbstractFuture$TrustedFuture.get(AbstractFuture.java:79)\r\n\tat com.android.builder.internal.aapt.AbstractAapt.link(AbstractAapt.java:34)\r\n\tat com.android.builder.core.AndroidBuilder.processResources(AndroidBuilder.java:807)\r\n\t... 51 more\r\nCaused by: java.util.concurrent.ExecutionException: com.android.builder.internal.aapt.v2.Aapt2Exception: AAPT2 error: check logs for details\r\n\tat com.google.common.util.concurrent.AbstractFuture.getDoneValue(AbstractFuture.java:503)\r\n\tat com.google.common.util.concurrent.AbstractFuture.get(AbstractFuture.java:462)\r\n\tat com.google.common.util.concurrent.AbstractFuture$TrustedFuture.get(AbstractFuture.java:79)\r\n\tat com.android.builder.internal.aapt.v2.QueueableAapt2.lambda$makeValidatedPackage$1(QueueableAapt2.java:166)\r\n\tat java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)\r\n\tat java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)\r\n\t... 1 more\r\nCaused by: com.android.builder.internal.aapt.v2.Aapt2Exception: AAPT2 error: check logs for details\r\n\tat com.android.builder.png.AaptProcess$NotifierProcessOutput.handleOutput(AaptProcess.java:443)\r\n\tat com.android.builder.png.AaptProcess$NotifierProcessOutput.err(AaptProcess.java:395)\r\n\tat com.android.builder.png.AaptProcess$ProcessOutputFacade.err(AaptProcess.java:312)\r\n\tat com.android.utils.GrabProcessOutput$1.run(GrabProcessOutput.java:104)",
+            "link": "https://stackoverflow.com/questions/49791651/error-failed-linking-file-resources",
+            "title": "Error: failed linking file resources.",
+            "body": "<p>org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:processDebugResources'.\n    at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeActions(ExecuteActionsTaskExecuter.java:100)\n    at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:70)\n    at org.gradle.api.internal.tasks.execution.OutputDirectoryCreatingTaskExecuter.execute(OutputDirectoryCreatingTaskExecuter.java:51)\n    at org.gradle.api.internal.tasks.execution.SkipUpToDateTaskExecuter.execute(SkipUpToDateTaskExecuter.java:62)\n    at org.gradle.api.internal.tasks.execution.ResolveTaskOutputCachingStateExecuter.execute(ResolveTaskOutputCachingStateExecuter.java:54)\n    at org.gradle.api.internal.tasks.execution.ValidatingTaskExecuter.execute(ValidatingTaskExecuter.java:60)\n    at org.gradle.api.internal.tasks.execution.SkipEmptySourceFilesTaskExecuter.execute(SkipEmptySourceFilesTaskExecuter.java:97)\n    at org.gradle.api.internal.tasks.execution.CleanupStaleOutputsExecuter.execute(CleanupStaleOutputsExecuter.java:87)\n    at org.gradle.api.internal.tasks.execution.ResolveTaskArtifactStateTaskExecuter.execute(ResolveTaskArtifactStateTaskExecuter.java:52)\n    at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:52)\n    at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:54)\n    at org.gradle.api.internal.tasks.execution.ExecuteAtMostOnceTaskExecuter.execute(ExecuteAtMostOnceTaskExecuter.java:43)\n    at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:34)\n    at org.gradle.execution.taskgraph.DefaultTaskGraphExecuter$EventFiringTaskWorker$1.run(DefaultTaskGraphExecuter.java:248)\n    at org.gradle.internal.progress.DefaultBuildOperationExecutor$RunnableBuildOperationWorker.execute(DefaultBuildOperationExecutor.java:336)\n    at org.gradle.internal.progress.DefaultBuildOperationExecutor$RunnableBuildOperationWorker.execute(DefaultBuildOperationExecutor.java:328)\n    at org.gradle.internal.progress.DefaultBuildOperationExecutor.execute(DefaultBuildOperationExecutor.java:199)\n    at org.gradle.internal.progress.DefaultBuildOperationExecutor.run(DefaultBuildOperationExecutor.java:110)\n    at org.gradle.execution.taskgraph.DefaultTaskGraphExecuter$EventFiringTaskWorker.execute(DefaultTaskGraphExecuter.java:241)\n    at org.gradle.execution.taskgraph.DefaultTaskGraphExecuter$EventFiringTaskWorker.execute(DefaultTaskGraphExecuter.java:230)\n    at org.gradle.execution.taskgraph.DefaultTaskPlanExecutor$TaskExecutorWorker.processTask(DefaultTaskPlanExecutor.java:123)\n    at org.gradle.execution.taskgraph.DefaultTaskPlanExecutor$TaskExecutorWorker.access$200(DefaultTaskPlanExecutor.java:79)\n    at org.gradle.execution.taskgraph.DefaultTaskPlanExecutor$TaskExecutorWorker$1.execute(DefaultTaskPlanExecutor.java:104)\n    at org.gradle.execution.taskgraph.DefaultTaskPlanExecutor$TaskExecutorWorker$1.execute(DefaultTaskPlanExecutor.java:98)\n    at org.gradle.execution.taskgraph.DefaultTaskExecutionPlan.execute(DefaultTaskExecutionPlan.java:626)\n    at org.gradle.execution.taskgraph.DefaultTaskExecutionPlan.executeWithTask(DefaultTaskExecutionPlan.java:581)\n    at org.gradle.execution.taskgraph.DefaultTaskPlanExecutor$TaskExecutorWorker.run(DefaultTaskPlanExecutor.java:98)\n    at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:63)\n    at org.gradle.internal.concurrent.ManagedExecutorImpl$1.run(ManagedExecutorImpl.java:46)\n    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)\n    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)\n    at org.gradle.internal.concurrent.ThreadFactoryImpl$ManagedThreadRunnable.run(ThreadFactoryImpl.java:55)\n    at java.lang.Thread.run(Thread.java:745)\nCaused by: org.gradle.tooling.BuildException: Failed to process resources, see aapt output above for details.\n    at com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask.invokeAaptForSplit(LinkApplicationAndroidResourcesTask.java:512)\n    at com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask.doFullTaskAction(LinkApplicationAndroidResourcesTask.java:249)\n    at com.android.build.gradle.internal.tasks.IncrementalTask.taskAction(IncrementalTask.java:106)\n    at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)\n    at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)\n    at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)\n    at java.lang.reflect.Method.invoke(Method.java:498)\n    at org.gradle.internal.reflect.JavaMethod.invoke(JavaMethod.java:73)\n    at org.gradle.api.internal.project.taskfactory.IncrementalTaskAction.doExecute(IncrementalTaskAction.java:46)\n    at org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:39)\n    at org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:26)\n    at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter$1.run(ExecuteActionsTaskExecuter.java:121)\n    at org.gradle.internal.progress.DefaultBuildOperationExecutor$RunnableBuildOperationWorker.execute(DefaultBuildOperationExecutor.java:336)\n    at org.gradle.internal.progress.DefaultBuildOperationExecutor$RunnableBuildOperationWorker.execute(DefaultBuildOperationExecutor.java:328)\n    at org.gradle.internal.progress.DefaultBuildOperationExecutor.execute(DefaultBuildOperationExecutor.java:199)\n    at org.gradle.internal.progress.DefaultBuildOperationExecutor.run(DefaultBuildOperationExecutor.java:110)\n    at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeAction(ExecuteActionsTaskExecuter.java:110)\n    at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeActions(ExecuteActionsTaskExecuter.java:92)\n    ... 32 more\n    Suppressed: java.lang.RuntimeException: Some file processing failed, see logs for details\n        at com.android.builder.internal.aapt.QueuedResourceProcessor.waitForAll(QueuedResourceProcessor.java:121)\n        at com.android.builder.internal.aapt.QueuedResourceProcessor.end(QueuedResourceProcessor.java:141)\n        at com.android.builder.internal.aapt.v2.QueueableAapt2.close(QueueableAapt2.java:104)\n        at com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask.doFullTaskAction(LinkApplicationAndroidResourcesTask.java:293)\n        ... 48 more\nCaused by: com.android.ide.common.process.ProcessException: Failed to execute aapt\n    at com.android.builder.core.AndroidBuilder.processResources(AndroidBuilder.java:809)\n    at com.android.builder.core.AndroidBuilder.processResources(AndroidBuilder.java:797)\n    at com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask.invokeAaptForSplit(LinkApplicationAndroidResourcesTask.java:491)\n    ... 49 more\nCaused by: java.util.concurrent.ExecutionException: java.util.concurrent.ExecutionException: com.android.builder.internal.aapt.v2.Aapt2Exception: AAPT2 error: check logs for details\n    at com.google.common.util.concurrent.AbstractFuture.getDoneValue(AbstractFuture.java:503)\n    at com.google.common.util.concurrent.AbstractFuture.get(AbstractFuture.java:482)\n    at com.google.common.util.concurrent.AbstractFuture$TrustedFuture.get(AbstractFuture.java:79)\n    at com.android.builder.internal.aapt.AbstractAapt.link(AbstractAapt.java:34)\n    at com.android.builder.core.AndroidBuilder.processResources(AndroidBuilder.java:807)\n    ... 51 more\nCaused by: java.util.concurrent.ExecutionException: com.android.builder.internal.aapt.v2.Aapt2Exception: AAPT2 error: check logs for details\n    at com.google.common.util.concurrent.AbstractFuture.getDoneValue(AbstractFuture.java:503)\n    at com.google.common.util.concurrent.AbstractFuture.get(AbstractFuture.java:462)\n    at com.google.common.util.concurrent.AbstractFuture$TrustedFuture.get(AbstractFuture.java:79)\n    at com.android.builder.internal.aapt.v2.QueueableAapt2.lambda$makeValidatedPackage$1(QueueableAapt2.java:166)\n    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)\n    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)\n    ... 1 more\nCaused by: com.android.builder.internal.aapt.v2.Aapt2Exception: AAPT2 error: check logs for details\n    at com.android.builder.png.AaptProcess$NotifierProcessOutput.handleOutput(AaptProcess.java:443)\n    at com.android.builder.png.AaptProcess$NotifierProcessOutput.err(AaptProcess.java:395)\n    at com.android.builder.png.AaptProcess$ProcessOutputFacade.err(AaptProcess.java:312)\n    at com.android.utils.GrabProcessOutput$1.run(GrabProcessOutput.java:104)</p>\n"
+        },
+        {
+            "tags": [
+                "ibm-midrange",
+                "cobol",
+                "control-language"
+            ],
+            "owner": {
+                "reputation": 51,
+                "user_id": 1911212,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e1b9bd9e47d48a497828754ecb9770be?s=128&d=identicon&r=PG",
+                "display_name": "Anton Baclao",
+                "link": "https://stackoverflow.com/users/1911212/anton-baclao"
+            },
+            "is_answered": true,
+            "view_count": 5837,
+            "answer_count": 7,
+            "score": 10,
+            "last_activity_date": 1523521909,
+            "creation_date": 1355780341,
+            "last_edit_date": 1362199197,
+            "question_id": 13922626,
+            "body_markdown": "I&#39;m using AS400 and I have been asked to call a web service from the green screen.\r\n\r\nHow can thisbe this achieved?\r\n\r\nAny sample COBOL or CL code would be very helpful.",
+            "link": "https://stackoverflow.com/questions/13922626/calling-a-web-service-from-cobol-or-cl",
+            "title": "Calling a Web Service from COBOL or CL",
+            "body": "<p>I'm using AS400 and I have been asked to call a web service from the green screen.</p>\n\n<p>How can thisbe this achieved?</p>\n\n<p>Any sample COBOL or CL code would be very helpful.</p>\n"
+        },
+        {
+            "tags": [
+                "forms",
+                "image",
+                "powershell",
+                "smooth-scrolling"
+            ],
+            "owner": {
+                "reputation": 21,
+                "user_id": 2961195,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/f023ffe0eb4554f48a3a334979215c50?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user2961195",
+                "link": "https://stackoverflow.com/users/2961195/user2961195"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523521908,
+            "creation_date": 1523521908,
+            "question_id": 49791649,
+            "body_markdown": "I got a question about scripting in PowerShell.\r\n\r\nIam preparing &quot;lottery application&quot; in powershell for my family.\r\nI want to have entire application in Windows Form and if possible, using only native functions (because after I would like to transfer it to *.exe)\r\n\r\nI got an idea, that in form will be one label (appx. 50x50), where the &quot;lottery numbers&quot; will be switching.\r\n\r\nUp to now I can do that.\r\n\r\nBut I would like to make &quot;switching&quot; process pretty, smooth, attractive for people. Not like in Console.\r\nLike smooth moving with image (50x2000, containing only lottery numbers in one column), which is under this label. So you can see only trough this smaller label and how numbers are smoothly switching.\r\n\r\nNo problem with generation the lottery numbers and save it to as jpg.\r\n\r\nProblem is, that I don&#39;t know, how to &quot;move&quot; with this image under label window. (load specific coordiations / part of image).\r\n\r\nI appreciate any advice.\r\n\r\nMarcel\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49791649/powershell-form-image-smooth-moving",
+            "title": "Powershell Form Image Smooth Moving",
+            "body": "<p>I got a question about scripting in PowerShell.</p>\n\n<p>Iam preparing \"lottery application\" in powershell for my family.\nI want to have entire application in Windows Form and if possible, using only native functions (because after I would like to transfer it to *.exe)</p>\n\n<p>I got an idea, that in form will be one label (appx. 50x50), where the \"lottery numbers\" will be switching.</p>\n\n<p>Up to now I can do that.</p>\n\n<p>But I would like to make \"switching\" process pretty, smooth, attractive for people. Not like in Console.\nLike smooth moving with image (50x2000, containing only lottery numbers in one column), which is under this label. So you can see only trough this smaller label and how numbers are smoothly switching.</p>\n\n<p>No problem with generation the lottery numbers and save it to as jpg.</p>\n\n<p>Problem is, that I don't know, how to \"move\" with this image under label window. (load specific coordiations / part of image).</p>\n\n<p>I appreciate any advice.</p>\n\n<p>Marcel</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "arrays"
+            ],
+            "owner": {
+                "reputation": 698,
+                "user_id": 6310042,
+                "user_type": "registered",
+                "accept_rate": 74,
+                "profile_image": "https://i.stack.imgur.com/daObd.jpg?s=128&g=1",
+                "display_name": "midhun k",
+                "link": "https://stackoverflow.com/users/6310042/midhun-k"
+            },
+            "is_answered": true,
+            "view_count": 62,
+            "closed_date": 1523519987,
+            "accepted_answer_id": 49789746,
+            "answer_count": 9,
+            "score": -8,
+            "last_activity_date": 1523521906,
+            "creation_date": 1523515233,
+            "last_edit_date": 1523515338,
+            "question_id": 49789666,
+            "body_markdown": "I have 2 arrays named\r\n\r\n    a = [{&quot;id&quot;:&quot;1&quot;,&quot;mark&quot;:&quot;96&quot;,...},{&quot;id&quot;:&quot;2&quot;,&quot;mark&quot;:&quot;65&quot;,...}];\r\n\r\n    b = [{&quot;student_id&quot;:&quot;1&quot;,&quot;grade&quot;:&quot;A&quot;},{&quot;student_id&quot;:&quot;2&quot;,&quot;grade&quot;:&quot;c&quot;}];\r\n\r\nI want to compare 2 arrays and if **&#39;id&#39;** and **&#39;student_id&#39;** **matches** i want to push the grade value to the &#39;a&#39; array . Then my result will be like:\r\n\r\n**Expected Result:**\r\n\r\n    c = [{&quot;id&quot;:&quot;1&quot;,&quot;mark&quot;:&quot;96&quot;,&quot;grade&quot;:&quot;A&quot;,...},\r\n        {&quot;id&quot;:&quot;2&quot;,&quot;mark&quot;:&quot;65&quot;,&quot;grade&quot;:&quot;c&quot;.....}];",
+            "link": "https://stackoverflow.com/questions/49789666/compare-2-array-of-jsons-and-form-a-array-from-that",
+            "closed_reason": "off-topic",
+            "title": "Compare 2 array of jsons and form a array from that?",
+            "body": "<p>I have 2 arrays named</p>\n\n<pre><code>a = [{\"id\":\"1\",\"mark\":\"96\",...},{\"id\":\"2\",\"mark\":\"65\",...}];\n\nb = [{\"student_id\":\"1\",\"grade\":\"A\"},{\"student_id\":\"2\",\"grade\":\"c\"}];\n</code></pre>\n\n<p>I want to compare 2 arrays and if <strong>'id'</strong> and <strong>'student_id'</strong> <strong>matches</strong> i want to push the grade value to the 'a' array . Then my result will be like:</p>\n\n<p><strong>Expected Result:</strong></p>\n\n<pre><code>c = [{\"id\":\"1\",\"mark\":\"96\",\"grade\":\"A\",...},\n    {\"id\":\"2\",\"mark\":\"65\",\"grade\":\"c\".....}];\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "nginx",
+                "proxy",
+                "website"
+            ],
+            "owner": {
+                "reputation": 49,
+                "user_id": 5870190,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/G4SEu.png?s=128&g=1",
+                "display_name": "Jupiter",
+                "link": "https://stackoverflow.com/users/5870190/jupiter"
+            },
+            "is_answered": false,
+            "view_count": 413,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523521900,
+            "creation_date": 1463012843,
+            "question_id": 37175344,
+            "body_markdown": "Okay, so I know there is a lot of questions about Nginx Reverse Proxy but I don&#39;t understand any of the answers. I read the documentation on Nginx&#39;s website and I kind of get it but need some help.\r\n\r\nSo here is what I want.\r\n\r\nVisitor ---&gt; Nginx Reverse Proxy ---&gt; Nginx Server (Website)\r\n\r\nI know that you can get the reverse proxy to listen to a remote server,  but I can&#39;t find the configuration files that I want. I also want to show a static html page when passing through the Nginx Reverse Proxy. So like a page that says &quot;Hosted by this company&quot;, like Cloudflare does. I asked someone and they told me if I put the html file on the reverse proxy server then it&#39;ll show up when the visitor goes through the server, but I don&#39;t understand that concept, how do I get that static html to show up? And what will be the correct configuration be for this? I imagine it&#39;ll be different from a normal remote server configuration.\r\n\r\nThanks in advance! ",
+            "link": "https://stackoverflow.com/questions/37175344/nginx-reverse-proxy-to-remote-server",
+            "title": "Nginx Reverse Proxy to Remote Server",
+            "body": "<p>Okay, so I know there is a lot of questions about Nginx Reverse Proxy but I don't understand any of the answers. I read the documentation on Nginx's website and I kind of get it but need some help.</p>\n\n<p>So here is what I want.</p>\n\n<p>Visitor ---> Nginx Reverse Proxy ---> Nginx Server (Website)</p>\n\n<p>I know that you can get the reverse proxy to listen to a remote server,  but I can't find the configuration files that I want. I also want to show a static html page when passing through the Nginx Reverse Proxy. So like a page that says \"Hosted by this company\", like Cloudflare does. I asked someone and they told me if I put the html file on the reverse proxy server then it'll show up when the visitor goes through the server, but I don't understand that concept, how do I get that static html to show up? And what will be the correct configuration be for this? I imagine it'll be different from a normal remote server configuration.</p>\n\n<p>Thanks in advance! </p>\n"
+        },
+        {
+            "tags": [
+                "mysql",
+                "group-by"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 9629391,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10156451525986494/picture?type=large",
+                "display_name": "Alexandr Kapshuk",
+                "link": "https://stackoverflow.com/users/9629391/alexandr-kapshuk"
+            },
+            "is_answered": true,
+            "view_count": 36,
+            "accepted_answer_id": 49775023,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523521892,
+            "creation_date": 1523436742,
+            "last_edit_date": 1523437962,
+            "question_id": 49770656,
+            "body_markdown": "I have a table that I want to group by a binary variable `group_generator` that defines end of the group: if it equals `1`, then the group contains all previous rows with `group_generator = 0` \r\n\r\nExample:\r\n\r\n    Numbers        group_generator    \r\n    10             0    \r\n    20             0    \r\n    30             1    \r\n    40             0    \r\n    50             1 \r\n    60             1\r\n\r\nI need Numbers grouped in three groups:\r\n\r\n    (10, 20, 30); \r\n    (40, 50); \r\n    (60)\r\n\r\nI tried creating a new column with sum of `group_generator` for all rows with index less than current, like this:\r\n\r\n    Numbers        group_generator    group\r\n    10             0                  0\r\n    20             0                  0\r\n    30             1                  0\r\n    40             0                  1\r\n    50             1                  1\r\n    60             1                  2\r\n\r\nand group by the last column, but that&#39;s complicated without temporary tables.\r\n\r\nIs there an easy way do this in MySQL?\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49770656/mysql-group-rows-by-sum-of-a-binary-variable",
+            "title": "MySQL: group rows by sum of a binary variable",
+            "body": "<p>I have a table that I want to group by a binary variable <code>group_generator</code> that defines end of the group: if it equals <code>1</code>, then the group contains all previous rows with <code>group_generator = 0</code> </p>\n\n<p>Example:</p>\n\n<pre><code>Numbers        group_generator    \n10             0    \n20             0    \n30             1    \n40             0    \n50             1 \n60             1\n</code></pre>\n\n<p>I need Numbers grouped in three groups:</p>\n\n<pre><code>(10, 20, 30); \n(40, 50); \n(60)\n</code></pre>\n\n<p>I tried creating a new column with sum of <code>group_generator</code> for all rows with index less than current, like this:</p>\n\n<pre><code>Numbers        group_generator    group\n10             0                  0\n20             0                  0\n30             1                  0\n40             0                  1\n50             1                  1\n60             1                  2\n</code></pre>\n\n<p>and group by the last column, but that's complicated without temporary tables.</p>\n\n<p>Is there an easy way do this in MySQL?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "javafx",
+                "datepicker",
+                "java-9",
+                "jfoenix"
+            ],
+            "owner": {
+                "reputation": 56,
+                "user_id": 4239282,
+                "user_type": "registered",
+                "accept_rate": 77,
+                "profile_image": "https://i.stack.imgur.com/1J90h.jpg?s=128&g=1",
+                "display_name": "Mohd",
+                "link": "https://stackoverflow.com/users/4239282/mohd"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523521890,
+            "creation_date": 1523521890,
+            "question_id": 49791644,
+            "body_markdown": " moved my project to JDK9 ,I started get this exception which I beleive is a bug .. in my project I have a JFXDatePicker , in my module-info.java, I requires 2 packages  &quot;requires javafx.controls; &quot; &amp; the JFoenix &quot;requires com.jfoenix;&quot; for the JFXDatePicker ..\r\n\r\nthe exception is this:  \r\n \r\n      Exception in thread &quot;JavaFX Application Thread&quot; \r\n      java.lang.IllegalAccessError: superclass access check failed: class \r\n      com.jfoenix.controls.behavior.JFXGenericPickerBehavior (in module \r\n      com.jfoenix) cannot access class \r\n      com.sun.javafx.scene.control.behavior.ComboBoxBaseBehavior (in module \r\n      javafx.controls) because module javafx.controls does not export \r\n      com.sun.javafx.scene.control.behavior to module com.jfoenix\r\n\r\nThe thing is I have no ComboBox used in my project .\r\n\r\nThe solution was to use DatePicker of javaFx though it was not that looking good as the JFXDatePicker .\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49791644/jfoenix-a-bug-maybe-with-javafx-control",
+            "title": "JFoenix a Bug maybe with javaFx control",
+            "body": "<p>moved my project to JDK9 ,I started get this exception which I beleive is a bug .. in my project I have a JFXDatePicker , in my module-info.java, I requires 2 packages  \"requires javafx.controls; \" &amp; the JFoenix \"requires com.jfoenix;\" for the JFXDatePicker ..</p>\n\n<p>the exception is this:  </p>\n\n<pre><code>  Exception in thread \"JavaFX Application Thread\" \n  java.lang.IllegalAccessError: superclass access check failed: class \n  com.jfoenix.controls.behavior.JFXGenericPickerBehavior (in module \n  com.jfoenix) cannot access class \n  com.sun.javafx.scene.control.behavior.ComboBoxBaseBehavior (in module \n  javafx.controls) because module javafx.controls does not export \n  com.sun.javafx.scene.control.behavior to module com.jfoenix\n</code></pre>\n\n<p>The thing is I have no ComboBox used in my project .</p>\n\n<p>The solution was to use DatePicker of javaFx though it was not that looking good as the JFXDatePicker .</p>\n"
+        },
+        {
+            "tags": [
+                "fluent-nhibernate"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9634838,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ab2796b640ca737e6c7952722250e143?s=128&d=identicon&r=PG&f=1",
+                "display_name": "fabsulous",
+                "link": "https://stackoverflow.com/users/9634838/fabsulous"
+            },
+            "is_answered": false,
+            "view_count": 4,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523521884,
+            "creation_date": 1523521884,
+            "question_id": 49791639,
+            "body_markdown": "I am having a problem replacing a legacy ORM with fluent nhibernate. I am trying to figure out how to map nested abstract classes with table per concrete class, while using Automap. Compared to the examples I have found, I have two abstract classes in my hierarchy.\r\n\r\n    public abstract class AbstractBaseEntity\r\n    {\r\n        public virtual string Id { get; set; } = Guid.NewGuid().ToString();\r\n\r\n        public virtual AbstractIntermediateEntity Intermediate { get; set; } \r\n        public virtual ConcreteEntity Concrete { get; set; } \r\n    }\r\n\r\n    public abstract class AbstractIntermediateEntity : AbstractBaseEntity\r\n    {\r\n        public virtual string Property { get; set; }\r\n    }\r\n\r\n    public class ConcreteEntity : AbstractIntermediateEntity\r\n    {\r\n        public virtual string OtherProperty { get; set; }\r\n    }\r\n\r\nI am configuring my SessionFactory like this:\r\n\r\n    public class Configuration : DefaultAutomappingConfiguration\r\n    {\r\n        public override bool ShouldMap(Type type) =&gt; base.ShouldMap(type) &amp;&amp; typeof(AbstractBaseEntity).IsAssignableFrom(type);\r\n    }\r\n    \r\n    ...\r\n\r\n    var sessionFactory = Fluently.Configure()\r\n        .Database(SQLiteConfiguration.Standard.UsingFile(dataStorage.DataStorage.PathToDbFile))\r\n        .Mappings(m =&gt; m.AutoMappings\r\n            .Add(AutoMap.AssemblyOf&lt;AbstractBaseEntity&gt;(new Configuration())\r\n                .Override&lt;AbstractBaseEntity&gt;(_ =&gt; _.UseUnionSubclassForInheritanceMapping())\r\n                .IncludeBase&lt;AbstractBaseEntity&gt;()\r\n                .IncludeBase&lt;AbstractIntermediateEntity&gt;()))\r\n        .BuildSessionFactory();\r\n\r\nThe error I am getting is this telling me:\r\n\r\n    XmlSchemaValidationException: The element &#39;union-subclass&#39; in namespace \r\n    &#39;urn:nhibernate-mapping-2.2&#39; has invalid child element &#39;joined-subclass&#39; \r\n    in namespace &#39;urn:nhibernate-mapping-2.2&#39;.\r\n\r\nI understand this, you cannot mix union-subclass and joined-subclass, as generated by FNH:\r\n\r\n\t&lt;hibernate-mapping xmlns=&quot;urn:nhibernate-mapping-2.2&quot;&gt;\r\n\t  &lt;class xmlns=&quot;urn:nhibernate-mapping-2.2&quot; name=&quot;ApplicationFramework.Models.AbstractBaseEntity, ApplicationFramework, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null&quot; table=&quot;`AbstractBaseEntity`&quot; abstract=&quot;true&quot;&gt;\r\n\t\t&lt;id name=&quot;Id&quot; type=&quot;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089&quot;&gt;\r\n\t\t  &lt;column name=&quot;Id&quot; /&gt;\r\n\t\t  &lt;generator class=&quot;assigned&quot; /&gt;\r\n\t\t&lt;/id&gt;\r\n\t\t&lt;many-to-one class=&quot;ApplicationFramework.Models.AbstractIntermediateEntity, ApplicationFramework, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null&quot; name=&quot;Intermediate&quot;&gt;\r\n\t\t  &lt;column name=&quot;Intermediate_id&quot; /&gt;\r\n\t\t&lt;/many-to-one&gt;\r\n\t\t&lt;many-to-one class=&quot;ApplicationFramework.Models.ConcreteEntity, ApplicationFramework, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null&quot; name=&quot;Concrete&quot;&gt;\r\n\t\t  &lt;column name=&quot;Concrete_id&quot; /&gt;\r\n\t\t&lt;/many-to-one&gt;\r\n\t\t&lt;union-subclass name=&quot;ApplicationFramework.Models.AbstractIntermediateEntity, ApplicationFramework, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null&quot; abstract=&quot;true&quot;&gt;\r\n\t\t  &lt;property name=&quot;Property&quot; type=&quot;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089&quot;&gt;\r\n\t\t\t&lt;column name=&quot;Property&quot; /&gt;\r\n\t\t  &lt;/property&gt;\r\n\t\t  &lt;joined-subclass name=&quot;ApplicationFramework.Models.ConcreteEntity, ApplicationFramework, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null&quot; abstract=&quot;true&quot;&gt;\r\n\t\t\t&lt;key&gt;\r\n\t\t\t  &lt;column name=&quot;AbstractIntermediateEntity_id&quot; /&gt;\r\n\t\t\t&lt;/key&gt;\r\n\t\t\t&lt;property name=&quot;OtherProperty&quot; type=&quot;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089&quot;&gt;\r\n\t\t\t  &lt;column name=&quot;OtherProperty&quot; /&gt;\r\n\t\t\t&lt;/property&gt;\r\n\t\t  &lt;/joined-subclass&gt;\r\n\t\t&lt;/union-subclass&gt;\r\n\t  &lt;/class&gt;\r\n\t&lt;/hibernate-mapping&gt;\r\n\r\n**So, my question is how do I configure FNH correctly using Automap?**\r\n\r\nNote that I can get this to work with fluent mappings, using `ClassMap&lt;AbstractBaseEntity&gt;`, `SubclassMap&lt;AbstractIntermediateEntity&gt;` (invoking `Abstract`) and `SubclassMap&lt;ConcreteEntity&gt;` but I really ought to be using Automap!\r\n\r\nThanks!",
+            "link": "https://stackoverflow.com/questions/49791639/nested-abstract-base-classes-and-table-per-concrete-class-in-fluent-nhibernate",
+            "title": "Nested abstract base classes and table-per-concrete-class in fluent nhibernate",
+            "body": "<p>I am having a problem replacing a legacy ORM with fluent nhibernate. I am trying to figure out how to map nested abstract classes with table per concrete class, while using Automap. Compared to the examples I have found, I have two abstract classes in my hierarchy.</p>\n\n<pre><code>public abstract class AbstractBaseEntity\n{\n    public virtual string Id { get; set; } = Guid.NewGuid().ToString();\n\n    public virtual AbstractIntermediateEntity Intermediate { get; set; } \n    public virtual ConcreteEntity Concrete { get; set; } \n}\n\npublic abstract class AbstractIntermediateEntity : AbstractBaseEntity\n{\n    public virtual string Property { get; set; }\n}\n\npublic class ConcreteEntity : AbstractIntermediateEntity\n{\n    public virtual string OtherProperty { get; set; }\n}\n</code></pre>\n\n<p>I am configuring my SessionFactory like this:</p>\n\n<pre><code>public class Configuration : DefaultAutomappingConfiguration\n{\n    public override bool ShouldMap(Type type) =&gt; base.ShouldMap(type) &amp;&amp; typeof(AbstractBaseEntity).IsAssignableFrom(type);\n}\n\n...\n\nvar sessionFactory = Fluently.Configure()\n    .Database(SQLiteConfiguration.Standard.UsingFile(dataStorage.DataStorage.PathToDbFile))\n    .Mappings(m =&gt; m.AutoMappings\n        .Add(AutoMap.AssemblyOf&lt;AbstractBaseEntity&gt;(new Configuration())\n            .Override&lt;AbstractBaseEntity&gt;(_ =&gt; _.UseUnionSubclassForInheritanceMapping())\n            .IncludeBase&lt;AbstractBaseEntity&gt;()\n            .IncludeBase&lt;AbstractIntermediateEntity&gt;()))\n    .BuildSessionFactory();\n</code></pre>\n\n<p>The error I am getting is this telling me:</p>\n\n<pre><code>XmlSchemaValidationException: The element 'union-subclass' in namespace \n'urn:nhibernate-mapping-2.2' has invalid child element 'joined-subclass' \nin namespace 'urn:nhibernate-mapping-2.2'.\n</code></pre>\n\n<p>I understand this, you cannot mix union-subclass and joined-subclass, as generated by FNH:</p>\n\n<pre><code>&lt;hibernate-mapping xmlns=\"urn:nhibernate-mapping-2.2\"&gt;\n  &lt;class xmlns=\"urn:nhibernate-mapping-2.2\" name=\"ApplicationFramework.Models.AbstractBaseEntity, ApplicationFramework, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null\" table=\"`AbstractBaseEntity`\" abstract=\"true\"&gt;\n    &lt;id name=\"Id\" type=\"System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089\"&gt;\n      &lt;column name=\"Id\" /&gt;\n      &lt;generator class=\"assigned\" /&gt;\n    &lt;/id&gt;\n    &lt;many-to-one class=\"ApplicationFramework.Models.AbstractIntermediateEntity, ApplicationFramework, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null\" name=\"Intermediate\"&gt;\n      &lt;column name=\"Intermediate_id\" /&gt;\n    &lt;/many-to-one&gt;\n    &lt;many-to-one class=\"ApplicationFramework.Models.ConcreteEntity, ApplicationFramework, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null\" name=\"Concrete\"&gt;\n      &lt;column name=\"Concrete_id\" /&gt;\n    &lt;/many-to-one&gt;\n    &lt;union-subclass name=\"ApplicationFramework.Models.AbstractIntermediateEntity, ApplicationFramework, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null\" abstract=\"true\"&gt;\n      &lt;property name=\"Property\" type=\"System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089\"&gt;\n        &lt;column name=\"Property\" /&gt;\n      &lt;/property&gt;\n      &lt;joined-subclass name=\"ApplicationFramework.Models.ConcreteEntity, ApplicationFramework, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null\" abstract=\"true\"&gt;\n        &lt;key&gt;\n          &lt;column name=\"AbstractIntermediateEntity_id\" /&gt;\n        &lt;/key&gt;\n        &lt;property name=\"OtherProperty\" type=\"System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089\"&gt;\n          &lt;column name=\"OtherProperty\" /&gt;\n        &lt;/property&gt;\n      &lt;/joined-subclass&gt;\n    &lt;/union-subclass&gt;\n  &lt;/class&gt;\n&lt;/hibernate-mapping&gt;\n</code></pre>\n\n<p><strong>So, my question is how do I configure FNH correctly using Automap?</strong></p>\n\n<p>Note that I can get this to work with fluent mappings, using <code>ClassMap&lt;AbstractBaseEntity&gt;</code>, <code>SubclassMap&lt;AbstractIntermediateEntity&gt;</code> (invoking <code>Abstract</code>) and <code>SubclassMap&lt;ConcreteEntity&gt;</code> but I really ought to be using Automap!</p>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "maven",
+                "intellij-idea",
+                "intellij-13"
+            ],
+            "owner": {
+                "reputation": 11801,
+                "user_id": 900130,
+                "user_type": "registered",
+                "accept_rate": 65,
+                "profile_image": "https://i.stack.imgur.com/m5mjk.jpg?s=128&g=1",
+                "display_name": "Zolt&#225;n",
+                "link": "https://stackoverflow.com/users/900130/zolt%c3%a1n"
+            },
+            "is_answered": true,
+            "view_count": 1957,
+            "accepted_answer_id": 25544832,
+            "answer_count": 1,
+            "score": 6,
+            "last_activity_date": 1523521877,
+            "creation_date": 1409215062,
+            "question_id": 25544358,
+            "body_markdown": "NetBeans and Eclipse have nice little wizards which allow me to search local and remote Maven repositories and add any dependency correctly to my POM.\r\n\r\nDoes IntelliJ (community edition) support anything of this sort?",
+            "link": "https://stackoverflow.com/questions/25544358/does-intellij-idea-have-an-add-maven-dependency-wizard-like-eclipse-and-netbea",
+            "title": "Does IntelliJ IDEA have an &quot;add maven dependency&quot; wizard like Eclipse and NetBeans?",
+            "body": "<p>NetBeans and Eclipse have nice little wizards which allow me to search local and remote Maven repositories and add any dependency correctly to my POM.</p>\n\n<p>Does IntelliJ (community edition) support anything of this sort?</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 24
+}

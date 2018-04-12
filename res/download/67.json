@@ -1,0 +1,834 @@
+{
+    "items": [
+        {
+            "tags": [
+                "php",
+                "postgresql",
+                "laravel-5.6"
+            ],
+            "owner": {
+                "reputation": 862,
+                "user_id": 980048,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://www.gravatar.com/avatar/dcca674e8debee95425f764403d89029?s=128&d=identicon&r=PG",
+                "display_name": "SNaRe",
+                "link": "https://stackoverflow.com/users/980048/snare"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539617,
+            "creation_date": 1523539476,
+            "last_edit_date": 1523539617,
+            "question_id": 49797779,
+            "body_markdown": "I have a complex query, which I am trying to conver to Query Builder Format - Laravel\r\nI am on Laravel 5.6\r\n\r\nI got this query\r\n\r\n    select DISTINCT ON (new_subject)\r\n      new_subject,\r\n      message_id,\r\n      product_id,\r\n      si,\r\n      question_date,\r\n      customer_id,\r\n      mbody\r\n    from (\r\n           select\r\n             trim(both &#39; &#39; from regexp_replace(a.subject, &#39;RE:|Re:&#39;, &#39;&#39;, &#39;g&#39;)) as new_subject,\r\n             *,\r\n             a.seller_id                                                       as si,\r\n             body                                                              as mbody\r\n           from messages a\r\n             INNER JOIN sellers b\r\n               ON a.seller_id = b.seller_id\r\n           WHERE a.product_id = 0\r\n                 AND a.seller_id IN (1, 2, 3, 4, 5, 6)\r\n         ) as x\r\n    GROUP BY new_subject, product_id, message_id, question_date, si, customer_id, mbody\r\n    ORDER BY new_subject, question_date DESC\r\n\r\nI tried to convert it but couldn&#39;t succeed.\r\n\r\n    DB::select(&#39;message_id&#39;,&#39;product_id&#39;,&#39;si&#39;,&#39;question_date&#39;,&#39;customer_id&#39;,&#39;mbody&#39;)\r\n                -&gt;addSelect(DISTINCT)\r\n                -&gt;selectSub(&#39;ON&#39;, &#39;new_subject&#39;)\r\n                -&gt;selectSub(&#39;new_subject&#39;, &#39;new_subject&#39;)\r\n                -&gt;from(&#39;select trim( both from regexp_replace(a.subject, RE:|Re:, , g) ) as new_subject, *, a.seller_id as si, body as mbody from messages as a INNER JOIN sellers as b ON a.seller_id = b.seller_id WHERE a.product_id = 0 AND a.seller_id IN($seller_id_with_comma) as x&#39;)\r\n                -&gt;groupBy(&#39;new_subject&#39;)\r\n                -&gt;groupBy(&#39;product_id&#39;)\r\n                -&gt;groupBy(&#39;message_id&#39;)\r\n                -&gt;groupBy(&#39;question_date&#39;)\r\n                -&gt;groupBy(&#39;si&#39;)\r\n                -&gt;groupBy(&#39;customer_id&#39;)\r\n                -&gt;groupBy(&#39;mbody&#39;)\r\n                -&gt;orderByRaw(&#39;new_subject ASC&#39;)\r\n                -&gt;orderBy(&#39;question_date&#39;, &#39;DESC&#39;)\r\n                -&gt;get();\r\n\r\n\r\n\r\n\r\n\r\nI got this error\r\n\r\n    \r\n\r\n&gt; Type error: Argument 1 passed to\r\n&gt; Illuminate\\Database\\Connection::prepareBindings() must be of the type\r\n&gt; array, string given, called in\r\n\r\nI need to write it with query style\r\n\r\nI could write it like this\r\n\r\n    $messages = DB::select(DB::raw(\r\n        &quot;select DISTINCT ON (new_subject) new_subject,\r\n          message_id,\r\n          product_id,\r\n          si,\r\n          question_date,\r\n          customer_id,mbody\r\n        from (\r\n               select\r\n                 trim(both &#39; &#39; from regexp_replace(a.subject, &#39;RE:|Re:&#39;, &#39;&#39;, &#39;g&#39;)) as new_subject,\r\n                 *,\r\n                 a.seller_id                                                       as si,\r\n                 body as mbody\r\n               from messages a\r\n                 INNER JOIN sellers b\r\n                   ON a.seller_id = b.seller_id\r\n               WHERE a.product_id = 0 AND a.seller_id IN(1,2,3)\r\n             ) as x\r\n        \r\n        GROUP BY new_subject, product_id, message_id, question_date, si,customer_id,mbody\r\n        ORDER BY new_subject, question_date DESC\r\n        &quot;));\r\n\r\nBut `-&gt;paginate()` - function doesn&#39;t work on this type of query, which is life saver.\r\n",
+            "link": "https://stackoverflow.com/questions/49797779/converting-a-query-with-subquery-into-query-builder-format-laravel",
+            "title": "Converting a query with subquery into Query Builder Format - Laravel",
+            "body": "<p>I have a complex query, which I am trying to conver to Query Builder Format - Laravel\nI am on Laravel 5.6</p>\n\n<p>I got this query</p>\n\n<pre><code>select DISTINCT ON (new_subject)\n  new_subject,\n  message_id,\n  product_id,\n  si,\n  question_date,\n  customer_id,\n  mbody\nfrom (\n       select\n         trim(both ' ' from regexp_replace(a.subject, 'RE:|Re:', '', 'g')) as new_subject,\n         *,\n         a.seller_id                                                       as si,\n         body                                                              as mbody\n       from messages a\n         INNER JOIN sellers b\n           ON a.seller_id = b.seller_id\n       WHERE a.product_id = 0\n             AND a.seller_id IN (1, 2, 3, 4, 5, 6)\n     ) as x\nGROUP BY new_subject, product_id, message_id, question_date, si, customer_id, mbody\nORDER BY new_subject, question_date DESC\n</code></pre>\n\n<p>I tried to convert it but couldn't succeed.</p>\n\n<pre><code>DB::select('message_id','product_id','si','question_date','customer_id','mbody')\n            -&gt;addSelect(DISTINCT)\n            -&gt;selectSub('ON', 'new_subject')\n            -&gt;selectSub('new_subject', 'new_subject')\n            -&gt;from('select trim( both from regexp_replace(a.subject, RE:|Re:, , g) ) as new_subject, *, a.seller_id as si, body as mbody from messages as a INNER JOIN sellers as b ON a.seller_id = b.seller_id WHERE a.product_id = 0 AND a.seller_id IN($seller_id_with_comma) as x')\n            -&gt;groupBy('new_subject')\n            -&gt;groupBy('product_id')\n            -&gt;groupBy('message_id')\n            -&gt;groupBy('question_date')\n            -&gt;groupBy('si')\n            -&gt;groupBy('customer_id')\n            -&gt;groupBy('mbody')\n            -&gt;orderByRaw('new_subject ASC')\n            -&gt;orderBy('question_date', 'DESC')\n            -&gt;get();\n</code></pre>\n\n<p>I got this error</p>\n\n<blockquote>\n  <p>Type error: Argument 1 passed to\n  Illuminate\\Database\\Connection::prepareBindings() must be of the type\n  array, string given, called in</p>\n</blockquote>\n\n<p>I need to write it with query style</p>\n\n<p>I could write it like this</p>\n\n<pre><code>$messages = DB::select(DB::raw(\n    \"select DISTINCT ON (new_subject) new_subject,\n      message_id,\n      product_id,\n      si,\n      question_date,\n      customer_id,mbody\n    from (\n           select\n             trim(both ' ' from regexp_replace(a.subject, 'RE:|Re:', '', 'g')) as new_subject,\n             *,\n             a.seller_id                                                       as si,\n             body as mbody\n           from messages a\n             INNER JOIN sellers b\n               ON a.seller_id = b.seller_id\n           WHERE a.product_id = 0 AND a.seller_id IN(1,2,3)\n         ) as x\n\n    GROUP BY new_subject, product_id, message_id, question_date, si,customer_id,mbody\n    ORDER BY new_subject, question_date DESC\n    \"));\n</code></pre>\n\n<p>But <code>-&gt;paginate()</code> - function doesn't work on this type of query, which is life saver.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pip",
+                "install",
+                "pyqt5"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 7844967,
+                "user_type": "registered",
+                "accept_rate": 20,
+                "profile_image": "https://www.gravatar.com/avatar/44f32abb1d37a9fcb8adfe517ffae23d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "FelipeFonsecabh",
+                "link": "https://stackoverflow.com/users/7844967/felipefonsecabh"
+            },
+            "is_answered": false,
+            "view_count": 3,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539617,
+            "creation_date": 1523539617,
+            "question_id": 49797828,
+            "body_markdown": "I have installed a PyQt5 inside a virtual env follow the steps: (Windows)\r\n\r\n1 - Download a sip and PyQt whl files from source\r\n\r\n2 - Open a administrator prompt\r\n\r\n3 - Activate virtual env\r\n\r\n4 - pip install sip &quot;path_sip_whl_file&quot;\r\n\r\n5 - pip install PyQt5 &quot;path_sip_whl_file&quot;\r\n\r\nApparently the procedure was sucessful\r\n\r\nBut when i try to execute command:\r\n\r\n    from PyQt5 import QtCore\r\n\r\nReturns me error:\r\n\r\n&quot;ImportError: DLL load failed: The specified module could not be found&quot;\r\n\r\nI need some more thing?\r\n\r\nThanks a lot!\r\nFelipe Fonseca",
+            "link": "https://stackoverflow.com/questions/49797828/pyqt5-inside-virtualenv-doesnt-work",
+            "title": "PyQt5 inside virtualenv doesn&#39;t work",
+            "body": "<p>I have installed a PyQt5 inside a virtual env follow the steps: (Windows)</p>\n\n<p>1 - Download a sip and PyQt whl files from source</p>\n\n<p>2 - Open a administrator prompt</p>\n\n<p>3 - Activate virtual env</p>\n\n<p>4 - pip install sip \"path_sip_whl_file\"</p>\n\n<p>5 - pip install PyQt5 \"path_sip_whl_file\"</p>\n\n<p>Apparently the procedure was sucessful</p>\n\n<p>But when i try to execute command:</p>\n\n<pre><code>from PyQt5 import QtCore\n</code></pre>\n\n<p>Returns me error:</p>\n\n<p>\"ImportError: DLL load failed: The specified module could not be found\"</p>\n\n<p>I need some more thing?</p>\n\n<p>Thanks a lot!\nFelipe Fonseca</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "firebase",
+                "google-cloud-firestore"
+            ],
+            "owner": {
+                "reputation": 116,
+                "user_id": 1086500,
+                "user_type": "registered",
+                "accept_rate": 33,
+                "profile_image": "https://www.gravatar.com/avatar/118c6287da9a1c21d8d4dc6582aa8068?s=128&d=identicon&r=PG",
+                "display_name": "user1086500",
+                "link": "https://stackoverflow.com/users/1086500/user1086500"
+            },
+            "is_answered": false,
+            "view_count": 9,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539616,
+            "creation_date": 1523539616,
+            "question_id": 49797827,
+            "body_markdown": "Warning: You might fall alseep before you reach the bottom of this post... ;-)\r\n\r\nMy app handles a database of different lists of items. One list, appList, is shipped with the app and maintained by me. The user can change some of the items stored in all lists, including the local version of appList. If I update the official version, the user is notified and they can update theire local version without theire changes beeing overwritten. \r\n\r\nI&#39;m currently trying to migrate from SQLite to FireStore and I have some trouble / challanges on how to solve this. I want appList to be a public list of items that is kept uptodate all the time by me - hence firestore. But then the user can&#39;t do any changes without messing it up for all the rest.\r\n\r\nOne solution I&#39;ve thought of is creating a copy of the appList on each user own collection of documents, privList. This way user changes to privList only applies to each users copy of appList. On the other hand if I update appList, the users private copy, privList, is not updated.\r\n\r\nSo, in short, what is the best way to create a public accessible collection of documents where changes are private for each user? Should I first read appList and then overwrite is userspecific changes from privList? But that means reading two documents for each item to display.\r\n\r\nOr should I tell the user to update privList from the app when updates are done to appList? This way privList is not necessarily uptodate compared to appList, but that is a user choice. Very similar to how it is done to day, but does not take advantage of FireStore in my opinion.\r\n\r\nStructure of FireStore\r\n\r\nprivList /app/users/UserId/privLists/listId/[documents/items] read and write user only\r\n\r\nappList /app/public/appList/[documents/items] - read world, write me",
+            "link": "https://stackoverflow.com/questions/49797827/firestore-public-database-with-individual-stored-changes",
+            "title": "Firestore public database with individual stored changes",
+            "body": "<p>Warning: You might fall alseep before you reach the bottom of this post... ;-)</p>\n\n<p>My app handles a database of different lists of items. One list, appList, is shipped with the app and maintained by me. The user can change some of the items stored in all lists, including the local version of appList. If I update the official version, the user is notified and they can update theire local version without theire changes beeing overwritten. </p>\n\n<p>I'm currently trying to migrate from SQLite to FireStore and I have some trouble / challanges on how to solve this. I want appList to be a public list of items that is kept uptodate all the time by me - hence firestore. But then the user can't do any changes without messing it up for all the rest.</p>\n\n<p>One solution I've thought of is creating a copy of the appList on each user own collection of documents, privList. This way user changes to privList only applies to each users copy of appList. On the other hand if I update appList, the users private copy, privList, is not updated.</p>\n\n<p>So, in short, what is the best way to create a public accessible collection of documents where changes are private for each user? Should I first read appList and then overwrite is userspecific changes from privList? But that means reading two documents for each item to display.</p>\n\n<p>Or should I tell the user to update privList from the app when updates are done to appList? This way privList is not necessarily uptodate compared to appList, but that is a user choice. Very similar to how it is done to day, but does not take advantage of FireStore in my opinion.</p>\n\n<p>Structure of FireStore</p>\n\n<p>privList /app/users/UserId/privLists/listId/[documents/items] read and write user only</p>\n\n<p>appList /app/public/appList/[documents/items] - read world, write me</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "node.js",
+                "while-loop"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9624948,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Jayyy",
+                "link": "https://stackoverflow.com/users/9624948/jayyy"
+            },
+            "is_answered": false,
+            "view_count": 40,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523539614,
+            "creation_date": 1523536828,
+            "last_edit_date": 1523538421,
+            "question_id": 49796848,
+            "body_markdown": " Im trying to get the question maxNum to repeat if guess is incorrect. I have tried a few different while loops, if anyone can help that would be great thanks a lot guys\r\n\r\n     const readlineSync = require(&#39;readline-sync&#39;);\r\n    \r\n    var name = readlineSync.question(&#39;What is your name?\\n&#39;);\r\n        console.log(&#39;Do you want to play a game &#39;+ name + &#39; ?&#39; );\r\n    // prompt question\r\n        var yesOrNo = readlineSync.question(&#39;Yes or No?&#39;) \r\n             if (yesOrNo === &#39;Yes&#39;){\r\n    \r\n        \r\n        //users number choice\r\n        let number =parseInt(readlineSync.question(&#39;Please enter a number&#39;)) \r\n            console.log(&#39;Great choice&#39;, name, + number + &#39; is your number!&#39;);\r\n                 let sum = 5 + number;\r\n                  console.log(number + &#39; plus &#39; + 5 + &#39; is &#39; + sum);\r\n        \r\n            i=ranNum\r\n                while( i != number) {\r\n                console.log(i)\r\n                i++\r\n    }\r\n    \r\n        // maxNum is user&#39;s input for the upper ceiling\r\n        let maxNum= readlineSync.question(name +&quot; &quot;+&#39;choose a number between &#39; + 0 +&quot; &quot;+ &#39; and &#39; +  number + &#39;\\n&#39;)\r\n        \r\n          \r\n        if (maxNum &gt; number) {\r\n            console.log(`You cannot use a number greater than ` + number)\r\n      \r\n        } else  {\r\n            // random number generated , that cannot surpass maxNum added + 1 so it can never be 0\r\n            let ranNum = Math.floor(Math.random() * maxNum) + 1; \r\n            \r\n                \r\n            if (number === ranNum) {\r\n                console.log(&#39;Correct! The number was &#39; + ranNum)\r\n            } else if ( ranNum &gt;  number) {\r\n                console.log(&#39;Close! Too high.&#39;);\r\n            } else if ( ranNum &lt; number) {\r\n                console.log(&#39;Almost! Too low.&#39;);\r\n            }\r\n        }\r\n        }",
+            "link": "https://stackoverflow.com/questions/49796848/trying-to-fix-my-while-loop",
+            "title": "trying to fix my while loop",
+            "body": "<p>Im trying to get the question maxNum to repeat if guess is incorrect. I have tried a few different while loops, if anyone can help that would be great thanks a lot guys</p>\n\n<pre><code> const readlineSync = require('readline-sync');\n\nvar name = readlineSync.question('What is your name?\\n');\n    console.log('Do you want to play a game '+ name + ' ?' );\n// prompt question\n    var yesOrNo = readlineSync.question('Yes or No?') \n         if (yesOrNo === 'Yes'){\n\n\n    //users number choice\n    let number =parseInt(readlineSync.question('Please enter a number')) \n        console.log('Great choice', name, + number + ' is your number!');\n             let sum = 5 + number;\n              console.log(number + ' plus ' + 5 + ' is ' + sum);\n\n        i=ranNum\n            while( i != number) {\n            console.log(i)\n            i++\n}\n\n    // maxNum is user's input for the upper ceiling\n    let maxNum= readlineSync.question(name +\" \"+'choose a number between ' + 0 +\" \"+ ' and ' +  number + '\\n')\n\n\n    if (maxNum &gt; number) {\n        console.log(`You cannot use a number greater than ` + number)\n\n    } else  {\n        // random number generated , that cannot surpass maxNum added + 1 so it can never be 0\n        let ranNum = Math.floor(Math.random() * maxNum) + 1; \n\n\n        if (number === ranNum) {\n            console.log('Correct! The number was ' + ranNum)\n        } else if ( ranNum &gt;  number) {\n            console.log('Close! Too high.');\n        } else if ( ranNum &lt; number) {\n            console.log('Almost! Too low.');\n        }\n    }\n    }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "text-to-speech",
+                "android-audiomanager"
+            ],
+            "owner": {
+                "reputation": 6390,
+                "user_id": 636571,
+                "user_type": "registered",
+                "accept_rate": 96,
+                "profile_image": "https://www.gravatar.com/avatar/dec0a1f33d52d991986212afe19074a3?s=128&d=identicon&r=PG",
+                "display_name": "an00b",
+                "link": "https://stackoverflow.com/users/636571/an00b"
+            },
+            "is_answered": true,
+            "view_count": 4623,
+            "accepted_answer_id": 6979025,
+            "answer_count": 1,
+            "score": 11,
+            "last_activity_date": 1523539612,
+            "creation_date": 1311963224,
+            "last_edit_date": 1523539612,
+            "question_id": 6877272,
+            "body_markdown": "As far as I can tell, there are currently are 7 audio streams in [Android][1]:\r\n\r\n    STREAM_ALARM         (for alarms)\r\n    STREAM_DTMF          (for DTMF Tones)\r\n    STREAM_MUSIC         (for music playback)\r\n    STREAM_NOTIFICATION  (for notifications)\r\n    STREAM_RING          (for the phone ring)\r\n    STREAM_SYSTEM        (for system sounds)\r\n    STREAM_VOICE_CALL    (for phone calls)\r\n\r\nI also know that it is possible to *explicitly* tell the TTS engine which stream to use:\r\n\r\n    params.put(TextToSpeech.Engine.KEY_PARAM_STREAM, String.valueOf(AudioManager.STREAM_ALARM));\r\n    mTts.speak(text, TextToSpeech.QUEUE_ADD, params);\r\n\r\n\r\nWhat I couldn&#39;t find, however, is what stream is used by default when I **don&#39;t** specify an audio stream.\r\n\r\nWhat is the default audio stream from Android&#39;s TextToSpeech engine?\r\n\r\nIs there a way to query which stream is *currently* being used by Android&#39;s TextToSpeech engine?\r\n\r\n**UPDATE:** `TextToSpeech.Engine` has a constant defined as [DEFAULT_STREAM][2] but it is unclear which of the 7 streams it is referring to. It has the same hex value (0x3) as STREAM_MUSIC, though. Is this it?\r\n\r\n\r\n  [1]: http://developer.android.com/reference/android/media/AudioManager.html\r\n  [2]: http://developer.android.com/reference/android/speech/tts/TextToSpeech.Engine.html#DEFAULT_STREAM",
+            "link": "https://stackoverflow.com/questions/6877272/what-is-the-default-audio-stream-of-tts",
+            "title": "What is the default audio stream of TTS?",
+            "body": "<p>As far as I can tell, there are currently are 7 audio streams in <a href=\"http://developer.android.com/reference/android/media/AudioManager.html\" rel=\"nofollow noreferrer\">Android</a>:</p>\n\n<pre><code>STREAM_ALARM         (for alarms)\nSTREAM_DTMF          (for DTMF Tones)\nSTREAM_MUSIC         (for music playback)\nSTREAM_NOTIFICATION  (for notifications)\nSTREAM_RING          (for the phone ring)\nSTREAM_SYSTEM        (for system sounds)\nSTREAM_VOICE_CALL    (for phone calls)\n</code></pre>\n\n<p>I also know that it is possible to <em>explicitly</em> tell the TTS engine which stream to use:</p>\n\n<pre><code>params.put(TextToSpeech.Engine.KEY_PARAM_STREAM, String.valueOf(AudioManager.STREAM_ALARM));\nmTts.speak(text, TextToSpeech.QUEUE_ADD, params);\n</code></pre>\n\n<p>What I couldn't find, however, is what stream is used by default when I <strong>don't</strong> specify an audio stream.</p>\n\n<p>What is the default audio stream from Android's TextToSpeech engine?</p>\n\n<p>Is there a way to query which stream is <em>currently</em> being used by Android's TextToSpeech engine?</p>\n\n<p><strong>UPDATE:</strong> <code>TextToSpeech.Engine</code> has a constant defined as <a href=\"http://developer.android.com/reference/android/speech/tts/TextToSpeech.Engine.html#DEFAULT_STREAM\" rel=\"nofollow noreferrer\">DEFAULT_STREAM</a> but it is unclear which of the 7 streams it is referring to. It has the same hex value (0x3) as STREAM_MUSIC, though. Is this it?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "collections",
+                "syntax"
+            ],
+            "owner": {
+                "reputation": 85,
+                "user_id": 8871549,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://www.gravatar.com/avatar/c4cd02e921a8cf731899969de3773453?s=128&d=identicon&r=PG&f=1",
+                "display_name": "MMelvin0581",
+                "link": "https://stackoverflow.com/users/8871549/mmelvin0581"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "closed_date": 1523539858,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1523539608,
+            "creation_date": 1523539608,
+            "question_id": 49797823,
+            "body_markdown": "Here is the function:\r\n\r\n    /**\r\n     * This function converts a Map into an List that is sorted in non decreasing order of the Map&#39;s values.\r\n     *\r\n     * @param map LinkedHashMap with Vertex keys and Integer values.\r\n     * @return A list of the Map entries sorted by value in non decreasing order.\r\n     */\r\n    public static List&lt;java.util.Map.Entry&lt;Vertex&lt;String&gt;, Integer&gt;&gt; sortMapByValue\r\n    (LinkedHashMap&lt;Vertex&lt;String&gt;, Integer&gt; map) {\r\n        // create a list of Map entries\r\n        List&lt;java.util.Map.Entry&lt;Vertex&lt;String&gt;, Integer&gt;&gt; list = new LinkedList&lt;&gt;(map.entrySet());\r\n        // sort on values\r\n        Collections.sort(list, (o1, o2) -&gt; o1.getValue().compareTo(o2.getValue()));\r\n\r\n        return list;\r\n}\r\n\r\nThe part I&#39;m confused on is the `Collections.sort(list, (o1, o2) -&gt; o1.getValue().compareTo(o2.getVaue()))`. I&#39;ve never seen the `(o1, o2) -&gt;` syntax before, but I&#39;m assuming `o1` and `o2` represent the keys in the Map, and the `o1.getValue().compareTo(o2.getValue()))` is doing a comparison based of the normal ordering of the values of the Map. Is this correct? Can someone break down the `(o1, o2) -&gt;` syntax for me please?",
+            "link": "https://stackoverflow.com/questions/49797823/i-need-a-syntax-explaination-for-collections-sort-in-a-function-that-sorts-a-m",
+            "closed_reason": "duplicate",
+            "title": "I need a syntax explaination for Collections.sort() in a function that sorts a Map by values",
+            "body": "<p>Here is the function:</p>\n\n<pre><code>/**\n * This function converts a Map into an List that is sorted in non decreasing order of the Map's values.\n *\n * @param map LinkedHashMap with Vertex keys and Integer values.\n * @return A list of the Map entries sorted by value in non decreasing order.\n */\npublic static List&lt;java.util.Map.Entry&lt;Vertex&lt;String&gt;, Integer&gt;&gt; sortMapByValue\n(LinkedHashMap&lt;Vertex&lt;String&gt;, Integer&gt; map) {\n    // create a list of Map entries\n    List&lt;java.util.Map.Entry&lt;Vertex&lt;String&gt;, Integer&gt;&gt; list = new LinkedList&lt;&gt;(map.entrySet());\n    // sort on values\n    Collections.sort(list, (o1, o2) -&gt; o1.getValue().compareTo(o2.getValue()));\n\n    return list;\n</code></pre>\n\n<p>}</p>\n\n<p>The part I'm confused on is the <code>Collections.sort(list, (o1, o2) -&gt; o1.getValue().compareTo(o2.getVaue()))</code>. I've never seen the <code>(o1, o2) -&gt;</code> syntax before, but I'm assuming <code>o1</code> and <code>o2</code> represent the keys in the Map, and the <code>o1.getValue().compareTo(o2.getValue()))</code> is doing a comparison based of the normal ordering of the values of the Map. Is this correct? Can someone break down the <code>(o1, o2) -&gt;</code> syntax for me please?</p>\n"
+        },
+        {
+            "tags": [
+                "twitter-bootstrap",
+                "mobile",
+                "menu"
+            ],
+            "owner": {
+                "reputation": 540,
+                "user_id": 4602605,
+                "user_type": "registered",
+                "accept_rate": 61,
+                "profile_image": "https://www.gravatar.com/avatar/0c921d4afb9c300fef44df63bf71e9b0?s=128&d=identicon&r=PG&f=1",
+                "display_name": "saitam",
+                "link": "https://stackoverflow.com/users/4602605/saitam"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1523539603,
+            "creation_date": 1523345607,
+            "question_id": 49747905,
+            "body_markdown": "I have read several topics with the same problem but it all didn&#39;t work on my problem, so I am posting this topic here. My code works fine on `Desktop` and also shows the `menu button` on `mobile`, but it wont open the menu on clicking it.\r\n\r\n    &lt;html lang=&quot;en&quot;&gt;\r\n\r\n      &lt;head&gt;\r\n        &lt;meta charset=&quot;utf-8&quot;&gt;\r\n        &lt;meta http-equiv=&quot;X-UA-Compatible&quot; content=&quot;IE=edge&quot;&gt;\r\n        &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;\r\n    \r\n        &lt;link href=&quot;/css/bootstrap.css&quot; rel=&quot;stylesheet&quot; type=&quot;text/css&quot; media=&quot;all&quot; /&gt;\r\n        &lt;link href=&quot;/css/theme.css&quot; rel=&quot;stylesheet&quot; type=&quot;text/css&quot; media=&quot;all&quot; /&gt;\r\n        &lt;link href=&quot;/css/themify-icons.css&quot; rel=&quot;stylesheet&quot; type=&quot;text/css&quot; media=&quot;all&quot; /&gt;\r\n        &lt;link href=&#39;http://fonts.googleapis.com/css?family=Lato:300,400%7CRaleway:100,400,300,500,600,700%7COpen+Sans:400,500,600&#39; rel=&#39;stylesheet&#39; type=&#39;text/css&#39;&gt;\r\n    \r\n        &lt;!-- In-lining styles to avoid needing a separate .css file --&gt;\r\n        &lt;style&gt;\r\n            hr { border-color: #cccccc; margin: 0; }\r\n            .no-margins { margin: 0px; }\r\n            .with-margins { margin: 10px; }\r\n            .col-centered { float: none; margin: 0 auto; }\r\n        &lt;/style&gt;\r\n      &lt;/head&gt;\r\n    \r\n    &lt;body&gt;\r\n        &lt;div class=&quot;nav-container&quot;&gt;\r\n            &lt;a id=&quot;top&quot;&gt;&lt;/a&gt;\r\n            &lt;nav&gt;\r\n                &lt;div class=&quot;nav-bar&quot;&gt;\r\n                    &lt;div class=&quot;module left&quot;&gt;\r\n                        &lt;a href=&quot;/&quot;&gt;\r\n                            &lt;img alt=&quot;Logo&quot; class=&quot;logo logo-dark&quot; src=&quot;/img/logo.png&quot;&gt;\r\n                        &lt;/a&gt;\r\n                    &lt;/div&gt;\r\n                    &lt;div class=&quot;module widget-handle mobile-toggle right visible-sm visible-xs&quot;&gt;\r\n                        &lt;i class=&quot;ti-menu&quot;&gt;&lt;/i&gt;\r\n                    &lt;/div&gt;\r\n                    \r\n                    &lt;div class=&quot;module-group right&quot;&gt;\r\n                        &lt;div class=&quot;module left&quot;&gt;\r\n                            &lt;ul class=&quot;menu&quot;&gt;\r\n                                &lt;li&gt;&lt;a href=&quot;/menu1&quot;&gt;menu1&lt;/a&gt;&lt;/li&gt;\r\n                                &lt;li&gt;&lt;a href=&quot;/menu2&quot;&gt;menu2&lt;/a&gt;&lt;/li&gt;\r\n                            &lt;/ul&gt;\r\n                        &lt;/div&gt;\r\n                        &lt;!--end of menu module--&gt;\r\n    \r\n                        &lt;div class=&quot;module widget-handle cart-widget-handle left&quot;&gt;\r\n                            &lt;div class=&quot;cart&quot;&gt;\r\n                                &lt;span&gt;username&lt;/span&gt;\r\n                                &lt;i class=&quot;ti-user has-dropdown&quot;&gt;&lt;/i&gt;\r\n                            &lt;/div&gt;\r\n                            &lt;div class=&quot;function&quot;&gt;\r\n                                &lt;div class=&quot;widget&quot;&gt;\r\n                                    &lt;ul class=&quot;cart-overview&quot;&gt;\r\n                                        &lt;li&gt;\r\n                                            &lt;a href=&quot;/profile&quot;&gt;\r\n                                                &lt;div class=&quot;description&quot;&gt;\r\n                                                    &lt;span&gt;Profile&lt;/span&gt;\r\n                                                &lt;/div&gt;\r\n                                            &lt;/a&gt;\r\n                                        &lt;/li&gt;\r\n                                        &lt;li&gt;\r\n                                            &lt;a href=&quot;/log-out&quot;&gt;\r\n                                                &lt;div class=&quot;description&quot;&gt;\r\n                                                    &lt;span&gt;Log out&lt;/span&gt;\r\n                                                &lt;/div&gt;\r\n                                            &lt;/a&gt;\r\n                                        &lt;/li&gt;\r\n                                    &lt;/ul&gt;\r\n                                &lt;/div&gt;\r\n                                &lt;!--end of widget--&gt;\r\n                            &lt;/div&gt;\r\n    \r\n                        &lt;/div&gt;\r\n                    &lt;/div&gt;\r\n                 \r\n\r\n   \r\n                &lt;!--end of module group--&gt;\r\n            &lt;/div&gt;\r\n        &lt;/nav&gt;\r\n    &lt;/div&gt;\r\n\r\n    &lt;div id=&quot;main-div&quot; class=&quot;with-margins&quot;&gt;\r\n        &lt;section&gt;\r\n        ...\r\n        &lt;/section&gt;\r\n    &lt;/div&gt;\r\n\r\n    &lt;footer&gt;\r\n    ...\r\n    &lt;/footer&gt;\r\n\r\n    &lt;link href=&quot;/js/jquery.min.js&quot; rel=&quot;stylesheet&quot; type=&quot;text/css&quot; media=&quot;all&quot; /&gt;\r\n    &lt;link href=&quot;/js/bootstrap.min.js&quot; rel=&quot;stylesheet&quot; type=&quot;text/css&quot; media=&quot;all&quot; /&gt;\r\n    &lt;link href=&quot;/js/scripts.js&quot; rel=&quot;stylesheet&quot; type=&quot;text/css&quot; media=&quot;all&quot; /&gt;\r\n    \r\n    \r\n    &lt;/body&gt;\r\n    &lt;/html&gt;\r\n\r\n\r\nUnfortunately I couldn&#39;t get it to run in jsfiddle, but I will try again later. Many thanks in advance, if somebody can figure out what could be wrong with the code.\r\n",
+            "link": "https://stackoverflow.com/questions/49747905/bootstrap-mobile-menu-does-not-open-when-clicking-it",
+            "title": "Bootstrap mobile menu does not open when clicking it",
+            "body": "<p>I have read several topics with the same problem but it all didn't work on my problem, so I am posting this topic here. My code works fine on <code>Desktop</code> and also shows the <code>menu button</code> on <code>mobile</code>, but it wont open the menu on clicking it.</p>\n\n<pre><code>&lt;html lang=\"en\"&gt;\n\n  &lt;head&gt;\n    &lt;meta charset=\"utf-8\"&gt;\n    &lt;meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"&gt;\n    &lt;meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"&gt;\n\n    &lt;link href=\"/css/bootstrap.css\" rel=\"stylesheet\" type=\"text/css\" media=\"all\" /&gt;\n    &lt;link href=\"/css/theme.css\" rel=\"stylesheet\" type=\"text/css\" media=\"all\" /&gt;\n    &lt;link href=\"/css/themify-icons.css\" rel=\"stylesheet\" type=\"text/css\" media=\"all\" /&gt;\n    &lt;link href='http://fonts.googleapis.com/css?family=Lato:300,400%7CRaleway:100,400,300,500,600,700%7COpen+Sans:400,500,600' rel='stylesheet' type='text/css'&gt;\n\n    &lt;!-- In-lining styles to avoid needing a separate .css file --&gt;\n    &lt;style&gt;\n        hr { border-color: #cccccc; margin: 0; }\n        .no-margins { margin: 0px; }\n        .with-margins { margin: 10px; }\n        .col-centered { float: none; margin: 0 auto; }\n    &lt;/style&gt;\n  &lt;/head&gt;\n\n&lt;body&gt;\n    &lt;div class=\"nav-container\"&gt;\n        &lt;a id=\"top\"&gt;&lt;/a&gt;\n        &lt;nav&gt;\n            &lt;div class=\"nav-bar\"&gt;\n                &lt;div class=\"module left\"&gt;\n                    &lt;a href=\"/\"&gt;\n                        &lt;img alt=\"Logo\" class=\"logo logo-dark\" src=\"/img/logo.png\"&gt;\n                    &lt;/a&gt;\n                &lt;/div&gt;\n                &lt;div class=\"module widget-handle mobile-toggle right visible-sm visible-xs\"&gt;\n                    &lt;i class=\"ti-menu\"&gt;&lt;/i&gt;\n                &lt;/div&gt;\n\n                &lt;div class=\"module-group right\"&gt;\n                    &lt;div class=\"module left\"&gt;\n                        &lt;ul class=\"menu\"&gt;\n                            &lt;li&gt;&lt;a href=\"/menu1\"&gt;menu1&lt;/a&gt;&lt;/li&gt;\n                            &lt;li&gt;&lt;a href=\"/menu2\"&gt;menu2&lt;/a&gt;&lt;/li&gt;\n                        &lt;/ul&gt;\n                    &lt;/div&gt;\n                    &lt;!--end of menu module--&gt;\n\n                    &lt;div class=\"module widget-handle cart-widget-handle left\"&gt;\n                        &lt;div class=\"cart\"&gt;\n                            &lt;span&gt;username&lt;/span&gt;\n                            &lt;i class=\"ti-user has-dropdown\"&gt;&lt;/i&gt;\n                        &lt;/div&gt;\n                        &lt;div class=\"function\"&gt;\n                            &lt;div class=\"widget\"&gt;\n                                &lt;ul class=\"cart-overview\"&gt;\n                                    &lt;li&gt;\n                                        &lt;a href=\"/profile\"&gt;\n                                            &lt;div class=\"description\"&gt;\n                                                &lt;span&gt;Profile&lt;/span&gt;\n                                            &lt;/div&gt;\n                                        &lt;/a&gt;\n                                    &lt;/li&gt;\n                                    &lt;li&gt;\n                                        &lt;a href=\"/log-out\"&gt;\n                                            &lt;div class=\"description\"&gt;\n                                                &lt;span&gt;Log out&lt;/span&gt;\n                                            &lt;/div&gt;\n                                        &lt;/a&gt;\n                                    &lt;/li&gt;\n                                &lt;/ul&gt;\n                            &lt;/div&gt;\n                            &lt;!--end of widget--&gt;\n                        &lt;/div&gt;\n\n                    &lt;/div&gt;\n                &lt;/div&gt;\n\n\n\n            &lt;!--end of module group--&gt;\n        &lt;/div&gt;\n    &lt;/nav&gt;\n&lt;/div&gt;\n\n&lt;div id=\"main-div\" class=\"with-margins\"&gt;\n    &lt;section&gt;\n    ...\n    &lt;/section&gt;\n&lt;/div&gt;\n\n&lt;footer&gt;\n...\n&lt;/footer&gt;\n\n&lt;link href=\"/js/jquery.min.js\" rel=\"stylesheet\" type=\"text/css\" media=\"all\" /&gt;\n&lt;link href=\"/js/bootstrap.min.js\" rel=\"stylesheet\" type=\"text/css\" media=\"all\" /&gt;\n&lt;link href=\"/js/scripts.js\" rel=\"stylesheet\" type=\"text/css\" media=\"all\" /&gt;\n\n\n&lt;/body&gt;\n&lt;/html&gt;\n</code></pre>\n\n<p>Unfortunately I couldn't get it to run in jsfiddle, but I will try again later. Many thanks in advance, if somebody can figure out what could be wrong with the code.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-3.x",
+                "pandas",
+                "dictionary",
+                "dataframe"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 9635315,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1738186156219936/picture?type=large",
+                "display_name": "Shital",
+                "link": "https://stackoverflow.com/users/9635315/shital"
+            },
+            "is_answered": false,
+            "view_count": 45,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1523539600,
+            "creation_date": 1523528212,
+            "last_edit_date": 1523538234,
+            "question_id": 49793977,
+            "body_markdown": "I have thousands of row in given block structure. In this structure First row - Response Comments, Second row- Customer name and Last row - Recommended are fixed. Rest of the fields/rows are not mandatory. \r\n\r\n\r\nI am trying to write a code where I am reading Column Name = &#39;Response Comments&#39; then Key = Column Values of next row (Customer Name).\r\nThis should be done from Row - Response Comments to Recommended,\r\nThen breaking a loop and having new key value.\r\n\r\nThe data is from an Excel file: \r\n\r\n    from pandas import DataFrame \r\n    import pandas as pd\r\n    import os \r\n    import numpy as np \r\n    xl = pd.ExcelFile(&#39;Filepath&#39;) \r\n    df = xl.parse(&#39;Reviews_Structured&#39;) \r\n    print(type (df))\r\n\r\n    RowNum\t      Column Name\t            Column Values\t                  Key\r\n    \r\n    1\t    Response Comments\tthey have been unresponsive\t\r\n    2\t    Customer Name     \tBrian \t\r\n    3\t    Rating\t            2\t\r\n    4\t    RespComments Dtails\tABC\t    \r\n    5\t    Type Of Traveller\tCouple Leisure\t\r\n    6\t    Cabin Flown     \tEconomy\t    \r\n    7\t    Route\t            A to B\r\n    8\t    Date Flown\t        Sep-15\t\r\n    9\t    Seat Comfort\t    12345\t\r\n    10\t    Cabin Staff Service\t12345\t\r\n    11\t    Ground Service\t    12345\t\r\n    12\t    Value For Money\t    12345\t\r\n    13\t    Recommended\t        no\t\r\n\r\n\r\nAny help regarding this loop code will be appreciated.",
+            "link": "https://stackoverflow.com/questions/49793977/iterative-loop-in-dataframe-creating-data-dictionary-dynamically",
+            "title": "Iterative loop in dataframe - creating data dictionary dynamically",
+            "body": "<p>I have thousands of row in given block structure. In this structure First row - Response Comments, Second row- Customer name and Last row - Recommended are fixed. Rest of the fields/rows are not mandatory. </p>\n\n<p>I am trying to write a code where I am reading Column Name = 'Response Comments' then Key = Column Values of next row (Customer Name).\nThis should be done from Row - Response Comments to Recommended,\nThen breaking a loop and having new key value.</p>\n\n<p>The data is from an Excel file: </p>\n\n<pre><code>from pandas import DataFrame \nimport pandas as pd\nimport os \nimport numpy as np \nxl = pd.ExcelFile('Filepath') \ndf = xl.parse('Reviews_Structured') \nprint(type (df))\n\nRowNum        Column Name               Column Values                     Key\n\n1       Response Comments   they have been unresponsive \n2       Customer Name       Brian   \n3       Rating              2   \n4       RespComments Dtails ABC     \n5       Type Of Traveller   Couple Leisure  \n6       Cabin Flown         Economy     \n7       Route               A to B\n8       Date Flown          Sep-15  \n9       Seat Comfort        12345   \n10      Cabin Staff Service 12345   \n11      Ground Service      12345   \n12      Value For Money     12345   \n13      Recommended         no  \n</code></pre>\n\n<p>Any help regarding this loop code will be appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "symfony",
+                "doctrine2",
+                "orm",
+                "symfony4"
+            ],
+            "owner": {
+                "reputation": 2665,
+                "user_id": 1463336,
+                "user_type": "registered",
+                "accept_rate": 90,
+                "profile_image": "https://www.gravatar.com/avatar/88fc6fa442af1461c0a09e37bc38522b?s=128&d=identicon&r=PG",
+                "display_name": "Stphane",
+                "link": "https://stackoverflow.com/users/1463336/stphane"
+            },
+            "is_answered": false,
+            "view_count": 48,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523539597,
+            "creation_date": 1523376740,
+            "last_edit_date": 1523382407,
+            "question_id": 49758372,
+            "body_markdown": "We have a service which purpose is to log user actions into database. The underlying entity _ActionLog_ has a _manyToOne_ relation with our _User_ entity. Both those entities are tied to the same DBAL connection (and ORM EntityManager).\r\n\r\n**Issue is**: an exception is raised when a new _ActionLog_ entity is persisted and flushed, saying we should cascade persist the object set as the _#user_ property because considered new:\r\n&gt; **A new entity was found** through the relationship &#39;Doctrine\\Model\\ActionLog#user&#39; that was not configured to cascade persist operations for entity: John Doe. To solve this issue: Either explicitly call EntityManager#persist() on this unknown entity or configure cascade persist this association in the mapping for example @ManyToOne(..,cascade={&quot;persist&quot;}).\r\n\r\nAnd this is annoying because the User instance actually comes straight from the database and as such isn&#39;t new at all! We expect this User object to already be [&quot;MANAGED&quot;][1] by the _entityManager_ and be [referenced through the _identity map_][1] (in other words, the object is not &quot;detached&quot;).\r\n\r\n---\r\n\r\n**So**, why would Doctrine consider the User entity instance (authenticated user) as detached/new?\r\n\r\n---\r\n\r\n_Using Symfony 4.0.6 ; doctrine/orm v2.6.1, doctrine/dbal 2.6.3, doctrine/doctrine-bundle 1.8.1_\r\n\r\n**ActionLog** model mapping extract\r\n\r\n    Doctrine\\Model\\ActionLog:\r\n        type: entity\r\n        table: action_log\r\n        repositoryClass: Doctrine\\Repository\\ActionLogRepository\r\n\r\n        manyToOne:\r\n            user:\r\n                targetEntity: Doctrine\\Model\\User\r\n        id: # …\r\n        fields: # …\r\n\r\n**Log service declaration** \r\n\r\n    log_manager:\r\n        class: Service\\Log\\LogManager\r\n        public: true\r\n        arguments:\r\n            - &quot;@?security.token_storage&quot;\r\n        calls:\r\n            # setter required instead of the dependency injection\r\n            # to prevent circular dependency.\r\n            - [&#39;setEntityManager&#39;, [&quot;@doctrine.orm.entity_manager&quot;]]\r\n\r\n**Log service implementation - Creates new ActionLog record** \r\n\r\n    &lt;?php\r\n\r\n    namespace Service\\Log;\r\n\r\n    use Doctrine\\Common\\Persistence\\ObjectManager;\r\n    use Symfony\\Component\\Security\\Core\\Authentication\\Token\\Storage\\TokenStorage;\r\n    use Symfony\\Component\\Security\\Core\\User\\UserInterface;\r\n    use Doctrine\\Model\\User;\r\n    use Doctrine\\Model\\ActionLog;\r\n\r\n    class LogManager\r\n    {\r\n        /**\r\n         * @var ObjectManager\r\n         */\r\n        protected $om;\r\n\r\n        /**\r\n         * @var TokenStorage\r\n         */\r\n        protected $tokenStorage;\r\n\r\n        /**\r\n         * @var User\r\n         */\r\n        protected $user;\r\n\r\n        /**\r\n         * @var bool\r\n         */\r\n        protected $disabled = false;\r\n\r\n        public function __construct(TokenStorage $tokenStorage = null)\r\n        {\r\n            $this-&gt;tokenStorage = $tokenStorage;\r\n        }\r\n\r\n        public function setEntityManager(ObjectManager $om)\r\n        {\r\n            $this-&gt;om = $om;\r\n        }\r\n\r\n        public function log(string $namespace, string $action, string $message = null, array $changeSet = null)\r\n        {\r\n            $log = new ActionLog;\r\n            $log\r\n                -&gt;setNamespace($namespace)\r\n                -&gt;setAction($action)\r\n                -&gt;setMessage($message)\r\n                -&gt;setChangeset($changeSet)\r\n            ;\r\n\r\n            if ($this-&gt;isDisabled()) {\r\n                return;\r\n            }\r\n\r\n            if (!$log-&gt;getUser()) {\r\n                $user = $this-&gt;getUser();\r\n                $log-&gt;setUsername(\r\n                    $user instanceof UserInterface\r\n                    ? $user-&gt;getUsername()\r\n                    : &#39;&#39;\r\n                );\r\n                $user instanceof User &amp;&amp; $log-&gt;setUser($user);\r\n            }\r\n\r\n            $this-&gt;om-&gt;persist($log);\r\n            $this-&gt;om-&gt;flush();\r\n        }\r\n\r\n        public function setUser(User $user): self\r\n        {\r\n            $this-&gt;user = $user;\r\n\r\n            return $this;\r\n        }\r\n\r\n        public function getUser(): ?UserInterface\r\n        {\r\n            if (!$this-&gt;user) {\r\n                if ($token = $this-&gt;tokenStorage-&gt;getToken()) {\r\n                    $this-&gt;user = $token-&gt;getUser();\r\n                }\r\n            }\r\n\r\n            return is_string($this-&gt;user) ? null : $this-&gt;user;\r\n        }\r\n\r\n        public function disable(bool $disabled = true): self\r\n        {\r\n            $this-&gt;disabled = $disabled;\r\n\r\n            return $this;\r\n        }\r\n\r\n        public function isDisabled(): bool\r\n        {\r\n            return $this-&gt;disabled;\r\n        }\r\n    }\r\n\r\n**User entity dump**. As you can see infos come from the database. \r\n\r\n    User {#417 ▼\r\n      #name: &quot;John Doe&quot;\r\n      #email: &quot;john_doe@example.com&quot;\r\n      #password: &quot;ec40577ad8057ee34ce0bb9414673bf3&quot;\r\n      #createdAt: DateTime @1523344938 {#427 ▶}\r\n      #enabled: true\r\n      #lastLogin: null\r\n      #id: 1\r\n    }\r\n    \r\n    # Associated database row\r\n    &#39;1&#39;, &#39;John Doe&#39;, &#39;john_doe@example.com&#39;, &#39;ec40577ad8057ee34ce0bb9414673bf3&#39;, &#39;2018-04-10 07:22:18&#39;, &#39;1&#39;, &#39;1&#39;, null\r\n\r\n\r\n  [1]: https://www.doctrine-project.org/projects/doctrine-orm/en/latest/reference/unitofwork.html#how-doctrine-keeps-track-of-objects",
+            "link": "https://stackoverflow.com/questions/49758372/false-new-entity-found-through-the-relationship-object-actually-exists-in-da",
+            "title": "False &quot;new entity found through the relationship&quot; - Object actually exists in database",
+            "body": "<p>We have a service which purpose is to log user actions into database. The underlying entity <em>ActionLog</em> has a <em>manyToOne</em> relation with our <em>User</em> entity. Both those entities are tied to the same DBAL connection (and ORM EntityManager).</p>\n\n<p><strong>Issue is</strong>: an exception is raised when a new <em>ActionLog</em> entity is persisted and flushed, saying we should cascade persist the object set as the <em>#user</em> property because considered new:</p>\n\n<blockquote>\n  <p><strong>A new entity was found</strong> through the relationship 'Doctrine\\Model\\ActionLog#user' that was not configured to cascade persist operations for entity: John Doe. To solve this issue: Either explicitly call EntityManager#persist() on this unknown entity or configure cascade persist this association in the mapping for example @ManyToOne(..,cascade={\"persist\"}).</p>\n</blockquote>\n\n<p>And this is annoying because the User instance actually comes straight from the database and as such isn't new at all! We expect this User object to already be <a href=\"https://www.doctrine-project.org/projects/doctrine-orm/en/latest/reference/unitofwork.html#how-doctrine-keeps-track-of-objects\" rel=\"nofollow noreferrer\">\"MANAGED\"</a> by the <em>entityManager</em> and be <a href=\"https://www.doctrine-project.org/projects/doctrine-orm/en/latest/reference/unitofwork.html#how-doctrine-keeps-track-of-objects\" rel=\"nofollow noreferrer\">referenced through the <em>identity map</em></a> (in other words, the object is not \"detached\").</p>\n\n<hr>\n\n<p><strong>So</strong>, why would Doctrine consider the User entity instance (authenticated user) as detached/new?</p>\n\n<hr>\n\n<p><em>Using Symfony 4.0.6 ; doctrine/orm v2.6.1, doctrine/dbal 2.6.3, doctrine/doctrine-bundle 1.8.1</em></p>\n\n<p><strong>ActionLog</strong> model mapping extract</p>\n\n<pre><code>Doctrine\\Model\\ActionLog:\n    type: entity\n    table: action_log\n    repositoryClass: Doctrine\\Repository\\ActionLogRepository\n\n    manyToOne:\n        user:\n            targetEntity: Doctrine\\Model\\User\n    id: # …\n    fields: # …\n</code></pre>\n\n<p><strong>Log service declaration</strong> </p>\n\n<pre><code>log_manager:\n    class: Service\\Log\\LogManager\n    public: true\n    arguments:\n        - \"@?security.token_storage\"\n    calls:\n        # setter required instead of the dependency injection\n        # to prevent circular dependency.\n        - ['setEntityManager', [\"@doctrine.orm.entity_manager\"]]\n</code></pre>\n\n<p><strong>Log service implementation - Creates new ActionLog record</strong> </p>\n\n<pre><code>&lt;?php\n\nnamespace Service\\Log;\n\nuse Doctrine\\Common\\Persistence\\ObjectManager;\nuse Symfony\\Component\\Security\\Core\\Authentication\\Token\\Storage\\TokenStorage;\nuse Symfony\\Component\\Security\\Core\\User\\UserInterface;\nuse Doctrine\\Model\\User;\nuse Doctrine\\Model\\ActionLog;\n\nclass LogManager\n{\n    /**\n     * @var ObjectManager\n     */\n    protected $om;\n\n    /**\n     * @var TokenStorage\n     */\n    protected $tokenStorage;\n\n    /**\n     * @var User\n     */\n    protected $user;\n\n    /**\n     * @var bool\n     */\n    protected $disabled = false;\n\n    public function __construct(TokenStorage $tokenStorage = null)\n    {\n        $this-&gt;tokenStorage = $tokenStorage;\n    }\n\n    public function setEntityManager(ObjectManager $om)\n    {\n        $this-&gt;om = $om;\n    }\n\n    public function log(string $namespace, string $action, string $message = null, array $changeSet = null)\n    {\n        $log = new ActionLog;\n        $log\n            -&gt;setNamespace($namespace)\n            -&gt;setAction($action)\n            -&gt;setMessage($message)\n            -&gt;setChangeset($changeSet)\n        ;\n\n        if ($this-&gt;isDisabled()) {\n            return;\n        }\n\n        if (!$log-&gt;getUser()) {\n            $user = $this-&gt;getUser();\n            $log-&gt;setUsername(\n                $user instanceof UserInterface\n                ? $user-&gt;getUsername()\n                : ''\n            );\n            $user instanceof User &amp;&amp; $log-&gt;setUser($user);\n        }\n\n        $this-&gt;om-&gt;persist($log);\n        $this-&gt;om-&gt;flush();\n    }\n\n    public function setUser(User $user): self\n    {\n        $this-&gt;user = $user;\n\n        return $this;\n    }\n\n    public function getUser(): ?UserInterface\n    {\n        if (!$this-&gt;user) {\n            if ($token = $this-&gt;tokenStorage-&gt;getToken()) {\n                $this-&gt;user = $token-&gt;getUser();\n            }\n        }\n\n        return is_string($this-&gt;user) ? null : $this-&gt;user;\n    }\n\n    public function disable(bool $disabled = true): self\n    {\n        $this-&gt;disabled = $disabled;\n\n        return $this;\n    }\n\n    public function isDisabled(): bool\n    {\n        return $this-&gt;disabled;\n    }\n}\n</code></pre>\n\n<p><strong>User entity dump</strong>. As you can see infos come from the database. </p>\n\n<pre><code>User {#417 ▼\n  #name: \"John Doe\"\n  #email: \"john_doe@example.com\"\n  #password: \"ec40577ad8057ee34ce0bb9414673bf3\"\n  #createdAt: DateTime @1523344938 {#427 ▶}\n  #enabled: true\n  #lastLogin: null\n  #id: 1\n}\n\n# Associated database row\n'1', 'John Doe', 'john_doe@example.com', 'ec40577ad8057ee34ce0bb9414673bf3', '2018-04-10 07:22:18', '1', '1', null\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "rpmbuild",
+                "binutils"
+            ],
+            "owner": {
+                "reputation": 556,
+                "user_id": 429596,
+                "user_type": "registered",
+                "accept_rate": 97,
+                "profile_image": "https://www.gravatar.com/avatar/2f3dc2de9fad3266e19c054da2d76f38?s=128&d=identicon&r=PG",
+                "display_name": "Fadecomic",
+                "link": "https://stackoverflow.com/users/429596/fadecomic"
+            },
+            "is_answered": false,
+            "view_count": 9,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523539596,
+            "creation_date": 1523484080,
+            "question_id": 49785041,
+            "body_markdown": "I have installed an updated gcc compiler suite and binutils on my RHEL6 system. These installations do not interfere with the system versions. However, when I build a static library with rpmbuild (using my upgraded compiler), I get errors when rpmbuild executes `strip`. It uses the system version, installed in `/usr/bin/strip`, rather than my updated version. I have verified that if I run strip manually from my updated install, everything is fine. I can reproduce the error by using `/usr/bin/strip`. \r\n\r\nIs there a way to make rpmbuild use my custom binutils rather than the system one?",
+            "link": "https://stackoverflow.com/questions/49785041/specify-which-version-of-strip-to-use-during-rpm-build-process",
+            "title": "Specify which version of strip to use during rpm build process",
+            "body": "<p>I have installed an updated gcc compiler suite and binutils on my RHEL6 system. These installations do not interfere with the system versions. However, when I build a static library with rpmbuild (using my upgraded compiler), I get errors when rpmbuild executes <code>strip</code>. It uses the system version, installed in <code>/usr/bin/strip</code>, rather than my updated version. I have verified that if I run strip manually from my updated install, everything is fine. I can reproduce the error by using <code>/usr/bin/strip</code>. </p>\n\n<p>Is there a way to make rpmbuild use my custom binutils rather than the system one?</p>\n"
+        },
+        {
+            "tags": [
+                "html",
+                "asp.net"
+            ],
+            "owner": {
+                "reputation": 195,
+                "user_id": 2229864,
+                "user_type": "registered",
+                "accept_rate": 49,
+                "profile_image": "https://www.gravatar.com/avatar/7d52c4589774215662efaddb49f2ef9f?s=128&d=identicon&r=PG",
+                "display_name": "nsds",
+                "link": "https://stackoverflow.com/users/2229864/nsds"
+            },
+            "is_answered": false,
+            "view_count": 491,
+            "answer_count": 3,
+            "score": 1,
+            "last_activity_date": 1523539594,
+            "creation_date": 1368504747,
+            "last_edit_date": 1368505015,
+            "question_id": 16534986,
+            "body_markdown": "I wants to post checkbox values to server using html. \r\n\r\nBut my code was retrieved nothing . please help \r\n\r\n    &lt;form action=&quot;Default2.aspx&quot; method=&quot;post&quot; &gt;\r\n    &lt;input type=&quot;checkbox&quot; name=&quot;attempt&quot; value=&quot;101&quot;&gt; I&#39;st attempt&lt;br&gt;\r\n    &lt;input type=&quot;checkbox&quot; name=&quot;attempt&quot; value=&quot;102&quot; checked&gt; 2nd attempt&lt;br&gt;\r\n    &lt;input type=&quot;submit&quot; value=&quot;Submit&quot;&gt;\r\n     &lt;/form&gt;",
+            "link": "https://stackoverflow.com/questions/16534986/post-checkbox-value-in-html",
+            "title": "POST Checkbox value in HTML",
+            "body": "<p>I want to post checkbox values to server using html. But my code retrieves nothing. Please help.</p>\n\n<pre><code>&lt;form action=\"Default2.aspx\" method=\"post\" &gt;\n&lt;input type=\"checkbox\" name=\"attempt\" value=\"101\"&gt; I'st attempt&lt;br&gt;\n&lt;input type=\"checkbox\" name=\"attempt\" value=\"102\" checked&gt; 2nd attempt&lt;br&gt;\n&lt;input type=\"submit\" value=\"Submit\"&gt;\n&lt;/form&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "oracle",
+                "group-by"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9636034,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/32a65239a2c242593191a608cc74c662?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Gha1d",
+                "link": "https://stackoverflow.com/users/9636034/gha1d"
+            },
+            "is_answered": true,
+            "view_count": 22,
+            "accepted_answer_id": 49796905,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523539593,
+            "creation_date": 1523536666,
+            "last_edit_date": 1523539593,
+            "question_id": 49796789,
+            "body_markdown": "Table and desired output:\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\nAny help is much appreciated.\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/SL7sS.png",
+            "link": "https://stackoverflow.com/questions/49796789/oracle-group-first-column-and-rest-to-same-line",
+            "title": "Oracle - Group first column and rest to same line",
+            "body": "<p>Table and desired output:</p>\n\n<p><a href=\"https://i.stack.imgur.com/SL7sS.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/SL7sS.png\" alt=\"enter image description here\"></a></p>\n\n<p>Any help is much appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "gettext",
+                "f-string"
+            ],
+            "owner": {
+                "reputation": 347,
+                "user_id": 2466146,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/ba708133ae57979be5fb538e117d8a57?s=128&d=identicon&r=PG",
+                "display_name": "mdargacz",
+                "link": "https://stackoverflow.com/users/2466146/mdargacz"
+            },
+            "is_answered": true,
+            "view_count": 24,
+            "accepted_answer_id": 49797812,
+            "answer_count": 1,
+            "score": 3,
+            "last_activity_date": 1523539588,
+            "creation_date": 1523539095,
+            "question_id": 49797658,
+            "body_markdown": "Previously you would use `gettext` as following:\r\n\r\n    _(&#39;Hey {},&#39;).format(username)\r\n\r\nbut what about new Python&#39;s f-string?\r\n\r\n    f&#39;Hey {username}&#39;\r\n",
+            "link": "https://stackoverflow.com/questions/49797658/how-to-use-gettext-with-python-3-6-f-strings",
+            "title": "How to use gettext with python &gt;3.6 f-strings",
+            "body": "<p>Previously you would use <code>gettext</code> as following:</p>\n\n<pre><code>_('Hey {},').format(username)\n</code></pre>\n\n<p>but what about new Python's f-string?</p>\n\n<pre><code>f'Hey {username}'\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "intellij-idea",
+                "gradle"
+            ],
+            "owner": {
+                "reputation": 102,
+                "user_id": 491924,
+                "user_type": "registered",
+                "accept_rate": 45,
+                "profile_image": "https://www.gravatar.com/avatar/d93055e7c8d404d6d55dcc1371dea414?s=128&d=identicon&r=PG",
+                "display_name": "emiles",
+                "link": "https://stackoverflow.com/users/491924/emiles"
+            },
+            "is_answered": true,
+            "view_count": 12540,
+            "accepted_answer_id": 38878290,
+            "answer_count": 2,
+            "score": 8,
+            "last_activity_date": 1523539579,
+            "creation_date": 1470843616,
+            "last_edit_date": 1470843820,
+            "question_id": 38877989,
+            "body_markdown": "Using IntelliJ 2016.2.  \r\nUsing Gradle 2.14.1\r\n\r\nI have 2 projects, each with their own build.gradle files and separate directory structures:\r\n\r\n    myLib (meant to be jarred and used by others)\r\n      - build.gradle\r\n      - settings.gradle\r\n      - src/main/java/...\r\n\r\n    sandbox (spring boot web app)\r\n      - build.gradle\r\n      - settings.gradle\r\n      - src/main/java/...\r\n      - src/main/resources/...\r\n\r\nHopefully, you get the picture. Within IntelliJ, I have the following module structure, at the same level (no subprojects):\r\n\r\n    - myLib\r\n    - sandbox\r\n\r\nSimple request ... I want to use `myLib` within the `sandbox` app. I want both modules in the same project in order to develop both.\r\n\r\nI&#39;ve tried adding a module dependency to `sandbox` for `myLib` within IntelliJ. No dice. I&#39;ve tried adding a jar reference, no dice.\r\n\r\nI believe I need to add a dependency in the build.gradle file but cannot figure out how. I&#39;ve tried `compile files &#39;&lt;path to myLib.jar&gt;&#39;`, etc. No dice.",
+            "link": "https://stackoverflow.com/questions/38877989/intellij-gradle-add-module-dependency",
+            "title": "IntelliJ gradle add module dependency",
+            "body": "<p>Using IntelliJ 2016.2.<br>\nUsing Gradle 2.14.1</p>\n\n<p>I have 2 projects, each with their own build.gradle files and separate directory structures:</p>\n\n<pre><code>myLib (meant to be jarred and used by others)\n  - build.gradle\n  - settings.gradle\n  - src/main/java/...\n\nsandbox (spring boot web app)\n  - build.gradle\n  - settings.gradle\n  - src/main/java/...\n  - src/main/resources/...\n</code></pre>\n\n<p>Hopefully, you get the picture. Within IntelliJ, I have the following module structure, at the same level (no subprojects):</p>\n\n<pre><code>- myLib\n- sandbox\n</code></pre>\n\n<p>Simple request ... I want to use <code>myLib</code> within the <code>sandbox</code> app. I want both modules in the same project in order to develop both.</p>\n\n<p>I've tried adding a module dependency to <code>sandbox</code> for <code>myLib</code> within IntelliJ. No dice. I've tried adding a jar reference, no dice.</p>\n\n<p>I believe I need to add a dependency in the build.gradle file but cannot figure out how. I've tried <code>compile files '&lt;path to myLib.jar&gt;'</code>, etc. No dice.</p>\n"
+        },
+        {
+            "tags": [
+                "azure",
+                "azure-cdn"
+            ],
+            "owner": {
+                "reputation": 19898,
+                "user_id": 11388,
+                "user_type": "registered",
+                "accept_rate": 82,
+                "profile_image": "https://www.gravatar.com/avatar/5d608d8fe9156b0e01b3f224e28409b0?s=128&d=identicon&r=PG",
+                "display_name": "Aaron Powell",
+                "link": "https://stackoverflow.com/users/11388/aaron-powell"
+            },
+            "is_answered": false,
+            "view_count": 65,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1523539578,
+            "creation_date": 1523272619,
+            "last_edit_date": 1523539578,
+            "question_id": 49731674,
+            "body_markdown": "I’m using Azure CDN in front of a Storage Account. I’m wanting to serve everything via HTTPS only, so I’ve setup HTTPS on the custom domain and created a URL rewrite:\r\n\r\n[![HTTPS rewrite rule][1]][1]\r\n\r\nBut the problem is that I end up at a URL like this:\r\nhttps://the-custom-domain/website/17/index.html\r\n\r\nThe `website/17/index.html` is the root content within the Storage Account, but I don’t know why it’s appending the container path before the filename. There’s also rewrite rule for static files (https://blog.lifeishao.com/2017/05/24/serving-your-static-sites-with-azure-blob-and-cdn).\r\n\r\nAny idea what’s wrong with the URL rewrite?\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/rdHBh.png",
+            "link": "https://stackoverflow.com/questions/49731674/forcing-https-with-azure-cdn",
+            "title": "Forcing HTTPS with Azure CDN",
+            "body": "<p>I’m using Azure CDN in front of a Storage Account. I’m wanting to serve everything via HTTPS only, so I’ve setup HTTPS on the custom domain and created a URL rewrite:</p>\n\n<p><a href=\"https://i.stack.imgur.com/rdHBh.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/rdHBh.png\" alt=\"HTTPS rewrite rule\"></a></p>\n\n<p>But the problem is that I end up at a URL like this:\n<a href=\"https://the-custom-domain/website/17/index.html\" rel=\"nofollow noreferrer\">https://the-custom-domain/website/17/index.html</a></p>\n\n<p>The <code>website/17/index.html</code> is the root content within the Storage Account, but I don’t know why it’s appending the container path before the filename. There’s also rewrite rule for static files (<a href=\"https://blog.lifeishao.com/2017/05/24/serving-your-static-sites-with-azure-blob-and-cdn\" rel=\"nofollow noreferrer\">https://blog.lifeishao.com/2017/05/24/serving-your-static-sites-with-azure-blob-and-cdn</a>).</p>\n\n<p>Any idea what’s wrong with the URL rewrite?</p>\n"
+        },
+        {
+            "tags": [
+                "xslt",
+                "optimization",
+                "biztalk"
+            ],
+            "owner": {
+                "reputation": 2160,
+                "user_id": 1129497,
+                "user_type": "registered",
+                "accept_rate": 86,
+                "profile_image": "https://www.gravatar.com/avatar/69e40fcaeee52b053db24a50329b811b?s=128&d=identicon&r=PG",
+                "display_name": "Chris",
+                "link": "https://stackoverflow.com/users/1129497/chris"
+            },
+            "is_answered": false,
+            "view_count": 85,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523539575,
+            "creation_date": 1352977255,
+            "last_edit_date": 1523539575,
+            "question_id": 13396156,
+            "body_markdown": "I&#39;m looking to optimise this XSLT slightly if anyone can spot any improvements / recommendations?\r\n\r\nI receive an XML file which follows along this sort of format:\r\n\r\n    &lt;TransfersToComplete&gt;\r\n    \t&lt;TransfersForFees&gt;\r\n    \t\t&lt;Transfer&gt;\r\n    \t\t\t&lt;PlayerID&gt;1234&lt;/PlayerID&gt;\r\n    \t\t\t&lt;ClubJoiningID&gt;4444&lt;/ClubJoiningID&gt;\r\n    \t\t\t&lt;FeeInPounds&gt;1200000&lt;/FeeInPounds&gt;\r\n    \t\t&lt;/Transfer&gt;\r\n    \t\t&lt;Transfer&gt;\r\n    \t\t\t&lt;PlayerID&gt;3835&lt;/PlayerID&gt;\r\n    \t\t\t&lt;ClubJoiningID&gt;4444&lt;/ClubJoiningID&gt;\r\n    \t\t\t&lt;FeeInPounds&gt;5000000&lt;/FeeInPounds&gt;\r\n    \t\t&lt;/Transfer&gt;\r\n    \t\t&lt;Transfer&gt;\r\n    \t\t\t&lt;PlayerID&gt;17118&lt;/PlayerID&gt;\r\n    \t\t\t&lt;ClubJoiningID&gt;5229&lt;/ClubJoiningID&gt;\r\n    \t\t\t&lt;FeeInPounds&gt;18000000&lt;/FeeInPounds&gt;\r\n    \t\t&lt;/Transfer&gt;\r\n    \t&lt;/TransfersForFees&gt;\r\n    \t&lt;FreeAgencyTransfers&gt;\r\n    \t\t&lt;FreeTransfer&gt;\r\n    \t\t\t&lt;PlayerID&gt;42323&lt;/PlayerID&gt;\r\n    \t\t\t&lt;ClubJoiningID&gt;332&lt;/ClubJoiningID&gt;\r\n    \t\t&lt;/FreeTransfer&gt;\r\n    \t&lt;/FreeAgencyTransfers&gt;\r\n    &lt;/TransfersToComplete&gt;\r\n\r\nI also have another XML file that contains the list of the &#39;active&#39; clubs (ie ones being controlled by players rather than AI)\r\n\r\n        &lt;ActiveClubs&gt;\r\n    &lt;Club&gt;&lt;ClubID&gt;1234&lt;/ClubID&gt;&lt;/Club&gt;\r\n        &lt;Club&gt;&lt;ClubID&gt;4482&lt;/ClubID&gt;&lt;/Club&gt;\r\n        &lt;/ActiveClubs&gt;\r\n\r\nI&#39;ve joined these in a dual input map as part of a Biztalk Solution, so the input document looks something like this:\r\n\r\n    &lt;Root&gt;\r\n    \t&lt;InputMessage0&gt;\r\n    \t\t&lt;ActiveClubs&gt;\r\n    \t\t\t&lt;Club&gt;\r\n    \t\t\t\t&lt;ClubID&gt;1234&lt;/ClubID&gt;\r\n    \t\t\t&lt;/Club&gt;\r\n    \t\t\t&lt;Club&gt;\r\n    \t\t\t\t&lt;ClubID&gt;4482&lt;/ClubID&gt;\r\n    \t\t\t&lt;/Club&gt;\r\n    \t\t&lt;/ActiveClubs&gt;\r\n    \t&lt;/InputMessage0&gt;\r\n    \t&lt;InputMessage1&gt;\r\n    \t\t&lt;TransfersToComplete&gt;\r\n    \t\t\t&lt;TransfersForFees&gt;\r\n    \t\t\t\t&lt;Transfer&gt;\r\n    \t\t\t\t\t&lt;PlayerID&gt;1234&lt;/PlayerID&gt;\r\n    \t\t\t\t\t&lt;ClubJoiningID&gt;4444&lt;/ClubJoiningID&gt;\r\n    \t\t\t\t\t&lt;FeeInPounds&gt;1200000&lt;/FeeInPounds&gt;\r\n    \t\t\t\t&lt;/Transfer&gt;\r\n    \t\t\t\t&lt;Transfer&gt;\r\n    \t\t\t\t\t&lt;PlayerID&gt;3835&lt;/PlayerID&gt;\r\n    \t\t\t\t\t&lt;ClubJoiningID&gt;4444&lt;/ClubJoiningID&gt;\r\n    \t\t\t\t\t&lt;FeeInPounds&gt;5000000&lt;/FeeInPounds&gt;\r\n    \t\t\t\t&lt;/Transfer&gt;\r\n    \t\t\t\t&lt;Transfer&gt;\r\n    \t\t\t\t\t&lt;PlayerID&gt;17118&lt;/PlayerID&gt;\r\n    \t\t\t\t\t&lt;ClubJoiningID&gt;5229&lt;/ClubJoiningID&gt;\r\n    \t\t\t\t\t&lt;FeeInPounds&gt;18000000&lt;/FeeInPounds&gt;\r\n    \t\t\t\t&lt;/Transfer&gt;\r\n    \t\t\t&lt;/TransfersForFees&gt;\r\n    \t\t\t&lt;FreeAgencyTransfers&gt;\r\n    \t\t\t\t&lt;FreeTransfer&gt;\r\n    \t\t\t\t\t&lt;PlayerID&gt;42323&lt;/PlayerID&gt;\r\n    \t\t\t\t\t&lt;ClubJoiningID&gt;332&lt;/ClubJoiningID&gt;\r\n    \t\t\t\t&lt;/FreeTransfer&gt;\r\n    \t\t\t&lt;/FreeAgencyTransfers&gt;\r\n    \t\t&lt;/TransfersToComplete&gt;\r\n    \t&lt;/InputMessage1&gt;\r\n    &lt;/Root&gt;\r\n\r\nI dont want every player on the game to see the full workings of every transfer, so I restrict to only their own clubs, my XSLT is as follows:\r\n\r\n        &lt;xsl:for-each select=&quot;/*[1]/ActiveClubs/Club&quot;&gt;\r\n    &lt;xsl:variable name =&quot;clubId&quot; select=&quot;current()/ClubID/text()&quot;/&gt;\r\n    &lt;...CallTemplate...&gt;\r\n    &lt;/xsl:for-each&gt;\r\n\r\nIs there a way I can optimise that for-each, and how does it help? I&#39;m seeing my CPU slowly getting chewed up as the number of active clubs grows so I assume this is a partial cause?\r\n\r\nEDIT:\r\n\r\nExpected Output would be variable ClubId first time around to be 1234, second time 4482\r\n\r\nIn my example above (2 active clubs) I see little/no performance degredation - its when I get to 40 and beyond...\r\n\r\nIn terms of showing the rest of the XSLT - This is the template it calls:\r\n\r\n    &lt;xsl:call-template name=&quot;DoPaidTransfers&quot;&gt;\r\n      &lt;xsl:with-param name=&quot;var:ClubId&quot; select=&quot;$clubId&quot;/&gt;\r\n    &lt;/xsl:call-template&gt;\r\n\r\nWhich is:\r\n\r\n      &lt;xsl:template name=&quot;DoPaidTransfers&quot;&gt;\r\n    &lt;xsl:param name=&quot;var:ClubId&quot;/&gt;\r\n    &lt;responseCode&gt;&lt;xsl:value-of select=&quot;CSharpCodeCall:DoPaidTransfers($clubId)&quot;/&gt;&lt;/responseCode&gt;\r\n    &lt;/xsl:template&gt;\r\n\r\nMy C# code writes them to a DB, returning a code for success, and this is passed on elsewhere through the environment.\r\nAs I say, it works as expected but I see significant performance loss when ramping up the number of clubs that are active.\r\n",
+            "link": "https://stackoverflow.com/questions/13396156/performance-optimisation-of-my-xslt1",
+            "title": "Performance optimisation of my XSLT1",
+            "body": "<p>I'm looking to optimise this XSLT slightly if anyone can spot any improvements / recommendations?</p>\n\n<p>I receive an XML file which follows along this sort of format:</p>\n\n<pre><code>&lt;TransfersToComplete&gt;\n    &lt;TransfersForFees&gt;\n        &lt;Transfer&gt;\n            &lt;PlayerID&gt;1234&lt;/PlayerID&gt;\n            &lt;ClubJoiningID&gt;4444&lt;/ClubJoiningID&gt;\n            &lt;FeeInPounds&gt;1200000&lt;/FeeInPounds&gt;\n        &lt;/Transfer&gt;\n        &lt;Transfer&gt;\n            &lt;PlayerID&gt;3835&lt;/PlayerID&gt;\n            &lt;ClubJoiningID&gt;4444&lt;/ClubJoiningID&gt;\n            &lt;FeeInPounds&gt;5000000&lt;/FeeInPounds&gt;\n        &lt;/Transfer&gt;\n        &lt;Transfer&gt;\n            &lt;PlayerID&gt;17118&lt;/PlayerID&gt;\n            &lt;ClubJoiningID&gt;5229&lt;/ClubJoiningID&gt;\n            &lt;FeeInPounds&gt;18000000&lt;/FeeInPounds&gt;\n        &lt;/Transfer&gt;\n    &lt;/TransfersForFees&gt;\n    &lt;FreeAgencyTransfers&gt;\n        &lt;FreeTransfer&gt;\n            &lt;PlayerID&gt;42323&lt;/PlayerID&gt;\n            &lt;ClubJoiningID&gt;332&lt;/ClubJoiningID&gt;\n        &lt;/FreeTransfer&gt;\n    &lt;/FreeAgencyTransfers&gt;\n&lt;/TransfersToComplete&gt;\n</code></pre>\n\n<p>I also have another XML file that contains the list of the 'active' clubs (ie ones being controlled by players rather than AI)</p>\n\n<pre><code>    &lt;ActiveClubs&gt;\n&lt;Club&gt;&lt;ClubID&gt;1234&lt;/ClubID&gt;&lt;/Club&gt;\n    &lt;Club&gt;&lt;ClubID&gt;4482&lt;/ClubID&gt;&lt;/Club&gt;\n    &lt;/ActiveClubs&gt;\n</code></pre>\n\n<p>I've joined these in a dual input map as part of a Biztalk Solution, so the input document looks something like this:</p>\n\n<pre><code>&lt;Root&gt;\n    &lt;InputMessage0&gt;\n        &lt;ActiveClubs&gt;\n            &lt;Club&gt;\n                &lt;ClubID&gt;1234&lt;/ClubID&gt;\n            &lt;/Club&gt;\n            &lt;Club&gt;\n                &lt;ClubID&gt;4482&lt;/ClubID&gt;\n            &lt;/Club&gt;\n        &lt;/ActiveClubs&gt;\n    &lt;/InputMessage0&gt;\n    &lt;InputMessage1&gt;\n        &lt;TransfersToComplete&gt;\n            &lt;TransfersForFees&gt;\n                &lt;Transfer&gt;\n                    &lt;PlayerID&gt;1234&lt;/PlayerID&gt;\n                    &lt;ClubJoiningID&gt;4444&lt;/ClubJoiningID&gt;\n                    &lt;FeeInPounds&gt;1200000&lt;/FeeInPounds&gt;\n                &lt;/Transfer&gt;\n                &lt;Transfer&gt;\n                    &lt;PlayerID&gt;3835&lt;/PlayerID&gt;\n                    &lt;ClubJoiningID&gt;4444&lt;/ClubJoiningID&gt;\n                    &lt;FeeInPounds&gt;5000000&lt;/FeeInPounds&gt;\n                &lt;/Transfer&gt;\n                &lt;Transfer&gt;\n                    &lt;PlayerID&gt;17118&lt;/PlayerID&gt;\n                    &lt;ClubJoiningID&gt;5229&lt;/ClubJoiningID&gt;\n                    &lt;FeeInPounds&gt;18000000&lt;/FeeInPounds&gt;\n                &lt;/Transfer&gt;\n            &lt;/TransfersForFees&gt;\n            &lt;FreeAgencyTransfers&gt;\n                &lt;FreeTransfer&gt;\n                    &lt;PlayerID&gt;42323&lt;/PlayerID&gt;\n                    &lt;ClubJoiningID&gt;332&lt;/ClubJoiningID&gt;\n                &lt;/FreeTransfer&gt;\n            &lt;/FreeAgencyTransfers&gt;\n        &lt;/TransfersToComplete&gt;\n    &lt;/InputMessage1&gt;\n&lt;/Root&gt;\n</code></pre>\n\n<p>I dont want every player on the game to see the full workings of every transfer, so I restrict to only their own clubs, my XSLT is as follows:</p>\n\n<pre><code>    &lt;xsl:for-each select=\"/*[1]/ActiveClubs/Club\"&gt;\n&lt;xsl:variable name =\"clubId\" select=\"current()/ClubID/text()\"/&gt;\n&lt;...CallTemplate...&gt;\n&lt;/xsl:for-each&gt;\n</code></pre>\n\n<p>Is there a way I can optimise that for-each, and how does it help? I'm seeing my CPU slowly getting chewed up as the number of active clubs grows so I assume this is a partial cause?</p>\n\n<p>EDIT:</p>\n\n<p>Expected Output would be variable ClubId first time around to be 1234, second time 4482</p>\n\n<p>In my example above (2 active clubs) I see little/no performance degredation - its when I get to 40 and beyond...</p>\n\n<p>In terms of showing the rest of the XSLT - This is the template it calls:</p>\n\n<pre><code>&lt;xsl:call-template name=\"DoPaidTransfers\"&gt;\n  &lt;xsl:with-param name=\"var:ClubId\" select=\"$clubId\"/&gt;\n&lt;/xsl:call-template&gt;\n</code></pre>\n\n<p>Which is:</p>\n\n<pre><code>  &lt;xsl:template name=\"DoPaidTransfers\"&gt;\n&lt;xsl:param name=\"var:ClubId\"/&gt;\n&lt;responseCode&gt;&lt;xsl:value-of select=\"CSharpCodeCall:DoPaidTransfers($clubId)\"/&gt;&lt;/responseCode&gt;\n&lt;/xsl:template&gt;\n</code></pre>\n\n<p>My C# code writes them to a DB, returning a code for success, and this is passed on elsewhere through the environment.\nAs I say, it works as expected but I see significant performance loss when ramping up the number of clubs that are active.</p>\n"
+        },
+        {
+            "tags": [
+                "ruby-on-rails",
+                "ruby",
+                "associations",
+                "one-to-many"
+            ],
+            "owner": {
+                "reputation": 45,
+                "user_id": 7517583,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/be98dd82cd84e22e984d46d1c0e5ae8a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Annie From Hell",
+                "link": "https://stackoverflow.com/users/7517583/annie-from-hell"
+            },
+            "is_answered": true,
+            "view_count": 32,
+            "accepted_answer_id": 49790861,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1523539572,
+            "creation_date": 1523519082,
+            "last_edit_date": 1523524795,
+            "question_id": 49790744,
+            "body_markdown": "I&#39;m designing a simple Rails app with 2 models: `Link` and `Category`. Each link has exactly one category, and a category can have 0 or multiple links. What association should I apply to `Link` and `Category`? I&#39;m very new to Ruby and those association terms are so confused to me.",
+            "link": "https://stackoverflow.com/questions/49790744/should-a-link-has-one-or-belongs-to-a-category",
+            "title": "Should a link &#39;has one&#39; or &#39;belongs_to&#39; a category?",
+            "body": "<p>I'm designing a simple Rails app with 2 models: <code>Link</code> and <code>Category</code>. Each link has exactly one category, and a category can have 0 or multiple links. What association should I apply to <code>Link</code> and <code>Category</code>? I'm very new to Ruby and those association terms are so confused to me.</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "codeigniter"
+            ],
+            "owner": {
+                "reputation": 930,
+                "user_id": 3495940,
+                "user_type": "registered",
+                "accept_rate": 65,
+                "profile_image": "https://graph.facebook.com/100000069061915/picture?type=large",
+                "display_name": "Masnad Nihit",
+                "link": "https://stackoverflow.com/users/3495940/masnad-nihit"
+            },
+            "is_answered": false,
+            "view_count": 31,
+            "closed_date": 1523542032,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539569,
+            "creation_date": 1523539294,
+            "last_edit_date": 1523539569,
+            "question_id": 49797719,
+            "body_markdown": "I have a piece of code that I use to store image to the database, sometimes it can be a pdf as well. \r\n\r\nI take the string and store it directly to the database.  I want to change the file size and then store it to the database so I don&#39;t store file size that are bigger than 1MB.\r\n\r\nI want to resize it just before storing.\r\n\r\nHere is the peice of code \r\n\r\n    $filename =     &#39;file&#39;.$i;\r\n                         \r\n                        $ImageName      = str_replace(&#39; &#39;,&#39;_&#39;,strtolower($_FILES[$filename][&#39;name&#39;]));\r\n                        $tmpName        = $_FILES[$filename][&#39;tmp_name&#39;];\r\n                        $ImageSize      = $_FILES[$filename][&#39;size&#39;];                   \r\n                        $ImageType      = $_FILES[$filename][&#39;type&#39;]; //&quot;image/png&quot;, image/jpeg etc.\r\n     \r\n                        $ImageExt       = substr($ImageName, strrpos($ImageName, &#39;.&#39;));\r\n                        $ImageExt       = str_replace(&#39;.&#39;,&#39;&#39;,$ImageExt);\r\n                        $ImageName      = preg_replace(&quot;/\\.[^.\\s]{3,4}$/&quot;, &quot;&quot;, $ImageName);\r\n                        $ImageName      = $ImageName.&#39;.&#39;.$ImageExt;\r\n     \r\n                        $fp             = fopen($tmpName, &#39;r&#39;);\r\n                        $image          = fread($fp, filesize($tmpName));\r\n                        fclose($fp);\r\n\r\nI am not sure how I can resize it. ",
+            "link": "https://stackoverflow.com/questions/49797719/resize-file-string-php",
+            "closed_reason": "duplicate",
+            "title": "resize file string php",
+            "body": "<p>I have a piece of code that I use to store image to the database, sometimes it can be a pdf as well. </p>\n\n<p>I take the string and store it directly to the database.  I want to change the file size and then store it to the database so I don't store file size that are bigger than 1MB.</p>\n\n<p>I want to resize it just before storing.</p>\n\n<p>Here is the peice of code </p>\n\n<pre><code>$filename =     'file'.$i;\n\n                    $ImageName      = str_replace(' ','_',strtolower($_FILES[$filename]['name']));\n                    $tmpName        = $_FILES[$filename]['tmp_name'];\n                    $ImageSize      = $_FILES[$filename]['size'];                   \n                    $ImageType      = $_FILES[$filename]['type']; //\"image/png\", image/jpeg etc.\n\n                    $ImageExt       = substr($ImageName, strrpos($ImageName, '.'));\n                    $ImageExt       = str_replace('.','',$ImageExt);\n                    $ImageName      = preg_replace(\"/\\.[^.\\s]{3,4}$/\", \"\", $ImageName);\n                    $ImageName      = $ImageName.'.'.$ImageExt;\n\n                    $fp             = fopen($tmpName, 'r');\n                    $image          = fread($fp, filesize($tmpName));\n                    fclose($fp);\n</code></pre>\n\n<p>I am not sure how I can resize it. </p>\n"
+        },
+        {
+            "tags": [
+                "html",
+                "css"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 7829226,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://www.gravatar.com/avatar/b346d0b8a1a0d87a83789e529ef1f2ef?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Mufleh",
+                "link": "https://stackoverflow.com/users/7829226/mufleh"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523539568,
+            "creation_date": 1523538921,
+            "last_edit_date": 1523539568,
+            "question_id": 49797594,
+            "body_markdown": "I have a problem with mobile or small screen window browser, when the window browser width is small like the mobile screen the text will become above the next paragraph or above the photo image how can fix this issue \r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-css --&gt;\r\n\r\n    figure {\r\n      margin:0px;\r\n      margin-right:22px;\r\n      display:inline-block;\r\n    }\r\n    figure img {\r\n      vertical-align: top;\r\n    }\r\n    figure figcaption {\r\n      max-width:150px;\r\n      padding-top:8px;\r\n      line-height:1em;\r\n      text-align: center;\r\n      font-size:15px !important;\r\n    }\r\n    #text{\r\n      display:inline-block;\r\n      position:absolute;\r\n      margin:10px 0px; \r\n    }\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;section&gt;\r\n        &lt;div style=&quot;display:inline-block;padding-top:8px;&quot;&gt;\r\n            &lt;figure&gt;\r\n                &lt;img src=&quot;http://placehold.it/200x200&quot; alt=&quot;missing&quot; width=&quot;150&quot;&gt;\r\n                &lt;figcaption&gt;Album name goes here\r\n                    &lt;br&gt;Year goes here\r\n                &lt;/figcaption&gt;\r\n            &lt;/figure&gt;\r\n        &lt;/div&gt;\r\n        &lt;div id=&quot;text&quot;&gt;\r\n            &lt;div style=&quot;font-size: 16px; margin-top: 0px;&quot;&gt;“Knowing what to DO and Don’t with the customers allows them to close more sales and build an engaging, valuable and great experience with the customers. That OSN Super Agent course had a huge impact on our organizational performance across the region.”\r\n                &lt;span style=&quot;font-size: 14px;&quot;&gt;[Firas Suleiman - Learning &amp;amp; Development Delivery Manager - UAE]&lt;/span&gt;&lt;/div&gt;\r\n        &lt;/div&gt;\r\n    &lt;/section&gt;\r\n    &lt;section&gt;\r\n        &lt;div style=&quot;display:inline-block;padding-top:8px;&quot;&gt;\r\n            &lt;figure&gt;\r\n                &lt;img src=&quot;http://placehold.it/200x200&quot; alt=&quot;missing&quot; width=&quot;150&quot;&gt;\r\n                &lt;figcaption&gt;Album name goes here\r\n                    &lt;br&gt;Year goes here\r\n                &lt;/figcaption&gt;\r\n            &lt;/figure&gt;\r\n        &lt;/div&gt;\r\n        &lt;div id=&quot;text&quot;&gt;\r\n            &lt;div style=&quot;font-size: 16px; margin-top: 7px;&quot;&gt;“The most exciting part is the difference between the normal agent and the super-agent and how the way of super-agent effect or change the idea to the customer and how should we deal with it. The course changes a lot in me in approaching customers, and that helped me to overachieve my target this month.”\r\n                &lt;span style=&quot;font-size: 14px;&quot;&gt;[Mujtaba Mohamed Ali - Direct location Leader – Bahrain]&lt;/span&gt;&lt;/div&gt;\r\n        &lt;/div&gt;\r\n    &lt;/section&gt;\r\n    &lt;section&gt;\r\n        &lt;div style=&quot;display:inline-block;padding-top:8px;&quot;&gt;\r\n            &lt;figure&gt;\r\n                &lt;img src=&quot;http://placehold.it/200x200&quot; alt=&quot;missing&quot; width=&quot;150&quot;&gt;\r\n                &lt;figcaption&gt;Album name goes here\r\n                    &lt;br&gt;Year goes here\r\n                &lt;/figcaption&gt;\r\n            &lt;/figure&gt;\r\n        &lt;/div&gt;\r\n        &lt;div id=&quot;text&quot;&gt;\r\n            &lt;div style=&quot;font-size: 16px; margin-top: 7px;&quot;&gt;“It was one of the best courses I completed on the LMS. The most exciting part is that one of the sales agents was the actor. He showed me how does it work in the field. I learned about the “Dos and Donts”, asking the customer about his/her preferences not mine. Listen carefully and make the customer feel valued.”\r\n                &lt;span style=&quot;font-size: 14px;&quot;&gt;[Ahmed Hassan Ali - Customer care advisor – Egypt]&lt;/span&gt;&lt;/div&gt;\r\n        &lt;/div&gt;\r\n    &lt;/section&gt;\r\n\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49797594/messing-text-on-mobile-or-small-browser-window",
+            "title": "messing text on mobile or small browser window?",
+            "body": "<p>I have a problem with mobile or small screen window browser, when the window browser width is small like the mobile screen the text will become above the next paragraph or above the photo image how can fix this issue </p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-css lang-css prettyprint-override\"><code>figure {\r\n  margin:0px;\r\n  margin-right:22px;\r\n  display:inline-block;\r\n}\r\nfigure img {\r\n  vertical-align: top;\r\n}\r\nfigure figcaption {\r\n  max-width:150px;\r\n  padding-top:8px;\r\n  line-height:1em;\r\n  text-align: center;\r\n  font-size:15px !important;\r\n}\r\n#text{\r\n  display:inline-block;\r\n  position:absolute;\r\n  margin:10px 0px; \r\n}</code></pre>\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>&lt;section&gt;\r\n    &lt;div style=\"display:inline-block;padding-top:8px;\"&gt;\r\n        &lt;figure&gt;\r\n            &lt;img src=\"http://placehold.it/200x200\" alt=\"missing\" width=\"150\"&gt;\r\n            &lt;figcaption&gt;Album name goes here\r\n                &lt;br&gt;Year goes here\r\n            &lt;/figcaption&gt;\r\n        &lt;/figure&gt;\r\n    &lt;/div&gt;\r\n    &lt;div id=\"text\"&gt;\r\n        &lt;div style=\"font-size: 16px; margin-top: 0px;\"&gt;“Knowing what to DO and Don’t with the customers allows them to close more sales and build an engaging, valuable and great experience with the customers. That OSN Super Agent course had a huge impact on our organizational performance across the region.”\r\n            &lt;span style=\"font-size: 14px;\"&gt;[Firas Suleiman - Learning &amp;amp; Development Delivery Manager - UAE]&lt;/span&gt;&lt;/div&gt;\r\n    &lt;/div&gt;\r\n&lt;/section&gt;\r\n&lt;section&gt;\r\n    &lt;div style=\"display:inline-block;padding-top:8px;\"&gt;\r\n        &lt;figure&gt;\r\n            &lt;img src=\"http://placehold.it/200x200\" alt=\"missing\" width=\"150\"&gt;\r\n            &lt;figcaption&gt;Album name goes here\r\n                &lt;br&gt;Year goes here\r\n            &lt;/figcaption&gt;\r\n        &lt;/figure&gt;\r\n    &lt;/div&gt;\r\n    &lt;div id=\"text\"&gt;\r\n        &lt;div style=\"font-size: 16px; margin-top: 7px;\"&gt;“The most exciting part is the difference between the normal agent and the super-agent and how the way of super-agent effect or change the idea to the customer and how should we deal with it. The course changes a lot in me in approaching customers, and that helped me to overachieve my target this month.”\r\n            &lt;span style=\"font-size: 14px;\"&gt;[Mujtaba Mohamed Ali - Direct location Leader – Bahrain]&lt;/span&gt;&lt;/div&gt;\r\n    &lt;/div&gt;\r\n&lt;/section&gt;\r\n&lt;section&gt;\r\n    &lt;div style=\"display:inline-block;padding-top:8px;\"&gt;\r\n        &lt;figure&gt;\r\n            &lt;img src=\"http://placehold.it/200x200\" alt=\"missing\" width=\"150\"&gt;\r\n            &lt;figcaption&gt;Album name goes here\r\n                &lt;br&gt;Year goes here\r\n            &lt;/figcaption&gt;\r\n        &lt;/figure&gt;\r\n    &lt;/div&gt;\r\n    &lt;div id=\"text\"&gt;\r\n        &lt;div style=\"font-size: 16px; margin-top: 7px;\"&gt;“It was one of the best courses I completed on the LMS. The most exciting part is that one of the sales agents was the actor. He showed me how does it work in the field. I learned about the “Dos and Donts”, asking the customer about his/her preferences not mine. Listen carefully and make the customer feel valued.”\r\n            &lt;span style=\"font-size: 14px;\"&gt;[Ahmed Hassan Ali - Customer care advisor – Egypt]&lt;/span&gt;&lt;/div&gt;\r\n    &lt;/div&gt;\r\n&lt;/section&gt;</code></pre>\r\n</div>\r\n</div>\r\n</p>\n"
+        },
+        {
+            "tags": [
+                "apache-kafka"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8495030,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-s7JJLAh-5DU/AAAAAAAAAAI/AAAAAAACshI/uUeoup4LS00/photo.jpg?sz=128",
+                "display_name": "Andr&#233;s Cidoncha Carballo",
+                "link": "https://stackoverflow.com/users/8495030/andr%c3%a9s-cidoncha-carballo"
+            },
+            "is_answered": false,
+            "view_count": 5,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523539567,
+            "creation_date": 1523537595,
+            "question_id": 49797105,
+            "body_markdown": "I&#39;m testing adding Kafka partitions in a running system, but isn&#39;t clear to me how Kafka manage the existent data if you add partitions to an existing topic. \r\n\r\nFor example:\r\n\r\n1. I have a Kafka instance with a topic named `test` with 1 partition and 1 replica.\r\n2. The producer group starts to insert into that topic and the consumer group start to consume.\r\n3. I alter the topic to add another partition.\r\n\r\nWhat happen with the topic data in this case? Is rebalanced between both partitions or only new produced data will use the new partition? ",
+            "link": "https://stackoverflow.com/questions/49797105/kafka-data-behaviour-on-partition-creation",
+            "title": "Kafka data behaviour on partition creation",
+            "body": "<p>I'm testing adding Kafka partitions in a running system, but isn't clear to me how Kafka manage the existent data if you add partitions to an existing topic. </p>\n\n<p>For example:</p>\n\n<ol>\n<li>I have a Kafka instance with a topic named <code>test</code> with 1 partition and 1 replica.</li>\n<li>The producer group starts to insert into that topic and the consumer group start to consume.</li>\n<li>I alter the topic to add another partition.</li>\n</ol>\n\n<p>What happen with the topic data in this case? Is rebalanced between both partitions or only new produced data will use the new partition? </p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "phpunit"
+            ],
+            "owner": {
+                "reputation": 215,
+                "user_id": 7767039,
+                "user_type": "registered",
+                "accept_rate": 77,
+                "profile_image": "https://www.gravatar.com/avatar/9aab2bbda73290834ffc37fbb92fa721?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Paul",
+                "link": "https://stackoverflow.com/users/7767039/paul"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539564,
+            "creation_date": 1523539564,
+            "question_id": 49797806,
+            "body_markdown": "Beginner in tests, I search the way to test my function which consists to check existence of my file and download it.\r\nAt each test, I receive this error : \r\n\r\n&gt; Error: Call to a member function getParameter() on null\r\n\r\n**My test :**\r\n    \r\n    public function testDownloadAction()\r\n    {\r\n        $DownloadUserGuideController = new DownloadUserGuideController();\r\n        $result_response = $DownloadUserGuideController-&gt;downloadAction();\r\n        $this-&gt;assertSame(Response::HTTP_OK, $result_response-&gt;getStatusCode());\r\n    }\r\n**My function:**\r\n\r\n    public function downloadAction()\r\n    {\r\n        $filePath = $this-&gt;getParameter(&#39;path_to_file&#39;);\r\n\r\n        if (!file_exists($filePath)) {\r\n            throw $this-&gt;createNotFoundException();\r\n        }\r\n\r\n        $response = new BinaryFileResponse($filePath);\r\n        $response-&gt;setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT);\r\n\r\n        return $response;\r\n    }\r\n",
+            "link": "https://stackoverflow.com/questions/49797806/call-to-a-member-function-getparameter-on-null-phpunit",
+            "title": "Call to a member function getParameter() on null / PHPUnit",
+            "body": "<p>Beginner in tests, I search the way to test my function which consists to check existence of my file and download it.\nAt each test, I receive this error : </p>\n\n<blockquote>\n  <p>Error: Call to a member function getParameter() on null</p>\n</blockquote>\n\n<p><strong>My test :</strong></p>\n\n<pre><code>public function testDownloadAction()\n{\n    $DownloadUserGuideController = new DownloadUserGuideController();\n    $result_response = $DownloadUserGuideController-&gt;downloadAction();\n    $this-&gt;assertSame(Response::HTTP_OK, $result_response-&gt;getStatusCode());\n}\n</code></pre>\n\n<p><strong>My function:</strong></p>\n\n<pre><code>public function downloadAction()\n{\n    $filePath = $this-&gt;getParameter('path_to_file');\n\n    if (!file_exists($filePath)) {\n        throw $this-&gt;createNotFoundException();\n    }\n\n    $response = new BinaryFileResponse($filePath);\n    $response-&gt;setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT);\n\n    return $response;\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "r"
+            ],
+            "owner": {
+                "reputation": 2374,
+                "user_id": 7420623,
+                "user_type": "registered",
+                "accept_rate": 66,
+                "profile_image": "https://i.stack.imgur.com/RY5rt.jpg?s=128&g=1",
+                "display_name": "ryguy72",
+                "link": "https://stackoverflow.com/users/7420623/ryguy72"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1523539556,
+            "creation_date": 1523481037,
+            "last_edit_date": 1523539556,
+            "question_id": 49784523,
+            "body_markdown": "I imported an XML file into R.  I did a little parsing on the data because it was really messy.  Now, I have a slightly cleaner data set, called &#39;doc&#39;, and I am trying to export it, but I&#39;m getting all kinds of errors.\r\n\r\nI tried this:\r\n\r\n    library(rvest)\r\n    df&lt;-xmlToDataFrame(nodes = getNodeSet(doc, &quot;//outputColumn&quot;))\r\n\r\nI got this:\r\n\r\n    Error in UseMethod(&quot;xpathApply&quot;) : \r\n      no applicable method for &#39;xpathApply&#39; applied to an object of class &quot;c(&#39;xml_document&#39;, &#39;xml_node&#39;)&quot;\r\n\r\nI tried this:\r\n\r\n    write.csv(doc, file = &quot;C:\\\\path_here\\\\MyData.csv&quot;)\r\n\r\nI got this:\r\n\r\n    Error in as.data.frame.default(x[[i]], optional = TRUE, stringsAsFactors = stringsAsFactors) : \r\n      cannot coerce class &quot;c(&quot;xml_document&quot;, &quot;xml_node&quot;)&quot; to a data.frame\r\n\r\nI tried this:\r\n\r\n    write.table(doc, &quot;C:\\\\path_here\\\\filename.txt, sep=&quot;\\t&quot;, col.names=F)\r\n\r\nI got this:\r\n\r\n    Error: unexpected input in &quot;write.table(doc, &quot;C:\\\\path_here\\\\filename.txt, sep=&quot;\\&quot;\r\n\r\n\r\nIs there a way to simplify this, so I can just get everything into a DataFrame, and export it?  Or, just dump everything into a text file.  That would be fine too.  Thanks.\r\n\r\n\r\n\r\n&#39;outputColumn refId=&#39;\r\n&#39;DTS:refId=&#39;\r\n&#39;/outputColumns&#39;\r\n\r\nHere is a sample of the XML:\r\n\r\n    truncationRowDisposition=&quot;FailComponent&quot;/&gt;&lt;outputColumn refId=&quot;Package\\Pre RawData\\108_DataPull\\108_1T2_Multi_MG_FUTURE\\108_MULTI_MG_FUTURE.Outputs[OLE DB Source Output].Columns[DEF_TAX_AMT]&quot; dataType=&quot;i4&quot; errorOrTruncationOperation=&quot;Conversion&quot; errorRowDisposition=&quot;FailComponent&quot; externalMetadataColumnId=&quot;Package\\Pre RawData\\108_DataPull\\108_1T2_Multi_MG_FUTURE\\108_MULTI_MG_FUTURE.Outputs[OLE DB Source Output].ExternalColumns[DEF_TAX_AMT]&quot; lineageId=&quot;Package\\Pre RawData\\108_DataPull\\108_1T2_Multi_MG_FUTURE\\108_MULTI_MG_FUTURE.Outputs[OLE DB Source Output].Columns[DEF_TAX_AMT]&quot; name=&quot;DEF_TAX_AMT&quot; truncationRowDisposition=&quot;FailComponent&quot;/&gt;&lt;outputColumn refId=&quot;Package\\Pre RawData\\108_DataPull\\108_1T2_Multi_MG_FUTURE\\108_MULTI_MG_FUTURE.Outputs[OLE DB Source Output].Columns[OTS_BALANCE]&quot; dataType=&quot;numeric&quot; errorOrTruncationOperation=&quot;Conversion&quot; errorRowDisposition=&quot;FailComponent&quot; externalMetadataColumnId=&quot;Package\\Pre RawData\\108_DataPull\\108_1T2_Multi_MG_FUTURE\\108_MULTI_MG_FUTURE.Outputs[OLE DB Source Output].ExternalColumns[OTS_BALANCE]&quot; lineageId=&quot;Package\\Pre RawData\\108_DataPull\\108_1T2_Multi_MG_FUTURE\\108_MULTI_MG_FUTURE.Outputs[OLE DB Source Output].Columns[OTS_BALANCE]&quot; name=&quot;OTS_BALANCE&quot; precision=&quot;19&quot; scale=&quot;2&quot; truncationRowDisposition=&quot;FailComponent&quot;/&gt;\r\n\r\nI want to pull out this part:\r\n\r\n    refId=&quot;Package\\Pre RawData\\108_DataPull\\108_1T2_Multi_MG_FUTURE\\108_MULTI_MG_FUTURE.Outputs[OLE DB Source Output].Columns[DEF_TAX_AMT]&quot;\r\n\r\nIf I can just aggregate everything between the quotes on the line with &#39;outputColumn refId=&#39; to a list, and export the list to a file (CSV, TXT, or whatever), that would be awesome.  Similarly, if I can aggregate with &#39;DTS:refId=&#39; to a list, and export it, that would be great.",
+            "link": "https://stackoverflow.com/questions/49784523/how-to-convert-any-xml-file-to-a-data-frame",
+            "title": "How to Convert any XML file to a Data Frame?",
+            "body": "<p>I imported an XML file into R.  I did a little parsing on the data because it was really messy.  Now, I have a slightly cleaner data set, called 'doc', and I am trying to export it, but I'm getting all kinds of errors.</p>\n\n<p>I tried this:</p>\n\n<pre><code>library(rvest)\ndf&lt;-xmlToDataFrame(nodes = getNodeSet(doc, \"//outputColumn\"))\n</code></pre>\n\n<p>I got this:</p>\n\n<pre><code>Error in UseMethod(\"xpathApply\") : \n  no applicable method for 'xpathApply' applied to an object of class \"c('xml_document', 'xml_node')\"\n</code></pre>\n\n<p>I tried this:</p>\n\n<pre><code>write.csv(doc, file = \"C:\\\\path_here\\\\MyData.csv\")\n</code></pre>\n\n<p>I got this:</p>\n\n<pre><code>Error in as.data.frame.default(x[[i]], optional = TRUE, stringsAsFactors = stringsAsFactors) : \n  cannot coerce class \"c(\"xml_document\", \"xml_node\")\" to a data.frame\n</code></pre>\n\n<p>I tried this:</p>\n\n<pre><code>write.table(doc, \"C:\\\\path_here\\\\filename.txt, sep=\"\\t\", col.names=F)\n</code></pre>\n\n<p>I got this:</p>\n\n<pre><code>Error: unexpected input in \"write.table(doc, \"C:\\\\path_here\\\\filename.txt, sep=\"\\\"\n</code></pre>\n\n<p>Is there a way to simplify this, so I can just get everything into a DataFrame, and export it?  Or, just dump everything into a text file.  That would be fine too.  Thanks.</p>\n\n<p>'outputColumn refId='\n'DTS:refId='\n'/outputColumns'</p>\n\n<p>Here is a sample of the XML:</p>\n\n<pre><code>truncationRowDisposition=\"FailComponent\"/&gt;&lt;outputColumn refId=\"Package\\Pre RawData\\108_DataPull\\108_1T2_Multi_MG_FUTURE\\108_MULTI_MG_FUTURE.Outputs[OLE DB Source Output].Columns[DEF_TAX_AMT]\" dataType=\"i4\" errorOrTruncationOperation=\"Conversion\" errorRowDisposition=\"FailComponent\" externalMetadataColumnId=\"Package\\Pre RawData\\108_DataPull\\108_1T2_Multi_MG_FUTURE\\108_MULTI_MG_FUTURE.Outputs[OLE DB Source Output].ExternalColumns[DEF_TAX_AMT]\" lineageId=\"Package\\Pre RawData\\108_DataPull\\108_1T2_Multi_MG_FUTURE\\108_MULTI_MG_FUTURE.Outputs[OLE DB Source Output].Columns[DEF_TAX_AMT]\" name=\"DEF_TAX_AMT\" truncationRowDisposition=\"FailComponent\"/&gt;&lt;outputColumn refId=\"Package\\Pre RawData\\108_DataPull\\108_1T2_Multi_MG_FUTURE\\108_MULTI_MG_FUTURE.Outputs[OLE DB Source Output].Columns[OTS_BALANCE]\" dataType=\"numeric\" errorOrTruncationOperation=\"Conversion\" errorRowDisposition=\"FailComponent\" externalMetadataColumnId=\"Package\\Pre RawData\\108_DataPull\\108_1T2_Multi_MG_FUTURE\\108_MULTI_MG_FUTURE.Outputs[OLE DB Source Output].ExternalColumns[OTS_BALANCE]\" lineageId=\"Package\\Pre RawData\\108_DataPull\\108_1T2_Multi_MG_FUTURE\\108_MULTI_MG_FUTURE.Outputs[OLE DB Source Output].Columns[OTS_BALANCE]\" name=\"OTS_BALANCE\" precision=\"19\" scale=\"2\" truncationRowDisposition=\"FailComponent\"/&gt;\n</code></pre>\n\n<p>I want to pull out this part:</p>\n\n<pre><code>refId=\"Package\\Pre RawData\\108_DataPull\\108_1T2_Multi_MG_FUTURE\\108_MULTI_MG_FUTURE.Outputs[OLE DB Source Output].Columns[DEF_TAX_AMT]\"\n</code></pre>\n\n<p>If I can just aggregate everything between the quotes on the line with 'outputColumn refId=' to a list, and export the list to a file (CSV, TXT, or whatever), that would be awesome.  Similarly, if I can aggregate with 'DTS:refId=' to a list, and export it, that would be great.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "ecobertura"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9636430,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/d836f98aadb8eb84152da5ae63f8ecdc?s=128&d=identicon&r=PG&f=1",
+                "display_name": "AnilP8",
+                "link": "https://stackoverflow.com/users/9636430/anilp8"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539555,
+            "creation_date": 1523539555,
+            "question_id": 49797805,
+            "body_markdown": "In my ant build.xml am using cobertra-2.1 jar and asm 5 jar Testng files executed successfully but report is not generating meanwhile instrumented folder also not generating.\r\n\r\nTried with different versions of jars asm-4.1 and asm 5 and cobertura upgraded versions also.",
+            "link": "https://stackoverflow.com/questions/49797805/cobertura-report-is-not-generating-when-java-version-is-chnaged-from-java-6-to-8",
+            "title": "Cobertura report is not generating when java version is chnaged from java 6 to 8",
+            "body": "<p>In my ant build.xml am using cobertra-2.1 jar and asm 5 jar Testng files executed successfully but report is not generating meanwhile instrumented folder also not generating.</p>\n\n<p>Tried with different versions of jars asm-4.1 and asm 5 and cobertura upgraded versions also.</p>\n"
+        },
+        {
+            "tags": [
+                "centos",
+                "redhat",
+                "centos7",
+                "freeipa"
+            ],
+            "owner": {
+                "reputation": 71,
+                "user_id": 1718862,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/4d30d2c37f6c39a5e724e72ba7113d01?s=128&d=identicon&r=PG",
+                "display_name": "Brendan Thompson",
+                "link": "https://stackoverflow.com/users/1718862/brendan-thompson"
+            },
+            "is_answered": false,
+            "view_count": 28,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523539554,
+            "creation_date": 1513652585,
+            "question_id": 47879446,
+            "body_markdown": "I am currently trying to install FreeIPA, something that you would think would be trivial and has been in the past however today it&#39;s not.\r\n\r\nI have pulled down the latest version from the yum repos and run `ipa-server-install` as normal however it seems to be derping on the CA side of things. The following is the error I&#39;m seeing in the install logs:\r\n\r\n```\r\nThe CA status is: check interrupted due to error: Retrieving CA status failed with status 500\r\n```\r\n\r\nThis is on a brand new CentOS 7 VM, nothing special nothing different 100% vanilla.",
+            "link": "https://stackoverflow.com/questions/47879446/feeipa-default-installation-failing",
+            "title": "FeeIPA Default Installation Failing",
+            "body": "<p>I am currently trying to install FreeIPA, something that you would think would be trivial and has been in the past however today it's not.</p>\n\n<p>I have pulled down the latest version from the yum repos and run <code>ipa-server-install</code> as normal however it seems to be derping on the CA side of things. The following is the error I'm seeing in the install logs:</p>\n\n<p><code>\nThe CA status is: check interrupted due to error: Retrieving CA status failed with status 500\n</code></p>\n\n<p>This is on a brand new CentOS 7 VM, nothing special nothing different 100% vanilla.</p>\n"
+        },
+        {
+            "tags": [
+                "google-api",
+                "google-drive-sdk"
+            ],
+            "owner": {
+                "reputation": 23,
+                "user_id": 4878120,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/03e7f76f60cb4b024d2ec1d4d7e84933?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Maxim",
+                "link": "https://stackoverflow.com/users/4878120/maxim"
+            },
+            "is_answered": false,
+            "view_count": 23,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1523539554,
+            "creation_date": 1523536930,
+            "last_edit_date": 1523539554,
+            "question_id": 49796872,
+            "body_markdown": "I was trying to request the list of all files that located in the AppDataFolder.\r\n\r\nWhen I make the following request:\r\n\r\n    GET https://www.googleapis.com/drive/v2/files?spaces=appDataFolder&amp;maxResults=1000 HTTP/1.1\r\n    Host: www.googleapis.com\r\n    Authorization: Bearer &lt;MyToken&gt;\r\n    User-Agent: &lt;MyUserAgent&gt;\r\n\r\nI get the following error:\r\n\r\n    HTTP/1.1 400 Bad Request\r\n    {\r\n     &quot;error&quot;: {\r\n      &quot;errors&quot;: [\r\n       {\r\n        &quot;domain&quot;: &quot;global&quot;,\r\n        &quot;reason&quot;: &quot;invalid&quot;,\r\n        &quot;message&quot;: &quot;Invalid query&quot;,\r\n        &quot;locationType&quot;: &quot;parameter&quot;,\r\n        &quot;location&quot;: &quot;q&quot;\r\n       }\r\n      ],\r\n      &quot;code&quot;: 400,\r\n      &quot;message&quot;: &quot;Invalid query&quot;\r\n     }\r\n    }\r\n\r\nWhy does it ask me for a query if I just want to get the list of all files? Is the &quot;q&quot; parameter mandatory? I thought that it was some error in my code, so I downloaded the latest Google Drive SDK for Python and got the same error.\r\n\r\nI tried to add the &quot;q&quot; parameter like `q=title != &#39;foo&#39;` but it also returned Ivalid query error. Strange thing is that I can get my files list if I add the following query: `q=title=&#39;&lt;myfolder&gt;&#39; or title=&#39;&lt;file1 in my folder&gt;&#39; or title=&#39;&lt;file2 in my folder&gt;&#39;...`, but if I remove `title=&#39;&lt;myfolder&gt;&#39;` I get query error again.\r\n\r\nI also tried another request, but it returned me an empty list, though I know that there are files in AppDataFolder:\r\n\r\n    GET https://www.googleapis.com/drive/v2/files?q=&#39;appfolder&#39;+in+parents&amp;access_token=&lt;MyToken&gt;\r\n\r\n**UPDATE:** Looks like this issue is specific to a certain account. I tested all these requests with another account and get all the files hidden in appdatafolder. The requests that work:\r\n\r\n    https://www.googleapis.com/drive/v2/files?spaces=appDataFolder\r\n    https://www.googleapis.com/drive/v2/files?q=&#39;appDataFolder&#39;+in+parents\r\n    https://www.googleapis.com/drive/v2/files?q=&#39;appfolder&#39;+in+parents\r\n\r\nWhat can be wrong with the first account?",
+            "link": "https://stackoverflow.com/questions/49796872/google-drive-api-returns-errors-invalid-value-and-invalid-query-when-request",
+            "title": "Google Drive API returns errors &quot;Invalid value&quot; and &quot;Invalid query&quot; when requesting AppDataFolder",
+            "body": "<p>I was trying to request the list of all files that located in the AppDataFolder.</p>\n\n<p>When I make the following request:</p>\n\n<pre><code>GET https://www.googleapis.com/drive/v2/files?spaces=appDataFolder&amp;maxResults=1000 HTTP/1.1\nHost: www.googleapis.com\nAuthorization: Bearer &lt;MyToken&gt;\nUser-Agent: &lt;MyUserAgent&gt;\n</code></pre>\n\n<p>I get the following error:</p>\n\n<pre><code>HTTP/1.1 400 Bad Request\n{\n \"error\": {\n  \"errors\": [\n   {\n    \"domain\": \"global\",\n    \"reason\": \"invalid\",\n    \"message\": \"Invalid query\",\n    \"locationType\": \"parameter\",\n    \"location\": \"q\"\n   }\n  ],\n  \"code\": 400,\n  \"message\": \"Invalid query\"\n }\n}\n</code></pre>\n\n<p>Why does it ask me for a query if I just want to get the list of all files? Is the \"q\" parameter mandatory? I thought that it was some error in my code, so I downloaded the latest Google Drive SDK for Python and got the same error.</p>\n\n<p>I tried to add the \"q\" parameter like <code>q=title != 'foo'</code> but it also returned Ivalid query error. Strange thing is that I can get my files list if I add the following query: <code>q=title='&lt;myfolder&gt;' or title='&lt;file1 in my folder&gt;' or title='&lt;file2 in my folder&gt;'...</code>, but if I remove <code>title='&lt;myfolder&gt;'</code> I get query error again.</p>\n\n<p>I also tried another request, but it returned me an empty list, though I know that there are files in AppDataFolder:</p>\n\n<pre><code>GET https://www.googleapis.com/drive/v2/files?q='appfolder'+in+parents&amp;access_token=&lt;MyToken&gt;\n</code></pre>\n\n<p><strong>UPDATE:</strong> Looks like this issue is specific to a certain account. I tested all these requests with another account and get all the files hidden in appdatafolder. The requests that work:</p>\n\n<pre><code>https://www.googleapis.com/drive/v2/files?spaces=appDataFolder\nhttps://www.googleapis.com/drive/v2/files?q='appDataFolder'+in+parents\nhttps://www.googleapis.com/drive/v2/files?q='appfolder'+in+parents\n</code></pre>\n\n<p>What can be wrong with the first account?</p>\n"
+        },
+        {
+            "tags": [
+                "spring",
+                "spring-boot",
+                "redirect",
+                "mapping"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8444998,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://www.gravatar.com/avatar/0ddf7cc7c5b3003c47af4ce224b522e9?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Marcin Warycha",
+                "link": "https://stackoverflow.com/users/8444998/marcin-warycha"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539553,
+            "creation_date": 1523539233,
+            "last_edit_date": 1523539553,
+            "question_id": 49797703,
+            "body_markdown": "In my application in one method I have return &quot;redirect:/error&quot;;\r\n\r\nand mapping:\r\n\r\n\t@GetMapping(&quot;/error&quot;)\r\n\tpublic String errorViewPage(){\r\n\t\treturn &quot;errorView&quot;;\r\n\t}\r\n\r\nIt always cause:\r\n\r\n&quot;How to resolve Spring Boot web application error &quot;Whitelabel Error Page This application has no explicit mapping for /error, so you are seeing this as a fallback.&quot;\r\n\r\nWhen change it to redirect:/error2 it is ok!\r\n\r\n    @GetMapping(&quot;/error2&quot;)\r\n\t    public String errorViewPage(){\r\n\t    \treturn &quot;errorView&quot;;\r\n\t    }\r\n\r\nWhy it happens?\r\n",
+            "link": "https://stackoverflow.com/questions/49797703/spring-boot-redirect-error-cause-404",
+            "title": "Spring Boot redirect:/error cause 404",
+            "body": "<p>In my application in one method I have return \"redirect:/error\";</p>\n\n<p>and mapping:</p>\n\n<pre><code>@GetMapping(\"/error\")\npublic String errorViewPage(){\n    return \"errorView\";\n}\n</code></pre>\n\n<p>It always cause:</p>\n\n<p>\"How to resolve Spring Boot web application error \"Whitelabel Error Page This application has no explicit mapping for /error, so you are seeing this as a fallback.\"</p>\n\n<p>When change it to redirect:/error2 it is ok!</p>\n\n<pre><code>@GetMapping(\"/error2\")\n    public String errorViewPage(){\n        return \"errorView\";\n    }\n</code></pre>\n\n<p>Why it happens?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "node.js",
+                "reactjs"
+            ],
+            "owner": {
+                "reputation": 14,
+                "user_id": 9145806,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/b95bded9e1f2da1792794698d2f08ba9?s=128&d=identicon&r=PG&f=1",
+                "display_name": "William Josh",
+                "link": "https://stackoverflow.com/users/9145806/william-josh"
+            },
+            "is_answered": true,
+            "view_count": 58,
+            "closed_date": 1523538355,
+            "accepted_answer_id": 49796808,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1523539551,
+            "creation_date": 1523536681,
+            "question_id": 49796794,
+            "body_markdown": "How do I reverse an array in react? I tried using this.state.data.maps.reverse but it ain&#39;t working. Thanks in advance!\r\n\r\n\r\n    import React, { Component } from &#39;react&#39;;\r\n\r\n    export default class Slideshows extends Component {\r\n        constructor(){\r\n            super();\r\n            this.state = {\r\n                data:[\r\n                    { &quot;id&quot;: &quot;1&quot;, &quot;name&quot;: &#39;Robert&#39;, &quot;age&quot;: &quot;21&quot; },\r\n                    { &quot;id&quot;: &quot;2&quot;, &quot;name&quot;: &#39;Sam&#39;, &quot;age&quot;: &quot;33&quot; },\r\n                    { &quot;id&quot;: &quot;3&quot;, &quot;name&quot;: &#39;Jerry&#39;, &quot;age&quot;: &quot;42&quot; },\r\n                ]\r\n            }\r\n        }\r\n        render() {\r\n            const reverseData = this.state.map((data, i) =&gt; {\r\n                return (\r\n                    &lt;li&gt; {data.name} | {data.age} &lt;/li&gt;\r\n                )\r\n            })\r\n            return (\r\n                &lt;ul&gt;\r\n                    {reverseData}\r\n                &lt;/ul&gt;\r\n            )\r\n        }\r\n    }",
+            "link": "https://stackoverflow.com/questions/49796794/how-to-reverse-an-array-in-react",
+            "closed_reason": "duplicate",
+            "title": "How to reverse an Array in React",
+            "body": "<p>How do I reverse an array in react? I tried using this.state.data.maps.reverse but it ain't working. Thanks in advance!</p>\n\n<pre><code>import React, { Component } from 'react';\n\nexport default class Slideshows extends Component {\n    constructor(){\n        super();\n        this.state = {\n            data:[\n                { \"id\": \"1\", \"name\": 'Robert', \"age\": \"21\" },\n                { \"id\": \"2\", \"name\": 'Sam', \"age\": \"33\" },\n                { \"id\": \"3\", \"name\": 'Jerry', \"age\": \"42\" },\n            ]\n        }\n    }\n    render() {\n        const reverseData = this.state.map((data, i) =&gt; {\n            return (\n                &lt;li&gt; {data.name} | {data.age} &lt;/li&gt;\n            )\n        })\n        return (\n            &lt;ul&gt;\n                {reverseData}\n            &lt;/ul&gt;\n        )\n    }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "api",
+                "firefox",
+                "printing"
+            ],
+            "owner": {
+                "reputation": 158,
+                "user_id": 4093462,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/nZ0Kq.png?s=128&g=1",
+                "display_name": "mayank",
+                "link": "https://stackoverflow.com/users/4093462/mayank"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539545,
+            "creation_date": 1523538554,
+            "last_edit_date": 1523539545,
+            "question_id": 49797446,
+            "body_markdown": "Before firefox 57 version i was using JSprint addon but now it is not working anymore. I have tried to just print silently with window.open() by opening in another window and used window.print() which prompt with print dialog box.\r\n\r\nI have also used electron API to print silently \r\n`const win = BrowserWindow.fromWebContents(event.sender)\r\n  // Use default printing options\r\n  win.webContents.print({silent: true}`\r\n\r\nbut still print dialog box prompting.",
+            "link": "https://stackoverflow.com/questions/49797446/firefox-57-version-stops-printing-silently-as-jsprint-addon-is-under-legacy",
+            "title": "Firefox 57+ version stops printing silently as JSprint addon is under legacy",
+            "body": "<p>Before firefox 57 version i was using JSprint addon but now it is not working anymore. I have tried to just print silently with window.open() by opening in another window and used window.print() which prompt with print dialog box.</p>\n\n<p>I have also used electron API to print silently \n<code>const win = BrowserWindow.fromWebContents(event.sender)\n  // Use default printing options\n  win.webContents.print({silent: true}</code></p>\n\n<p>but still print dialog box prompting.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "go",
+                "multiprocessing",
+                "ctypes",
+                "cgo"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9636022,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/f4f99d7301ba693a3c3bac81545130c7?s=128&d=identicon&r=PG&f=1",
+                "display_name": "ns_xlz",
+                "link": "https://stackoverflow.com/users/9636022/ns-xlz"
+            },
+            "is_answered": false,
+            "view_count": 23,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523539542,
+            "creation_date": 1523536882,
+            "last_edit_date": 1523539542,
+            "question_id": 49796862,
+            "body_markdown": "There is an server written in Go, and used by the rpcx package. I export the client package as a shared library with cgo and use it in python, like this:\r\n    \r\n    client.go\r\n\r\n    /*\r\n    struct Client {....}\r\n    struct Result {....}\r\n    */\r\n    //import &quot;C&quot;\r\n    //export Call\r\n    func Call(client *C.struct_Client) *C.struct_Result{\r\n        //.........\r\n    }\r\n    \r\n    \r\n    client.py \r\n\r\n    import ctypes\r\n    form multiprocessing import Process\r\n    from threading import Thread\r\n    so = ctypes.CDLL(&quot;./client.so&quot;)\r\n    class Result(ctypes.Structure):\r\n        _fields_ = [....]\r\n    class Client(ctypes.Structure):\r\n        _fields_ = [....]\r\n    call = so.Call\r\n    call.argtypes = [ctypes.POINTER(Client)]\r\n    call.restypes = ctypes.POINTER(Result)\r\n    \r\nI test my client with **threading.Thread** is fine, every thing is ok, and it is same correct when i execute the python script one more time(multi process in the same time), But if I used **multiprocessing.Process**, all process will block with the same place in function __Call__, I add some log in this function and the server, I found the server returned normally, but the client blocked in recving data from network.\r\n    \r\nis it __ctypes__ conflict with __multiprocessing.Process__? anyone can help me?",
+            "link": "https://stackoverflow.com/questions/49796862/what-is-the-right-way-to-use-shared-library-which-load-with-ctypes-in-python-wit",
+            "title": "What is the right way to use shared library which load with ctypes in python with multiprocessing mode",
+            "body": "<p>There is an server written in Go, and used by the rpcx package. I export the client package as a shared library with cgo and use it in python, like this:</p>\n\n<pre><code>client.go\n\n/*\nstruct Client {....}\nstruct Result {....}\n*/\n//import \"C\"\n//export Call\nfunc Call(client *C.struct_Client) *C.struct_Result{\n    //.........\n}\n\n\nclient.py \n\nimport ctypes\nform multiprocessing import Process\nfrom threading import Thread\nso = ctypes.CDLL(\"./client.so\")\nclass Result(ctypes.Structure):\n    _fields_ = [....]\nclass Client(ctypes.Structure):\n    _fields_ = [....]\ncall = so.Call\ncall.argtypes = [ctypes.POINTER(Client)]\ncall.restypes = ctypes.POINTER(Result)\n</code></pre>\n\n<p>I test my client with <strong>threading.Thread</strong> is fine, every thing is ok, and it is same correct when i execute the python script one more time(multi process in the same time), But if I used <strong>multiprocessing.Process</strong>, all process will block with the same place in function <strong>Call</strong>, I add some log in this function and the server, I found the server returned normally, but the client blocked in recving data from network.</p>\n\n<p>is it <strong>ctypes</strong> conflict with <strong>multiprocessing.Process</strong>? anyone can help me?</p>\n"
+        },
+        {
+            "tags": [
+                "listview",
+                "c++-cli"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9402289,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-WwZLnfjMsJw/AAAAAAAAAAI/AAAAAAAAAFw/MXbNSJv6vts/photo.jpg?sz=128",
+                "display_name": "A.T.",
+                "link": "https://stackoverflow.com/users/9402289/a-t"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523539537,
+            "creation_date": 1523526464,
+            "last_edit_date": 1523526528,
+            "question_id": 49793347,
+            "body_markdown": "This code shows all text in first column of ListView, but I need to split it by columns. I tried to write Split(&#39;|&#39;) after ReadLine() but it gives an error.\r\n\r\n\r\n\t\tString^ textFile = String::Concat(&quot;C:\\\\p.txt&quot;);\r\n\t\tStreamReader^ reader = gcnew  StreamReader(textFile);\r\n\t\tdo\r\n\t\t{\r\n\t\t\tlistView1-&gt;Items-&gt;Add(reader-&gt;ReadLine());\r\n\r\n\t\t} while (reader-&gt;Peek() != -1);\r\n\t",
+            "link": "https://stackoverflow.com/questions/49793347/how-to-split-text-when-read-from-file-to-listview-c",
+            "title": "How to split text when read from file to Listview c++?",
+            "body": "<p>This code shows all text in first column of ListView, but I need to split it by columns. I tried to write Split('|') after ReadLine() but it gives an error.</p>\n\n<pre><code>    String^ textFile = String::Concat(\"C:\\\\p.txt\");\n    StreamReader^ reader = gcnew  StreamReader(textFile);\n    do\n    {\n        listView1-&gt;Items-&gt;Add(reader-&gt;ReadLine());\n\n    } while (reader-&gt;Peek() != -1);\n</code></pre>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 174
+}

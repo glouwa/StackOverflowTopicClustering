@@ -1,0 +1,824 @@
+{
+    "items": [
+        {
+            "tags": [
+                "json",
+                "scala",
+                "akka",
+                "marshalling",
+                "akka-http"
+            ],
+            "owner": {
+                "reputation": 13376,
+                "user_id": 457268,
+                "user_type": "registered",
+                "accept_rate": 62,
+                "profile_image": "https://i.stack.imgur.com/ha0Fa.jpg?s=128&g=1",
+                "display_name": "k0pernikus",
+                "link": "https://stackoverflow.com/users/457268/k0pernikus"
+            },
+            "is_answered": false,
+            "view_count": 37,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523523574,
+            "creation_date": 1523439746,
+            "last_edit_date": 1523523574,
+            "question_id": 49771699,
+            "body_markdown": "As a beginner to both scala and akka-http, I am trying to hook into the serialization aka marshalling process.\r\n\r\nThe project uses akka@2.5.2 and akka-http@10.0.10&quot;. Furthermore, it has the `akka-http-spray-json` dependency included.\r\n\r\nIn the codebase, we use `Java.Util.Currency` (It may be deprecated which is not important as I&#39;d still like to know how to add a custom marshaller.)\r\n\r\nGiven this example controller:\r\n\r\n    def getCurrencyExample: Route = {\r\n        path(&quot;currencyExample&quot;) {\r\n          val currency: Currency = Currency.getInstance(&quot;EUR&quot;)\r\n          val code: String = currency.getCurrencyCode\r\n    \r\n          val shouldBeFormated = collection.immutable.HashMap(\r\n            &quot;currencyCode&quot; -&gt; code,\r\n            &quot;currencyObject&quot; -&gt; currency\r\n          )\r\n    \r\n          complete(shouldBeFormated)\r\n        }\r\n      }\r\n\r\nI get a response like this where the currency object becomes empty:\r\n\r\n     {\r\n      currencyObject: { },\r\n      currencyCode: &quot;EUR&quot;,\r\n     }\r\n\r\nI expect something like:\r\n\r\n     {\r\n      currencyObject: &quot;EUR&quot;,\r\n      currencyCode: &quot;EUR&quot;,\r\n     }\r\n\r\nThe `currency` object should be transformed into a JSON string. And since I do not want to transform each response manually, I want to hook into marshalling process and have it done in the background.\r\n\r\nI want to add a custom marhaller only for `Java.Util.Currency` objects, yet even [reading up on the docs](https://doc.akka.io/docs/akka-http/current/common/marshalling.html) I am very unsure how to proceed. \r\n There are multiple approaches described, and I am not sure which fits my need, or where to start.\r\n\r\n---\r\n\r\nI tried creating my own `CurrencyJsonProtocol`:\r\n\r\n    package com.foo.api.marshallers\r\n    \r\n    import java.util.Currency\r\n    \r\n    import spray.json.{DefaultJsonProtocol, JsString, JsValue, RootJsonFormat}\r\n    \r\n    object CurrencyJsonProtocol extends DefaultJsonProtocol {\r\n    \r\n      implicit object CurrencyJsonFormat extends RootJsonFormat[Currency] {\r\n        override def read(json: JsValue): Currency = {\r\n          Currency.getInstance(json.toString)\r\n        }\r\n    \r\n        override def write(obj: Currency): JsValue = {\r\n          JsString(obj.getCurrencyCode)\r\n        }\r\n      }\r\n    \r\n    }\r\n\r\nyet the mere existence of the file breaks my project:\r\n\r\n    [error] RouteDefinitons.scala:90:16: type mismatch;\r\n    [error]  found   : scala.collection.immutable.HashMap[String,java.io.Serializable]\r\n    [error]  required: akka.http.scaladsl.marshalling.ToResponseMarshallable\r\n    [error]       complete(shouldBeFormated)\r\n    [error]                ^\r\n    [error] one error found\r\n    [error] (Compile / compileIncremental) Compilation failed\r\n\r\nand I have no idea why. (It was crashing due to my package name being called `marshaller`. That completely broke the compilation of the project.\r\n",
+            "link": "https://stackoverflow.com/questions/49771699/how-to-add-a-custom-marshaller-to-akka-http",
+            "title": "How to add a custom marshaller to akka http?",
+            "body": "<p>As a beginner to both scala and akka-http, I am trying to hook into the serialization aka marshalling process.</p>\n\n<p>The project uses akka@2.5.2 and akka-http@10.0.10\". Furthermore, it has the <code>akka-http-spray-json</code> dependency included.</p>\n\n<p>In the codebase, we use <code>Java.Util.Currency</code> (It may be deprecated which is not important as I'd still like to know how to add a custom marshaller.)</p>\n\n<p>Given this example controller:</p>\n\n<pre><code>def getCurrencyExample: Route = {\n    path(\"currencyExample\") {\n      val currency: Currency = Currency.getInstance(\"EUR\")\n      val code: String = currency.getCurrencyCode\n\n      val shouldBeFormated = collection.immutable.HashMap(\n        \"currencyCode\" -&gt; code,\n        \"currencyObject\" -&gt; currency\n      )\n\n      complete(shouldBeFormated)\n    }\n  }\n</code></pre>\n\n<p>I get a response like this where the currency object becomes empty:</p>\n\n<pre><code> {\n  currencyObject: { },\n  currencyCode: \"EUR\",\n }\n</code></pre>\n\n<p>I expect something like:</p>\n\n<pre><code> {\n  currencyObject: \"EUR\",\n  currencyCode: \"EUR\",\n }\n</code></pre>\n\n<p>The <code>currency</code> object should be transformed into a JSON string. And since I do not want to transform each response manually, I want to hook into marshalling process and have it done in the background.</p>\n\n<p>I want to add a custom marhaller only for <code>Java.Util.Currency</code> objects, yet even <a href=\"https://doc.akka.io/docs/akka-http/current/common/marshalling.html\" rel=\"nofollow noreferrer\">reading up on the docs</a> I am very unsure how to proceed. \n There are multiple approaches described, and I am not sure which fits my need, or where to start.</p>\n\n<hr>\n\n<p>I tried creating my own <code>CurrencyJsonProtocol</code>:</p>\n\n<pre><code>package com.foo.api.marshallers\n\nimport java.util.Currency\n\nimport spray.json.{DefaultJsonProtocol, JsString, JsValue, RootJsonFormat}\n\nobject CurrencyJsonProtocol extends DefaultJsonProtocol {\n\n  implicit object CurrencyJsonFormat extends RootJsonFormat[Currency] {\n    override def read(json: JsValue): Currency = {\n      Currency.getInstance(json.toString)\n    }\n\n    override def write(obj: Currency): JsValue = {\n      JsString(obj.getCurrencyCode)\n    }\n  }\n\n}\n</code></pre>\n\n<p>yet the mere existence of the file breaks my project:</p>\n\n<pre><code>[error] RouteDefinitons.scala:90:16: type mismatch;\n[error]  found   : scala.collection.immutable.HashMap[String,java.io.Serializable]\n[error]  required: akka.http.scaladsl.marshalling.ToResponseMarshallable\n[error]       complete(shouldBeFormated)\n[error]                ^\n[error] one error found\n[error] (Compile / compileIncremental) Compilation failed\n</code></pre>\n\n<p>and I have no idea why. (It was crashing due to my package name being called <code>marshaller</code>. That completely broke the compilation of the project.</p>\n"
+        },
+        {
+            "tags": [
+                "angularjs"
+            ],
+            "owner": {
+                "reputation": 756,
+                "user_id": 2259361,
+                "user_type": "registered",
+                "accept_rate": 40,
+                "profile_image": "https://www.gravatar.com/avatar/ba770d1fef7cf11c793876ab56190521?s=128&d=identicon&r=PG&f=1",
+                "display_name": "dndr",
+                "link": "https://stackoverflow.com/users/2259361/dndr"
+            },
+            "is_answered": true,
+            "view_count": 114854,
+            "accepted_answer_id": 15938130,
+            "answer_count": 10,
+            "score": 156,
+            "last_activity_date": 1523523574,
+            "creation_date": 1365631321,
+            "last_edit_date": 1409034915,
+            "question_id": 15937267,
+            "body_markdown": "I want to inject a service into app.config, so that data can be retrieved before the controller is called. I tried it like this:\r\n\r\nService:\r\n\r\n    app.service(&#39;dbService&#39;, function() {\r\n    \treturn {\r\n    \t\tgetData: function($q, $http) {\r\n    \t\t\tvar defer = $q.defer();\r\n    \t\t\t$http.get(&#39;db.php/score/getData&#39;).success(function(data) {\r\n    \t\t\t\tdefer.resolve(data);\t\t\t\r\n    \t\t\t});\r\n    \t\t\treturn defer.promise;\r\n    \t\t}\r\n    \t};\r\n    });\r\n\r\nConfig:\r\n\r\n    app.config(function ($routeProvider, dbService) {\r\n    \t$routeProvider\r\n    \t\t.when(&#39;/&#39;,\r\n    \t\t{\r\n    \t\t\ttemplateUrl: &quot;partials/editor.html&quot;,\r\n    \t\t\tcontroller: &quot;AppCtrl&quot;,\r\n    \t\t\tresolve: {\r\n    \t\t\t\tdata: dbService.getData(),\r\n    \t\t\t}\r\n    \t\t})\r\n    });\r\n\r\nBut I get this error:\r\n\r\n&gt; Error: Unknown provider: dbService from EditorApp\r\n\r\nHow to correct setup and inject this service?",
+            "link": "https://stackoverflow.com/questions/15937267/inject-service-in-app-config",
+            "title": "Inject service in app.config",
+            "body": "<p>I want to inject a service into app.config, so that data can be retrieved before the controller is called. I tried it like this:</p>\n\n<p>Service:</p>\n\n<pre><code>app.service('dbService', function() {\n    return {\n        getData: function($q, $http) {\n            var defer = $q.defer();\n            $http.get('db.php/score/getData').success(function(data) {\n                defer.resolve(data);            \n            });\n            return defer.promise;\n        }\n    };\n});\n</code></pre>\n\n<p>Config:</p>\n\n<pre><code>app.config(function ($routeProvider, dbService) {\n    $routeProvider\n        .when('/',\n        {\n            templateUrl: \"partials/editor.html\",\n            controller: \"AppCtrl\",\n            resolve: {\n                data: dbService.getData(),\n            }\n        })\n});\n</code></pre>\n\n<p>But I get this error:</p>\n\n<blockquote>\n  <p>Error: Unknown provider: dbService from EditorApp</p>\n</blockquote>\n\n<p>How to correct setup and inject this service?</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "ios",
+                "iphone",
+                "swift",
+                "bluetooth-lowenergy"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9634379,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-6qHz6PUOdhI/AAAAAAAAAAI/AAAAAAAAADg/5KolzB6Z4gQ/photo.jpg?sz=128",
+                "display_name": "Taeil Kim",
+                "link": "https://stackoverflow.com/users/9634379/taeil-kim"
+            },
+            "is_answered": false,
+            "view_count": 27,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523523567,
+            "creation_date": 1523522236,
+            "last_edit_date": 1523523567,
+            "question_id": 49791760,
+            "body_markdown": "First, thank you for reading my question.\r\n\r\n\r\nI have joined a project about development iOS App which connects with android \r\n\r\ndevice by bluetoothLE and receives some data periodically like a heart rate.\r\n\r\n\r\nSo, I have created an BLE connection sample app and I have tried to test it as follows.\r\n\r\n\r\n1. Make iOS Peripheral Mode app (by **CBPeripheralManager**)\r\n- Add Custom Service with Custom Characteristic(write)\r\n\r\n2. Android Phone(Samsung Galaxy S6) -&gt; Download BLE Scanner from Google play Store\r\n\r\nhttps://play.google.com/store/apps/details?id=com.macdom.ble.blescanner&amp;hl=ko\r\n\r\n3. Launch iOS Test app Peripheral Mode and advertised\r\n\r\n4. From Android Phone, launch BLE Scanner app and scan my iOS device\r\n\r\n5. Connection with my iPhone and search services\r\n\r\n6. Write some text by Custom Characteristic\r\n\r\n7. In iOS side, receive data correctly\r\n\r\nBut, after about 20 sec... the connection was lost. I tried many times.. but the results were the same.\r\n\r\nSo I changed iPhone app to BLEScanner iOS version\r\n\r\nhttps://itunes.apple.com/us/app/ble-scanner-4-0/id1221763603?mt=8\r\n\r\nIt was the same...\r\n\r\nBut, iOS &lt;-&gt; iOS ... it work&#39;s correctly...\r\n\r\nThis is my question: Is there no connection by BLE between Android and iOS  available ?? (central &lt;--&gt; peripheral)\r\n\r\nI would appreciate your advice.\r\n\r\nThank you for reading my question. Have a good day~ ^-^",
+            "link": "https://stackoverflow.com/questions/49791760/is-available-to-connect-by-ble-between-android-and-ios",
+            "title": "Is available to connect by BLE between Android and iOS?",
+            "body": "<p>I have joined a project about development iOS App which connects with android device by bluetoothLE and receives some data periodically like a heart rate.</p>\n\n<p>So, I have created an BLE connection sample app and I have tried to test it as follows.</p>\n\n<ol>\n<li><p>Make iOS Peripheral Mode app (by <strong>CBPeripheralManager</strong>)</p>\n\n<ul>\n<li>Add Custom Service with Custom Characteristic(write)</li>\n</ul></li>\n<li><p>Android Phone(Samsung Galaxy S6) -> Download BLE Scanner from Google play Store</p></li>\n</ol>\n\n<p><a href=\"https://play.google.com/store/apps/details?id=com.macdom.ble.blescanner&amp;hl=ko\" rel=\"nofollow noreferrer\">https://play.google.com/store/apps/details?id=com.macdom.ble.blescanner&amp;hl=ko</a></p>\n\n<ol start=\"3\">\n<li><p>Launch iOS Test app Peripheral Mode and advertised</p></li>\n<li><p>From Android Phone, launch BLE Scanner app and scan my iOS device</p></li>\n<li><p>Connection with my iPhone and search services</p></li>\n<li><p>Write some text by Custom Characteristic</p></li>\n<li><p>In iOS side, receive data correctly</p></li>\n</ol>\n\n<p>But, after about 20 sec... the connection was lost. I tried many times.. but the results were the same.</p>\n\n<p>So I changed iPhone app to BLEScanner iOS version</p>\n\n<p><a href=\"https://itunes.apple.com/us/app/ble-scanner-4-0/id1221763603?mt=8\" rel=\"nofollow noreferrer\">https://itunes.apple.com/us/app/ble-scanner-4-0/id1221763603?mt=8</a></p>\n\n<p>It was the same...</p>\n\n<p>But, iOS &lt;-> iOS ... it works correctly...</p>\n\n<p>This is my question: Is there no connection by BLE between Android and iOS  available? (central &lt;--> peripheral)</p>\n"
+        },
+        {
+            "tags": [
+                "google-cloud-datastore"
+            ],
+            "owner": {
+                "reputation": 1159,
+                "user_id": 1017722,
+                "user_type": "registered",
+                "accept_rate": 70,
+                "profile_image": "https://www.gravatar.com/avatar/2ac70af04d1b1eaacf718526e4725d3f?s=128&d=identicon&r=PG",
+                "display_name": "Evgeny Timoshenko",
+                "link": "https://stackoverflow.com/users/1017722/evgeny-timoshenko"
+            },
+            "is_answered": true,
+            "view_count": 908,
+            "accepted_answer_id": 37309560,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1523523558,
+            "creation_date": 1463547989,
+            "last_edit_date": 1467088805,
+            "question_id": 37290722,
+            "body_markdown": "My Datastore entities are going to have properties of [embedded entity type](https://cloud.google.com/datastore/docs/concepts/entities). \r\n\r\nAfter I save them as following (__I&#39;m using gcloud v0.27.0__):\r\n\r\n    dataset.save([{\r\n        key: dataset.key({ path: [&#39;MyKind&#39;, 1] }),\r\n            data: {\r\n                foo: &#39;bar&#39;,\r\n                zxc: {\r\n                    nested: {\r\n                        foobar: 32\r\n                    }\r\n                }\r\n            }\r\n        }, \r\n        {\r\n            key: dataset.key({ path: [&#39;MyKind&#39;, 2] }),\r\n            data: {\r\n                foo: &#39;a string&#39;,\r\n                zxc: {\r\n                    nested: {\r\n                        foobar: 132\r\n                    }\r\n                }\r\n            }\r\n        }\r\n        ], function(error) { console.log(error); });\r\n\r\n\r\n__Is there any way to query entities that, say, have `zxc.nested.foobar=132`?__\r\n\r\nI run query like on the picture below and it shows no result.\r\n\r\n[![enter image description here][1]][1]\r\n\r\n  [1]: http://i.stack.imgur.com/jyAa7.png",
+            "link": "https://stackoverflow.com/questions/37290722/filter-entities-on-a-sub-entity-property-in-google-datastore-query",
+            "title": "Filter entities on a sub-entity property in Google Datastore query",
+            "body": "<p>My Datastore entities are going to have properties of <a href=\"https://cloud.google.com/datastore/docs/concepts/entities\" rel=\"nofollow noreferrer\">embedded entity type</a>. </p>\n\n<p>After I save them as following (<strong>I'm using gcloud v0.27.0</strong>):</p>\n\n<pre><code>dataset.save([{\n    key: dataset.key({ path: ['MyKind', 1] }),\n        data: {\n            foo: 'bar',\n            zxc: {\n                nested: {\n                    foobar: 32\n                }\n            }\n        }\n    }, \n    {\n        key: dataset.key({ path: ['MyKind', 2] }),\n        data: {\n            foo: 'a string',\n            zxc: {\n                nested: {\n                    foobar: 132\n                }\n            }\n        }\n    }\n    ], function(error) { console.log(error); });\n</code></pre>\n\n<p><strong>Is there any way to query entities that, say, have <code>zxc.nested.foobar=132</code>?</strong></p>\n\n<p>I run query like on the picture below and it shows no result.</p>\n\n<p><a href=\"https://i.stack.imgur.com/jyAa7.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/jyAa7.png\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "json",
+                "json.net"
+            ],
+            "owner": {
+                "reputation": 724,
+                "user_id": 4856758,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e70c5ee0d21ea2f07ba36e8ee5424096?s=128&d=identicon&r=PG",
+                "display_name": "Namoshek",
+                "link": "https://stackoverflow.com/users/4856758/namoshek"
+            },
+            "is_answered": true,
+            "view_count": 29,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523523557,
+            "creation_date": 1523520171,
+            "last_edit_date": 1523521474,
+            "question_id": 49791092,
+            "body_markdown": "I think I have quite a unique problem here, where the developer of an API I need to utilize did something I don&#39;t quite understand. Yet I have to deal with it.\r\n\r\nIt is probably the best to explain the problem by showing an example:\r\n\r\n    {\r\n        &quot;type&quot;: &quot;type-A&quot;,\r\n        &quot;value&quot;: &quot;{&#39;propA&#39;: &#39;type-A specific element&#39;, &#39;propA2&#39;: &#39;another typeA specific element&#39;}&quot;\r\n    }\r\n\r\nWe are dealing with a quite normal REST API, where the response is a json string - nothing too special. Because of some abstraction going on within the API, there is a `type` and a `value` field in each response. Depending on the `type`, the `value` will have differently structured content. Also nothing too special.\r\n\r\nThe problem is now that the content in the `value` field is not just a normal json object, but a string **containing** a json object. Therefore deserialization with `JsonConvert.DeserializeObject&lt;TargetType&gt;(jsonString)` fails with the exception \r\n\r\n&gt; Newtonsoft.Json.JsonSerializationException: Error converting value\r\n&gt; &quot;{&#39;propA&#39;: &#39;type-A specific element&#39;, &#39;propA2&#39;: &#39;another typeA\r\n&gt; specific element&#39;}&quot; to type &#39;My.Project.TargetType&#39;.\r\n\r\nIs there any neat built-in support in the `json.net` library I might use to counter this issue or do I have to go a manual route and fix the json or the deserialization in some other way?\r\n\r\n---\r\n\r\n**Edit:** to give a bit more context: The API does indeed try to abstract its interface with equal requests and responses, but I am still able to request very specific responses in my code. Therefore I make use of a generic class which contains the common properties and a generic type for the `value` like so:\r\n\r\n    public class Response&lt;TValue&gt;\r\n    {\r\n        [JsonProperty(&quot;type&quot;)]\r\n        public string Type { get; set; }\r\n    \r\n        [JsonProperty(&quot;value&quot;)]\r\n        public TValue Value { get; set; }\r\n    }\r\n\r\nIn fact, the `type` isn&#39;t even relevant for me, because I know beforehand which `type` I will receive as response (due to my specific request). Therefore I am also able to determine the response type of `value`. My actual deserialization looks like this `JsonConvert.DeserializeObject&lt;Response&lt;TargetType&gt;&gt;(jsonString)`.\r\n\r\nYet I did not find a neat way of parsing my `value` together with the `Response` object. Any suggestions are highly appreciated.",
+            "link": "https://stackoverflow.com/questions/49791092/parse-json-object-with-another-json-object-in-string-format-stored-in-one-of-the",
+            "title": "Parse json object with another json object in string format stored in one of the properties",
+            "body": "<p>I think I have quite a unique problem here, where the developer of an API I need to utilize did something I don't quite understand. Yet I have to deal with it.</p>\n\n<p>It is probably the best to explain the problem by showing an example:</p>\n\n<pre><code>{\n    \"type\": \"type-A\",\n    \"value\": \"{'propA': 'type-A specific element', 'propA2': 'another typeA specific element'}\"\n}\n</code></pre>\n\n<p>We are dealing with a quite normal REST API, where the response is a json string - nothing too special. Because of some abstraction going on within the API, there is a <code>type</code> and a <code>value</code> field in each response. Depending on the <code>type</code>, the <code>value</code> will have differently structured content. Also nothing too special.</p>\n\n<p>The problem is now that the content in the <code>value</code> field is not just a normal json object, but a string <strong>containing</strong> a json object. Therefore deserialization with <code>JsonConvert.DeserializeObject&lt;TargetType&gt;(jsonString)</code> fails with the exception </p>\n\n<blockquote>\n  <p>Newtonsoft.Json.JsonSerializationException: Error converting value\n  \"{'propA': 'type-A specific element', 'propA2': 'another typeA\n  specific element'}\" to type 'My.Project.TargetType'.</p>\n</blockquote>\n\n<p>Is there any neat built-in support in the <code>json.net</code> library I might use to counter this issue or do I have to go a manual route and fix the json or the deserialization in some other way?</p>\n\n<hr>\n\n<p><strong>Edit:</strong> to give a bit more context: The API does indeed try to abstract its interface with equal requests and responses, but I am still able to request very specific responses in my code. Therefore I make use of a generic class which contains the common properties and a generic type for the <code>value</code> like so:</p>\n\n<pre><code>public class Response&lt;TValue&gt;\n{\n    [JsonProperty(\"type\")]\n    public string Type { get; set; }\n\n    [JsonProperty(\"value\")]\n    public TValue Value { get; set; }\n}\n</code></pre>\n\n<p>In fact, the <code>type</code> isn't even relevant for me, because I know beforehand which <code>type</code> I will receive as response (due to my specific request). Therefore I am also able to determine the response type of <code>value</code>. My actual deserialization looks like this <code>JsonConvert.DeserializeObject&lt;Response&lt;TargetType&gt;&gt;(jsonString)</code>.</p>\n\n<p>Yet I did not find a neat way of parsing my <code>value</code> together with the <code>Response</code> object. Any suggestions are highly appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "byte-buddy"
+            ],
+            "owner": {
+                "reputation": 425,
+                "user_id": 1921819,
+                "user_type": "registered",
+                "accept_rate": 89,
+                "profile_image": "https://www.gravatar.com/avatar/2124201fb3c9b76a0ec999b78edaf965?s=128&d=identicon&r=PG",
+                "display_name": "user1921819",
+                "link": "https://stackoverflow.com/users/1921819/user1921819"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523523557,
+            "creation_date": 1523520776,
+            "last_edit_date": 1523523557,
+            "question_id": 49791280,
+            "body_markdown": "I am trying to generate a very simple code with `Byte Buddy`.\r\n\r\nI have a POJO class where some fields are annotated with `@SecureAttribute`, For such fields I would like to override getter implementation and redirect the call to a `SecurityService.getSecureValue()` implementation.\r\n\r\n\r\n**Original class:**\r\n\r\n    public class Properties {\r\n        @SecureAttribute\r\n        protected String password;\r\n    \r\n        public String getPassword() {\r\n            return password;\r\n        }\r\n    \r\n        public void setPassword(String password) {\r\n            this.password = password;\r\n        }\r\n    }\r\n\r\n\r\n**Desired Proxy**:\r\n\r\n    public class PropertiesProxy {\r\n        private SecurityService securityService;\r\n    \r\n        public void setSecurityService(SecurityService var1) {\r\n            this.securityService = var1;\r\n        }\r\n    \r\n        public SecurityService getSecurityService() {\r\n            return this.securityService;\r\n        }\r\n    \r\n        @Override\r\n        public String getPassword() {\r\n            return securityService.getSecureValue(password);\r\n        }\r\n    }\r\n\r\nEmitting a field was easy but overriding a method becomes complicated. I have found a number of samples relative to my task which I try to apply but do not seem to get the required result.\r\n\r\nSo my major question is: how do I trace and debug the code generator? First thing I&#39;ve learned was to print the class to file:\r\n\r\n        DynamicType.Unloaded&lt;?&gt; unloadedType = byteBuddy.make();\r\n        unloadedType.saveIn(new File(&quot;d:/temp/bytebuddy&quot;));\r\n\r\nThis gives me an output where the extra field was added but not a glance of the getter override (disassembled from .class file):\r\n\r\n    public class PropertiesImpl$ByteBuddy$OLlyZYNY extends PropertiesImpl {\r\n        private SecurityService securityService;\r\n    \r\n        public void setSecurityService(SecurityService var1) {\r\n            this.securityService = var1;\r\n        }\r\n    \r\n        public SecurityService getSecurityService() {\r\n            return this.securityService;\r\n        }\r\n    \r\n        public PropertiesImpl$ByteBuddy$OLlyZYNY() {\r\n        }\r\n    }\r\n\r\nHere I do not exactly understand how to look for the error. Does it mean that I used totally wrong method implementation and `Byte Buddy` simply skipped it? Or am I wrong with ElementMatchers? Is there some trace or whatever that will give me a clue how to fix my code?\r\n\r\n**Current implementation:**\r\n\r\n    private Class&lt;?&gt; wrapProperties() throws IOException {\r\n    \r\n        DynamicType.Builder&lt;?&gt; byteBuddy = new ByteBuddy()\r\n            .subclass(PropertiesImpl.class)\r\n            .defineProperty(&quot;securityService&quot;, SecurityService.class);\r\n    \r\n        Arrays.stream(PropertiesImpl.class.getDeclaredFields())\r\n            .filter(item -&gt; item.getAnnotation(SecureAttribute.class) != null)\r\n            .forEach(item -&gt; byteBuddy\r\n                .method(ElementMatchers.named(getGetterBeanName(item)))\r\n                .intercept(new GetterWrapperImplementation(item)));\r\n        \r\n        DynamicType.Unloaded&lt;?&gt; unloadedType = byteBuddy.make();\r\n        unloadedType.saveIn(new File(&quot;d:/temp/bytebuddy&quot;));\r\n        Class&lt;?&gt; wrapperClass = unloadedType.load(PropertiesImpl.class.getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)\r\n            .getLoaded();\r\n    \r\n        return wrapperClass;\r\n    }\r\n    \r\n    public static class GetterWrapperImplementation implements Implementation {\r\n        public static final TypeDescription SS_TYPE;\r\n        public static final MethodDescription SS_GET_SECURE_VALUE;\r\n    \r\n        private final Field filed;\r\n    \r\n        static {\r\n            try {\r\n                SS_TYPE = new TypeDescription.ForLoadedType(SecurityService.class);\r\n                SS_GET_SECURE_VALUE = new MethodDescription.ForLoadedMethod(SecurityService.class.getDeclaredMethod(&quot;getSecureValue&quot;, String.class));\r\n            }\r\n            catch (final NoSuchMethodException | SecurityException e) {\r\n                throw new RuntimeException(e);\r\n            }\r\n        }\r\n    \r\n    \r\n        public GetterWrapperImplementation(Field filed) {\r\n            this.filed = filed;\r\n        }\r\n    \r\n        @Override\r\n        public InstrumentedType prepare(final InstrumentedType instrumentedType) {\r\n            return instrumentedType;\r\n        }\r\n    \r\n        @Override\r\n        public ByteCodeAppender appender(final Target implementationTarget) {\r\n            final TypeDescription thisType = implementationTarget.getInstrumentedType();\r\n    \r\n            return new ByteCodeAppender.Simple(Arrays.asList(\r\n                TypeCreation.of(SS_TYPE),\r\n    \r\n                // get securityService field\r\n                MethodVariableAccess.loadThis(),\r\n                FieldAccess.forField(thisType.getDeclaredFields()\r\n                    .filter(ElementMatchers.named(&quot;securityService&quot;))\r\n                    .getOnly()\r\n                ).read(),\r\n    \r\n                // get secure field\r\n                MethodVariableAccess.loadThis(),\r\n                FieldAccess.forField(thisType.getDeclaredFields()\r\n                    .filter(ElementMatchers.named(filed.getName()))\r\n                    .getOnly()\r\n                ).read(),\r\n    \r\n                MethodInvocation.invoke(SS_GET_SECURE_VALUE),\r\n                MethodReturn.of(TypeDescription.STRING)\r\n            ));\r\n        }\r\n    }\r\n\r\nWhat I know for the fact is that breakpoints inside `ByteCodeAppender appender(final Target implementationTarget)` do not get hit, but again not sure how to interpret this.\r\n\r\nThanks.\r\n",
+            "link": "https://stackoverflow.com/questions/49791280/debugging-techniques-for-byte-buddy",
+            "title": "Debugging techniques for Byte Buddy?",
+            "body": "<p>I am trying to generate a very simple code with <code>Byte Buddy</code>.</p>\n\n<p>I have a POJO class where some fields are annotated with <code>@SecureAttribute</code>, For such fields I would like to override getter implementation and redirect the call to a <code>SecurityService.getSecureValue()</code> implementation.</p>\n\n<p><strong>Original class:</strong></p>\n\n<pre><code>public class Properties {\n    @SecureAttribute\n    protected String password;\n\n    public String getPassword() {\n        return password;\n    }\n\n    public void setPassword(String password) {\n        this.password = password;\n    }\n}\n</code></pre>\n\n<p><strong>Desired Proxy</strong>:</p>\n\n<pre><code>public class PropertiesProxy {\n    private SecurityService securityService;\n\n    public void setSecurityService(SecurityService var1) {\n        this.securityService = var1;\n    }\n\n    public SecurityService getSecurityService() {\n        return this.securityService;\n    }\n\n    @Override\n    public String getPassword() {\n        return securityService.getSecureValue(password);\n    }\n}\n</code></pre>\n\n<p>Emitting a field was easy but overriding a method becomes complicated. I have found a number of samples relative to my task which I try to apply but do not seem to get the required result.</p>\n\n<p>So my major question is: how do I trace and debug the code generator? First thing I've learned was to print the class to file:</p>\n\n<pre><code>    DynamicType.Unloaded&lt;?&gt; unloadedType = byteBuddy.make();\n    unloadedType.saveIn(new File(\"d:/temp/bytebuddy\"));\n</code></pre>\n\n<p>This gives me an output where the extra field was added but not a glance of the getter override (disassembled from .class file):</p>\n\n<pre><code>public class PropertiesImpl$ByteBuddy$OLlyZYNY extends PropertiesImpl {\n    private SecurityService securityService;\n\n    public void setSecurityService(SecurityService var1) {\n        this.securityService = var1;\n    }\n\n    public SecurityService getSecurityService() {\n        return this.securityService;\n    }\n\n    public PropertiesImpl$ByteBuddy$OLlyZYNY() {\n    }\n}\n</code></pre>\n\n<p>Here I do not exactly understand how to look for the error. Does it mean that I used totally wrong method implementation and <code>Byte Buddy</code> simply skipped it? Or am I wrong with ElementMatchers? Is there some trace or whatever that will give me a clue how to fix my code?</p>\n\n<p><strong>Current implementation:</strong></p>\n\n<pre><code>private Class&lt;?&gt; wrapProperties() throws IOException {\n\n    DynamicType.Builder&lt;?&gt; byteBuddy = new ByteBuddy()\n        .subclass(PropertiesImpl.class)\n        .defineProperty(\"securityService\", SecurityService.class);\n\n    Arrays.stream(PropertiesImpl.class.getDeclaredFields())\n        .filter(item -&gt; item.getAnnotation(SecureAttribute.class) != null)\n        .forEach(item -&gt; byteBuddy\n            .method(ElementMatchers.named(getGetterBeanName(item)))\n            .intercept(new GetterWrapperImplementation(item)));\n\n    DynamicType.Unloaded&lt;?&gt; unloadedType = byteBuddy.make();\n    unloadedType.saveIn(new File(\"d:/temp/bytebuddy\"));\n    Class&lt;?&gt; wrapperClass = unloadedType.load(PropertiesImpl.class.getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)\n        .getLoaded();\n\n    return wrapperClass;\n}\n\npublic static class GetterWrapperImplementation implements Implementation {\n    public static final TypeDescription SS_TYPE;\n    public static final MethodDescription SS_GET_SECURE_VALUE;\n\n    private final Field filed;\n\n    static {\n        try {\n            SS_TYPE = new TypeDescription.ForLoadedType(SecurityService.class);\n            SS_GET_SECURE_VALUE = new MethodDescription.ForLoadedMethod(SecurityService.class.getDeclaredMethod(\"getSecureValue\", String.class));\n        }\n        catch (final NoSuchMethodException | SecurityException e) {\n            throw new RuntimeException(e);\n        }\n    }\n\n\n    public GetterWrapperImplementation(Field filed) {\n        this.filed = filed;\n    }\n\n    @Override\n    public InstrumentedType prepare(final InstrumentedType instrumentedType) {\n        return instrumentedType;\n    }\n\n    @Override\n    public ByteCodeAppender appender(final Target implementationTarget) {\n        final TypeDescription thisType = implementationTarget.getInstrumentedType();\n\n        return new ByteCodeAppender.Simple(Arrays.asList(\n            TypeCreation.of(SS_TYPE),\n\n            // get securityService field\n            MethodVariableAccess.loadThis(),\n            FieldAccess.forField(thisType.getDeclaredFields()\n                .filter(ElementMatchers.named(\"securityService\"))\n                .getOnly()\n            ).read(),\n\n            // get secure field\n            MethodVariableAccess.loadThis(),\n            FieldAccess.forField(thisType.getDeclaredFields()\n                .filter(ElementMatchers.named(filed.getName()))\n                .getOnly()\n            ).read(),\n\n            MethodInvocation.invoke(SS_GET_SECURE_VALUE),\n            MethodReturn.of(TypeDescription.STRING)\n        ));\n    }\n}\n</code></pre>\n\n<p>What I know for the fact is that breakpoints inside <code>ByteCodeAppender appender(final Target implementationTarget)</code> do not get hit, but again not sure how to interpret this.</p>\n\n<p>Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "android-studio",
+                "android-animation"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9209817,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9a9c101c74682aa4ecd1a62aa004cc35?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Daydara-senpai",
+                "link": "https://stackoverflow.com/users/9209817/daydara-senpai"
+            },
+            "is_answered": false,
+            "view_count": 36,
+            "answer_count": 1,
+            "score": -8,
+            "last_activity_date": 1523523555,
+            "creation_date": 1523523114,
+            "question_id": 49792100,
+            "body_markdown": "Hi im a begginner with Android Studio.\r\n\r\nHow can I create an animation where somthing (like rain or snow or anything else) drop from top to the bottom when I click on a button it&#39;s start the animation and when I click  the same button, the button stop the drop animation.\r\n\r\nThanks",
+            "link": "https://stackoverflow.com/questions/49792100/android-drop-from-top-to-bottom",
+            "title": "Android drop from top to bottom",
+            "body": "<p>Hi im a begginner with Android Studio.</p>\n\n<p>How can I create an animation where somthing (like rain or snow or anything else) drop from top to the bottom when I click on a button it's start the animation and when I click  the same button, the button stop the drop animation.</p>\n\n<p>Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "plot",
+                "scikit-learn"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 7496459,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-lvmFp4nSTTo/AAAAAAAAAAI/AAAAAAAAABA/4cgRgfdYFsk/photo.jpg?sz=128",
+                "display_name": "Alexandra Bomane",
+                "link": "https://stackoverflow.com/users/7496459/alexandra-bomane"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1523523543,
+            "creation_date": 1523523543,
+            "question_id": 49792272,
+            "body_markdown": "I would like to know if the cost curve is implemented in Scikit-Learn to get the features (thresholds, normalized expected costs and probability cost function) required to draw such curve, and then calculate its AUC.\r\n\r\nCost curves are an alternative to the commonly used ROC curves.\r\n\r\nThey analyse classification performance by varying operating points. Operating points are based on class probabilities and misclassification costs (see p5 of http://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0118432&amp;type=printable).\r\n\r\nThanks,\r\nAlexandra",
+            "link": "https://stackoverflow.com/questions/49792272/is-there-an-implementation-of-cost-curve-in-scikit-learn",
+            "title": "Is there an implementation of cost curve in Scikit-Learn?",
+            "body": "<p>I would like to know if the cost curve is implemented in Scikit-Learn to get the features (thresholds, normalized expected costs and probability cost function) required to draw such curve, and then calculate its AUC.</p>\n\n<p>Cost curves are an alternative to the commonly used ROC curves.</p>\n\n<p>They analyse classification performance by varying operating points. Operating points are based on class probabilities and misclassification costs (see p5 of <a href=\"http://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0118432&amp;type=printable\" rel=\"nofollow noreferrer\">http://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0118432&amp;type=printable</a>).</p>\n\n<p>Thanks,\nAlexandra</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "promise",
+                "observable"
+            ],
+            "owner": {
+                "reputation": 384,
+                "user_id": 2719044,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/ce009ffffb0f2f76a2d0914168dc699d?s=128&d=identicon&r=PG",
+                "display_name": "Maslow",
+                "link": "https://stackoverflow.com/users/2719044/maslow"
+            },
+            "is_answered": true,
+            "view_count": 51,
+            "accepted_answer_id": 49754009,
+            "answer_count": 3,
+            "score": 1,
+            "last_activity_date": 1523523538,
+            "creation_date": 1523353258,
+            "last_edit_date": 1523361321,
+            "question_id": 49750330,
+            "body_markdown": "I&#39;m working on a mobile app and I want it to be offline-first.\r\nLet&#39;s say I want to show the &quot;Company&quot; page so I request the company datas.\r\n\r\nHere&#39;s what I do, I look for the company data in the local storage (indexedDB in my case) and at the same time I call the server for the same data (to get the potential updates). In each callback I update the view with the datas fetched. First updated from local datas then from remote datas.\r\n\r\nTo avoid a race condition I have a boolean called &quot;remoteDataAlreadyFetched&quot; that I check in my local storage callback (in case remote datas arrive before the storage response)\r\n\r\nMy question is: how should I handle this ? 2 separate promises in my view controller (one for local, one for remote) ? Should I use an observable ? This looks overkill since there won&#39;t be more than 2 responses (local and remote). Am I missing something ?\r\n\r\nThanks a lot for your help\r\n\r\nEDIT:\r\n\r\nThis is how I would do it with RxJS. Don&#39;t know if it&#39;s a bad practice to use Observables in this situation...\r\n\r\n    public static getOfflineFirstObservable(localCall, remoteCall): Observable&lt;any&gt; {\r\n      const data$ = new BehaviorSubject(null);\r\n      var hasFetchedRemoteData = false;\r\n\r\n      localCall().then(localDatas =&gt; {\r\n        if (!hasFetchedRemoteData) data$.next(localDatas);\r\n      });\r\n\r\n      remoteCall().then(remoteDatas =&gt; {\r\n        data$.next(remoteDatas);\r\n        hasFetchedRemoteData = true;\r\n      });\r\n\r\n      return data$.asObservable();\r\n    }",
+            "link": "https://stackoverflow.com/questions/49750330/async-flow-control-without-rxjs",
+            "title": "Async flow control without RxJS",
+            "body": "<p>I'm working on a mobile app and I want it to be offline-first.\nLet's say I want to show the \"Company\" page so I request the company datas.</p>\n\n<p>Here's what I do, I look for the company data in the local storage (indexedDB in my case) and at the same time I call the server for the same data (to get the potential updates). In each callback I update the view with the datas fetched. First updated from local datas then from remote datas.</p>\n\n<p>To avoid a race condition I have a boolean called \"remoteDataAlreadyFetched\" that I check in my local storage callback (in case remote datas arrive before the storage response)</p>\n\n<p>My question is: how should I handle this ? 2 separate promises in my view controller (one for local, one for remote) ? Should I use an observable ? This looks overkill since there won't be more than 2 responses (local and remote). Am I missing something ?</p>\n\n<p>Thanks a lot for your help</p>\n\n<p>EDIT:</p>\n\n<p>This is how I would do it with RxJS. Don't know if it's a bad practice to use Observables in this situation...</p>\n\n<pre><code>public static getOfflineFirstObservable(localCall, remoteCall): Observable&lt;any&gt; {\n  const data$ = new BehaviorSubject(null);\n  var hasFetchedRemoteData = false;\n\n  localCall().then(localDatas =&gt; {\n    if (!hasFetchedRemoteData) data$.next(localDatas);\n  });\n\n  remoteCall().then(remoteDatas =&gt; {\n    data$.next(remoteDatas);\n    hasFetchedRemoteData = true;\n  });\n\n  return data$.asObservable();\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "casting"
+            ],
+            "owner": {
+                "reputation": 6660,
+                "user_id": 59808,
+                "user_type": "registered",
+                "accept_rate": 82,
+                "profile_image": "https://www.gravatar.com/avatar/3b03ec11cdf3ec0d6dcc962ffe6adc70?s=128&d=identicon&r=PG",
+                "display_name": "DevinB",
+                "link": "https://stackoverflow.com/users/59808/devinb"
+            },
+            "is_answered": true,
+            "view_count": 8691,
+            "accepted_answer_id": 725517,
+            "answer_count": 2,
+            "score": 9,
+            "last_activity_date": 1523523533,
+            "creation_date": 1239107130,
+            "last_edit_date": 1239107658,
+            "question_id": 725435,
+            "body_markdown": "If I have a base class and two derived classes, and I want to implement the casting between the two derived classes by hand, is there any way to do that? (in C#)\r\n\r\n    abstract class AbsBase\r\n    {\r\n       private int A;\r\n       private int B;\r\n       private int C;\r\n       private int D;\r\n    }\r\n    \r\n    class Imp_A : AbsBase\r\n    {\r\n       private List&lt;int&gt; E;\r\n    }\r\n    \r\n    \r\n    class Imp_B : AbsBase\r\n    {\r\n       private int lastE;\r\n    }\r\n\r\nGenerally I&#39;ll be casting from Imp_A -&gt; Imp_B and I want the last value in the E list to be the &#39;LastE&#39;. \r\nAlso, what if there were three or more implementation classes (such as Salary, Hourly, Consultant, and Former Employees.)\r\n\r\nRegardless of whether this is architecturally sound (I can&#39;t describe the whole application and be concise) is it possible?\r\n\r\nI was going to write a converter, except that to my understanding a converter will create a new object of the Imp_B class, which I don&#39;t need because the &#39;employee&#39; will only be one of the options at any one time.\r\n\r\n-Devin\r\n",
+            "link": "https://stackoverflow.com/questions/725435/overriding-cast",
+            "title": "Overriding (cast)",
+            "body": "<p>If I have a base class and two derived classes, and I want to implement the casting between the two derived classes by hand, is there any way to do that? (in C#)</p>\n\n<pre><code>abstract class AbsBase\n{\n   private int A;\n   private int B;\n   private int C;\n   private int D;\n}\n\nclass Imp_A : AbsBase\n{\n   private List&lt;int&gt; E;\n}\n\n\nclass Imp_B : AbsBase\n{\n   private int lastE;\n}\n</code></pre>\n\n<p>Generally I'll be casting from Imp_A -> Imp_B and I want the last value in the E list to be the 'LastE'. \nAlso, what if there were three or more implementation classes (such as Salary, Hourly, Consultant, and Former Employees.)</p>\n\n<p>Regardless of whether this is architecturally sound (I can't describe the whole application and be concise) is it possible?</p>\n\n<p>I was going to write a converter, except that to my understanding a converter will create a new object of the Imp_B class, which I don't need because the 'employee' will only be one of the options at any one time.</p>\n\n<p>-Devin</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "multiprocessing",
+                "concurrent.futures"
+            ],
+            "owner": {
+                "reputation": 505,
+                "user_id": 2569531,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://www.gravatar.com/avatar/b7501563d5253042932856cf41ed6c91?s=128&d=identicon&r=PG",
+                "display_name": "blahblahblah",
+                "link": "https://stackoverflow.com/users/2569531/blahblahblah"
+            },
+            "is_answered": true,
+            "view_count": 13,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1523523528,
+            "creation_date": 1523473666,
+            "question_id": 49782749,
+            "body_markdown": "When I run the following script on a Windows computer, I do not see any of the log messages from the `log_pid` function, however I do when I run on Unix / Mac. I&#39;ve read before that multiprocessing is different on Windows compared to Mac, but it&#39;s not clear to me what changes should I make to get this script to work on Windows. I&#39;m running Python 3.6.\r\n\r\n    import logging\r\n    import sys\r\n    from concurrent.futures import ProcessPoolExecutor\r\n    import os\r\n    \r\n    \r\n    def log_pid(x):\r\n        logger.info(&#39;Executing on process: %s&#39; % os.getpid())\r\n    \r\n    \r\n    def do_stuff():\r\n        logger.info(&#39;this is the do stuff function.&#39;)\r\n        with ProcessPoolExecutor(max_workers=4) as executor:\r\n            executor.map(log_pid, range(0, 10))\r\n    \r\n    \r\n    def main():\r\n        logger.info(&#39;this is the main function.&#39;)\r\n        do_stuff()\r\n    \r\n    \r\n    if __name__ == &#39;__main__&#39;:\r\n        logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)\r\n        logger = logging.getLogger(__name__)\r\n    \r\n        logger.info(&#39;Start of script ...&#39;)\r\n    \r\n        main()\r\n    \r\n        logger.info(&#39;End of script ...&#39;)",
+            "link": "https://stackoverflow.com/questions/49782749/processpoolexecutor-logging-fails-to-log-inside-function-on-windows-but-not-on-u",
+            "title": "ProcessPoolExecutor logging fails to log inside function on Windows but not on Unix / Mac",
+            "body": "<p>When I run the following script on a Windows computer, I do not see any of the log messages from the <code>log_pid</code> function, however I do when I run on Unix / Mac. I've read before that multiprocessing is different on Windows compared to Mac, but it's not clear to me what changes should I make to get this script to work on Windows. I'm running Python 3.6.</p>\n\n<pre><code>import logging\nimport sys\nfrom concurrent.futures import ProcessPoolExecutor\nimport os\n\n\ndef log_pid(x):\n    logger.info('Executing on process: %s' % os.getpid())\n\n\ndef do_stuff():\n    logger.info('this is the do stuff function.')\n    with ProcessPoolExecutor(max_workers=4) as executor:\n        executor.map(log_pid, range(0, 10))\n\n\ndef main():\n    logger.info('this is the main function.')\n    do_stuff()\n\n\nif __name__ == '__main__':\n    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)\n    logger = logging.getLogger(__name__)\n\n    logger.info('Start of script ...')\n\n    main()\n\n    logger.info('End of script ...')\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "opencv",
+                "arduino"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9635068,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "이찬희",
+                "link": "https://stackoverflow.com/users/9635068/%ec%9d%b4%ec%b0%ac%ed%9d%ac"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "closed_date": 1523529480,
+            "answer_count": 0,
+            "score": -5,
+            "last_activity_date": 1523523524,
+            "creation_date": 1523523524,
+            "question_id": 49792270,
+            "body_markdown": "We want to create a program that detects the cutting chips that are combinationed during cutting processing. Is there any way to detect a combination using open CV?( use a pi camera etc.)",
+            "link": "https://stackoverflow.com/questions/49792270/cutting-chips-using-open-cv-is-there-any-way-to-detect-a-combinationin-machine",
+            "closed_reason": "unclear what you&#39;re asking",
+            "title": "Cutting chips using open CV Is there any way to detect a combination?(in machine tools.)",
+            "body": "<p>We want to create a program that detects the cutting chips that are combinationed during cutting processing. Is there any way to detect a combination using open CV?( use a pi camera etc.)</p>\n"
+        },
+        {
+            "tags": [
+                "c",
+                "linux",
+                "semaphore",
+                "shared-memory",
+                "processor"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 9631560,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/068c2250b072a2603e573ac9503bc08a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "peter",
+                "link": "https://stackoverflow.com/users/9631560/peter"
+            },
+            "is_answered": false,
+            "view_count": 27,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1523523517,
+            "creation_date": 1523509703,
+            "last_edit_date": 1523515145,
+            "question_id": 49788414,
+            "body_markdown": "Follows are my codes:\r\n\r\n    #include ...\r\n    sem_t mutex;\r\n    sem_t empty;\r\n    sem_t full;\r\n    int main()\r\n    {\r\n        int shmid_arr;\r\n        int shmid_get;\r\n        int shmid_set;\r\n        int *shmaddr = 0;\r\n        int *shm_get_addr;\r\n        int *shm_set_addr;\r\n        shmid_arr = shmget(IPC_PRIVATE, 20 * sizeof(int), IPC_CREAT|0600);\r\n        shmid_get = shmget(IPC_PRIVATE, sizeof(int), IPC_CREAT|0600);\r\n        shmid_set = shmget(IPC_PRIVATE, sizeof(int), IPC_CREAT|0600);\r\n        **shmid_get = 0;\r\n        **shmid_set = 0;\r\n        sem_init(&amp;mutex, 1 , 1 );\r\n        sem_init(&amp;full, 1 , 0 );\r\n        sem_init(&amp;empty, 1 , 20 );\r\n        printf(&quot;sem_init\\n&quot;);\r\n        if(fork() == 0)\r\n        {\r\n            int i = 0;\r\n            while(i&lt;20)\r\n            {\r\n                sem_wait(&amp;empty);\r\n                sem_wait(&amp;mutex);\r\n                shm_set_addr = (int *)shmat(shmid, NULL, 0);\r\n                shmaddr = (int *)shmat(shmid, NULL, 0);\r\n                shmaddr[*shm_set_addr%20] =  i + 1;\r\n                printf(&quot;produce %d\\n&quot;, i+1)\r\n                (* shm_set_addr)++;\r\n                i++;\r\n                shmdt(shmadrr);\r\n                shmdt(shm_set_addr);\r\n                sem_post(&amp;mutex);\r\n                sem_post(&amp;full);\r\n            }\r\n            sleep(10);\r\n            printf(&quot;Producer is over\\n&quot;);\r\n            exit(0);\r\n        }else{\r\n            while(1)\r\n                {\r\n                    sem_wait(&amp;full);\r\n                    sem_wait(&amp;mutex);\r\n                    shm_get_addr = (int *)shmat(shmid, NULL, 0);\r\n                    shmaddr = (int *)shmat(shmid, NULL, 0);\r\n                    printf(&quot;consumer get %d\\n&quot;,shmaddr[*shm_get_addr%20]);\r\n                    (*shm_get_addr)++;\r\n                    shmdt(shmadrr);\r\n                    shmdt(shm_get_addr);\r\n                    sem_post(&amp;mutex);\r\n                    sem_post(&amp;empty);\r\n                    sleep(1);\r\n                }\r\n            printf(&quot;consumer over\\n&quot;);\r\n            exit(0);\r\n            }\r\n        }\r\n        return 0;\r\n    }\r\n\r\nI set three semaphores including `full`, `empty`, and `mutex`. `empty` is initialized to `20`, `full` is initialized to `0` and `mutex` is initialized to `1`. \r\n\r\nI put `P(empty)` in front of producer critical section and `V(full)` after it using `P(mutex)m,V(mutex)` to lock. I put `P(full)` in front of consumer critical section and `V(empty)` after it using `P(mutex),V(mutex)` to lock. And I use `shm` to set and get shared memory.\r\n\r\nIt should get a result that producer produce and consumer consume. But my program never run a consumer producer processor. It confused me a lot. Did I use semaphore in wrong way? Or did I set shared memory in wrong way?\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49788414/producer-and-consumer-using-semaphore-in-linux-c",
+            "title": "Producer and consumer using semaphore in Linux c",
+            "body": "<p>Follows are my codes:</p>\n\n<pre><code>#include ...\nsem_t mutex;\nsem_t empty;\nsem_t full;\nint main()\n{\n    int shmid_arr;\n    int shmid_get;\n    int shmid_set;\n    int *shmaddr = 0;\n    int *shm_get_addr;\n    int *shm_set_addr;\n    shmid_arr = shmget(IPC_PRIVATE, 20 * sizeof(int), IPC_CREAT|0600);\n    shmid_get = shmget(IPC_PRIVATE, sizeof(int), IPC_CREAT|0600);\n    shmid_set = shmget(IPC_PRIVATE, sizeof(int), IPC_CREAT|0600);\n    **shmid_get = 0;\n    **shmid_set = 0;\n    sem_init(&amp;mutex, 1 , 1 );\n    sem_init(&amp;full, 1 , 0 );\n    sem_init(&amp;empty, 1 , 20 );\n    printf(\"sem_init\\n\");\n    if(fork() == 0)\n    {\n        int i = 0;\n        while(i&lt;20)\n        {\n            sem_wait(&amp;empty);\n            sem_wait(&amp;mutex);\n            shm_set_addr = (int *)shmat(shmid, NULL, 0);\n            shmaddr = (int *)shmat(shmid, NULL, 0);\n            shmaddr[*shm_set_addr%20] =  i + 1;\n            printf(\"produce %d\\n\", i+1)\n            (* shm_set_addr)++;\n            i++;\n            shmdt(shmadrr);\n            shmdt(shm_set_addr);\n            sem_post(&amp;mutex);\n            sem_post(&amp;full);\n        }\n        sleep(10);\n        printf(\"Producer is over\\n\");\n        exit(0);\n    }else{\n        while(1)\n            {\n                sem_wait(&amp;full);\n                sem_wait(&amp;mutex);\n                shm_get_addr = (int *)shmat(shmid, NULL, 0);\n                shmaddr = (int *)shmat(shmid, NULL, 0);\n                printf(\"consumer get %d\\n\",shmaddr[*shm_get_addr%20]);\n                (*shm_get_addr)++;\n                shmdt(shmadrr);\n                shmdt(shm_get_addr);\n                sem_post(&amp;mutex);\n                sem_post(&amp;empty);\n                sleep(1);\n            }\n        printf(\"consumer over\\n\");\n        exit(0);\n        }\n    }\n    return 0;\n}\n</code></pre>\n\n<p>I set three semaphores including <code>full</code>, <code>empty</code>, and <code>mutex</code>. <code>empty</code> is initialized to <code>20</code>, <code>full</code> is initialized to <code>0</code> and <code>mutex</code> is initialized to <code>1</code>. </p>\n\n<p>I put <code>P(empty)</code> in front of producer critical section and <code>V(full)</code> after it using <code>P(mutex)m,V(mutex)</code> to lock. I put <code>P(full)</code> in front of consumer critical section and <code>V(empty)</code> after it using <code>P(mutex),V(mutex)</code> to lock. And I use <code>shm</code> to set and get shared memory.</p>\n\n<p>It should get a result that producer produce and consumer consume. But my program never run a consumer producer processor. It confused me a lot. Did I use semaphore in wrong way? Or did I set shared memory in wrong way?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "scapy",
+                "packet-sniffers"
+            ],
+            "owner": {
+                "reputation": 7,
+                "user_id": 7320123,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://lh6.googleusercontent.com/-DmV4sDUFpvU/AAAAAAAAAAI/AAAAAAAAAlo/WzyLTVWsLuo/photo.jpg?sz=128",
+                "display_name": "Idan",
+                "link": "https://stackoverflow.com/users/7320123/idan"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523523514,
+            "creation_date": 1523448034,
+            "question_id": 49774580,
+            "body_markdown": "I&#39;m trying to create a TCP handshake using scapy.  \r\nThe sniff code I currently use:  \r\n\r\n    s.sniff(filter=&quot;tcp dst port &quot; + str(port) + &quot; and ip dst host &quot; + host, count=1, prn=custom_action, store=0)\r\n\r\nTe problem is the custom action is too slow, resulting the sniff command to skip a few packets I get when it still inside the costume function.  \r\nIs there a way I could still sniff packets while processing one?",
+            "link": "https://stackoverflow.com/questions/49774580/scapy-stop-sniffing-in-custom-function",
+            "title": "Scapy stop sniffing in custom function",
+            "body": "<p>I'm trying to create a TCP handshake using scapy.<br>\nThe sniff code I currently use:  </p>\n\n<pre><code>s.sniff(filter=\"tcp dst port \" + str(port) + \" and ip dst host \" + host, count=1, prn=custom_action, store=0)\n</code></pre>\n\n<p>Te problem is the custom action is too slow, resulting the sniff command to skip a few packets I get when it still inside the costume function.<br>\nIs there a way I could still sniff packets while processing one?</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "mysql",
+                "mysqli"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9476842,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/43db006ff62b76fd9a614c081e1d2abd?s=128&d=identicon&r=PG&f=1",
+                "display_name": "John",
+                "link": "https://stackoverflow.com/users/9476842/john"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523523508,
+            "creation_date": 1523519523,
+            "last_edit_date": 1523523002,
+            "question_id": 49790876,
+            "body_markdown": "   I am trying to store uploaded file in MySQL database through PHP. When the query is executed, it returns true. But, when retirieving the file, the uploaded file is of 0 byte. Please help me with the issue. I have used the below code for the query execution.\r\n\r\n     &lt;?php\r\n    \r\n    $name = $email = $subject = $message = &#39;&#39;;\r\n    \r\n    if ($_SERVER[&#39;REQUEST_METHOD&#39;] == &#39;POST&#39;) {\r\n        $name = test_input($_POST[&#39;username&#39;]);\r\n        $email = test_input($_POST[&#39;email&#39;]);\r\n        $linkedinurl = test_input($_POST[&#39;linkedin&#39;]);\r\n        $message = test_input($_POST[&#39;message&#39;]);\r\n    \t$jobrole = test_input($_POST[&#39;jobrole&#39;]);\r\n        $captcha = test_input($_POST[&#39;g-recaptcha-response&#39;]);\r\n    }\r\n    \r\n    function test_input($data)\r\n    {\r\n        $data = trim($data);\r\n        $data = stripslashes($data);\r\n        $data = htmlspecialchars($data);\r\n    \r\n        return $data;\r\n    }\r\n     if(isset($_POST[&#39;file&#39;])){\r\n    \t $cv_file = file_get_contents($_FILES[&#39;file&#39;]);\r\n     }\r\n    if (isset($_POST[&#39;g-recaptcha-response&#39;])) {\r\n        $captcha = $_POST[&#39;g-recaptcha-response&#39;];\r\n    }\r\n    if (!$captcha) {\r\n        echo &#39;Please check the captcha form.&#39;;\r\n        exit;\r\n    }\r\n    $secretKey = &#39;xxx&#39;;\r\n    $ip = $_SERVER[&#39;REMOTE_ADDR&#39;];\r\n    $response = file_get_contents(&#39;https://www.google.com/recaptcha/api/siteverify?secret=&#39;.$secretKey.&#39;&amp;response=&#39;.$captcha.&#39;&amp;remoteip=&#39;.$ip);\r\n            $responseKeys = json_decode($response, true);\r\n        if (intval($responseKeys[&#39;success&#39;]) !== 1) {\r\n            echo &#39;&lt;h2&gt;You are spammer !&lt;/h2&gt;&#39;;\r\n        } else {\r\n            echo &#39;&#39;;\r\n        }\r\n    \r\n    $servername = &#39;xxx&#39;;\r\n    $username = &#39;xxx&#39;;\r\n    $password = &#39;xxx&#39;;\r\n    $dbname = &#39;xxx&#39;;\r\n    \r\n    // Create connection\r\n    $conn = new mysqli($servername, $username, $password, $dbname);\r\n    // Check connection\r\n    if ($conn-&gt;connect_error) {\r\n        die(&#39;Connection failed: &#39;.$conn-&gt;connect_error);\r\n    }\r\n    \r\n    $sql = &quot;INSERT INTO career_details (name, email, linkedin_url,job_role, message, cv) \r\n    VALUES (&#39;$name&#39;, &#39;$email&#39;, &#39;$linkedinurl&#39;, &#39;$jobrole&#39;, &#39;$message&#39;,&#39;$cv_file&#39;)&quot;;\r\n    \r\n    if ($conn-&gt;query($sql) === true) {\r\n        echo &#39;New record created successfully&#39;;\r\n    } else {\r\n        echo &#39;Error: &#39;.$sql.&#39;&lt;br&gt;&#39;.$conn-&gt;error;\r\n    }\r\n    \t\t\t\t\t\t\r\n    $conn-&gt;close();\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49790876/file-uploaded-as-blob-format-to-my-sql-through-php-has-0-byte",
+            "title": "File uploaded as blob format to My SQL through PHP has 0 byte",
+            "body": "<p>I am trying to store uploaded file in MySQL database through PHP. When the query is executed, it returns true. But, when retirieving the file, the uploaded file is of 0 byte. Please help me with the issue. I have used the below code for the query execution.</p>\n\n<pre><code> &lt;?php\n\n$name = $email = $subject = $message = '';\n\nif ($_SERVER['REQUEST_METHOD'] == 'POST') {\n    $name = test_input($_POST['username']);\n    $email = test_input($_POST['email']);\n    $linkedinurl = test_input($_POST['linkedin']);\n    $message = test_input($_POST['message']);\n    $jobrole = test_input($_POST['jobrole']);\n    $captcha = test_input($_POST['g-recaptcha-response']);\n}\n\nfunction test_input($data)\n{\n    $data = trim($data);\n    $data = stripslashes($data);\n    $data = htmlspecialchars($data);\n\n    return $data;\n}\n if(isset($_POST['file'])){\n     $cv_file = file_get_contents($_FILES['file']);\n }\nif (isset($_POST['g-recaptcha-response'])) {\n    $captcha = $_POST['g-recaptcha-response'];\n}\nif (!$captcha) {\n    echo 'Please check the captcha form.';\n    exit;\n}\n$secretKey = 'xxx';\n$ip = $_SERVER['REMOTE_ADDR'];\n$response = file_get_contents('https://www.google.com/recaptcha/api/siteverify?secret='.$secretKey.'&amp;response='.$captcha.'&amp;remoteip='.$ip);\n        $responseKeys = json_decode($response, true);\n    if (intval($responseKeys['success']) !== 1) {\n        echo '&lt;h2&gt;You are spammer !&lt;/h2&gt;';\n    } else {\n        echo '';\n    }\n\n$servername = 'xxx';\n$username = 'xxx';\n$password = 'xxx';\n$dbname = 'xxx';\n\n// Create connection\n$conn = new mysqli($servername, $username, $password, $dbname);\n// Check connection\nif ($conn-&gt;connect_error) {\n    die('Connection failed: '.$conn-&gt;connect_error);\n}\n\n$sql = \"INSERT INTO career_details (name, email, linkedin_url,job_role, message, cv) \nVALUES ('$name', '$email', '$linkedinurl', '$jobrole', '$message','$cv_file')\";\n\nif ($conn-&gt;query($sql) === true) {\n    echo 'New record created successfully';\n} else {\n    echo 'Error: '.$sql.'&lt;br&gt;'.$conn-&gt;error;\n}\n\n$conn-&gt;close();\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "jquery",
+                "html5",
+                "youtube",
+                "embed"
+            ],
+            "owner": {
+                "reputation": 798,
+                "user_id": 5889357,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/QYOld.png?s=128&g=1",
+                "display_name": "Sandwell",
+                "link": "https://stackoverflow.com/users/5889357/sandwell"
+            },
+            "is_answered": true,
+            "view_count": 21,
+            "accepted_answer_id": 49792019,
+            "answer_count": 2,
+            "score": -1,
+            "last_activity_date": 1523523500,
+            "creation_date": 1523519048,
+            "question_id": 49790728,
+            "body_markdown": "I&#39;m trying to integrate this [youtube video][1] to my website but It does not work.\r\n\r\nWhat&#39;s wrong with this ?\r\n\r\n    &lt;iframe width=&quot;560&quot; height=&quot;315&quot; src=&quot;https://www.youtube.com/embed/oHg5SJYRHA0&quot; frameborder=&quot;0&quot; allow=&quot;autoplay; encrypted-media&quot; allowfullscreen&gt;&lt;/iframe&gt;\r\n\r\n\r\n  [1]: https://www.youtube.com/watch?v=oHg5SJYRHA0",
+            "link": "https://stackoverflow.com/questions/49790728/why-this-particular-youtube-url-cant-be-embeded",
+            "title": "Why this particular youtube URL can&#39;t be embeded?",
+            "body": "<p>I'm trying to integrate this <a href=\"https://www.youtube.com/watch?v=oHg5SJYRHA0\" rel=\"nofollow noreferrer\">youtube video</a> to my website but It does not work.</p>\n\n<p>What's wrong with this ?</p>\n\n<pre><code>&lt;iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/oHg5SJYRHA0\" frameborder=\"0\" allow=\"autoplay; encrypted-media\" allowfullscreen&gt;&lt;/iframe&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "gtk",
+                "codeblocks",
+                "msys2"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 5569922,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/8d56683a3ce69d00a01b9b02fd04c297?s=128&d=identicon&r=PG&f=1",
+                "display_name": "John Doe",
+                "link": "https://stackoverflow.com/users/5569922/john-doe"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523523500,
+            "creation_date": 1523497340,
+            "question_id": 49786714,
+            "body_markdown": "I am having trouble installing gtk to start building GUIs in C++ on Code::Blocks. Could anyone nudge me in the right direction? I&#39;m running Windows 10 (64-bit) on a Lenovo. \r\n\r\nI attempted an installation guide (https://www.youtube.com/watch?v=jvQXvTtSIQo), stack overflow (https://stackoverflow.com/questions/32662215/how-do-you-install-gtk-3-0-on-windows), the official GTK installation guide (https://www.gtk.org/download/windows.php), a written guide (http://www.tarnyko.net/repo/gtk3_build_system/tutorial/gtk3_tutorial.htm), and just noticed a very similar stack overflow (https://stackoverflow.com/questions/37737020/install-gtk-for-c-on-windows-10) \r\n\r\nBefore this, my PATH environment variable only recorded C:\\Users\\Owner\\AppData\\Local\\Microsoft\\WindowsApps;C:\\Users\\Owner\\AppData\\Roaming\\npm;C:\\Users\\Owner\\AppData\\Local\\atom\\bin;%USERPROFILE%\\AppData\\Local\\Microsoft\\WindowsApps;\r\n\r\nI downloaded MinGW from mingw.org. This was to the youtube link&#39;s comment that the official is more stable than the one that can be installed with Code::Blocks. I added C:\\MinGW\\bin to PATH. \r\n\r\nTrying the official GTK installation site, I downloaded MSYS2 and used pacman -Syu to install core system packages and pacman -Su to then update. That&#39;s the end of that, so I think gtk is officially installed, I just need to get it to talk to Code::Blocks. I added C:\\msys64\\mingw64\\bin to PATH but that didn&#39;t seem to work. \r\n\r\nI tried to install the all-in-one bundle for GTK 3.6.4 at http://www.tarnyko.net/dl/gtk.htm , and extracted it to C:\\gtk. I now have C:\\gtk\\bin in PATH. GTK should be in my path in one form or the other. I can run gtk3-demo and gtk-demo-application from CMD but not MSYS2. I&#39;m a bit confused about that. It probably has something to do with MSYS2&#39;s specific path variable, I think? But it should search the system&#39;s PATH afterward? And I don&#39;t know how to change that specific path? Probably questions for another day. \r\n\r\nSo the similar stack overflow, youtube, and written tutorial all say to use pkg-config --cflags --libs gtk+-3.0 to check for a reasonable output to see if I have gtk correctly installed. I installed \r\npkg-config-lite to avoid the glib circular dependency issue that https://stackoverflow.com/questions/1710922/how-to-install-pkg-config-in-windows describes and frankly I do not understand. I added it to C:\\MinGW\\bin to by in my path. Now I am able to run it, but get:\r\n\r\n    Package gtk+-3.0 was not found in the pkg-config search path.\r\n    Perhaps you should add the directory containing `gtk+-3.0.pc&#39;\r\n    to the PKG_CONFIG_PATH environment variable\r\n    No package &#39;gtk+-3.0&#39; found\r\n\r\nI tried 3.6.4 instead of 3.0. No dice. I tried just 3. Nope. I can only find gtk3 files, and not the actual version I installed anywhere. pkg-config --cflags --libs says that I need to name a library, so I tried just gtk hopiing to get libraries containing that. Nope. The rest of the tutorials are aimed at getting Code::Blocks compiler (I think) to include gtk. I hope this is the only obstacle, and I will be able to get the rest. But, if anyone can help me through the rest, it would be appreciated. \r\n\r\nAt this point I&#39;m out of ideas. Can someone help me?\r\n\r\nGratefully,\r\nJohn\r\n",
+            "link": "https://stackoverflow.com/questions/49786714/installing-gtk-for-use-in-codeblocks-on-windows-10",
+            "title": "Installing GTK for use in Code::Blocks on Windows 10",
+            "body": "<p>I am having trouble installing gtk to start building GUIs in C++ on Code::Blocks. Could anyone nudge me in the right direction? I'm running Windows 10 (64-bit) on a Lenovo. </p>\n\n<p>I attempted an installation guide (<a href=\"https://www.youtube.com/watch?v=jvQXvTtSIQo\" rel=\"nofollow noreferrer\">https://www.youtube.com/watch?v=jvQXvTtSIQo</a>), stack overflow (<a href=\"https://stackoverflow.com/questions/32662215/how-do-you-install-gtk-3-0-on-windows\">How do you install GTK+ 3.0 on Windows?</a>), the official GTK installation guide (<a href=\"https://www.gtk.org/download/windows.php\" rel=\"nofollow noreferrer\">https://www.gtk.org/download/windows.php</a>), a written guide (<a href=\"http://www.tarnyko.net/repo/gtk3_build_system/tutorial/gtk3_tutorial.htm\" rel=\"nofollow noreferrer\">http://www.tarnyko.net/repo/gtk3_build_system/tutorial/gtk3_tutorial.htm</a>), and just noticed a very similar stack overflow (<a href=\"https://stackoverflow.com/questions/37737020/install-gtk-for-c-on-windows-10\">Install GTK for c on Windows 10?</a>) </p>\n\n<p>Before this, my PATH environment variable only recorded C:\\Users\\Owner\\AppData\\Local\\Microsoft\\WindowsApps;C:\\Users\\Owner\\AppData\\Roaming\\npm;C:\\Users\\Owner\\AppData\\Local\\atom\\bin;%USERPROFILE%\\AppData\\Local\\Microsoft\\WindowsApps;</p>\n\n<p>I downloaded MinGW from mingw.org. This was to the youtube link's comment that the official is more stable than the one that can be installed with Code::Blocks. I added C:\\MinGW\\bin to PATH. </p>\n\n<p>Trying the official GTK installation site, I downloaded MSYS2 and used pacman -Syu to install core system packages and pacman -Su to then update. That's the end of that, so I think gtk is officially installed, I just need to get it to talk to Code::Blocks. I added C:\\msys64\\mingw64\\bin to PATH but that didn't seem to work. </p>\n\n<p>I tried to install the all-in-one bundle for GTK 3.6.4 at <a href=\"http://www.tarnyko.net/dl/gtk.htm\" rel=\"nofollow noreferrer\">http://www.tarnyko.net/dl/gtk.htm</a> , and extracted it to C:\\gtk. I now have C:\\gtk\\bin in PATH. GTK should be in my path in one form or the other. I can run gtk3-demo and gtk-demo-application from CMD but not MSYS2. I'm a bit confused about that. It probably has something to do with MSYS2's specific path variable, I think? But it should search the system's PATH afterward? And I don't know how to change that specific path? Probably questions for another day. </p>\n\n<p>So the similar stack overflow, youtube, and written tutorial all say to use pkg-config --cflags --libs gtk+-3.0 to check for a reasonable output to see if I have gtk correctly installed. I installed \npkg-config-lite to avoid the glib circular dependency issue that <a href=\"https://stackoverflow.com/questions/1710922/how-to-install-pkg-config-in-windows\">How to install pkg config in windows?</a> describes and frankly I do not understand. I added it to C:\\MinGW\\bin to by in my path. Now I am able to run it, but get:</p>\n\n<pre><code>Package gtk+-3.0 was not found in the pkg-config search path.\nPerhaps you should add the directory containing `gtk+-3.0.pc'\nto the PKG_CONFIG_PATH environment variable\nNo package 'gtk+-3.0' found\n</code></pre>\n\n<p>I tried 3.6.4 instead of 3.0. No dice. I tried just 3. Nope. I can only find gtk3 files, and not the actual version I installed anywhere. pkg-config --cflags --libs says that I need to name a library, so I tried just gtk hopiing to get libraries containing that. Nope. The rest of the tutorials are aimed at getting Code::Blocks compiler (I think) to include gtk. I hope this is the only obstacle, and I will be able to get the rest. But, if anyone can help me through the rest, it would be appreciated. </p>\n\n<p>At this point I'm out of ideas. Can someone help me?</p>\n\n<p>Gratefully,\nJohn</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "shapefile",
+                "gdal",
+                "ogr"
+            ],
+            "owner": {
+                "reputation": 604,
+                "user_id": 301175,
+                "user_type": "registered",
+                "accept_rate": 40,
+                "profile_image": "https://www.gravatar.com/avatar/6e040ed4f71fe26b38811d538e428098?s=128&d=identicon&r=PG",
+                "display_name": "Yorian",
+                "link": "https://stackoverflow.com/users/301175/yorian"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523523500,
+            "creation_date": 1523523225,
+            "question_id": 49792144,
+            "body_markdown": "Using python I&#39;m trying to open a shapefile, append a feature and save it. I think it goed wrong in the creation of a feature in a layer cause that function returns 6 (and 0 means no errors I think). My code:\r\n\r\n    # -*- coding: utf-8 -*-\r\n    from osgeo import ogr\r\n    import os\r\n\r\n    &#39;&#39;&#39; Add feature &#39;&#39;&#39;\r\n    driver = ogr.GetDriverByName(&#39;ESRI Shapefile&#39;)\r\n    data_source = driver.Open(src, 0)\r\n    in_layer = data_source.GetLayer()\r\n\r\n    # create the feature\r\n    feature = ogr.Feature(in_layer.GetLayerDefn())\r\n    feature_properties = {&#39;INDEX_NO&#39;: 39470.0,\r\n                      &#39;REGION_NO&#39;: 39330.0,\r\n                      &#39;NAME&#39;: &#39;VOLTRI&#39;,\r\n                      &#39;COUNTRY&#39;: &#39;IT&#39;,\r\n                      &#39;LATITUDE&#39;: 44.421,\r\n                      &#39;LONGITUDE&#39;: 8.784,\r\n                      etc.}\r\n\r\n    for k, v in feature_properties.items():\r\n        # Set the attributes using the values from the dictionary\r\n        feature.SetField(k, v)\r\n\r\n    # create the WKT for the feature using Python string formatting\r\n    wkt = &quot;POINT(%f %f)&quot; %  (float(feature_properties[&#39;LONGITUDE&#39;]) , float(feature_properties[&#39;LATITUDE&#39;]))\r\n\r\n    # Create the point from the Well Known Txt\r\n    point = ogr.CreateGeometryFromWkt(wkt)\r\n\r\n    # Set the feature geometry using the point\r\n    feature.SetGeometry(point)\r\n    feature.SetFID(in_layer.GetFeatureCount())\r\n\r\n    # Create the feature in the layer (shapefile)\r\n    print(in_layer.CreateFeature(feature)) # prints 6, I would expect 0\r\n\r\n    # Dereference the feature\r\n    feature.Destroy()\r\n\r\n    # Save and close the data source\r\n    data_source = None\r\n\r\nI&#39;ve copied the properties from another feature in the layer and only changed the coordinates and name.\r\n\r\nHelp would be much appreciated as I have a hard time finding good documentation for GDAL/OGR for python.",
+            "link": "https://stackoverflow.com/questions/49792144/append-feature-to-an-existing-shapefile",
+            "title": "Append feature to an existing shapefile",
+            "body": "<p>Using python I'm trying to open a shapefile, append a feature and save it. I think it goed wrong in the creation of a feature in a layer cause that function returns 6 (and 0 means no errors I think). My code:</p>\n\n<pre><code># -*- coding: utf-8 -*-\nfrom osgeo import ogr\nimport os\n\n''' Add feature '''\ndriver = ogr.GetDriverByName('ESRI Shapefile')\ndata_source = driver.Open(src, 0)\nin_layer = data_source.GetLayer()\n\n# create the feature\nfeature = ogr.Feature(in_layer.GetLayerDefn())\nfeature_properties = {'INDEX_NO': 39470.0,\n                  'REGION_NO': 39330.0,\n                  'NAME': 'VOLTRI',\n                  'COUNTRY': 'IT',\n                  'LATITUDE': 44.421,\n                  'LONGITUDE': 8.784,\n                  etc.}\n\nfor k, v in feature_properties.items():\n    # Set the attributes using the values from the dictionary\n    feature.SetField(k, v)\n\n# create the WKT for the feature using Python string formatting\nwkt = \"POINT(%f %f)\" %  (float(feature_properties['LONGITUDE']) , float(feature_properties['LATITUDE']))\n\n# Create the point from the Well Known Txt\npoint = ogr.CreateGeometryFromWkt(wkt)\n\n# Set the feature geometry using the point\nfeature.SetGeometry(point)\nfeature.SetFID(in_layer.GetFeatureCount())\n\n# Create the feature in the layer (shapefile)\nprint(in_layer.CreateFeature(feature)) # prints 6, I would expect 0\n\n# Dereference the feature\nfeature.Destroy()\n\n# Save and close the data source\ndata_source = None\n</code></pre>\n\n<p>I've copied the properties from another feature in the layer and only changed the coordinates and name.</p>\n\n<p>Help would be much appreciated as I have a hard time finding good documentation for GDAL/OGR for python.</p>\n"
+        },
+        {
+            "tags": [
+                "debugging",
+                "struts2"
+            ],
+            "owner": {
+                "reputation": 336,
+                "user_id": 1390894,
+                "user_type": "registered",
+                "accept_rate": 47,
+                "profile_image": "https://www.gravatar.com/avatar/a51bd7b77c42b3f2fee8828f6ac21467?s=128&d=identicon&r=PG",
+                "display_name": "bews99",
+                "link": "https://stackoverflow.com/users/1390894/bews99"
+            },
+            "is_answered": false,
+            "view_count": 356,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1523523498,
+            "creation_date": 1345269400,
+            "last_edit_date": 1345457836,
+            "question_id": 12016231,
+            "body_markdown": "this error will occur\r\n\r\nStruts Problem Report\r\n\r\nStruts has detected an unhandled exception:\r\n\r\n    Messages: \t\r\n    Class: org.apache.jasper.compiler.TagLibraryInfoImpl File: TagLibraryInfoImpl.java Method: toString Line: 124 - org/apache/jasper/compiler/TagLibraryInfoImpl.java:124:-1\r\n    File: \torg/apache/jasper/compiler/TagLibraryInfoImpl.java\r\n    Line number: \t124\r\n\r\nhelp me.",
+            "link": "https://stackoverflow.com/questions/12016231/struts-debug-tag-not-working",
+            "title": "struts debug tag not working",
+            "body": "<p>this error will occur</p>\n\n<p>Struts Problem Report</p>\n\n<p>Struts has detected an unhandled exception:</p>\n\n<pre><code>Messages:   \nClass: org.apache.jasper.compiler.TagLibraryInfoImpl File: TagLibraryInfoImpl.java Method: toString Line: 124 - org/apache/jasper/compiler/TagLibraryInfoImpl.java:124:-1\nFile:   org/apache/jasper/compiler/TagLibraryInfoImpl.java\nLine number:    124\n</code></pre>\n\n<p>help me.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-3.x",
+                "firebase",
+                "firebase-database",
+                "fedora-26"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9535211,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/88b8e7dd65a80e92a17f29bb15698e0f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Axel.A",
+                "link": "https://stackoverflow.com/users/9535211/axel-a"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1523523498,
+            "creation_date": 1523522399,
+            "question_id": 49791810,
+            "body_markdown": "im actually doing a project where i need to communicate with a database in Python.\r\n\r\nSo, i decided to use Firebase as its pretty simple to use and im a beginner.\r\n\r\nIn my code i wrote `import pyrebase` and tried `from pyrebase import pyrebase` but i still have this error :\r\n\r\n&gt; Traceback (most recent call last):\r\n  File &quot;./N4S.py&quot;, line 4, in &lt;module&gt;\r\n    import pyrebase\r\nImportError: No module named pyrebase\r\n\r\nMy pip is up to date, i tried to install pyrebase and all tools i could found (pyasn1) with both pip and pip3 and it says that its already installed.\r\n\r\nThanks.",
+            "link": "https://stackoverflow.com/questions/49791810/no-module-name-pyrebase-on-fedora-26",
+            "title": "No module name Pyrebase on Fedora 26",
+            "body": "<p>im actually doing a project where i need to communicate with a database in Python.</p>\n\n<p>So, i decided to use Firebase as its pretty simple to use and im a beginner.</p>\n\n<p>In my code i wrote <code>import pyrebase</code> and tried <code>from pyrebase import pyrebase</code> but i still have this error :</p>\n\n<blockquote>\n  <p>Traceback (most recent call last):\n    File \"./N4S.py\", line 4, in \n      import pyrebase\n  ImportError: No module named pyrebase</p>\n</blockquote>\n\n<p>My pip is up to date, i tried to install pyrebase and all tools i could found (pyasn1) with both pip and pip3 and it says that its already installed.</p>\n\n<p>Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "angularjs",
+                "chart.js"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9371202,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-eSwGV61E1K0/AAAAAAAAAAI/AAAAAAAAAFs/gsBgYSQuCpo/photo.jpg?sz=128",
+                "display_name": "Lembared Nabil",
+                "link": "https://stackoverflow.com/users/9371202/lembared-nabil"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1523523489,
+            "creation_date": 1523376907,
+            "last_edit_date": 1523523489,
+            "question_id": 49758429,
+            "body_markdown": "I want to create vertical line that can move on axe X. \r\n\r\nI have created my line chart using ChartJS version 2.5 with AngularJS version 1.5. \r\n\r\nResult : I&#39;m lookinf to move the green line defined in the chart .\r\n\r\n[enter image description here][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/lAKEP.jpg\r\n\r\n\r\nHtml : this is where i call the chart in HTML .\r\n\r\n    &lt;canvas id=&quot;chart&quot; ng-init=&quot;$onInit()&quot; class=&quot;chart chart-line&quot; style=&quot;padding-top: 10px&quot;\r\n              chart-options=&quot;chartOptions&quot;\r\n              chart-data=&quot;chartData&quot;\r\n              chart-colors=&quot;chartColors&quot;\r\n              chart-labels=&quot;chartLabels&quot;\r\n              chart-legend=&quot;true&quot;\r\n              chart-series=&quot;chartSeries&quot;\r\n              chart-dataset-override=&quot;datasetOverride&quot;&gt;\r\n      &lt;/canvas&gt;\r\n\r\nJS : I defined parameter of chart in my controller \r\n\r\n\r\n    $scope.datesConfiguration= {\r\n                  fromDate: moment().subtract(3, &#39;months&#39;).format(&quot;YYYY-MM-DDTHH:mm&quot;),\r\n                  toDate: moment().format(&quot;YYYY-MM-DDTHH:mm&quot;),\r\n                  toDateMaxLimit: moment().format(&quot;YYYY-MM-DDTHH:mm&quot;),\r\n                };\r\n        \r\n        $scope.chartColors= [&quot;#0C0DE8&quot;, &quot;#8258FA&quot;, &quot;#FFa500&quot;, &quot;#E8B20C&quot;, &quot;#0DFF27&quot;, &quot;#235C3D&quot;, &quot;#B20F00&quot;];\r\n        \r\n        \r\n        $scope.chartOptions= {\r\n                  legend: {\r\n                    display: true,\r\n                    position: &#39;bottom&#39;\r\n                  },\r\n                  tooltips: {\r\n                    callbacks: {\r\n                      \r\n                      }\r\n                    }\r\n                  },\r\n                  annotation: {\r\n                    events: [&#39;click&#39;, &#39;dblclick&#39;, &#39;mouseover&#39;, &#39;mouseout&#39;],\r\n                    annotations: [{\r\n                      drawTime: &#39;afterDraw&#39;,\r\n                      id: &#39;alert-v-line&#39;,\r\n                      type: &#39;line&#39;,\r\n                      mode: &#39;vertical&#39;,\r\n                      value : &quot;02/02/2018&quot;,\r\n                      scaleID: &#39;x-axis-0&#39;,\r\n                      borderColor: &#39;green&#39;,\r\n                      borderWidth: 2,\r\n                      borderDash: [5, 10],\r\n                      label: {\r\n                        backgroundColor: &quot;green&quot;,\r\n                        content: $scope.labels[&#39;rule_result_chart_label_title&#39;],\r\n                        enabled: false,\r\n                        position: &quot;top&quot;,\r\n                        yAdjust: -10\r\n                      }\r\n                    }]\r\n                  },\r\n                  scales: {\r\n                    xAxes: [\r\n                      {\r\n                        id: &#39;x-axis-0&#39;,\r\n                        type: &#39;time&#39;,\r\n                        display: true,\r\n                        time: {\r\n                          unit: &#39;week&#39;,\r\n                          displayFormats: {\r\n                            &#39;millisecond&#39;: &#39;DD/MM/YYYY&#39;,\r\n                            &#39;second&#39;: &#39;DD/MM/YYYY&#39;,\r\n                            &#39;minute&#39;: &#39;DD/MM/YYYY&#39;,\r\n                            &#39;hour&#39;: &#39;DD/MM/YYYY&#39;,\r\n                            &#39;day&#39;: &#39;DD/MM/YYYY&#39;,\r\n                            &#39;week&#39;: &#39;DD/MM/YYYY&#39;\r\n                          },\r\n                          tooltipFormat: &#39;DD/MM/YYYY&#39;\r\n                        }\r\n                      }\r\n                    ],\r\n                    yAxes: []\r\n                  }\r\n                };\r\n    $scope.datasetOverride= [];\r\n    $scope.labels= $scope.labels;\r\n    $scope.chartData= [];\r\n    $scope.chartSeries= [];\r\n    \r\n\r\n\r\nThank you so much.\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49758429/chartjs-chartjs-plugin-annotation-how-to-move-vertical-line",
+            "title": "ChartJS / Chartjs-plugin-annotation How to move vertical line?",
+            "body": "<p>I want to create vertical line that can move on axe X. </p>\n\n<p>I have created my line chart using ChartJS version 2.5 with AngularJS version 1.5. </p>\n\n<p>Result : I'm lookinf to move the green line defined in the chart .</p>\n\n<p><a href=\"https://i.stack.imgur.com/lAKEP.jpg\" rel=\"nofollow noreferrer\">enter image description here</a></p>\n\n<p>Html : this is where i call the chart in HTML .</p>\n\n<pre><code>&lt;canvas id=\"chart\" ng-init=\"$onInit()\" class=\"chart chart-line\" style=\"padding-top: 10px\"\n          chart-options=\"chartOptions\"\n          chart-data=\"chartData\"\n          chart-colors=\"chartColors\"\n          chart-labels=\"chartLabels\"\n          chart-legend=\"true\"\n          chart-series=\"chartSeries\"\n          chart-dataset-override=\"datasetOverride\"&gt;\n  &lt;/canvas&gt;\n</code></pre>\n\n<p>JS : I defined parameter of chart in my controller </p>\n\n<pre><code>$scope.datesConfiguration= {\n              fromDate: moment().subtract(3, 'months').format(\"YYYY-MM-DDTHH:mm\"),\n              toDate: moment().format(\"YYYY-MM-DDTHH:mm\"),\n              toDateMaxLimit: moment().format(\"YYYY-MM-DDTHH:mm\"),\n            };\n\n    $scope.chartColors= [\"#0C0DE8\", \"#8258FA\", \"#FFa500\", \"#E8B20C\", \"#0DFF27\", \"#235C3D\", \"#B20F00\"];\n\n\n    $scope.chartOptions= {\n              legend: {\n                display: true,\n                position: 'bottom'\n              },\n              tooltips: {\n                callbacks: {\n\n                  }\n                }\n              },\n              annotation: {\n                events: ['click', 'dblclick', 'mouseover', 'mouseout'],\n                annotations: [{\n                  drawTime: 'afterDraw',\n                  id: 'alert-v-line',\n                  type: 'line',\n                  mode: 'vertical',\n                  value : \"02/02/2018\",\n                  scaleID: 'x-axis-0',\n                  borderColor: 'green',\n                  borderWidth: 2,\n                  borderDash: [5, 10],\n                  label: {\n                    backgroundColor: \"green\",\n                    content: $scope.labels['rule_result_chart_label_title'],\n                    enabled: false,\n                    position: \"top\",\n                    yAdjust: -10\n                  }\n                }]\n              },\n              scales: {\n                xAxes: [\n                  {\n                    id: 'x-axis-0',\n                    type: 'time',\n                    display: true,\n                    time: {\n                      unit: 'week',\n                      displayFormats: {\n                        'millisecond': 'DD/MM/YYYY',\n                        'second': 'DD/MM/YYYY',\n                        'minute': 'DD/MM/YYYY',\n                        'hour': 'DD/MM/YYYY',\n                        'day': 'DD/MM/YYYY',\n                        'week': 'DD/MM/YYYY'\n                      },\n                      tooltipFormat: 'DD/MM/YYYY'\n                    }\n                  }\n                ],\n                yAxes: []\n              }\n            };\n$scope.datasetOverride= [];\n$scope.labels= $scope.labels;\n$scope.chartData= [];\n$scope.chartSeries= [];\n</code></pre>\n\n<p>Thank you so much.</p>\n"
+        },
+        {
+            "tags": [
+                "asp.net",
+                "events",
+                "onclick",
+                "onclientclick"
+            ],
+            "owner": {
+                "reputation": 23,
+                "user_id": 2662088,
+                "user_type": "registered",
+                "accept_rate": 10,
+                "profile_image": "https://i.stack.imgur.com/bumUr.jpg?s=128&g=1",
+                "display_name": "baby",
+                "link": "https://stackoverflow.com/users/2662088/baby"
+            },
+            "is_answered": false,
+            "view_count": 11130,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1523523483,
+            "creation_date": 1376549676,
+            "last_edit_date": 1376551682,
+            "question_id": 18247705,
+            "body_markdown": "how to add onclentclick and onclick events from code behind to image button. I wrote some code it shows confirm message for onclientclick event but not firing onclick event.\r\n\r\nmy code is as following..\r\n\r\n      \r\n    ImageButton img = new ImageButton();\r\n    img.ID = &quot;img1&quot;;\r\n    img.Visible = true;\r\n    img.OnClientClick = &quot;alert(confirm(&#39;Are you sure you want to delete folder with files ?&#39;));&quot;;\r\n    img.Click += new ImageClickEventHandler(img_Click);\r\n    img.ImageUrl = &quot;~/images/admin/remove.png&quot;;\r\n\r\n\r\nEvent&#39;s code is :\r\n\r\n    void img_Click(object sender, ImageClickEventArgs e)\r\n    {\r\n     //code what i want to implement   \r\n    }",
+            "link": "https://stackoverflow.com/questions/18247705/imagebutton-onclientclick-and-onclick-events",
+            "title": "imagebutton onclientclick and onclick events",
+            "body": "<p>how to add onclentclick and onclick events from code behind to image button. I wrote some code it shows confirm message for onclientclick event but not firing onclick event.</p>\n\n<p>my code is as following..</p>\n\n<pre><code>ImageButton img = new ImageButton();\nimg.ID = \"img1\";\nimg.Visible = true;\nimg.OnClientClick = \"alert(confirm('Are you sure you want to delete folder with files ?'));\";\nimg.Click += new ImageClickEventHandler(img_Click);\nimg.ImageUrl = \"~/images/admin/remove.png\";\n</code></pre>\n\n<p>Event's code is :</p>\n\n<pre><code>void img_Click(object sender, ImageClickEventArgs e)\n{\n //code what i want to implement   \n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "asp.net",
+                "vb.net"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 3571205,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://i.stack.imgur.com/HoUhM.jpg?s=128&g=1",
+                "display_name": "Danbo",
+                "link": "https://stackoverflow.com/users/3571205/danbo"
+            },
+            "is_answered": false,
+            "view_count": 8047,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523523483,
+            "creation_date": 1407900579,
+            "last_edit_date": 1408041415,
+            "question_id": 25277565,
+            "body_markdown": "I have to disable the hyperlink in the gridview depending on the result of the condition in my code behind, however i always get an error of `Specified argument was out of the range of valid values. Parameter name: index`\r\n    \r\n**here is my gridview:**\r\n    \r\n    &lt;asp:GridView ID=&quot;GridView1&quot; runat=&quot;server&quot; DataSourceID=&quot;SqlDataSource1&quot; \r\n\t\tAllowPaging=&quot;True&quot; DataKeyNames=&quot;v_id&quot; \r\n\t\tAutoGenerateColumns=&quot;False&quot; AllowSorting=&quot;True&quot; CellPadding=&quot;4&quot; \r\n\t\tCssClass=&quot;gridview&quot;&gt;\r\n\t\t&lt;RowStyle BackColor=&quot;#EFF3FB&quot;/&gt;\r\n\t\t\t&lt;Columns&gt;\r\n\t\t\t\t&lt;asp:BoundField DataField=&quot;ship_name&quot; HeaderText=&quot;Vessel Name&quot; SortExpression=&quot;ship_name&quot;&gt;\r\n\t\t\t\t&lt;HeaderStyle CssClass =&quot;tblheader2&quot; /&gt;\r\n\t\t\t\t&lt;/asp:BoundField&gt;\r\n\t\t\t\t&lt;asp:BoundField DataField=&quot;gross_tonnage&quot; HeaderText=&quot;Gross Tonnage&quot; SortExpression=&quot;gross_tonnage&quot;&gt;\r\n\t\t\t\t&lt;HeaderStyle CssClass =&quot;tblheader2&quot; /&gt;\r\n\t\t\t\t&lt;/asp:BoundField&gt;\r\n\t\t\t\t&lt;asp:BoundField DataField=&quot;regional_homeport&quot; HeaderText=&quot;Region&quot; SortExpression=&quot;region&quot;&gt;\r\n\t\t\t\t&lt;HeaderStyle CssClass =&quot;tblheader2&quot; /&gt;\r\n\t\t\t\t&lt;/asp:BoundField&gt;\r\n\t\t\t\t&lt;asp:BoundField DataField=&quot;owner_name&quot; HeaderText=&quot;Owner&quot; SortExpression=&quot;owner_name&quot;&gt;\r\n\t\t\t\t&lt;HeaderStyle CssClass =&quot;tblheader2&quot; /&gt;\r\n\t\t\t\t&lt;/asp:BoundField&gt;\r\n\t\t\t\t&lt;asp:BoundField DataField=&quot;cfvgl_validity_start&quot; HeaderText=&quot;Date Issued&quot; SortExpression=&quot;cfvgl_validity_start&quot; DataFormatString=&quot;{0:d}&quot;&gt;\r\n\t\t\t\t&lt;HeaderStyle CssClass =&quot;tblheader2&quot; /&gt;\r\n\t\t\t\t&lt;/asp:BoundField&gt;\r\n\t\t\t\t&lt;asp:BoundField DataField=&quot;cfvgl_validity_end&quot; HeaderText=&quot;Expiry Date&quot; SortExpression=&quot;cfvgl_validity_end&quot; DataFormatString=&quot;{0:d}&quot;&gt;\r\n\t\t\t\t&lt;HeaderStyle CssClass =&quot;tblheader2&quot; /&gt;\r\n\t\t\t\t&lt;/asp:BoundField&gt;\r\n\t\t\t\t &lt;asp:CommandField EditText=&quot;Select&quot; ControlStyle-font-Underline=&quot;false&quot; HeaderText =&quot;View History&quot; ControlStyle-forecolor=&quot;blue&quot;  ShowSelectButton=&quot;True&quot;  SelectText=&quot;History&quot; ItemStyle-CssClass=&quot;links&quot;&gt;\r\n\t\t\t\t&lt;HeaderStyle  CssClass =&quot;tblheader2&quot;/&gt;\r\n\t\t\t\t&lt;/asp:CommandField &gt;\r\n\t\t\t\t\r\n\t\t\t\t&lt;asp:TemplateField&gt;\r\n\t\t\t\t\t&lt;ItemTemplate &gt;\r\n\t\t\t\t\t\t&lt;asp:HyperLink ID=&quot;cfvgl&quot; runat =&quot;server&quot; Target =&quot;_blank&quot; NavigateUrl =&#39;&lt;%# Eval(&quot;v_id&quot;, &quot;~/frqd/printBFARCFVGL.aspx?CFVGLVesselID={0}&quot;)%&gt;&#39; Font-Underline = &quot;false&quot; ForeColor =&quot;blue&quot; CssClass =&quot;links&quot; &gt;CFVGL&lt;/asp:HyperLink&gt;\r\n\t\t\t\t\t&lt;/ItemTemplate&gt;\r\n\t\t\t\t\t&lt;HeaderStyle CssClass =&quot;tblheader2&quot; /&gt;\r\n\t\t\t\t&lt;/asp:TemplateField&gt;\r\n\t\t\t\t\r\n\t\t\t\t&lt;asp:TemplateField&gt;\r\n\t\t\t\t\t&lt;ItemTemplate&gt;\r\n\t\t\t\t\t\t &lt;%--FGRVesselID query  string of crystal report--%&gt;\r\n\t\t\t\t\t\t&lt;asp:Hyperlink ID=&quot;fgr&quot; runat=&quot;server&quot; Target =&quot;_blank&quot; NavigateUrl=&#39;&lt;%#Eval(&quot;v_id&quot;, &quot;~/operator/printBFARFGR.aspx?FGRVesselID={0}&quot;) %&gt;&#39; Text =&quot;FGR&quot; font-underline=&quot;false&quot; ForeColor=&quot;blue&quot; CssClass=&quot;links&quot;&gt;&lt;/asp:Hyperlink&gt;\r\n\t\t\t\t\t&lt;/Itemtemplate&gt;\r\n\t\t\t\t\t&lt;HeaderStyle CssClass =&quot;tblheader2&quot; /&gt;\r\n\t\t\t\t&lt;/asp:TemplateField&gt;\r\n\t\t\t\t\r\n\t\t\t\t&lt;asp:TemplateField&gt;\r\n\t\t\t\t\t\t&lt;ItemTemplate&gt;\r\n\t\t\t\t\t\t\t&lt;asp:LinkButton ID=&quot;LinkButton2&quot; runat=&quot;server&quot; CssClass =&quot;links&quot; ForeColor =&quot;blue&quot; Font-Underline =&quot;false&quot; Width =&quot;100px&quot; PostBackUrl=&quot;#openModal&quot;&gt;Add Violation&lt;/asp:LinkButton&gt;\r\n\t\t\t\t\t\t&lt;/ItemTemplate&gt;\r\n\t\t\t\t\t\t&lt;HeaderStyle CssClass =&quot;tblheader2&quot; /&gt;\r\n\t\t\t\t&lt;/asp:TemplateField&gt;\r\n\t\t\t\t\r\n\t\t\t\t&lt;asp:BoundField DataField=&quot;vessel_type&quot; HeaderText=&quot;Vessel Type&quot; SortExpression=&quot;vessel_type&quot;&gt;\r\n\t\t\t\t&lt;HeaderStyle CssClass =&quot;tblheader2&quot; /&gt;\r\n\t\t\t\t&lt;/asp:BoundField&gt;\r\n\t\t\t&lt;/Columns&gt;\r\n\t\t&lt;FooterStyle CssClass=&quot;gridviewfooter&quot;/&gt;\r\n\t\t&lt;PagerStyle CssClass=&quot;gridviewfooter&quot; ForeColor=&quot;White&quot; HorizontalAlign=&quot;Center&quot; /&gt;\r\n\t\t&lt;SelectedRowStyle BackColor=&quot;#D1DDF1&quot; Font-Bold=&quot;True&quot; ForeColor=&quot;#333333&quot; /&gt;\r\n\t\t&lt;HeaderStyle BackColor=&quot;#507CD1&quot; Font-Bold=&quot;True&quot; ForeColor=&quot;White&quot; /&gt;\r\n\t\t&lt;EditRowStyle BackColor=&quot;#2461BF&quot; /&gt;\r\n\t\t&lt;AlternatingRowStyle BackColor=&quot;White&quot; /&gt;\r\n\t\t&lt;RowStyle CssClass=&quot;gridviewrow&quot;/&gt;\r\n\t\t&lt;EmptyDataTemplate&gt;There are no records to display.&lt;/EmptyDataTemplate&gt;\r\n\t&lt;/asp:GridView&gt;\r\n\r\n**Here is my code behind:**\r\n\r\n\r\n\tProtected Sub GridView1_RowDataBound(ByVal sender As Object, ByVal e As System.Web.UI.WebControls.GridViewRowEventArgs) Handles GridView1.RowDataBound\r\n\t\tDim vesseltype As String = e.Row.Cells(10).Text\r\n\t\t\r\n\t\tSelect Case vesseltype\r\n\t\t\tCase 1\r\n\t\t\t\te.Row.Cells(10).Text = &quot;Catcher&quot;\r\n\t\t\tCase 2\r\n\t\t\t\te.Row.Cells(10).Text = &quot;Carrier&quot;\r\n\t\t\tCase 3\r\n\t\t\t\te.Row.Cells(10).Text = &quot;Escortboat&quot;\r\n\t\t\tCase 4\r\n\t\t\t\te.Row.Cells(10).Text = &quot;Sonarboat&quot;\r\n\t\t\tCase 5\r\n\t\t\t\te.Row.Cells(10).Text = &quot;Lightboat&quot;\r\n\t\t\tCase 6\r\n\t\t\t\te.Row.Cells(10).Text = &quot;Ranger Boat&quot;\r\n\t\t\tCase 7\r\n\t\t\t\te.Row.Cells(10).Text = &quot;Skiffboat&quot;\r\n\t\t\tCase 8\r\n\t\t\t\te.Row.Cells(10).Text = &quot;Tanker&quot;\r\n\t\tEnd Select\r\n\r\n\t\tIf e.Row.Cells(10).Text = &quot;Catcher&quot; Then\r\n\t\t\te.Row.Cells(9).Enabled = True\r\n\t\tElse\r\n\t\t\te.Row.Cells(9).Enabled = False\r\n\t\t\te.Row.Cells(9).Text = &quot;N/A&quot;\r\n\t\tEnd If\r\n\tEnd Sub\r\n",
+            "link": "https://stackoverflow.com/questions/25277565/specified-argument-was-out-of-the-range-of-valid-values-parameter-name-index",
+            "title": "Specified argument was out of the range of valid values. Parameter name: index",
+            "body": "<p>I have to disable the hyperlink in the gridview depending on the result of the condition in my code behind, however i always get an error of <code>Specified argument was out of the range of valid values. Parameter name: index</code></p>\n\n<p><strong>here is my gridview:</strong></p>\n\n<pre><code>&lt;asp:GridView ID=\"GridView1\" runat=\"server\" DataSourceID=\"SqlDataSource1\" \n    AllowPaging=\"True\" DataKeyNames=\"v_id\" \n    AutoGenerateColumns=\"False\" AllowSorting=\"True\" CellPadding=\"4\" \n    CssClass=\"gridview\"&gt;\n    &lt;RowStyle BackColor=\"#EFF3FB\"/&gt;\n        &lt;Columns&gt;\n            &lt;asp:BoundField DataField=\"ship_name\" HeaderText=\"Vessel Name\" SortExpression=\"ship_name\"&gt;\n            &lt;HeaderStyle CssClass =\"tblheader2\" /&gt;\n            &lt;/asp:BoundField&gt;\n            &lt;asp:BoundField DataField=\"gross_tonnage\" HeaderText=\"Gross Tonnage\" SortExpression=\"gross_tonnage\"&gt;\n            &lt;HeaderStyle CssClass =\"tblheader2\" /&gt;\n            &lt;/asp:BoundField&gt;\n            &lt;asp:BoundField DataField=\"regional_homeport\" HeaderText=\"Region\" SortExpression=\"region\"&gt;\n            &lt;HeaderStyle CssClass =\"tblheader2\" /&gt;\n            &lt;/asp:BoundField&gt;\n            &lt;asp:BoundField DataField=\"owner_name\" HeaderText=\"Owner\" SortExpression=\"owner_name\"&gt;\n            &lt;HeaderStyle CssClass =\"tblheader2\" /&gt;\n            &lt;/asp:BoundField&gt;\n            &lt;asp:BoundField DataField=\"cfvgl_validity_start\" HeaderText=\"Date Issued\" SortExpression=\"cfvgl_validity_start\" DataFormatString=\"{0:d}\"&gt;\n            &lt;HeaderStyle CssClass =\"tblheader2\" /&gt;\n            &lt;/asp:BoundField&gt;\n            &lt;asp:BoundField DataField=\"cfvgl_validity_end\" HeaderText=\"Expiry Date\" SortExpression=\"cfvgl_validity_end\" DataFormatString=\"{0:d}\"&gt;\n            &lt;HeaderStyle CssClass =\"tblheader2\" /&gt;\n            &lt;/asp:BoundField&gt;\n             &lt;asp:CommandField EditText=\"Select\" ControlStyle-font-Underline=\"false\" HeaderText =\"View History\" ControlStyle-forecolor=\"blue\"  ShowSelectButton=\"True\"  SelectText=\"History\" ItemStyle-CssClass=\"links\"&gt;\n            &lt;HeaderStyle  CssClass =\"tblheader2\"/&gt;\n            &lt;/asp:CommandField &gt;\n\n            &lt;asp:TemplateField&gt;\n                &lt;ItemTemplate &gt;\n                    &lt;asp:HyperLink ID=\"cfvgl\" runat =\"server\" Target =\"_blank\" NavigateUrl ='&lt;%# Eval(\"v_id\", \"~/frqd/printBFARCFVGL.aspx?CFVGLVesselID={0}\")%&gt;' Font-Underline = \"false\" ForeColor =\"blue\" CssClass =\"links\" &gt;CFVGL&lt;/asp:HyperLink&gt;\n                &lt;/ItemTemplate&gt;\n                &lt;HeaderStyle CssClass =\"tblheader2\" /&gt;\n            &lt;/asp:TemplateField&gt;\n\n            &lt;asp:TemplateField&gt;\n                &lt;ItemTemplate&gt;\n                     &lt;%--FGRVesselID query  string of crystal report--%&gt;\n                    &lt;asp:Hyperlink ID=\"fgr\" runat=\"server\" Target =\"_blank\" NavigateUrl='&lt;%#Eval(\"v_id\", \"~/operator/printBFARFGR.aspx?FGRVesselID={0}\") %&gt;' Text =\"FGR\" font-underline=\"false\" ForeColor=\"blue\" CssClass=\"links\"&gt;&lt;/asp:Hyperlink&gt;\n                &lt;/Itemtemplate&gt;\n                &lt;HeaderStyle CssClass =\"tblheader2\" /&gt;\n            &lt;/asp:TemplateField&gt;\n\n            &lt;asp:TemplateField&gt;\n                    &lt;ItemTemplate&gt;\n                        &lt;asp:LinkButton ID=\"LinkButton2\" runat=\"server\" CssClass =\"links\" ForeColor =\"blue\" Font-Underline =\"false\" Width =\"100px\" PostBackUrl=\"#openModal\"&gt;Add Violation&lt;/asp:LinkButton&gt;\n                    &lt;/ItemTemplate&gt;\n                    &lt;HeaderStyle CssClass =\"tblheader2\" /&gt;\n            &lt;/asp:TemplateField&gt;\n\n            &lt;asp:BoundField DataField=\"vessel_type\" HeaderText=\"Vessel Type\" SortExpression=\"vessel_type\"&gt;\n            &lt;HeaderStyle CssClass =\"tblheader2\" /&gt;\n            &lt;/asp:BoundField&gt;\n        &lt;/Columns&gt;\n    &lt;FooterStyle CssClass=\"gridviewfooter\"/&gt;\n    &lt;PagerStyle CssClass=\"gridviewfooter\" ForeColor=\"White\" HorizontalAlign=\"Center\" /&gt;\n    &lt;SelectedRowStyle BackColor=\"#D1DDF1\" Font-Bold=\"True\" ForeColor=\"#333333\" /&gt;\n    &lt;HeaderStyle BackColor=\"#507CD1\" Font-Bold=\"True\" ForeColor=\"White\" /&gt;\n    &lt;EditRowStyle BackColor=\"#2461BF\" /&gt;\n    &lt;AlternatingRowStyle BackColor=\"White\" /&gt;\n    &lt;RowStyle CssClass=\"gridviewrow\"/&gt;\n    &lt;EmptyDataTemplate&gt;There are no records to display.&lt;/EmptyDataTemplate&gt;\n&lt;/asp:GridView&gt;\n</code></pre>\n\n<p><strong>Here is my code behind:</strong></p>\n\n<pre><code>Protected Sub GridView1_RowDataBound(ByVal sender As Object, ByVal e As System.Web.UI.WebControls.GridViewRowEventArgs) Handles GridView1.RowDataBound\n    Dim vesseltype As String = e.Row.Cells(10).Text\n\n    Select Case vesseltype\n        Case 1\n            e.Row.Cells(10).Text = \"Catcher\"\n        Case 2\n            e.Row.Cells(10).Text = \"Carrier\"\n        Case 3\n            e.Row.Cells(10).Text = \"Escortboat\"\n        Case 4\n            e.Row.Cells(10).Text = \"Sonarboat\"\n        Case 5\n            e.Row.Cells(10).Text = \"Lightboat\"\n        Case 6\n            e.Row.Cells(10).Text = \"Ranger Boat\"\n        Case 7\n            e.Row.Cells(10).Text = \"Skiffboat\"\n        Case 8\n            e.Row.Cells(10).Text = \"Tanker\"\n    End Select\n\n    If e.Row.Cells(10).Text = \"Catcher\" Then\n        e.Row.Cells(9).Enabled = True\n    Else\n        e.Row.Cells(9).Enabled = False\n        e.Row.Cells(9).Text = \"N/A\"\n    End If\nEnd Sub\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "openoffice-calc"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 3974781,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a3743b7489914e09528573aea7d5117a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Irina",
+                "link": "https://stackoverflow.com/users/3974781/irina"
+            },
+            "is_answered": false,
+            "view_count": 17671,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523523483,
+            "creation_date": 1408958198,
+            "last_edit_date": 1456077717,
+            "question_id": 25482586,
+            "body_markdown": "I have the following array formula in cell `B2`:\r\n\r\n    =INDEX($M$2:$O$110;MATCH(1;($M$2:$M$110=C2)*($N$2:$N$110=E2);0);3)\r\nand I want to copy it down a column, so I want:\r\n\r\n`B2 {=INDEX($M$2:$O$110;MATCH(1;($M$2:$M$110=C2)*($N$2:$N$110=E2);0);3)}\r\nB3 {=INDEX($M$2:$O$110;MATCH(1;($M$2:$M$110=C3)*($N$2:$N$110=E3);0);3)}\r\nB4 {=INDEX($M$2:$O$110;MATCH(1;($M$2:$M$110=C4)*($N$2:$N$110=E4);0);3)}`\r\n\r\netc\r\n\r\nI enter the formula into `B2`, I press `CTRL+SHIFT+ENTER`, then I copy the formula down the `B` column. This only gives me:\r\n\r\n    =INDEX($M$2:$O$110;MATCH(1;($M$2:$M$110=C2)*($N$2:$N$110=E2);0);3)\r\n\r\nThe relative reference to `C2` and `E2` seems to be treated as an absolute reference. I want `E2` and `C2` to change. \r\n\r\nI&#39;m using OpenOffice Calc, so I have `;` instead of `,` in the functions.",
+            "link": "https://stackoverflow.com/questions/25482586/how-do-you-copy-an-array-formula-down-a-column-in-calc",
+            "title": "How do you copy an array formula down a column in Calc?",
+            "body": "<p>I have the following array formula in cell <code>B2</code>:</p>\n\n<pre><code>=INDEX($M$2:$O$110;MATCH(1;($M$2:$M$110=C2)*($N$2:$N$110=E2);0);3)\n</code></pre>\n\n<p>and I want to copy it down a column, so I want:</p>\n\n<p><code>B2 {=INDEX($M$2:$O$110;MATCH(1;($M$2:$M$110=C2)*($N$2:$N$110=E2);0);3)}\nB3 {=INDEX($M$2:$O$110;MATCH(1;($M$2:$M$110=C3)*($N$2:$N$110=E3);0);3)}\nB4 {=INDEX($M$2:$O$110;MATCH(1;($M$2:$M$110=C4)*($N$2:$N$110=E4);0);3)}</code></p>\n\n<p>etc</p>\n\n<p>I enter the formula into <code>B2</code>, I press <code>CTRL+SHIFT+ENTER</code>, then I copy the formula down the <code>B</code> column. This only gives me:</p>\n\n<pre><code>=INDEX($M$2:$O$110;MATCH(1;($M$2:$M$110=C2)*($N$2:$N$110=E2);0);3)\n</code></pre>\n\n<p>The relative reference to <code>C2</code> and <code>E2</code> seems to be treated as an absolute reference. I want <code>E2</code> and <code>C2</code> to change. </p>\n\n<p>I'm using OpenOffice Calc, so I have <code>;</code> instead of <code>,</code> in the functions.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net",
+                "itextsharp"
+            ],
+            "owner": {
+                "reputation": 710,
+                "user_id": 1001261,
+                "user_type": "registered",
+                "accept_rate": 74,
+                "profile_image": "https://www.gravatar.com/avatar/e9f982a2c07abc0179d2cc857f447372?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Erdin&#231; &#214;zdemir",
+                "link": "https://stackoverflow.com/users/1001261/erdin%c3%a7-%c3%96zdemir"
+            },
+            "is_answered": false,
+            "view_count": 10553,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1523523483,
+            "creation_date": 1421755174,
+            "last_edit_date": 1454183438,
+            "question_id": 28044853,
+            "body_markdown": "I&#39;m creating a pdf file with an image. I&#39;m getting the image, first saving it into the server, after creating an iTextSharp image with it;\r\n\r\n    iTextSharp.text.Image backgroundImage = iTextSharp.text.Image.GetInstance(path);\r\n\r\nOn this line I&#39;m getting an error &quot;The document has no pages.&quot;\r\n\r\nHere is the StackTrace:\r\n\r\n       location: iTextSharp.text.pdf.PdfPages.WritePageTree()\r\n       location: iTextSharp.text.pdf.PdfWriter.Close()\r\n       location: iTextSharp.text.pdf.PdfDocument.Close()\r\n       location: iTextSharp.text.pdf.PdfWriter.Close()\r\n       location: iTextSharp.text.DocWriter.Dispose()\r\n       location: MyProject.Helpers.FileUploadHelper.SaveMarathonCertificateTemplate(HttpRequestBase Request, String _fileName, CertificateOrientation orientation) c:\\MyProject\\Helpers\\FileUploadHelper.cs : line 68\r\n       location: MyProject.Controllers.CertificateController.Add(Int32 marathonId, MarathonCertificate marathonCertificate) c:\\MyProject\\Controllers\\CertificateController.cs: line 74\r\n\r\nYesterday code was working well, but weirdly today I&#39;m getting this error. Here is my code:\r\n\r\n    using (var fs = new FileStream(pdfFileName, FileMode.Create))\r\n    {\r\n        using (var pdfDoc = new iTextSharp.text.Document())\r\n        {\r\n            if (orientation == CertificateOrientation.HORIZONTAL)\r\n                pdfDoc.SetPageSize(PageSize.A4.Rotate());\r\n            using (var w = PdfWriter.GetInstance(pdfDoc, fs))\r\n            {\r\n                pdfDoc.Open();\r\n                pdfDoc.NewPage(); // add Page here\r\n    \r\n                iTextSharp.text.Image backgroundImage = iTextSharp.text.Image.GetInstance(path);\r\n    \r\n                if (orientation == CertificateOrientation.HORIZONTAL)\r\n                {\r\n                    backgroundImage.ScaleAbsoluteWidth(Config.PdfActualSizeHorizontal[0]);\r\n                    backgroundImage.ScaleAbsoluteHeight(Config.PdfActualSizeHorizontal[1]);\r\n                }\r\n                else if (orientation == CertificateOrientation.VERTICAL)\r\n                {\r\n                    backgroundImage.ScaleAbsoluteWidth(Config.PdfActualSizeVertical[0]);\r\n                    backgroundImage.ScaleAbsoluteHeight(Config.PdfActualSizeVertical[1]);\r\n                }\r\n                backgroundImage.SetAbsolutePosition(0, 0);\r\n                pdfDoc.Add(backgroundImage);\r\n    \r\n                pdfDoc.Close();\r\n            }\r\n        }\r\n    }\r\n\r\nI cant&#39;t get the problem. Is there any solution?\r\n\r\n&gt; EDIT:\r\n\r\nI added a line before getting Image instance\r\n\r\n    pdfDoc.Add(new Paragraph(&quot; &quot;));\r\n\r\nAfter that the error becomes to this:\r\n\r\n&gt; System.ObjectDisposedException was caught   Message=Cannot access a\r\n&gt; closed file.\r\n\r\nNew StackTrace:\r\n\r\n    location: System.IO.__Error.FileNotOpen()\r\n    location: System.IO.FileStream.Write(Byte[] array, Int32 offset, Int32 count)\r\n    location: iTextSharp.text.pdf.OutputStreamCounter.Write(Byte[] buffer, Int32 offset, Int32 count)\r\n    location: iTextSharp.text.pdf.PdfIndirectObject.WriteTo(Stream os)\r\n    location: iTextSharp.text.pdf.PdfWriter.PdfBody.Write(PdfIndirectObject indirect, Int32 refNumber, Int32 generation)\r\n    location: iTextSharp.text.pdf.PdfWriter.PdfBody.Add(PdfObject objecta, Int32 refNumber, Int32 generation, Boolean inObjStm)\r\n    location: iTextSharp.text.pdf.PdfWriter.PdfBody.Add(PdfObject objecta, PdfIndirectReference refa, Boolean inObjStm)\r\n    location: iTextSharp.text.pdf.PdfWriter.PdfBody.Add(PdfObject objecta, PdfIndirectReference refa)\r\n    location: iTextSharp.text.pdf.PdfWriter.AddToBody(PdfObject objecta, PdfIndirectReference refa)\r\n    location: iTextSharp.text.pdf.Type1Font.WriteFont(PdfWriter writer, PdfIndirectReference piref, Object[] parms)\r\n    location: iTextSharp.text.pdf.FontDetails.WriteFont(PdfWriter writer)\r\n    location: iTextSharp.text.pdf.PdfWriter.AddSharedObjectsToBody()\r\n    location: iTextSharp.text.pdf.PdfWriter.Close()\r\n    location: iTextSharp.text.DocWriter.Dispose()\r\n    location: MyProject.Helpers.FileUploadHelper.SaveMarathonCertificateTemplate(HttpRequestBase Request, String _fileName, CertificateOrientation orientation) c:\\MyProject\\Helpers\\FileUploadHelper.cs: line 70\r\n    location: MyProject.Controllers.CertificateController.Add(Int32 marathonId, MarathonCertificate marathonCertificate) c:\\MyProject\\Controllers\\CertificateController.cs: line 74",
+            "link": "https://stackoverflow.com/questions/28044853/itextsharp-the-document-has-no-pages-error",
+            "title": "iTextSharp &quot;The document has no pages.&quot; error",
+            "body": "<p>I'm creating a pdf file with an image. I'm getting the image, first saving it into the server, after creating an iTextSharp image with it;</p>\n\n<pre><code>iTextSharp.text.Image backgroundImage = iTextSharp.text.Image.GetInstance(path);\n</code></pre>\n\n<p>On this line I'm getting an error \"The document has no pages.\"</p>\n\n<p>Here is the StackTrace:</p>\n\n<pre><code>   location: iTextSharp.text.pdf.PdfPages.WritePageTree()\n   location: iTextSharp.text.pdf.PdfWriter.Close()\n   location: iTextSharp.text.pdf.PdfDocument.Close()\n   location: iTextSharp.text.pdf.PdfWriter.Close()\n   location: iTextSharp.text.DocWriter.Dispose()\n   location: MyProject.Helpers.FileUploadHelper.SaveMarathonCertificateTemplate(HttpRequestBase Request, String _fileName, CertificateOrientation orientation) c:\\MyProject\\Helpers\\FileUploadHelper.cs : line 68\n   location: MyProject.Controllers.CertificateController.Add(Int32 marathonId, MarathonCertificate marathonCertificate) c:\\MyProject\\Controllers\\CertificateController.cs: line 74\n</code></pre>\n\n<p>Yesterday code was working well, but weirdly today I'm getting this error. Here is my code:</p>\n\n<pre><code>using (var fs = new FileStream(pdfFileName, FileMode.Create))\n{\n    using (var pdfDoc = new iTextSharp.text.Document())\n    {\n        if (orientation == CertificateOrientation.HORIZONTAL)\n            pdfDoc.SetPageSize(PageSize.A4.Rotate());\n        using (var w = PdfWriter.GetInstance(pdfDoc, fs))\n        {\n            pdfDoc.Open();\n            pdfDoc.NewPage(); // add Page here\n\n            iTextSharp.text.Image backgroundImage = iTextSharp.text.Image.GetInstance(path);\n\n            if (orientation == CertificateOrientation.HORIZONTAL)\n            {\n                backgroundImage.ScaleAbsoluteWidth(Config.PdfActualSizeHorizontal[0]);\n                backgroundImage.ScaleAbsoluteHeight(Config.PdfActualSizeHorizontal[1]);\n            }\n            else if (orientation == CertificateOrientation.VERTICAL)\n            {\n                backgroundImage.ScaleAbsoluteWidth(Config.PdfActualSizeVertical[0]);\n                backgroundImage.ScaleAbsoluteHeight(Config.PdfActualSizeVertical[1]);\n            }\n            backgroundImage.SetAbsolutePosition(0, 0);\n            pdfDoc.Add(backgroundImage);\n\n            pdfDoc.Close();\n        }\n    }\n}\n</code></pre>\n\n<p>I cant't get the problem. Is there any solution?</p>\n\n<blockquote>\n  <p>EDIT:</p>\n</blockquote>\n\n<p>I added a line before getting Image instance</p>\n\n<pre><code>pdfDoc.Add(new Paragraph(\" \"));\n</code></pre>\n\n<p>After that the error becomes to this:</p>\n\n<blockquote>\n  <p>System.ObjectDisposedException was caught   Message=Cannot access a\n  closed file.</p>\n</blockquote>\n\n<p>New StackTrace:</p>\n\n<pre><code>location: System.IO.__Error.FileNotOpen()\nlocation: System.IO.FileStream.Write(Byte[] array, Int32 offset, Int32 count)\nlocation: iTextSharp.text.pdf.OutputStreamCounter.Write(Byte[] buffer, Int32 offset, Int32 count)\nlocation: iTextSharp.text.pdf.PdfIndirectObject.WriteTo(Stream os)\nlocation: iTextSharp.text.pdf.PdfWriter.PdfBody.Write(PdfIndirectObject indirect, Int32 refNumber, Int32 generation)\nlocation: iTextSharp.text.pdf.PdfWriter.PdfBody.Add(PdfObject objecta, Int32 refNumber, Int32 generation, Boolean inObjStm)\nlocation: iTextSharp.text.pdf.PdfWriter.PdfBody.Add(PdfObject objecta, PdfIndirectReference refa, Boolean inObjStm)\nlocation: iTextSharp.text.pdf.PdfWriter.PdfBody.Add(PdfObject objecta, PdfIndirectReference refa)\nlocation: iTextSharp.text.pdf.PdfWriter.AddToBody(PdfObject objecta, PdfIndirectReference refa)\nlocation: iTextSharp.text.pdf.Type1Font.WriteFont(PdfWriter writer, PdfIndirectReference piref, Object[] parms)\nlocation: iTextSharp.text.pdf.FontDetails.WriteFont(PdfWriter writer)\nlocation: iTextSharp.text.pdf.PdfWriter.AddSharedObjectsToBody()\nlocation: iTextSharp.text.pdf.PdfWriter.Close()\nlocation: iTextSharp.text.DocWriter.Dispose()\nlocation: MyProject.Helpers.FileUploadHelper.SaveMarathonCertificateTemplate(HttpRequestBase Request, String _fileName, CertificateOrientation orientation) c:\\MyProject\\Helpers\\FileUploadHelper.cs: line 70\nlocation: MyProject.Controllers.CertificateController.Add(Int32 marathonId, MarathonCertificate marathonCertificate) c:\\MyProject\\Controllers\\CertificateController.cs: line 74\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "google-app-engine",
+                "google-cloud-sql",
+                "cloud-sql-proxy"
+            ],
+            "owner": {
+                "reputation": 467,
+                "user_id": 1378902,
+                "user_type": "registered",
+                "accept_rate": 76,
+                "profile_image": "https://www.gravatar.com/avatar/23e9145e21fbeeb11c25dda548821cbc?s=128&d=identicon&r=PG",
+                "display_name": "ChristopherJ",
+                "link": "https://stackoverflow.com/users/1378902/christopherj"
+            },
+            "is_answered": true,
+            "view_count": 21,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523523482,
+            "creation_date": 1523407313,
+            "question_id": 49764758,
+            "body_markdown": "We&#39;re setting up a node application on GAE, and one of the libraries we&#39;re using doesn&#39;t play well with unix sockets.\r\n\r\nThe Cloud Proxy setup inside GAE uses unix sockets, I&#39;ve googled and searched the google docs but can&#39;t find information on configuring the cloud proxy created within the GAE (ie in production) to use TCP sockets.\r\n\r\n(I&#39;ve done it locally when testing, but can&#39;t figure out what I need to set in my app.yaml to make it happen in production)",
+            "link": "https://stackoverflow.com/questions/49764758/gae-cloud-sql-proxy-use-tcp-sockets-instead-of-unix",
+            "title": "GAE cloud SQL proxy use TCP sockets (instead of UNIX)",
+            "body": "<p>We're setting up a node application on GAE, and one of the libraries we're using doesn't play well with unix sockets.</p>\n\n<p>The Cloud Proxy setup inside GAE uses unix sockets, I've googled and searched the google docs but can't find information on configuring the cloud proxy created within the GAE (ie in production) to use TCP sockets.</p>\n\n<p>(I've done it locally when testing, but can't figure out what I need to set in my app.yaml to make it happen in production)</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "protocol-buffers"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 6478492,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-1F6gH63iEu8/AAAAAAAAAAI/AAAAAAAAADg/LzVHNNHr4IM/photo.jpg?sz=128",
+                "display_name": "Karamat",
+                "link": "https://stackoverflow.com/users/6478492/karamat"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523523475,
+            "creation_date": 1523523260,
+            "question_id": 49792159,
+            "body_markdown": "I am trying to run the official example for protobuf in java source from [here][1],\r\nfollowed the README.md \r\nprotoc generate the javasource code fine but I can not run the code by: \r\n \r\n1- java AddPerson data\r\n\r\nor \r\n\r\n2- java -cp protobuf-java-3.5.1.jar AddPerson\r\n\r\n1- Error for java AddPerson data is:\r\n\r\n    Exception in thread &quot;main&quot; java.lang.NoClassDefFoundError: \r\n    &quot;com/google/protobuf/MessageOrBuilder\r\n        at java.lang.ClassLoader.defineClass1(Native Method)\r\n        at java.lang.ClassLoader.defineClass(Unknown Source)\r\n        at java.security.SecureClassLoader.defineClass(Unknown Source)\r\n        at java.net.URLClassLoader.defineClass(Unknown Source)\r\n        at java.net.URLClassLoader.access$100(Unknown Source)\r\n        at java.net.URLClassLoader$1.run(Unknown Source)\r\n        at java.net.URLClassLoader$1.run(Unknown Source)\r\n        at java.security.AccessController.doPrivileged(Native Method)\r\n        at java.net.URLClassLoader.findClass(Unknown Source)\r\n        at java.lang.ClassLoader.loadClass(Unknown Source)\r\n        at sun.misc.Launcher$AppClassLoader.loadClass(Unknown Source)\r\n        at java.lang.ClassLoader.loadClass(Unknown Source)\r\n        at java.lang.ClassLoader.defineClass1(Native Method)\r\n        at java.lang.ClassLoader.defineClass(Unknown Source)\r\n        at java.security.SecureClassLoader.defineClass(Unknown Source)\r\n        at java.net.URLClassLoader.defineClass(Unknown Source)\r\n        at java.net.URLClassLoader.access$100(Unknown Source)\r\n        at java.net.URLClassLoader$1.run(Unknown Source)\r\n        at java.net.URLClassLoader$1.run(Unknown Source)\r\n        at java.security.AccessController.doPrivileged(Native Method)\r\n        at java.net.URLClassLoader.findClass(Unknown Source)\r\n        at java.lang.ClassLoader.loadClass(Unknown Source)\r\n        at sun.misc.Launcher$AppClassLoader.loadClass(Unknown Source)\r\n        at java.lang.ClassLoader.loadClass(Unknown Source)\r\n        at AddPerson.main(AddPerson.java:69)\r\n    Caused by: java.lang.ClassNotFoundException: \r\n    com.google.protobuf.MessageOrBuilder\r\n        at java.net.URLClassLoader.findClass(Unknown Source)\r\n        at java.lang.ClassLoader.loadClass(Unknown Source)\r\n        at sun.misc.Launcher$AppClassLoader.loadClass(Unknown Source)\r\n        at java.lang.ClassLoader.loadClass(Unknown Source)\r\n        ... 25 more&quot;\r\n\r\n2- Error for:   java -cp target/protobuf-java-3.5.1.jar AddPerson\r\n\r\n    Error: Could not find or load main class AddPerson\r\n\r\n\r\n    [enter image description here][2]\r\n\r\n\r\n\r\n  [1]: https://github.com/google/protobuf/tree/master/examples\r\n  [2]: https://i.stack.imgur.com/5mH3a.png\r\n",
+            "link": "https://stackoverflow.com/questions/49792159/java-protobuf-run-time-formal-example-not-working",
+            "title": "java protobuf run-time formal example not working",
+            "body": "<p>I am trying to run the official example for protobuf in java source from <a href=\"https://github.com/google/protobuf/tree/master/examples\" rel=\"nofollow noreferrer\">here</a>,\nfollowed the README.md \nprotoc generate the javasource code fine but I can not run the code by: </p>\n\n<p>1- java AddPerson data</p>\n\n<p>or </p>\n\n<p>2- java -cp protobuf-java-3.5.1.jar AddPerson</p>\n\n<p>1- Error for java AddPerson data is:</p>\n\n<pre><code>Exception in thread \"main\" java.lang.NoClassDefFoundError: \n\"com/google/protobuf/MessageOrBuilder\n    at java.lang.ClassLoader.defineClass1(Native Method)\n    at java.lang.ClassLoader.defineClass(Unknown Source)\n    at java.security.SecureClassLoader.defineClass(Unknown Source)\n    at java.net.URLClassLoader.defineClass(Unknown Source)\n    at java.net.URLClassLoader.access$100(Unknown Source)\n    at java.net.URLClassLoader$1.run(Unknown Source)\n    at java.net.URLClassLoader$1.run(Unknown Source)\n    at java.security.AccessController.doPrivileged(Native Method)\n    at java.net.URLClassLoader.findClass(Unknown Source)\n    at java.lang.ClassLoader.loadClass(Unknown Source)\n    at sun.misc.Launcher$AppClassLoader.loadClass(Unknown Source)\n    at java.lang.ClassLoader.loadClass(Unknown Source)\n    at java.lang.ClassLoader.defineClass1(Native Method)\n    at java.lang.ClassLoader.defineClass(Unknown Source)\n    at java.security.SecureClassLoader.defineClass(Unknown Source)\n    at java.net.URLClassLoader.defineClass(Unknown Source)\n    at java.net.URLClassLoader.access$100(Unknown Source)\n    at java.net.URLClassLoader$1.run(Unknown Source)\n    at java.net.URLClassLoader$1.run(Unknown Source)\n    at java.security.AccessController.doPrivileged(Native Method)\n    at java.net.URLClassLoader.findClass(Unknown Source)\n    at java.lang.ClassLoader.loadClass(Unknown Source)\n    at sun.misc.Launcher$AppClassLoader.loadClass(Unknown Source)\n    at java.lang.ClassLoader.loadClass(Unknown Source)\n    at AddPerson.main(AddPerson.java:69)\nCaused by: java.lang.ClassNotFoundException: \ncom.google.protobuf.MessageOrBuilder\n    at java.net.URLClassLoader.findClass(Unknown Source)\n    at java.lang.ClassLoader.loadClass(Unknown Source)\n    at sun.misc.Launcher$AppClassLoader.loadClass(Unknown Source)\n    at java.lang.ClassLoader.loadClass(Unknown Source)\n    ... 25 more\"\n</code></pre>\n\n<p>2- Error for:   java -cp target/protobuf-java-3.5.1.jar AddPerson</p>\n\n<pre><code>Error: Could not find or load main class AddPerson\n\n\n[enter image description here][2]\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "r"
+            ],
+            "owner": {
+                "reputation": 165,
+                "user_id": 829967,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a00908f3039948e1b4921b7e48d16b75?s=128&d=identicon&r=PG",
+                "display_name": "owen88",
+                "link": "https://stackoverflow.com/users/829967/owen88"
+            },
+            "is_answered": false,
+            "view_count": 87,
+            "answer_count": 1,
+            "score": 9,
+            "last_activity_date": 1523523466,
+            "creation_date": 1522778803,
+            "question_id": 49636555,
+            "body_markdown": "I wrote a (potentially not particularly good!) function to test if a number is a whole number or not:\r\n\r\n    is.wholeNumber &lt;- function(x) x == floor(x)\r\n\r\nIn general this function works fine for my purpose as I am really only considering cases where I&#39;m testing numbers with a handful of deciminal places, so my naive understanding was that machine precision shouldn&#39;t be a factor.\r\n\r\nWhen I apply this function in the case 45 x 1.4 = 63, however I get\r\n\r\n    &gt; is.wholeNumber( 45 * 1.4)\r\n    [1] FALSE\r\n\r\nThis appears to occur because the floor function of R is not evaluating as I would expect:\r\n\r\n    &gt; floor(45 * 1.4)\r\n    [1] 62\r\n\r\nwhich should in fact be 63. \r\n\r\n\r\n----------\r\n\r\n\r\nOn doing some reading I came across [this](https://stackoverflow.com/questions/3476782/check-if-the-number-is-integer) popular post about how to code this in R. The top voted answer there suggests the function \r\n\r\n    is.wholeNumber &lt;- function(x) ( x %% 1 ) == 0\r\n\r\nwhich again does not appear to work in my context, since I get\r\n\r\n    &gt; (45 * 1.4 ) %% 1\r\n    [1] 1\r\n\r\n\r\n----------\r\n\r\nThe second most upvoted post suggests using\r\n\r\n    is.wholeNumber &lt;- function(x) all.equal(x, as.integer(x))\r\n\r\nand whilst once again this does not work, it does give the illuminatingly unexpected output of\r\n\r\n    &gt; is.wholeNumber( 45 * 1.4)\r\n    [1] &quot;Mean relative difference: 0.01587302&quot;\r\n\r\n\r\n----------\r\n\r\nI have now tried this in both a clean R studio workspace, and from R terminal (R 3.4.2 Short Summer) and duplicated this issue. I&#39;d be interested to know:\r\n\r\n 1. Can people reproduce this issue on their machines?\r\n 2. Why I am getting this counter intuitive result?\r\n 3. What is a correct way to work around this?",
+            "link": "https://stackoverflow.com/questions/49636555/counter-intuitive-testing-for-whole-numbers-63-45-x-1-4-62",
+            "title": "Counter intuitive testing for whole numbers: 63 = (45 x 1.4) = 62",
+            "body": "<p>I wrote a (potentially not particularly good!) function to test if a number is a whole number or not:</p>\n\n<pre><code>is.wholeNumber &lt;- function(x) x == floor(x)\n</code></pre>\n\n<p>In general this function works fine for my purpose as I am really only considering cases where I'm testing numbers with a handful of deciminal places, so my naive understanding was that machine precision shouldn't be a factor.</p>\n\n<p>When I apply this function in the case 45 x 1.4 = 63, however I get</p>\n\n<pre><code>&gt; is.wholeNumber( 45 * 1.4)\n[1] FALSE\n</code></pre>\n\n<p>This appears to occur because the floor function of R is not evaluating as I would expect:</p>\n\n<pre><code>&gt; floor(45 * 1.4)\n[1] 62\n</code></pre>\n\n<p>which should in fact be 63. </p>\n\n<hr>\n\n<p>On doing some reading I came across <a href=\"https://stackoverflow.com/questions/3476782/check-if-the-number-is-integer\">this</a> popular post about how to code this in R. The top voted answer there suggests the function </p>\n\n<pre><code>is.wholeNumber &lt;- function(x) ( x %% 1 ) == 0\n</code></pre>\n\n<p>which again does not appear to work in my context, since I get</p>\n\n<pre><code>&gt; (45 * 1.4 ) %% 1\n[1] 1\n</code></pre>\n\n<hr>\n\n<p>The second most upvoted post suggests using</p>\n\n<pre><code>is.wholeNumber &lt;- function(x) all.equal(x, as.integer(x))\n</code></pre>\n\n<p>and whilst once again this does not work, it does give the illuminatingly unexpected output of</p>\n\n<pre><code>&gt; is.wholeNumber( 45 * 1.4)\n[1] \"Mean relative difference: 0.01587302\"\n</code></pre>\n\n<hr>\n\n<p>I have now tried this in both a clean R studio workspace, and from R terminal (R 3.4.2 Short Summer) and duplicated this issue. I'd be interested to know:</p>\n\n<ol>\n<li>Can people reproduce this issue on their machines?</li>\n<li>Why I am getting this counter intuitive result?</li>\n<li>What is a correct way to work around this?</li>\n</ol>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "performance",
+                "pandas",
+                "numpy"
+            ],
+            "owner": {
+                "reputation": 64,
+                "user_id": 5676213,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/b0aae558421220c33484704d4d59a26f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Nani",
+                "link": "https://stackoverflow.com/users/5676213/nani"
+            },
+            "is_answered": true,
+            "view_count": 391,
+            "bounty_amount": 100,
+            "bounty_closes_date": 1524128260,
+            "answer_count": 4,
+            "score": 9,
+            "last_activity_date": 1523523460,
+            "creation_date": 1521923091,
+            "last_edit_date": 1521924972,
+            "question_id": 49469556,
+            "body_markdown": "I am creating a column with incremental values and then appending a string at the start of the column. When used on large data this is very slow. Please suggest a faster and efficient way for the same.\r\n\r\n    df[&#39;New_Column&#39;] = np.arange(df[0])+1\r\n    df[&#39;New_Column&#39;] = &#39;str&#39; + df[&#39;New_Column&#39;].astype(str)\r\n\r\nInput\r\n-----\r\n\r\n    id\tField\tValue\r\n    1\t  A\t  \t  1\r\n    2\t  B\t  \t  0\t\t\r\n    3     D\t\t  1\r\n\r\nOutput\r\n-----\r\n\r\n    id\tField\tValue\tNew_Column\r\n    1\t  A\t  \t  1\t\tstr_1\r\n    2\t  B\t  \t  0\t\tstr_2\r\n    3     D\t\t  1\t    str_3\r\n    ",
+            "link": "https://stackoverflow.com/questions/49469556/create-new-column-with-incremental-values-in-a-faster-and-efficient-way",
+            "title": "Create new column with incremental values in a faster and efficient way",
+            "body": "<p>I am creating a column with incremental values and then appending a string at the start of the column. When used on large data this is very slow. Please suggest a faster and efficient way for the same.</p>\n\n<pre><code>df['New_Column'] = np.arange(df[0])+1\ndf['New_Column'] = 'str' + df['New_Column'].astype(str)\n</code></pre>\n\n<h2>Input</h2>\n\n<pre><code>id  Field   Value\n1     A       1\n2     B       0     \n3     D       1\n</code></pre>\n\n<h2>Output</h2>\n\n<pre><code>id  Field   Value   New_Column\n1     A       1     str_1\n2     B       0     str_2\n3     D       1     str_3\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "arrays",
+                "python-2.7",
+                "list"
+            ],
+            "owner": {
+                "reputation": 2895,
+                "user_id": 3993270,
+                "user_type": "registered",
+                "accept_rate": 66,
+                "profile_image": "https://www.gravatar.com/avatar/1bee661ad7451ff3107ca6954560a06c?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Edamame",
+                "link": "https://stackoverflow.com/users/3993270/edamame"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1523523457,
+            "creation_date": 1523514194,
+            "question_id": 49789371,
+            "body_markdown": "I have the following code:\r\n\r\n    X = [[[None] * 4] * 2] * 6\r\n    \r\n    for i in range(0, 6):\r\n        X[i][0][0] = i\r\n        \r\n    X\r\n\r\nand the results gives:\r\n\r\n    [[[5, None, None, None], [5, None, None, None]],\r\n     [[5, None, None, None], [5, None, None, None]],\r\n     [[5, None, None, None], [5, None, None, None]],\r\n     [[5, None, None, None], [5, None, None, None]],\r\n     [[5, None, None, None], [5, None, None, None]],\r\n     [[5, None, None, None], [5, None, None, None]]]\r\n\r\nThis is very strange to me, shouldn&#39;t the result be like below ?\r\n\r\n    [[[0, None, None, None], [0, None, None, None]],\r\n     [[1, None, None, None], [1, None, None, None]],\r\n     [[2, None, None, None], [2, None, None, None]],\r\n     [[3, None, None, None], [3, None, None, None]],\r\n     [[4, None, None, None], [4, None, None, None]],\r\n     [[5, None, None, None], [5, None, None, None]]]\r\n\r\nWhat did I miss here? Thanks!",
+            "link": "https://stackoverflow.com/questions/49789371/python-assign-value-to-multiple-dimensional-list",
+            "title": "python: assign value to multiple dimensional list",
+            "body": "<p>I have the following code:</p>\n\n<pre><code>X = [[[None] * 4] * 2] * 6\n\nfor i in range(0, 6):\n    X[i][0][0] = i\n\nX\n</code></pre>\n\n<p>and the results gives:</p>\n\n<pre><code>[[[5, None, None, None], [5, None, None, None]],\n [[5, None, None, None], [5, None, None, None]],\n [[5, None, None, None], [5, None, None, None]],\n [[5, None, None, None], [5, None, None, None]],\n [[5, None, None, None], [5, None, None, None]],\n [[5, None, None, None], [5, None, None, None]]]\n</code></pre>\n\n<p>This is very strange to me, shouldn't the result be like below ?</p>\n\n<pre><code>[[[0, None, None, None], [0, None, None, None]],\n [[1, None, None, None], [1, None, None, None]],\n [[2, None, None, None], [2, None, None, None]],\n [[3, None, None, None], [3, None, None, None]],\n [[4, None, None, None], [4, None, None, None]],\n [[5, None, None, None], [5, None, None, None]]]\n</code></pre>\n\n<p>What did I miss here? Thanks!</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 24
+}

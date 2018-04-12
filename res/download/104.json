@@ -1,0 +1,832 @@
+{
+    "items": [
+        {
+            "tags": [
+                "javascript",
+                "arrays",
+                "node.js"
+            ],
+            "owner": {
+                "reputation": 22,
+                "user_id": 4465719,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/464db5d4d881f40c12034ccef9b99907?s=128&d=identicon&r=PG&f=1",
+                "display_name": "ZackSied",
+                "link": "https://stackoverflow.com/users/4465719/zacksied"
+            },
+            "is_answered": false,
+            "view_count": 65,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523535963,
+            "creation_date": 1523535112,
+            "question_id": 49796204,
+            "body_markdown": "This is all still pretty new to me but I am running into an interesting behavior issue when generating an array of numbers in a NodeJS application that handles .nessus result files. First, some details on what I am trying to accomplish. My application generates an array [1234,1223,1222] of entries from an uploaded &quot;results&quot; file that is then used to query a mongodb instance to determine if those entries are currently in the DB. If those entries are not currently in the mongodb instance, it redirects to a page where a user can edit them before being added. If there are no new entries, it goes to a page to generate a report on the entries.\r\n\r\nWhen a file is uploaded, it stores the new entries. In .nessus files, sometimes there is more than one host with entries. That changes the json structure and the function needs to iterate a little differently. The following function is how those entries are stored. **This is important as this is where the weird behavior originates (I think)**\r\n\r\n\tfunction parsePluginNumbers(json){\r\n\t\t\r\n\t\tvar pluginNumbers = []\r\n\t\t\r\n\t\t//Let&#39;s check the number of hosts\r\n\t\tvar hostLength = json[&#39;NessusClientData_v2&#39;][&#39;Report&#39;].ReportHost.length\r\n\t\t\r\n\t\tif (hostLength != undefined) {\r\n\t\t\tfor (var i = 0; i &lt; hostLength; i++) { //Since there is more than 1, need to iterate over each host to find the findings.\r\n \t\t\t\tvar item_length = json[&#39;NessusClientData_v2&#39;][&#39;Report&#39;].ReportHost[i].ReportItem.length\r\n \t\t\t\tfor (var t = 0; t &lt; item_length; t++) { //Iterate through each finding on each host\r\n \t\t\t\t\tif (json[&#39;NessusClientData_v2&#39;][&#39;Report&#39;].ReportHost[i].ReportItem[t].risk_factor != &#39;None&#39;) { \r\n\t\t\t\t\t\tvar newEntry = json[&#39;NessusClientData_v2&#39;][&#39;Report&#39;].ReportHost[i].ReportItem[t].pluginID\r\n\t\t\t\t\t\tif (pluginNumbers.indexOf(newEntry) == -1) {\r\n\t\t\t\t\t\t\tpluginNumbers.push(newEntry)\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t\telse {\r\n\t\t\t\t\t\t\tcontinue\r\n\t\t\t\t\t\t}\r\n \t\t\t\t\t} else {\r\n \t\t\t\t\t\tcontinue\r\n \t\t\t\t\t}\r\n \t\t\t\t}\r\n \t\t\t}\r\n\t\t} else {\r\n \t\t\tvar item_length = json[&#39;NessusClientData_v2&#39;][&#39;Report&#39;][&#39;ReportHost&#39;].ReportItem.length\r\n \t\t\tfor (var t = 0; t &lt; item_length; t++) { //Iterate over findings \r\n \t\t\t\t\tif (json[&#39;NessusClientData_v2&#39;][&#39;Report&#39;][&#39;ReportHost&#39;].ReportItem[t].risk_factor != &#39;None&#39;) { \r\n\t\t\t\t\t\tvar newEntry = json[&#39;NessusClientData_v2&#39;][&#39;Report&#39;][&#39;ReportHost&#39;].ReportItem[t].pluginID\r\n\t\t\t\t\t\tif (pluginNumbers.indexOf(newEntry) == -1) {\r\n\t\t\t\t\t\t\tpluginNumbers.push(newEntry)\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t\telse {\r\n\t\t\t\t\t\t\tcontinue\r\n\t\t\t\t\t\t}\r\n \t\t\t\t\t} else {\r\n \t\t\t\t\t\tcontinue\r\n \t\t\t\t\t}\r\n\t\t\t}\r\n\t\t}\r\n\t\treturn pluginNumbers\t\r\n \t}\r\n\r\nOnce those plugins are stored. Another function is called to look if those results are in the mongodbinstance. In this function, those plugins are in an array &quot;pluginsTotal&quot;.\r\n\r\n    \tfunction queryForNewResultsInANessusFile(pluginsTotal, collectionname, filename){ //function to call mongodb query and send results to parseNewFindings and parseOldFindings.\r\n\t\tvar db = req.db;\r\n\t\tvar collection = db.get(collectionname);\r\n\t\t\r\n\t\tcollection.find({ &#39;PluginNumber&#39; : { $in: pluginsTotal }}, &#39;FindingTitle FindingDescription Remediation Mitigation SeeAlso PluginFamily PluginNumber CVE Risk -_id&#39;, function(error, result){\r\n\t\t\tvar newPluginArray = parseOutFindingNumbersInMongoDB(result, pluginsTotal);\r\n\r\n\t\t\t\r\n    //IF statements go here with specific redirects as needed to check if there are new values not in the repo\r\n\t}\r\n\r\nDuring this collection.find call, there is a function parseOutFindingNumbersInMongoDB that is called to determine if there are plugins in the .nessus results file that are not in the repo. It compares the results from collection.find and pluginsTotal (generated from the first function) and returns an array of the new plugins that are not in the repo. The function details are below:\r\n\r\n\tfunction parseOutFindingNumbersInMongoDB(repoResults, reportPlugins) {\r\n\t\t\r\n\t\tfor (var i = 0; i &lt; repoResults.length; i++){\r\n\t\t\tvar index = reportPlugins.indexOf(repoResults[i].PluginNumber);\r\n\t\t\tif (index != -1) {\r\n\t\t\t\treportPlugins.splice(index, 1);\r\n\t\t\t\t}\r\n\t\t\telse {\r\n\t\t\t\tcontinue\r\n\t\t\t\t}\r\n  \t\t}\r\n  \t\treturn reportPlugins\r\n\t}\r\n\r\nNow to my question --- When I upload a .nessus file with more than one host, parseOutFindingNumberInMongoDB always returns empty even though there are new entries. What gives? Is it the way I parse out the numbers to begin with in the parsePluginNumbers function or is because it is called in the collection.find synchronous function (This seems unlikely as if there is one host, it returns the new plugin values as I want)? Any thoughts/ideas/review would be much appreciated as I cannot figure out what is wrong. I have checked the data types within the array before being passed into the functions and they all match up.",
+            "link": "https://stackoverflow.com/questions/49796204/array-returning-empty-in-javascript",
+            "title": "Array returning empty in Javascript",
+            "body": "<p>This is all still pretty new to me but I am running into an interesting behavior issue when generating an array of numbers in a NodeJS application that handles .nessus result files. First, some details on what I am trying to accomplish. My application generates an array [1234,1223,1222] of entries from an uploaded \"results\" file that is then used to query a mongodb instance to determine if those entries are currently in the DB. If those entries are not currently in the mongodb instance, it redirects to a page where a user can edit them before being added. If there are no new entries, it goes to a page to generate a report on the entries.</p>\n\n<p>When a file is uploaded, it stores the new entries. In .nessus files, sometimes there is more than one host with entries. That changes the json structure and the function needs to iterate a little differently. The following function is how those entries are stored. <strong>This is important as this is where the weird behavior originates (I think)</strong></p>\n\n<pre><code>function parsePluginNumbers(json){\n\n    var pluginNumbers = []\n\n    //Let's check the number of hosts\n    var hostLength = json['NessusClientData_v2']['Report'].ReportHost.length\n\n    if (hostLength != undefined) {\n        for (var i = 0; i &lt; hostLength; i++) { //Since there is more than 1, need to iterate over each host to find the findings.\n            var item_length = json['NessusClientData_v2']['Report'].ReportHost[i].ReportItem.length\n            for (var t = 0; t &lt; item_length; t++) { //Iterate through each finding on each host\n                if (json['NessusClientData_v2']['Report'].ReportHost[i].ReportItem[t].risk_factor != 'None') { \n                    var newEntry = json['NessusClientData_v2']['Report'].ReportHost[i].ReportItem[t].pluginID\n                    if (pluginNumbers.indexOf(newEntry) == -1) {\n                        pluginNumbers.push(newEntry)\n                    }\n                    else {\n                        continue\n                    }\n                } else {\n                    continue\n                }\n            }\n        }\n    } else {\n        var item_length = json['NessusClientData_v2']['Report']['ReportHost'].ReportItem.length\n        for (var t = 0; t &lt; item_length; t++) { //Iterate over findings \n                if (json['NessusClientData_v2']['Report']['ReportHost'].ReportItem[t].risk_factor != 'None') { \n                    var newEntry = json['NessusClientData_v2']['Report']['ReportHost'].ReportItem[t].pluginID\n                    if (pluginNumbers.indexOf(newEntry) == -1) {\n                        pluginNumbers.push(newEntry)\n                    }\n                    else {\n                        continue\n                    }\n                } else {\n                    continue\n                }\n        }\n    }\n    return pluginNumbers    \n}\n</code></pre>\n\n<p>Once those plugins are stored. Another function is called to look if those results are in the mongodbinstance. In this function, those plugins are in an array \"pluginsTotal\".</p>\n\n<pre><code>    function queryForNewResultsInANessusFile(pluginsTotal, collectionname, filename){ //function to call mongodb query and send results to parseNewFindings and parseOldFindings.\n    var db = req.db;\n    var collection = db.get(collectionname);\n\n    collection.find({ 'PluginNumber' : { $in: pluginsTotal }}, 'FindingTitle FindingDescription Remediation Mitigation SeeAlso PluginFamily PluginNumber CVE Risk -_id', function(error, result){\n        var newPluginArray = parseOutFindingNumbersInMongoDB(result, pluginsTotal);\n\n\n//IF statements go here with specific redirects as needed to check if there are new values not in the repo\n}\n</code></pre>\n\n<p>During this collection.find call, there is a function parseOutFindingNumbersInMongoDB that is called to determine if there are plugins in the .nessus results file that are not in the repo. It compares the results from collection.find and pluginsTotal (generated from the first function) and returns an array of the new plugins that are not in the repo. The function details are below:</p>\n\n<pre><code>function parseOutFindingNumbersInMongoDB(repoResults, reportPlugins) {\n\n    for (var i = 0; i &lt; repoResults.length; i++){\n        var index = reportPlugins.indexOf(repoResults[i].PluginNumber);\n        if (index != -1) {\n            reportPlugins.splice(index, 1);\n            }\n        else {\n            continue\n            }\n    }\n    return reportPlugins\n}\n</code></pre>\n\n<p>Now to my question --- When I upload a .nessus file with more than one host, parseOutFindingNumberInMongoDB always returns empty even though there are new entries. What gives? Is it the way I parse out the numbers to begin with in the parsePluginNumbers function or is because it is called in the collection.find synchronous function (This seems unlikely as if there is one host, it returns the new plugin values as I want)? Any thoughts/ideas/review would be much appreciated as I cannot figure out what is wrong. I have checked the data types within the array before being passed into the functions and they all match up.</p>\n"
+        },
+        {
+            "tags": [
+                "fullcalendar"
+            ],
+            "owner": {
+                "reputation": 30,
+                "user_id": 5509612,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/587cec3145461ec8b175271d844c81b3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "ridgedale",
+                "link": "https://stackoverflow.com/users/5509612/ridgedale"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523535959,
+            "creation_date": 1523466874,
+            "question_id": 49780965,
+            "body_markdown": "*Reference: fullcalendar and gcal both v.3.9.0, jquery v.3.3.1, moment v. latest*\r\n\r\nI&#39;m trying to get a test calendar running to display multiple Google Calendars, but so far no events are being displayed. I&#39;ve followed the documentation on the fullcalendar.io website but have had no success so far. The following code renders the calendar but does not display the Google Calendar events:\r\n\r\n    $(document).ready(function() {\r\n\r\n    function CalendarSource(label, googleCalendarId, name) {\r\n        this.label = label;\r\n        this.googleCalendarId = googleCalendarId;\r\n        this.name = name;\r\n    }\r\n\r\n\t// Initialise the main calendar instance\r\n    $(&#39;#fullcalendar-instance&#39;).fullCalendar({\r\n\t\tgoogleCalendarApiKey: &#39;MyAPIkey&#39;,\r\n\t\teventSources: [\r\n\t\t\t{\r\n\t\t\t\tgoogleCalendarId: &#39;gCalID-1&#39;,\r\n\t\t\t\tcolor: &#39;green&#39;,   // an option!\r\n\t\t\t\ttextColor: &#39;black&#39;, // an option!\r\n\t\t\t\tclassName: &#39;my-event-1&#39;\r\n\t\t\t},\r\n\t\t\t{\r\n\t\t\t\tgoogleCalendarId: &#39;gCalID-2&#39;,\r\n\t\t\t\tcolor: &#39;blue&#39;,   // an option!\r\n\t\t\t\ttextColor: &#39;black&#39;, // an option!\r\n\t\t\t\tclassName: &#39;my-event-2&#39;\r\n\t\t\t},\r\n\t\t\t{\r\n\t\t\t\tgoogleCalendarId: &#39;gCalID-3&#39;,\r\n\t\t\t\tcolor: &#39;orange&#39;,   // an option!\r\n\t\t\t\ttextColor: &#39;black&#39;, // an option!\r\n\t\t\t\tclassName: &#39;my-event-3&#39;\r\n\t\t\t}\r\n\t\t],\r\n\t\theader: {\r\n\t\t\tleft: &#39;prev,next today&#39;,\r\n\t\t\tcenter: &#39;title&#39;,\r\n\t\t\tright: &#39;prevYear,nextYear&#39;,\r\n\t\t},\r\n\t\ttitleFormat: &#39;MMM YYYY&#39;,\r\n\t\tdayNamesShort: [&#39;S&#39;, &#39;M&#39;, &#39;T&#39;, &#39;W&#39;, &#39;T&#39;, &#39;F&#39;, &#39;S&#39;],\r\n\t\tbootstrapFontAwesome: {\r\n\t\t\tclose: &#39;fa-times&#39;,\r\n\t\t\tprev: &#39;fa-angle-left&#39;,\r\n\t\t\tnext: &#39;fa-angle-right&#39;,\r\n\t\t\tprevYear: &#39;fa-angle-double-left&#39;,\r\n\t\t\tnextYear: &#39;fa-angle-double-right&#39;\r\n\t\t},\r\n\t\ttimezone: &#39;Europe/London&#39;,\r\n\t\tdefaultView: &#39;month&#39;,\r\n\t\tthemeSystem: &#39;bootstrap4&#39;\r\n\t})\r\n\r\n});\r\n\r\nI would be grateful if someone could point out where I going wrong.\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49780965/fullcalendar-google-calendar-events-not-displaying",
+            "title": "Fullcalendar - Google Calendar Events Not Displaying",
+            "body": "<p><em>Reference: fullcalendar and gcal both v.3.9.0, jquery v.3.3.1, moment v. latest</em></p>\n\n<p>I'm trying to get a test calendar running to display multiple Google Calendars, but so far no events are being displayed. I've followed the documentation on the fullcalendar.io website but have had no success so far. The following code renders the calendar but does not display the Google Calendar events:</p>\n\n<pre><code>$(document).ready(function() {\n\nfunction CalendarSource(label, googleCalendarId, name) {\n    this.label = label;\n    this.googleCalendarId = googleCalendarId;\n    this.name = name;\n}\n\n// Initialise the main calendar instance\n$('#fullcalendar-instance').fullCalendar({\n    googleCalendarApiKey: 'MyAPIkey',\n    eventSources: [\n        {\n            googleCalendarId: 'gCalID-1',\n            color: 'green',   // an option!\n            textColor: 'black', // an option!\n            className: 'my-event-1'\n        },\n        {\n            googleCalendarId: 'gCalID-2',\n            color: 'blue',   // an option!\n            textColor: 'black', // an option!\n            className: 'my-event-2'\n        },\n        {\n            googleCalendarId: 'gCalID-3',\n            color: 'orange',   // an option!\n            textColor: 'black', // an option!\n            className: 'my-event-3'\n        }\n    ],\n    header: {\n        left: 'prev,next today',\n        center: 'title',\n        right: 'prevYear,nextYear',\n    },\n    titleFormat: 'MMM YYYY',\n    dayNamesShort: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],\n    bootstrapFontAwesome: {\n        close: 'fa-times',\n        prev: 'fa-angle-left',\n        next: 'fa-angle-right',\n        prevYear: 'fa-angle-double-left',\n        nextYear: 'fa-angle-double-right'\n    },\n    timezone: 'Europe/London',\n    defaultView: 'month',\n    themeSystem: 'bootstrap4'\n})\n</code></pre>\n\n<p>});</p>\n\n<p>I would be grateful if someone could point out where I going wrong.</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "mysql",
+                "database",
+                "table"
+            ],
+            "owner": {
+                "reputation": 186,
+                "user_id": 2601086,
+                "user_type": "registered",
+                "accept_rate": 57,
+                "profile_image": "https://graph.facebook.com/100001269382750/picture?type=large",
+                "display_name": "Alex",
+                "link": "https://stackoverflow.com/users/2601086/alex"
+            },
+            "is_answered": true,
+            "view_count": 257119,
+            "protected_date": 1519189907,
+            "accepted_answer_id": 17902527,
+            "answer_count": 10,
+            "score": 30,
+            "last_activity_date": 1523535956,
+            "creation_date": 1374959320,
+            "last_edit_date": 1502331706,
+            "question_id": 17902483,
+            "body_markdown": "I want to retrieve the values from a database table and show them in a html table in a page.\r\nI already searched for this but I couldn&#39;t find the answer, although this surely is something easy (this should be the basics of databases lol). I guess the terms I&#39;ve searched are misleading.\r\nThe database table name is tickets, it has 6 fields right now (submission_id, formID, IP, name, email and message) but should have another field called ticket_number.\r\nHow can I get it to show all the values from the db in a html table like this:\r\n\r\n    &lt;table border=&quot;1&quot;&gt;\r\n      &lt;tr&gt;\r\n        &lt;th&gt;Submission ID&lt;/th&gt;\r\n        &lt;th&gt;Form ID&lt;/th&gt;\r\n        &lt;th&gt;IP&lt;/th&gt;\r\n        &lt;th&gt;Name&lt;/th&gt;\r\n        &lt;th&gt;E-mail&lt;/th&gt;\r\n        &lt;th&gt;Message&lt;/th&gt;\r\n      &lt;/tr&gt;\r\n      &lt;tr&gt;\r\n        &lt;td&gt;123456789&lt;/td&gt;\r\n        &lt;td&gt;12345&lt;/td&gt;\r\n        &lt;td&gt;123.456.789&lt;/td&gt;\r\n        &lt;td&gt;John Johnny&lt;/td&gt;\r\n        &lt;td&gt;johnny@johnysite.com&lt;/td&gt;\r\n        &lt;td&gt;This is the message John sent you&lt;/td&gt;\r\n      &lt;/tr&gt;\r\n    &lt;/table&gt;\r\n\r\nAnd then all the other values below &#39;john&#39;.\r\n\r\nThanks for the help in advance.",
+            "link": "https://stackoverflow.com/questions/17902483/show-values-from-a-mysql-database-table-inside-a-html-table-on-a-webpage",
+            "title": "Show values from a MySQL database table inside a HTML table on a webpage",
+            "body": "<p>I want to retrieve the values from a database table and show them in a html table in a page.\nI already searched for this but I couldn't find the answer, although this surely is something easy (this should be the basics of databases lol). I guess the terms I've searched are misleading.\nThe database table name is tickets, it has 6 fields right now (submission_id, formID, IP, name, email and message) but should have another field called ticket_number.\nHow can I get it to show all the values from the db in a html table like this:</p>\n\n<pre><code>&lt;table border=\"1\"&gt;\n  &lt;tr&gt;\n    &lt;th&gt;Submission ID&lt;/th&gt;\n    &lt;th&gt;Form ID&lt;/th&gt;\n    &lt;th&gt;IP&lt;/th&gt;\n    &lt;th&gt;Name&lt;/th&gt;\n    &lt;th&gt;E-mail&lt;/th&gt;\n    &lt;th&gt;Message&lt;/th&gt;\n  &lt;/tr&gt;\n  &lt;tr&gt;\n    &lt;td&gt;123456789&lt;/td&gt;\n    &lt;td&gt;12345&lt;/td&gt;\n    &lt;td&gt;123.456.789&lt;/td&gt;\n    &lt;td&gt;John Johnny&lt;/td&gt;\n    &lt;td&gt;johnny@johnysite.com&lt;/td&gt;\n    &lt;td&gt;This is the message John sent you&lt;/td&gt;\n  &lt;/tr&gt;\n&lt;/table&gt;\n</code></pre>\n\n<p>And then all the other values below 'john'.</p>\n\n<p>Thanks for the help in advance.</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "service",
+                "broadcastreceiver",
+                "alarmmanager"
+            ],
+            "owner": {
+                "reputation": 2591,
+                "user_id": 4700782,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://i.stack.imgur.com/rSGzc.jpg?s=128&g=1",
+                "display_name": "Pier Giorgio Misley",
+                "link": "https://stackoverflow.com/users/4700782/pier-giorgio-misley"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523535955,
+            "creation_date": 1523535624,
+            "last_edit_date": 1523535955,
+            "question_id": 49796398,
+            "body_markdown": "I know that there are many questions like this, but noone of those solved my problem.\r\n\r\nI have a service that must do some operations every X minutes, and X might change and is not always the same amount of time.\r\n\r\n**This is my Service**\r\n\r\n    public class MyService extends IntentService {\r\n        public MyService(String name) {\r\n            super(name);\r\n        }\r\n    \r\n        public MyService() {\r\n            super(&quot;MyService&quot;);\r\n        }\r\n    \r\n        @Nullable\r\n        @Override\r\n        public IBinder onBind(Intent intent) {\r\n            return null;\r\n        }\r\n    \r\n        @Override\r\n        protected void onHandleIntent(@Nullable Intent intent) {\r\n            //do my stuffs\r\n\r\n            Utils.setAlarm(this);\r\n        }\r\n    \r\n        @Override\r\n        public void onCreate() {\r\n            super.onCreate();\r\n        }\r\n    \r\n        @Override\r\n        public int onStartCommand(Intent intent, int flags, int startId) {\r\n            return super.onStartCommand(intent, flags, startId);\r\n        }\r\n    \r\n    \r\n        @Override\r\n        public void onDestroy() {\r\n            super.onDestroy();\r\n        }\r\n    }\r\n\r\n**This is my setAlarm method**\r\n\r\n\r\n    public static void setAlarm(Context ctx) {\r\n\r\n        Intent in = new Intent(&quot;actions.alarmReceiver&quot;);\r\n        PendingIntent pi = PendingIntent.getBroadcast(ctx.getApplicationContext(), 500, in, PendingIntent.FLAG_ONE_SHOT);\r\n        AlarmManager alarm = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);\r\n        alarm.cancel(pi);\r\n\r\n        //this is just my singleton with some data taken from Realm database\r\n        LocalSettings localSettings = LocalSettings.getIstance();\r\n\r\n        alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + (1000 * 60 * localSettings.MinutesDelay), pi);\r\n    }\r\n\r\n**And this is the code for my alarm**\r\n\r\n    public class Alarm extends BroadcastReceiver {\r\n    \r\n        public Alarm() {\r\n        }\r\n    \r\n        @Override\r\n        public void onReceive(Context context, Intent intent) {\r\n            if(intent.getAction() != null &amp;&amp; intent.getAction().equals(&quot;actions.alarmReceiver&quot;)) {\r\n                Toast.makeText(context, &quot;got it!&quot;, Toast.LENGTH_LONG).show();\r\n                context.startService(new Intent(context, MyService.class));\r\n            }\r\n        }\r\n    }\r\n\r\n**finally, this is my manifest**\r\n\r\n    &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;\r\n    &lt;manifest xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;\r\n        package=&quot;mpackage&quot;&gt;\r\n    \r\n        &lt;uses-permission android:name=&quot;android.permission.INTERNET&quot; /&gt;\r\n        &lt;uses-permission android:name=&quot;android.permission.RECEIVE_BOOT_COMPLETED&quot; /&gt;\r\n        &lt;uses-permission android:name=&quot;android.permission.WAKE_LOCK&quot; /&gt;\r\n        &lt;uses-permission android:name=&quot;android.permission.SEND_SMS&quot; /&gt;\r\n    \r\n        &lt;application\r\n            ...&gt;\r\n            &lt;receiver\r\n                android:name=&quot;.receivers.AutoStart&quot;\r\n                android:enabled=&quot;true&quot;&gt;\r\n                &lt;intent-filter&gt;\r\n                    &lt;action android:name=&quot;android.intent.action.BOOT_COMPLETED&quot; /&gt;\r\n                &lt;/intent-filter&gt;\r\n            &lt;/receiver&gt;\r\n            &lt;receiver\r\n                android:name=&quot;.receivers.Alarm&quot;\r\n                android:enabled=&quot;true&quot;\r\n                android:process=&quot;:remote&quot;&gt;\r\n                &lt;intent-filter&gt;\r\n                    &lt;action android:name=&quot;actions.alarmReceiver&quot; /&gt;\r\n                &lt;/intent-filter&gt;\r\n            &lt;/receiver&gt;\r\n    \r\n            &lt;service\r\n                android:name=&quot;.receivers.MyService&quot;\r\n                android:exported=&quot;true&quot;\r\n                android:enabled=&quot;true&quot; /&gt;\r\n        &lt;/application&gt;\r\n    \r\n    &lt;/manifest&gt;\r\n\r\nI also tried launching it with the alert class instead of the action, but without any result. If the app is running or in background, it works. If I close the app, it doesn&#39;t.\r\n\r\nI&#39;m not an expert of services and receivers, but I can&#39;t really figure out what I&#39;m doing wrong, any ideas?\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49796398/alarm-stops-if-app-is-closed",
+            "title": "Alarm stops if app is closed",
+            "body": "<p>I know that there are many questions like this, but noone of those solved my problem.</p>\n\n<p>I have a service that must do some operations every X minutes, and X might change and is not always the same amount of time.</p>\n\n<p><strong>This is my Service</strong></p>\n\n<pre><code>public class MyService extends IntentService {\n    public MyService(String name) {\n        super(name);\n    }\n\n    public MyService() {\n        super(\"MyService\");\n    }\n\n    @Nullable\n    @Override\n    public IBinder onBind(Intent intent) {\n        return null;\n    }\n\n    @Override\n    protected void onHandleIntent(@Nullable Intent intent) {\n        //do my stuffs\n\n        Utils.setAlarm(this);\n    }\n\n    @Override\n    public void onCreate() {\n        super.onCreate();\n    }\n\n    @Override\n    public int onStartCommand(Intent intent, int flags, int startId) {\n        return super.onStartCommand(intent, flags, startId);\n    }\n\n\n    @Override\n    public void onDestroy() {\n        super.onDestroy();\n    }\n}\n</code></pre>\n\n<p><strong>This is my setAlarm method</strong></p>\n\n<pre><code>public static void setAlarm(Context ctx) {\n\n    Intent in = new Intent(\"actions.alarmReceiver\");\n    PendingIntent pi = PendingIntent.getBroadcast(ctx.getApplicationContext(), 500, in, PendingIntent.FLAG_ONE_SHOT);\n    AlarmManager alarm = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);\n    alarm.cancel(pi);\n\n    //this is just my singleton with some data taken from Realm database\n    LocalSettings localSettings = LocalSettings.getIstance();\n\n    alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + (1000 * 60 * localSettings.MinutesDelay), pi);\n}\n</code></pre>\n\n<p><strong>And this is the code for my alarm</strong></p>\n\n<pre><code>public class Alarm extends BroadcastReceiver {\n\n    public Alarm() {\n    }\n\n    @Override\n    public void onReceive(Context context, Intent intent) {\n        if(intent.getAction() != null &amp;&amp; intent.getAction().equals(\"actions.alarmReceiver\")) {\n            Toast.makeText(context, \"got it!\", Toast.LENGTH_LONG).show();\n            context.startService(new Intent(context, MyService.class));\n        }\n    }\n}\n</code></pre>\n\n<p><strong>finally, this is my manifest</strong></p>\n\n<pre><code>&lt;?xml version=\"1.0\" encoding=\"utf-8\"?&gt;\n&lt;manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    package=\"mpackage\"&gt;\n\n    &lt;uses-permission android:name=\"android.permission.INTERNET\" /&gt;\n    &lt;uses-permission android:name=\"android.permission.RECEIVE_BOOT_COMPLETED\" /&gt;\n    &lt;uses-permission android:name=\"android.permission.WAKE_LOCK\" /&gt;\n    &lt;uses-permission android:name=\"android.permission.SEND_SMS\" /&gt;\n\n    &lt;application\n        ...&gt;\n        &lt;receiver\n            android:name=\".receivers.AutoStart\"\n            android:enabled=\"true\"&gt;\n            &lt;intent-filter&gt;\n                &lt;action android:name=\"android.intent.action.BOOT_COMPLETED\" /&gt;\n            &lt;/intent-filter&gt;\n        &lt;/receiver&gt;\n        &lt;receiver\n            android:name=\".receivers.Alarm\"\n            android:enabled=\"true\"\n            android:process=\":remote\"&gt;\n            &lt;intent-filter&gt;\n                &lt;action android:name=\"actions.alarmReceiver\" /&gt;\n            &lt;/intent-filter&gt;\n        &lt;/receiver&gt;\n\n        &lt;service\n            android:name=\".receivers.MyService\"\n            android:exported=\"true\"\n            android:enabled=\"true\" /&gt;\n    &lt;/application&gt;\n\n&lt;/manifest&gt;\n</code></pre>\n\n<p>I also tried launching it with the alert class instead of the action, but without any result. If the app is running or in background, it works. If I close the app, it doesn't.</p>\n\n<p>I'm not an expert of services and receivers, but I can't really figure out what I'm doing wrong, any ideas?</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "firebase",
+                "gradle"
+            ],
+            "owner": {
+                "reputation": 7170,
+                "user_id": 920173,
+                "user_type": "registered",
+                "accept_rate": 79,
+                "profile_image": "https://i.stack.imgur.com/wriXh.png?s=128&g=1",
+                "display_name": "Salvatorelab",
+                "link": "https://stackoverflow.com/users/920173/salvatorelab"
+            },
+            "is_answered": true,
+            "view_count": 19224,
+            "answer_count": 7,
+            "score": 31,
+            "last_activity_date": 1523535955,
+            "creation_date": 1463656997,
+            "last_edit_date": 1504865486,
+            "question_id": 37321728,
+            "body_markdown": "We have followed the [Add Firebase to your Android Project][1] but we can&#39;t see the app receiving data in the Firebase Console.  \r\nAnd when we launch the app, the log says:\r\n\r\n    FirebaseInitProvider: FirebaseApp initialization unsuccessful\r\n\r\nWhat does this mean? What are we doing wrong?  \r\nI can&#39;t find this error in the docs, nor here in StackOverflow.\r\n\r\n\r\n  [1]: https://firebase.google.com/docs/android/setup",
+            "link": "https://stackoverflow.com/questions/37321728/firebaseinitprovider-firebaseapp-initialization-unsuccessful",
+            "title": "FirebaseInitProvider: FirebaseApp initialization unsuccessful",
+            "body": "<p>We have followed the <a href=\"https://firebase.google.com/docs/android/setup\">Add Firebase to your Android Project</a> but we can't see the app receiving data in the Firebase Console.<br>\nAnd when we launch the app, the log says:</p>\n\n<pre><code>FirebaseInitProvider: FirebaseApp initialization unsuccessful\n</code></pre>\n\n<p>What does this mean? What are we doing wrong?<br>\nI can't find this error in the docs, nor here in StackOverflow.</p>\n"
+        },
+        {
+            "tags": [
+                "google-chrome",
+                "embedded-flashplayer"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 7007392,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/814974006aee7d870df01c199506adfc?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Darth Maul",
+                "link": "https://stackoverflow.com/users/7007392/darth-maul"
+            },
+            "is_answered": true,
+            "view_count": 10,
+            "closed_date": 1523538308,
+            "accepted_answer_id": 49796505,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523535943,
+            "creation_date": 1523535647,
+            "question_id": 49796404,
+            "body_markdown": "Google chrome keeps freezing, whenever i play YouTube videos or other web sites videos then after about 3-4 seconds it continues.My flash player and chrome is up to date.My download speed is 100 mbps.\r\n\r\nFlash Player : 29.0.0.140\r\nChrome : 65.0.3325.181\r\n",
+            "link": "https://stackoverflow.com/questions/49796404/google-chrome-keeps-freezing-when-playing-youtube-videos",
+            "closed_reason": "off-topic",
+            "title": "Google Chrome keeps freezing, when playing YouTube videos",
+            "body": "<p>Google chrome keeps freezing, whenever i play YouTube videos or other web sites videos then after about 3-4 seconds it continues.My flash player and chrome is up to date.My download speed is 100 mbps.</p>\n\n<p>Flash Player : 29.0.0.140\nChrome : 65.0.3325.181</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "tkinter"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9636007,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "ANNABA Naruto",
+                "link": "https://stackoverflow.com/users/9636007/annaba-naruto"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1523535940,
+            "creation_date": 1523535940,
+            "question_id": 49796504,
+            "body_markdown": "hello i am trying to write this code but the problem is when i execute the code i found this errorTcl \r\nError: unknown option &quot;-weight&quot;\r\n\r\n\r\n    from Tkinter import *\r\n    from Tkinter import Tk        \r\n    \r\n    root = Tk()\r\n    PanedWindow = PanedWindow(root, orient = HORIZONTAL)\r\n    PanedWindow.pack(fill = BOTH, expand = True)\r\n\r\n    frame1 = Frame(PanedWindow, width = 100, height = 300, relief = SUNKEN)\r\n    frame2 = Frame(PanedWindow, width = 400, height = 400, relief = SUNKEN)\r\n    PanedWindow.add(frame1, weight = 1)\r\n    PanedWindow.add(frame2, weight = 4)\r\n\r\n    frame3 = Frame(PanedWindow, width = 50, height = 50, relief = SUNKEN)\r\n    PanedWindow.insert(1, frame3)\r\n    PanedWindow.forget(1)\r\n\r\n    root.mainloop()&#39;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49796504/tclerror-unknown-option-weight-tkinter",
+            "title": "TclError: unknown option &quot;-weight&quot; tkinter",
+            "body": "<p>hello i am trying to write this code but the problem is when i execute the code i found this errorTcl \nError: unknown option \"-weight\"</p>\n\n<pre><code>from Tkinter import *\nfrom Tkinter import Tk        \n\nroot = Tk()\nPanedWindow = PanedWindow(root, orient = HORIZONTAL)\nPanedWindow.pack(fill = BOTH, expand = True)\n\nframe1 = Frame(PanedWindow, width = 100, height = 300, relief = SUNKEN)\nframe2 = Frame(PanedWindow, width = 400, height = 400, relief = SUNKEN)\nPanedWindow.add(frame1, weight = 1)\nPanedWindow.add(frame2, weight = 4)\n\nframe3 = Frame(PanedWindow, width = 50, height = 50, relief = SUNKEN)\nPanedWindow.insert(1, frame3)\nPanedWindow.forget(1)\n\nroot.mainloop()'\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "wordpress",
+                "gutenberg",
+                "gutenberg-blocks"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9635956,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-HG5k_kKYQUI/AAAAAAAAAAI/AAAAAAAAACY/n4QA37Si9oI/photo.jpg?sz=128",
+                "display_name": "Dominique Eugster",
+                "link": "https://stackoverflow.com/users/9635956/dominique-eugster"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523535939,
+            "creation_date": 1523535939,
+            "question_id": 49796503,
+            "body_markdown": "I&#39;m trying to remove some Blocks from Gutenberg using a Blacklist, with the method described in [Gutenberg on GitHub][1].\r\nI added the php part to my `functions.php` and it loads the .js-file, but the blacklisted blocks still appear in Gutenberg.\r\n\r\nThe problem seems to be, that the blocks are not loaded at the moment the .js-file is executed, because when I add following to the .js-file it returns an empty array.\r\n\r\n    var blocktypes = wp.blocks.getBlockTypes();\r\n    console.log(blocktypes);\r\n\r\n\r\nIf I change \r\n\r\n    add_action( &#39;enqueue_block_editor_assets&#39;, &#39;myplugin_blacklist_blocks&#39; );\r\nto an action that is called later (e.g. `&#39;wp_after_admin_bar_render&#39;`), the array from the .js-file is populated with all the Gutenberg-Blocks and the Blocks disappear in Gutenberg. \r\nThe problem is that the normal WYSWYG-Editor which I need for some post-types doesn&#39;t work anymore (you can&#39;t enter text into the text-area).\r\n\r\nOnto which action should I hook the blacklist-function or do I need to call that function in a different file thant `functions.php`?\r\n\r\n  [1]: https://github.com/WordPress/gutenberg/blob/master/docs/extensibility/extending-blocks.md#removing-blocks",
+            "link": "https://stackoverflow.com/questions/49796503/removing-blocks-from-gutenberg-breaks-classic-wp-editor",
+            "title": "Removing Blocks from Gutenberg breaks classic WP-Editor",
+            "body": "<p>I'm trying to remove some Blocks from Gutenberg using a Blacklist, with the method described in <a href=\"https://github.com/WordPress/gutenberg/blob/master/docs/extensibility/extending-blocks.md#removing-blocks\" rel=\"nofollow noreferrer\">Gutenberg on GitHub</a>.\nI added the php part to my <code>functions.php</code> and it loads the .js-file, but the blacklisted blocks still appear in Gutenberg.</p>\n\n<p>The problem seems to be, that the blocks are not loaded at the moment the .js-file is executed, because when I add following to the .js-file it returns an empty array.</p>\n\n<pre><code>var blocktypes = wp.blocks.getBlockTypes();\nconsole.log(blocktypes);\n</code></pre>\n\n<p>If I change </p>\n\n<pre><code>add_action( 'enqueue_block_editor_assets', 'myplugin_blacklist_blocks' );\n</code></pre>\n\n<p>to an action that is called later (e.g. <code>'wp_after_admin_bar_render'</code>), the array from the .js-file is populated with all the Gutenberg-Blocks and the Blocks disappear in Gutenberg. \nThe problem is that the normal WYSWYG-Editor which I need for some post-types doesn't work anymore (you can't enter text into the text-area).</p>\n\n<p>Onto which action should I hook the blacklist-function or do I need to call that function in a different file thant <code>functions.php</code>?</p>\n"
+        },
+        {
+            "tags": [
+                "xml",
+                "python-3.x",
+                "xpath",
+                "xml-parsing"
+            ],
+            "owner": {
+                "reputation": 15,
+                "user_id": 8905499,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-anSh5obJeco/AAAAAAAAAAI/AAAAAAAAAU4/W_XJKmZtRb8/photo.jpg?sz=128",
+                "display_name": "Paul Kremershof",
+                "link": "https://stackoverflow.com/users/8905499/paul-kremershof"
+            },
+            "is_answered": true,
+            "view_count": 19,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523535935,
+            "creation_date": 1523524741,
+            "last_edit_date": 1523535935,
+            "question_id": 49792703,
+            "body_markdown": "I would like to select the information of all child elements in very large xml file if its parent has certain information. If, as in the sample code, the attribute of the node sn contains **elliptic=&quot;yes&quot;**, then select the **v** node and retrieve attribute values (e.g. wd=&quot;vulgui&quot;).\r\n\r\n  \r\n\r\n     &lt;sentence&gt;\r\n    &lt;sadv arg=&quot;argM&quot; func=&quot;cc&quot; tem=&quot;tmp&quot;&gt;\r\n      &lt;sadv&gt;\r\n        &lt;grup.adv&gt;\r\n          &lt;r lem=&quot;despr&#233;s&quot; pos=&quot;rg&quot; wd=&quot;Despr&#233;s&quot;/&gt;\r\n          &lt;sp&gt;\r\n            &lt;prep&gt;\r\n              &lt;s lem=&quot;de&quot; pos=&quot;sps00&quot; postype=&quot;preposition&quot; wd=&quot;de&quot;/&gt;\r\n            &lt;/prep&gt;\r\n            &lt;sn entityref=&quot;nne&quot;&gt;\r\n              &lt;spec gen=&quot;m&quot; num=&quot;p&quot;&gt;\r\n                &lt;z lem=&quot;15&quot; ne=&quot;number&quot; wd=&quot;15&quot;/&gt;\r\n              &lt;/spec&gt;\r\n              &lt;grup.nom gen=&quot;m&quot; num=&quot;p&quot;&gt;\r\n                &lt;n gen=&quot;m&quot; lem=&quot;any&quot; num=&quot;p&quot; pos=&quot;ncmp000&quot; postype=&quot;common&quot; sense=&quot;16:10917509&quot; wd=&quot;anys&quot;/&gt;\r\n                &lt;sp&gt;\r\n                  &lt;prep&gt;\r\n                    &lt;s lem=&quot;de&quot; pos=&quot;sps00&quot; postype=&quot;preposition&quot; wd=&quot;de&quot;/&gt;\r\n                  &lt;/prep&gt;\r\n                  &lt;sn entityref=&quot;nne&quot;&gt;\r\n                    &lt;spec gen=&quot;f&quot; num=&quot;s&quot;&gt;\r\n                      &lt;d coreftype=&quot;ident&quot; entity=&quot;entity3&quot; entityref=&quot;nne&quot; gen=&quot;f&quot; lem=&quot;el_seu&quot; num=&quot;s&quot; person=&quot;3&quot; pos=&quot;dp3fs0&quot; postype=&quot;possessive&quot; wd=&quot;la_seva&quot;/&gt;\r\n                    &lt;/spec&gt;\r\n                    &lt;grup.nom gen=&quot;f&quot; num=&quot;s&quot;&gt;\r\n                      &lt;n gen=&quot;f&quot; lem=&quot;creaci&#243;&quot; num=&quot;s&quot; pos=&quot;ncfs000&quot; postype=&quot;common&quot; sense=&quot;16:00583085&quot; wd=&quot;creaci&#243;&quot;/&gt;\r\n                    &lt;/grup.nom&gt;\r\n                  &lt;/sn&gt;\r\n                &lt;/sp&gt;\r\n              &lt;/grup.nom&gt;\r\n            &lt;/sn&gt;\r\n          &lt;/sp&gt;\r\n        &lt;/grup.adv&gt;\r\n      &lt;/sadv&gt;\r\n      &lt;f lem=&quot;,&quot; pos=&quot;fc&quot; punct=&quot;comma&quot; wd=&quot;,&quot;/&gt;\r\n    &lt;/sadv&gt;\r\n    &lt;sn arg=&quot;arg0&quot; coreftype=&quot;ident&quot; **elliptic=&quot;yes&quot;** entity=&quot;entity3&quot; entityref=&quot;nne&quot; func=&quot;suj&quot; tem=&quot;agt&quot;/&gt;\r\n    &lt;grup.verb&gt;\r\n      &lt;v lem=&quot;presentar&quot; lss=&quot;A32.ditransitive-patient-benefactive&quot; mood=&quot;indicative&quot; num=&quot;p&quot; person=&quot;3&quot; pos=&quot;vmip3p0&quot; postype=&quot;main&quot; tense=&quot;present&quot; **wd=&quot;presenten&quot;**/&gt;\r\n    &lt;/grup.verb&gt;\r\n    &lt;sn arg=&quot;arg1&quot; entityref=&quot;spec&quot; func=&quot;cd&quot; tem=&quot;pat&quot;&gt;\r\n      &lt;spec gen=&quot;m&quot; num=&quot;s&quot;&gt;\r\n        &lt;d gen=&quot;m&quot; lem=&quot;un&quot; num=&quot;s&quot; pos=&quot;di0ms0&quot; postype=&quot;indefinite&quot; wd=&quot;un&quot;/&gt;\r\n      &lt;/spec&gt;\r\n      &lt;grup.nom gen=&quot;m&quot; num=&quot;s&quot;&gt;\r\n        &lt;s.a gen=&quot;m&quot; num=&quot;s&quot;&gt;\r\n          &lt;grup.a gen=&quot;m&quot; num=&quot;s&quot;&gt;\r\n            &lt;a gen=&quot;m&quot; lem=&quot;nou&quot; num=&quot;s&quot; pos=&quot;aq0ms0&quot; postype=&quot;qualificative&quot; wd=&quot;nou&quot;/&gt;\r\n          &lt;/grup.a&gt;\r\n        &lt;/s.a&gt;\r\n        &lt;n gen=&quot;m&quot; lem=&quot;disc&quot; num=&quot;s&quot; pos=&quot;ncms000&quot; postype=&quot;common&quot; sense=&quot;16:03112307&quot; wd=&quot;disc&quot;/&gt;\r\n        &lt;sn entityref=&quot;ne&quot; ne=&quot;other&quot;&gt;\r\n          &lt;f lem=&quot;,&quot; pos=&quot;fc&quot; punct=&quot;comma&quot; wd=&quot;,&quot;/&gt;\r\n          &lt;grup.nom&gt;\r\n            &lt;f lem=&quot;&#39;&quot; pos=&quot;fz&quot; punct=&quot;mathsign&quot; wd=&quot;&#39;&quot;/&gt;\r\n            &lt;n lem=&quot;Electroretard&quot; ne=&quot;other&quot; pos=&quot;np0000a&quot; postype=&quot;proper&quot; sense=&quot;16:cs1&quot; wd=&quot;Electroretard&quot;/&gt;\r\n            &lt;f lem=&quot;&#39;&quot; pos=&quot;fz&quot; punct=&quot;mathsign&quot; wd=&quot;&#39;&quot;/&gt;\r\n          &lt;/grup.nom&gt;\r\n        &lt;/sn&gt;\r\n      &lt;/grup.nom&gt;\r\n    &lt;/sn&gt;\r\n    &lt;f lem=&quot;.&quot; pos=&quot;fp&quot; punct=&quot;period&quot; wd=&quot;.&quot;/&gt;\r\n  &lt;/sentence&gt;\r\n\r\nI couldn&#39;t come up with a solution after: \r\n\r\n    for sn in root.iter(&#39;sn&#39;):\r\n    rank = sn.get(&#39;elliptic&#39;)\r\n    if rank == &#39;yes&#39;:\r\n\r\nHow could I continue this line of code? I thought something like:\r\n\r\n&quot;iterate through all children whose parents contain @elliptic=&quot;yes&quot;",
+            "link": "https://stackoverflow.com/questions/49792703/conditional-xml-parsing-in-python",
+            "title": "Conditional XML parsing in Python",
+            "body": "<p>I would like to select the information of all child elements in very large xml file if its parent has certain information. If, as in the sample code, the attribute of the node sn contains <strong>elliptic=\"yes\"</strong>, then select the <strong>v</strong> node and retrieve attribute values (e.g. wd=\"vulgui\").</p>\n\n<pre><code> &lt;sentence&gt;\n&lt;sadv arg=\"argM\" func=\"cc\" tem=\"tmp\"&gt;\n  &lt;sadv&gt;\n    &lt;grup.adv&gt;\n      &lt;r lem=\"després\" pos=\"rg\" wd=\"Després\"/&gt;\n      &lt;sp&gt;\n        &lt;prep&gt;\n          &lt;s lem=\"de\" pos=\"sps00\" postype=\"preposition\" wd=\"de\"/&gt;\n        &lt;/prep&gt;\n        &lt;sn entityref=\"nne\"&gt;\n          &lt;spec gen=\"m\" num=\"p\"&gt;\n            &lt;z lem=\"15\" ne=\"number\" wd=\"15\"/&gt;\n          &lt;/spec&gt;\n          &lt;grup.nom gen=\"m\" num=\"p\"&gt;\n            &lt;n gen=\"m\" lem=\"any\" num=\"p\" pos=\"ncmp000\" postype=\"common\" sense=\"16:10917509\" wd=\"anys\"/&gt;\n            &lt;sp&gt;\n              &lt;prep&gt;\n                &lt;s lem=\"de\" pos=\"sps00\" postype=\"preposition\" wd=\"de\"/&gt;\n              &lt;/prep&gt;\n              &lt;sn entityref=\"nne\"&gt;\n                &lt;spec gen=\"f\" num=\"s\"&gt;\n                  &lt;d coreftype=\"ident\" entity=\"entity3\" entityref=\"nne\" gen=\"f\" lem=\"el_seu\" num=\"s\" person=\"3\" pos=\"dp3fs0\" postype=\"possessive\" wd=\"la_seva\"/&gt;\n                &lt;/spec&gt;\n                &lt;grup.nom gen=\"f\" num=\"s\"&gt;\n                  &lt;n gen=\"f\" lem=\"creació\" num=\"s\" pos=\"ncfs000\" postype=\"common\" sense=\"16:00583085\" wd=\"creació\"/&gt;\n                &lt;/grup.nom&gt;\n              &lt;/sn&gt;\n            &lt;/sp&gt;\n          &lt;/grup.nom&gt;\n        &lt;/sn&gt;\n      &lt;/sp&gt;\n    &lt;/grup.adv&gt;\n  &lt;/sadv&gt;\n  &lt;f lem=\",\" pos=\"fc\" punct=\"comma\" wd=\",\"/&gt;\n&lt;/sadv&gt;\n&lt;sn arg=\"arg0\" coreftype=\"ident\" **elliptic=\"yes\"** entity=\"entity3\" entityref=\"nne\" func=\"suj\" tem=\"agt\"/&gt;\n&lt;grup.verb&gt;\n  &lt;v lem=\"presentar\" lss=\"A32.ditransitive-patient-benefactive\" mood=\"indicative\" num=\"p\" person=\"3\" pos=\"vmip3p0\" postype=\"main\" tense=\"present\" **wd=\"presenten\"**/&gt;\n&lt;/grup.verb&gt;\n&lt;sn arg=\"arg1\" entityref=\"spec\" func=\"cd\" tem=\"pat\"&gt;\n  &lt;spec gen=\"m\" num=\"s\"&gt;\n    &lt;d gen=\"m\" lem=\"un\" num=\"s\" pos=\"di0ms0\" postype=\"indefinite\" wd=\"un\"/&gt;\n  &lt;/spec&gt;\n  &lt;grup.nom gen=\"m\" num=\"s\"&gt;\n    &lt;s.a gen=\"m\" num=\"s\"&gt;\n      &lt;grup.a gen=\"m\" num=\"s\"&gt;\n        &lt;a gen=\"m\" lem=\"nou\" num=\"s\" pos=\"aq0ms0\" postype=\"qualificative\" wd=\"nou\"/&gt;\n      &lt;/grup.a&gt;\n    &lt;/s.a&gt;\n    &lt;n gen=\"m\" lem=\"disc\" num=\"s\" pos=\"ncms000\" postype=\"common\" sense=\"16:03112307\" wd=\"disc\"/&gt;\n    &lt;sn entityref=\"ne\" ne=\"other\"&gt;\n      &lt;f lem=\",\" pos=\"fc\" punct=\"comma\" wd=\",\"/&gt;\n      &lt;grup.nom&gt;\n        &lt;f lem=\"'\" pos=\"fz\" punct=\"mathsign\" wd=\"'\"/&gt;\n        &lt;n lem=\"Electroretard\" ne=\"other\" pos=\"np0000a\" postype=\"proper\" sense=\"16:cs1\" wd=\"Electroretard\"/&gt;\n        &lt;f lem=\"'\" pos=\"fz\" punct=\"mathsign\" wd=\"'\"/&gt;\n      &lt;/grup.nom&gt;\n    &lt;/sn&gt;\n  &lt;/grup.nom&gt;\n&lt;/sn&gt;\n&lt;f lem=\".\" pos=\"fp\" punct=\"period\" wd=\".\"/&gt;\n</code></pre>\n\n<p></p>\n\n<p>I couldn't come up with a solution after: </p>\n\n<pre><code>for sn in root.iter('sn'):\nrank = sn.get('elliptic')\nif rank == 'yes':\n</code></pre>\n\n<p>How could I continue this line of code? I thought something like:</p>\n\n<p>\"iterate through all children whose parents contain @elliptic=\"yes\"</p>\n"
+        },
+        {
+            "tags": [
+                "google-chrome",
+                "selenium",
+                "selenium-webdriver",
+                "webdriver",
+                "selenium-chromedriver"
+            ],
+            "owner": {
+                "reputation": 311,
+                "user_id": 2607372,
+                "user_type": "registered",
+                "accept_rate": 87,
+                "profile_image": "https://www.gravatar.com/avatar/6eb8bc56732ee1c6e241d270b5ffb9de?s=128&d=identicon&r=PG",
+                "display_name": "vikramvi",
+                "link": "https://stackoverflow.com/users/2607372/vikramvi"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1523535933,
+            "creation_date": 1523508864,
+            "last_edit_date": 1523532610,
+            "question_id": 49788257,
+            "body_markdown": "I need to install `chromedriver` on Windows OS. In the article below they specify: \r\n\r\nhttps://sites.google.com/a/chromium.org/chromedriver/getting-started\r\n\r\n&gt; &quot;...ChromeDriver expects you to have Chrome installed in the default\r\n&gt; location for your platform...&quot;\r\n\r\nBut I&#39;m not sure what is the default location ?\r\n\r\nOn **Mac** OS it&#39;s `/usr/local/bin`.\r\n\r\nWith this I don&#39;t have to specify path explicitly or setup system path either.\r\n\r\nHow to achieve the same on Windows OS?",
+            "link": "https://stackoverflow.com/questions/49788257/what-is-default-location-of-chromedriver-and-for-installing-chrome-on-windows",
+            "title": "What is default location of ChromeDriver and for installing Chrome on Windows",
+            "body": "<p>I need to install <code>chromedriver</code> on Windows OS. In the article below they specify: </p>\n\n<p><a href=\"https://sites.google.com/a/chromium.org/chromedriver/getting-started\" rel=\"nofollow noreferrer\">https://sites.google.com/a/chromium.org/chromedriver/getting-started</a></p>\n\n<blockquote>\n  <p>\"...ChromeDriver expects you to have Chrome installed in the default\n  location for your platform...\"</p>\n</blockquote>\n\n<p>But I'm not sure what is the default location ?</p>\n\n<p>On <strong>Mac</strong> OS it's <code>/usr/local/bin</code>.</p>\n\n<p>With this I don't have to specify path explicitly or setup system path either.</p>\n\n<p>How to achieve the same on Windows OS?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "gis",
+                "dijkstra",
+                "shapefile"
+            ],
+            "owner": {
+                "reputation": 604,
+                "user_id": 301175,
+                "user_type": "registered",
+                "accept_rate": 40,
+                "profile_image": "https://www.gravatar.com/avatar/6e040ed4f71fe26b38811d538e428098?s=128&d=identicon&r=PG",
+                "display_name": "Yorian",
+                "link": "https://stackoverflow.com/users/301175/yorian"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "closed_date": 1523539532,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1523535929,
+            "creation_date": 1523535929,
+            "question_id": 49796500,
+            "body_markdown": "I have a shapefile with a road network (linestrings). Using python I want to calculate the shortest distance from one coordinate to another, however these coordinates do no necessarily (usually not) lie on exactly a node in a linestring.\r\n\r\nEssentially what I want to do is do the same calculation as Road graph does in QGis, but if possible without QGis. Can someone point me in the right direction on where to start?",
+            "link": "https://stackoverflow.com/questions/49796500/road-network-find-shortest-route",
+            "closed_reason": "off-topic",
+            "title": "Road network find shortest route",
+            "body": "<p>I have a shapefile with a road network (linestrings). Using python I want to calculate the shortest distance from one coordinate to another, however these coordinates do no necessarily (usually not) lie on exactly a node in a linestring.</p>\n\n<p>Essentially what I want to do is do the same calculation as Road graph does in QGis, but if possible without QGis. Can someone point me in the right direction on where to start?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "string"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8775753,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-Tss5ltVL484/AAAAAAAAAAI/AAAAAAAAACo/eZr3QR3Zzsk/photo.jpg?sz=128",
+                "display_name": "Sajied Shah Yousuf",
+                "link": "https://stackoverflow.com/users/8775753/sajied-shah-yousuf"
+            },
+            "is_answered": true,
+            "view_count": 47,
+            "closed_date": 1523535903,
+            "answer_count": 3,
+            "score": -5,
+            "last_activity_date": 1523535928,
+            "creation_date": 1523535735,
+            "last_edit_date": 1523535852,
+            "question_id": 49796433,
+            "body_markdown": "I am learning Java. In the string lesson compare two `string` by `string.equal()`, it returns `true`. In the case of `==` like, `str == str1`, returns `false`. Again `compareTo()` is `true`.",
+            "link": "https://stackoverflow.com/questions/49796433/what-is-the-difference-among-equal-and-compareto-in-java",
+            "closed_reason": "duplicate",
+            "title": "What is the difference among equal, == and compareTo() in Java?",
+            "body": "<p>I am learning Java. In the string lesson compare two <code>string</code> by <code>string.equal()</code>, it returns <code>true</code>. In the case of <code>==</code> like, <code>str == str1</code>, returns <code>false</code>. Again <code>compareTo()</code> is <code>true</code>.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "android"
+            ],
+            "owner": {
+                "reputation": 7,
+                "user_id": 4280521,
+                "user_type": "registered",
+                "accept_rate": 25,
+                "profile_image": "https://i.stack.imgur.com/CGCKb.jpg?s=128&g=1",
+                "display_name": "Huntix",
+                "link": "https://stackoverflow.com/users/4280521/huntix"
+            },
+            "is_answered": true,
+            "view_count": 25,
+            "accepted_answer_id": 49793872,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523535928,
+            "creation_date": 1523527037,
+            "question_id": 49793567,
+            "body_markdown": "I&#39;ve created simple calculator app and I want to draw a rectangle below it. The size of the sides of the rectangle must be the first number entered for calculation multiplied by 10.I don&#39;t know if I am doing it right but I am trying to draw the Rectangle in LinearLayout which is colored in light blue.The rectangle must be drawn after the Draw NOW button is clicked. After I run the app, enter the number and click Draw NOW the color of LinearLayout disappears.\r\n\r\nThis is my MainActivity:\r\n\r\n    package com.example.whodatboy.calculator;\r\n    \r\n    import android.graphics.Bitmap;\r\n    import android.graphics.Canvas;\r\n    import android.graphics.Color;\r\n    import android.graphics.Paint;\r\n    import android.graphics.drawable.BitmapDrawable;\r\n    import android.support.v7.app.AppCompatActivity;\r\n    import android.os.Bundle;\r\n    import android.view.View;\r\n    import android.widget.Button;\r\n    import android.widget.EditText;\r\n    import android.widget.LinearLayout;\r\n    import android.widget.TextView;\r\n    \r\n    import org.w3c.dom.Text;\r\n    \r\n    public class MainActivity extends AppCompatActivity {\r\n    \r\n        TextView result;\r\n        EditText number1, number2;\r\n        Button addN,subtract,divide,multiplyN,clearAll,drawMe;\r\n        LinearLayout rect;\r\n    \r\n        int result_num,num1,num2;\r\n        float numm1, numm2;\r\n    \r\n        @Override\r\n        protected void onCreate(Bundle savedInstanceState) {\r\n            super.onCreate(savedInstanceState);\r\n            setContentView(R.layout.activity_main);\r\n    \r\n            number1 = (EditText) findViewById(R.id.number1);\r\n            number2 = (EditText) findViewById(R.id.number2);\r\n            result = (TextView)findViewById(R.id.result);\r\n    \r\n            addN = (Button)findViewById(R.id.addN);\r\n            subtract = (Button)findViewById(R.id.subtract);\r\n            divide = (Button)findViewById(R.id.divide);\r\n            multiplyN = (Button)findViewById(R.id.multiplyN);\r\n    \r\n            clearAll = (Button)findViewById(R.id.clearAll);\r\n    \r\n            drawMe = (Button)findViewById(R.id.drawMe);\r\n    \r\n            addN.setOnClickListener(new View.OnClickListener() {\r\n                @Override\r\n                public void onClick(View v) {\r\n                    num1 = Integer.parseInt(number1.getText().toString());\r\n                    num2 = Integer.parseInt(number2.getText().toString());\r\n    \r\n                    result_num = num1 + num2;\r\n                    result.setText(String.valueOf(result_num));\r\n    \r\n                }\r\n            });\r\n    \r\n            subtract.setOnClickListener(new View.OnClickListener() {\r\n                @Override\r\n                public void onClick(View v) {\r\n                    num1 = Integer.parseInt(number1.getText().toString());\r\n                    num2 = Integer.parseInt(number2.getText().toString());\r\n    \r\n                    result_num = num1 - num2;\r\n                    result.setText(String.valueOf(result_num));\r\n    \r\n                }\r\n            });\r\n    \r\n            divide.setOnClickListener(new View.OnClickListener() {\r\n                @Override\r\n                public void onClick(View v) {\r\n                    num1 = Integer.parseInt(number1.getText().toString());\r\n                    num2 = Integer.parseInt(number2.getText().toString());\r\n    \r\n                    result_num = num1 / num2;\r\n                    result.setText(String.valueOf(result_num));\r\n    \r\n                }\r\n            });\r\n    \r\n            multiplyN.setOnClickListener(new View.OnClickListener() {\r\n                @Override\r\n                public void onClick(View v) {\r\n                    num1 = Integer.parseInt(number1.getText().toString());\r\n                    num2 = Integer.parseInt(number2.getText().toString());\r\n    \r\n                    result_num = num1 * num2;\r\n                    result.setText(String.valueOf(result_num));\r\n    \r\n                }\r\n            });\r\n    \r\n            clearAll.setOnClickListener(new View.OnClickListener() {\r\n                @Override\r\n                public void onClick(View v) {\r\n                    number1.setText(&quot;&quot;);\r\n                    number2.setText(&quot;&quot;);\r\n                    result.setText(&quot;&quot;);\r\n                }\r\n            });\r\n    \r\n    \r\n            drawMe.setOnClickListener(new View.OnClickListener() {\r\n                @Override\r\n                public void onClick(View v) {\r\n                    numm1 = Float.parseFloat(number1.getText().toString());\r\n    \r\n                    Paint paint = new Paint();\r\n                    paint.setColor(Color.parseColor(&quot;#F4D03F&quot;));\r\n    \r\n                    Bitmap bg = Bitmap.createBitmap(480,800,Bitmap.Config.ARGB_8888);\r\n    \r\n                    Canvas canvas  = new Canvas(bg);\r\n                    canvas.drawRect(num1*10,num1*10,num1*10,num1*10,paint);\r\n    \r\n                    LinearLayout linearDraw = (LinearLayout)findViewById(R.id.rect);\r\n                    linearDraw.setBackground(new BitmapDrawable(bg));\r\n    \r\n                }\r\n            });\r\n    \r\n    \r\n    \r\n        }\r\n    }\r\n\r\n\r\nAnd here is my XML file: \r\n\r\n    &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;\r\n    &lt;RelativeLayout xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;\r\n        xmlns:app=&quot;http://schemas.android.com/apk/res-auto&quot;\r\n        xmlns:tools=&quot;http://schemas.android.com/tools&quot;\r\n        android:layout_width=&quot;match_parent&quot;\r\n        android:layout_height=&quot;match_parent&quot;\r\n        android:orientation=&quot;vertical&quot;\r\n        tools:context=&quot;.MainActivity&quot;&gt;\r\n    \r\n        &lt;EditText\r\n            android:id=&quot;@+id/number1&quot;\r\n            android:layout_width=&quot;match_parent&quot;\r\n            android:layout_height=&quot;wrap_content&quot;\r\n            android:hint=&quot;Number 1&quot;\r\n            android:ems=&quot;10&quot;\r\n            android:inputType=&quot;number&quot; /&gt;\r\n    \r\n        &lt;EditText\r\n            android:id=&quot;@+id/number2&quot;\r\n            android:layout_width=&quot;match_parent&quot;\r\n            android:layout_height=&quot;wrap_content&quot;\r\n            android:layout_alignParentStart=&quot;true&quot;\r\n            android:layout_alignParentTop=&quot;true&quot;\r\n            android:layout_marginTop=&quot;35dp&quot;\r\n            android:ems=&quot;10&quot;\r\n            android:hint=&quot;Number 2&quot;\r\n            android:inputType=&quot;number&quot; /&gt;\r\n    \r\n        &lt;TextView\r\n            android:id=&quot;@+id/result&quot;\r\n            android:layout_width=&quot;match_parent&quot;\r\n            android:layout_height=&quot;wrap_content&quot;\r\n            android:layout_alignParentStart=&quot;true&quot;\r\n            android:layout_below=&quot;@+id/number2&quot;\r\n            android:text=&quot;Result&quot;\r\n            android:textSize=&quot;25sp&quot; /&gt;\r\n    \r\n        &lt;Button\r\n            android:id=&quot;@+id/addN&quot;\r\n            android:layout_width=&quot;wrap_content&quot;\r\n            android:layout_height=&quot;wrap_content&quot;\r\n            android:layout_alignTop=&quot;@+id/subtract&quot;\r\n            android:layout_toEndOf=&quot;@+id/divide&quot;\r\n            android:text=&quot;+&quot; /&gt;\r\n    \r\n        &lt;Button\r\n            android:id=&quot;@+id/subtract&quot;\r\n            android:layout_width=&quot;wrap_content&quot;\r\n            android:layout_height=&quot;wrap_content&quot;\r\n            android:layout_alignTop=&quot;@+id/multiplyN&quot;\r\n            android:layout_toEndOf=&quot;@+id/multiplyN&quot;\r\n            android:text=&quot;-&quot; /&gt;\r\n    \r\n        &lt;Button\r\n            android:id=&quot;@+id/multiplyN&quot;\r\n            android:layout_width=&quot;wrap_content&quot;\r\n            android:layout_height=&quot;wrap_content&quot;\r\n            android:layout_alignParentStart=&quot;true&quot;\r\n            android:layout_alignParentTop=&quot;true&quot;\r\n            android:layout_marginTop=&quot;122dp&quot;\r\n            android:text=&quot;*&quot; /&gt;\r\n    \r\n        &lt;Button\r\n            android:id=&quot;@+id/divide&quot;\r\n            android:layout_width=&quot;wrap_content&quot;\r\n            android:layout_height=&quot;wrap_content&quot;\r\n            android:layout_alignTop=&quot;@+id/subtract&quot;\r\n            android:layout_toEndOf=&quot;@+id/subtract&quot;\r\n            android:text=&quot;/&quot; /&gt;\r\n    \r\n        &lt;Button\r\n            android:id=&quot;@+id/clearAll&quot;\r\n            android:layout_width=&quot;match_parent&quot;\r\n            android:layout_height=&quot;wrap_content&quot;\r\n            android:layout_alignParentStart=&quot;true&quot;\r\n            android:layout_below=&quot;@+id/addN&quot;\r\n            android:text=&quot;Clear&quot; /&gt;\r\n    \r\n        &lt;LinearLayout\r\n            android:id=&quot;@+id/rect&quot;\r\n            android:layout_width=&quot;match_parent&quot;\r\n            android:layout_height=&quot;238dp&quot;\r\n            android:layout_alignParentBottom=&quot;true&quot;\r\n            android:layout_alignParentStart=&quot;true&quot;\r\n            android:layout_marginBottom=&quot;9dp&quot;\r\n            android:layout_marginStart=&quot;0dp&quot;\r\n            android:background=&quot;#89C4F4&quot;\r\n            android:orientation=&quot;vertical&quot;&gt;\r\n    \r\n        &lt;/LinearLayout&gt;\r\n    \r\n        &lt;Button\r\n            android:id=&quot;@+id/drawMe&quot;\r\n            android:layout_width=&quot;match_parent&quot;\r\n            android:layout_height=&quot;wrap_content&quot;\r\n            android:layout_alignParentEnd=&quot;true&quot;\r\n            android:layout_below=&quot;@+id/clearAll&quot;\r\n            android:layout_marginEnd=&quot;0dp&quot;\r\n            android:text=&quot;Draw NOW&quot; /&gt;\r\n    \r\n    &lt;/RelativeLayout&gt;  \r\n\r\n\r\n\r\n  ",
+            "link": "https://stackoverflow.com/questions/49793567/drawing-rectangle-below-calculator-app-by-taking-the-number-of-the-first-entered",
+            "title": "Drawing rectangle below calculator app by taking the number of the first entered number",
+            "body": "<p>I've created simple calculator app and I want to draw a rectangle below it. The size of the sides of the rectangle must be the first number entered for calculation multiplied by 10.I don't know if I am doing it right but I am trying to draw the Rectangle in LinearLayout which is colored in light blue.The rectangle must be drawn after the Draw NOW button is clicked. After I run the app, enter the number and click Draw NOW the color of LinearLayout disappears.</p>\n\n<p>This is my MainActivity:</p>\n\n<pre><code>package com.example.whodatboy.calculator;\n\nimport android.graphics.Bitmap;\nimport android.graphics.Canvas;\nimport android.graphics.Color;\nimport android.graphics.Paint;\nimport android.graphics.drawable.BitmapDrawable;\nimport android.support.v7.app.AppCompatActivity;\nimport android.os.Bundle;\nimport android.view.View;\nimport android.widget.Button;\nimport android.widget.EditText;\nimport android.widget.LinearLayout;\nimport android.widget.TextView;\n\nimport org.w3c.dom.Text;\n\npublic class MainActivity extends AppCompatActivity {\n\n    TextView result;\n    EditText number1, number2;\n    Button addN,subtract,divide,multiplyN,clearAll,drawMe;\n    LinearLayout rect;\n\n    int result_num,num1,num2;\n    float numm1, numm2;\n\n    @Override\n    protected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        setContentView(R.layout.activity_main);\n\n        number1 = (EditText) findViewById(R.id.number1);\n        number2 = (EditText) findViewById(R.id.number2);\n        result = (TextView)findViewById(R.id.result);\n\n        addN = (Button)findViewById(R.id.addN);\n        subtract = (Button)findViewById(R.id.subtract);\n        divide = (Button)findViewById(R.id.divide);\n        multiplyN = (Button)findViewById(R.id.multiplyN);\n\n        clearAll = (Button)findViewById(R.id.clearAll);\n\n        drawMe = (Button)findViewById(R.id.drawMe);\n\n        addN.setOnClickListener(new View.OnClickListener() {\n            @Override\n            public void onClick(View v) {\n                num1 = Integer.parseInt(number1.getText().toString());\n                num2 = Integer.parseInt(number2.getText().toString());\n\n                result_num = num1 + num2;\n                result.setText(String.valueOf(result_num));\n\n            }\n        });\n\n        subtract.setOnClickListener(new View.OnClickListener() {\n            @Override\n            public void onClick(View v) {\n                num1 = Integer.parseInt(number1.getText().toString());\n                num2 = Integer.parseInt(number2.getText().toString());\n\n                result_num = num1 - num2;\n                result.setText(String.valueOf(result_num));\n\n            }\n        });\n\n        divide.setOnClickListener(new View.OnClickListener() {\n            @Override\n            public void onClick(View v) {\n                num1 = Integer.parseInt(number1.getText().toString());\n                num2 = Integer.parseInt(number2.getText().toString());\n\n                result_num = num1 / num2;\n                result.setText(String.valueOf(result_num));\n\n            }\n        });\n\n        multiplyN.setOnClickListener(new View.OnClickListener() {\n            @Override\n            public void onClick(View v) {\n                num1 = Integer.parseInt(number1.getText().toString());\n                num2 = Integer.parseInt(number2.getText().toString());\n\n                result_num = num1 * num2;\n                result.setText(String.valueOf(result_num));\n\n            }\n        });\n\n        clearAll.setOnClickListener(new View.OnClickListener() {\n            @Override\n            public void onClick(View v) {\n                number1.setText(\"\");\n                number2.setText(\"\");\n                result.setText(\"\");\n            }\n        });\n\n\n        drawMe.setOnClickListener(new View.OnClickListener() {\n            @Override\n            public void onClick(View v) {\n                numm1 = Float.parseFloat(number1.getText().toString());\n\n                Paint paint = new Paint();\n                paint.setColor(Color.parseColor(\"#F4D03F\"));\n\n                Bitmap bg = Bitmap.createBitmap(480,800,Bitmap.Config.ARGB_8888);\n\n                Canvas canvas  = new Canvas(bg);\n                canvas.drawRect(num1*10,num1*10,num1*10,num1*10,paint);\n\n                LinearLayout linearDraw = (LinearLayout)findViewById(R.id.rect);\n                linearDraw.setBackground(new BitmapDrawable(bg));\n\n            }\n        });\n\n\n\n    }\n}\n</code></pre>\n\n<p>And here is my XML file: </p>\n\n<pre><code>&lt;?xml version=\"1.0\" encoding=\"utf-8\"?&gt;\n&lt;RelativeLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:app=\"http://schemas.android.com/apk/res-auto\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    android:layout_width=\"match_parent\"\n    android:layout_height=\"match_parent\"\n    android:orientation=\"vertical\"\n    tools:context=\".MainActivity\"&gt;\n\n    &lt;EditText\n        android:id=\"@+id/number1\"\n        android:layout_width=\"match_parent\"\n        android:layout_height=\"wrap_content\"\n        android:hint=\"Number 1\"\n        android:ems=\"10\"\n        android:inputType=\"number\" /&gt;\n\n    &lt;EditText\n        android:id=\"@+id/number2\"\n        android:layout_width=\"match_parent\"\n        android:layout_height=\"wrap_content\"\n        android:layout_alignParentStart=\"true\"\n        android:layout_alignParentTop=\"true\"\n        android:layout_marginTop=\"35dp\"\n        android:ems=\"10\"\n        android:hint=\"Number 2\"\n        android:inputType=\"number\" /&gt;\n\n    &lt;TextView\n        android:id=\"@+id/result\"\n        android:layout_width=\"match_parent\"\n        android:layout_height=\"wrap_content\"\n        android:layout_alignParentStart=\"true\"\n        android:layout_below=\"@+id/number2\"\n        android:text=\"Result\"\n        android:textSize=\"25sp\" /&gt;\n\n    &lt;Button\n        android:id=\"@+id/addN\"\n        android:layout_width=\"wrap_content\"\n        android:layout_height=\"wrap_content\"\n        android:layout_alignTop=\"@+id/subtract\"\n        android:layout_toEndOf=\"@+id/divide\"\n        android:text=\"+\" /&gt;\n\n    &lt;Button\n        android:id=\"@+id/subtract\"\n        android:layout_width=\"wrap_content\"\n        android:layout_height=\"wrap_content\"\n        android:layout_alignTop=\"@+id/multiplyN\"\n        android:layout_toEndOf=\"@+id/multiplyN\"\n        android:text=\"-\" /&gt;\n\n    &lt;Button\n        android:id=\"@+id/multiplyN\"\n        android:layout_width=\"wrap_content\"\n        android:layout_height=\"wrap_content\"\n        android:layout_alignParentStart=\"true\"\n        android:layout_alignParentTop=\"true\"\n        android:layout_marginTop=\"122dp\"\n        android:text=\"*\" /&gt;\n\n    &lt;Button\n        android:id=\"@+id/divide\"\n        android:layout_width=\"wrap_content\"\n        android:layout_height=\"wrap_content\"\n        android:layout_alignTop=\"@+id/subtract\"\n        android:layout_toEndOf=\"@+id/subtract\"\n        android:text=\"/\" /&gt;\n\n    &lt;Button\n        android:id=\"@+id/clearAll\"\n        android:layout_width=\"match_parent\"\n        android:layout_height=\"wrap_content\"\n        android:layout_alignParentStart=\"true\"\n        android:layout_below=\"@+id/addN\"\n        android:text=\"Clear\" /&gt;\n\n    &lt;LinearLayout\n        android:id=\"@+id/rect\"\n        android:layout_width=\"match_parent\"\n        android:layout_height=\"238dp\"\n        android:layout_alignParentBottom=\"true\"\n        android:layout_alignParentStart=\"true\"\n        android:layout_marginBottom=\"9dp\"\n        android:layout_marginStart=\"0dp\"\n        android:background=\"#89C4F4\"\n        android:orientation=\"vertical\"&gt;\n\n    &lt;/LinearLayout&gt;\n\n    &lt;Button\n        android:id=\"@+id/drawMe\"\n        android:layout_width=\"match_parent\"\n        android:layout_height=\"wrap_content\"\n        android:layout_alignParentEnd=\"true\"\n        android:layout_below=\"@+id/clearAll\"\n        android:layout_marginEnd=\"0dp\"\n        android:text=\"Draw NOW\" /&gt;\n\n&lt;/RelativeLayout&gt;  \n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python"
+            ],
+            "owner": {
+                "reputation": 629,
+                "user_id": 1083653,
+                "user_type": "registered",
+                "accept_rate": 56,
+                "profile_image": "https://www.gravatar.com/avatar/f1a46ccd675232199b375da6552cf328?s=128&d=identicon&r=PG",
+                "display_name": "fosho",
+                "link": "https://stackoverflow.com/users/1083653/fosho"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523535926,
+            "creation_date": 1523535926,
+            "question_id": 49796498,
+            "body_markdown": "I am trying to run the following code in Python:\r\n\r\n    from sklearn.feature_extraction.text import TfidfVectorizer\r\n\r\n    #define vectorizer parameters\r\n    tfidf_vectorizer = TfidfVectorizer(max_df=0.8, max_features=200000,\r\n                                 min_df=0.2, stop_words=&#39;english&#39;,\r\n                                 use_idf=True, tokenizer=tokenize_and_stem, \r\n                                  ngram_range=(1,3))\r\n\r\n    %time tfidf_matrix = tfidf_vectorizer.fit_transform(synopses) #fit the \r\n     vectorizer to synopses\r\n\r\n    print(tfidf_matrix.shape)\r\n\r\nHowever I get a syntax error for the &#39;%&#39; symbol. How do I get around this?\r\n\r\nNote that synopses is just a list of strings for example [&#39;A had a good time&#39;, &#39;A had a bad time then left&#39;]",
+            "link": "https://stackoverflow.com/questions/49796498/how-to-fit-data-for-tfidfvectorizer-in-python",
+            "title": "How to fit data for TfIDFVectorizer in Python",
+            "body": "<p>I am trying to run the following code in Python:</p>\n\n<pre><code>from sklearn.feature_extraction.text import TfidfVectorizer\n\n#define vectorizer parameters\ntfidf_vectorizer = TfidfVectorizer(max_df=0.8, max_features=200000,\n                             min_df=0.2, stop_words='english',\n                             use_idf=True, tokenizer=tokenize_and_stem, \n                              ngram_range=(1,3))\n\n%time tfidf_matrix = tfidf_vectorizer.fit_transform(synopses) #fit the \n vectorizer to synopses\n\nprint(tfidf_matrix.shape)\n</code></pre>\n\n<p>However I get a syntax error for the '%' symbol. How do I get around this?</p>\n\n<p>Note that synopses is just a list of strings for example ['A had a good time', 'A had a bad time then left']</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift"
+            ],
+            "owner": {
+                "reputation": 24,
+                "user_id": 7129318,
+                "user_type": "registered",
+                "accept_rate": 57,
+                "profile_image": "https://www.gravatar.com/avatar/e18bf3409384318d6db906707d388969?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Yrb",
+                "link": "https://stackoverflow.com/users/7129318/yrb"
+            },
+            "is_answered": false,
+            "view_count": 43,
+            "answer_count": 0,
+            "score": 2,
+            "last_activity_date": 1523535923,
+            "creation_date": 1523534297,
+            "last_edit_date": 1523535923,
+            "question_id": 49795957,
+            "body_markdown": "I have a strange issue with regard to entering text into a text field. I am currently using the code below. My code is modeled after the answer [here][1].\r\n\r\n    class RocketViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate, NSFetchedResultsControllerDelegate {\r\n\r\n       var offsetY:CGFloat = 0\r\n \r\n       override func viewDidLoad() {\r\n        super.viewDidLoad()\r\n        \r\n        NotificationCenter.default.addObserver(self, selector: #selector(RocketViewController.keyboardFrameChangeNotification(notification:)), name: NSNotification.Name.UIKeyboardWillChangeFrame, object: nil)\r\n        }\r\n\r\n        @objc func keyboardFrameChangeNotification(notification: Notification) {\r\n        if let userInfo = notification.userInfo {\r\n            let keyBoardFrame = userInfo[UIKeyboardFrameEndUserInfoKey] as? CGRect\r\n            let animationDuration = userInfo[UIKeyboardAnimationDurationUserInfoKey] as? Double ?? 0\r\n            let animationCurveRawValue = (userInfo[UIKeyboardAnimationCurveUserInfoKey] as? Int) ?? Int(UIViewAnimationOptions.curveEaseInOut.rawValue)\r\n            let animationCurve = UIViewAnimationOptions(rawValue: UInt(animationCurveRawValue))\r\n            if let _ = keyBoardFrame, keyBoardFrame!.intersects(self.mainStackView.frame) {\r\n                self.offsetY = self.mainStackView.frame.maxY - keyBoardFrame!.minY\r\n                UIView.animate(withDuration: animationDuration, delay: TimeInterval(0), options: animationCurve, animations: {\r\n                    self.mainStackView.frame.origin.y = self.mainStackView.frame.origin.y - self.offsetY\r\n                    self.rocketSelectTable.frame.origin.y = self.rocketSelectTable.frame.origin.y - self.offsetY\r\n                }, completion: nil)\r\n            } else {\r\n                if self.offsetY != 0 {\r\n                    UIView.animate(withDuration: animationDuration, delay: TimeInterval(0), options: animationCurve, animations: {\r\n                        self.mainStackView.frame.origin.y = self.mainStackView.frame.origin.y + self.offsetY\r\n                        self.rocketSelectTable.frame.origin.y = self.rocketSelectTable.frame.origin.y + self.offsetY\r\n                        self.offsetY = 0\r\n                      }, completion: nil)\r\n                   }\r\n               }\r\n           }\r\n       }\r\n    }\r\n\r\nIn my view I have a table view with a fetched results controller as its data source, and below that are the text fields in a stack view, called mainStackView, that are eventually saved in a core data store.\r\n\r\nI have gone through several iterations of this code with the same result, whether I compute the offset off the first responder, or simply the stack view. When a text field becomes the first responder, the view slides up nicely with the keyboard. However, as soon as I attempt to type in the field, the view snaps back to its original position. I am sure I am making a newbie mistake, but I can&#39;t figure out what I am doing wrong, and I have found nothing in my searches, except a similar question for android. Thanks in advance.\r\n\r\n\r\n  [1]: https://stackoverflow.com/questions/46500158/keyboard-covers-text-fields-at-the-bottom-of-my-view",
+            "link": "https://stackoverflow.com/questions/49795957/text-drops-below-keyboard-upon-entering-text-in-text-field",
+            "title": "Text Drops Below Keyboard Upon Entering Text in Text Field",
+            "body": "<p>I have a strange issue with regard to entering text into a text field. I am currently using the code below. My code is modeled after the answer <a href=\"https://stackoverflow.com/questions/46500158/keyboard-covers-text-fields-at-the-bottom-of-my-view\">here</a>.</p>\n\n<pre><code>class RocketViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate, NSFetchedResultsControllerDelegate {\n\n   var offsetY:CGFloat = 0\n\n   override func viewDidLoad() {\n    super.viewDidLoad()\n\n    NotificationCenter.default.addObserver(self, selector: #selector(RocketViewController.keyboardFrameChangeNotification(notification:)), name: NSNotification.Name.UIKeyboardWillChangeFrame, object: nil)\n    }\n\n    @objc func keyboardFrameChangeNotification(notification: Notification) {\n    if let userInfo = notification.userInfo {\n        let keyBoardFrame = userInfo[UIKeyboardFrameEndUserInfoKey] as? CGRect\n        let animationDuration = userInfo[UIKeyboardAnimationDurationUserInfoKey] as? Double ?? 0\n        let animationCurveRawValue = (userInfo[UIKeyboardAnimationCurveUserInfoKey] as? Int) ?? Int(UIViewAnimationOptions.curveEaseInOut.rawValue)\n        let animationCurve = UIViewAnimationOptions(rawValue: UInt(animationCurveRawValue))\n        if let _ = keyBoardFrame, keyBoardFrame!.intersects(self.mainStackView.frame) {\n            self.offsetY = self.mainStackView.frame.maxY - keyBoardFrame!.minY\n            UIView.animate(withDuration: animationDuration, delay: TimeInterval(0), options: animationCurve, animations: {\n                self.mainStackView.frame.origin.y = self.mainStackView.frame.origin.y - self.offsetY\n                self.rocketSelectTable.frame.origin.y = self.rocketSelectTable.frame.origin.y - self.offsetY\n            }, completion: nil)\n        } else {\n            if self.offsetY != 0 {\n                UIView.animate(withDuration: animationDuration, delay: TimeInterval(0), options: animationCurve, animations: {\n                    self.mainStackView.frame.origin.y = self.mainStackView.frame.origin.y + self.offsetY\n                    self.rocketSelectTable.frame.origin.y = self.rocketSelectTable.frame.origin.y + self.offsetY\n                    self.offsetY = 0\n                  }, completion: nil)\n               }\n           }\n       }\n   }\n}\n</code></pre>\n\n<p>In my view I have a table view with a fetched results controller as its data source, and below that are the text fields in a stack view, called mainStackView, that are eventually saved in a core data store.</p>\n\n<p>I have gone through several iterations of this code with the same result, whether I compute the offset off the first responder, or simply the stack view. When a text field becomes the first responder, the view slides up nicely with the keyboard. However, as soon as I attempt to type in the field, the view snaps back to its original position. I am sure I am making a newbie mistake, but I can't figure out what I am doing wrong, and I have found nothing in my searches, except a similar question for android. Thanks in advance.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "javafx",
+                "textfield",
+                "fxml"
+            ],
+            "owner": {
+                "reputation": 40,
+                "user_id": 5284550,
+                "user_type": "registered",
+                "accept_rate": 82,
+                "profile_image": "https://www.gravatar.com/avatar/65fa23eb20b4cd938cd574a2cc5b6ed0?s=128&d=identicon&r=PG&f=1",
+                "display_name": "David",
+                "link": "https://stackoverflow.com/users/5284550/david"
+            },
+            "is_answered": true,
+            "view_count": 10322,
+            "accepted_answer_id": 37414479,
+            "answer_count": 6,
+            "score": 1,
+            "last_activity_date": 1523535908,
+            "creation_date": 1441698189,
+            "last_edit_date": 1441714826,
+            "question_id": 32451986,
+            "body_markdown": "I would like to hide or deactivate a `TextField` and its `Label` in my JavaFX application.  \r\n\r\nThis is what I tried\r\n\r\n    myTextField.setVisible(false);\r\n\r\n, but it&#39;s not working\r\n\r\nI use Eclipse V4.5.0 on windows 7 with jfx8 V2.0.0 ",
+            "link": "https://stackoverflow.com/questions/32451986/how-to-hide-or-deactivate-a-textfield-and-a-label-with-javafx",
+            "title": "How to hide or deactivate a TextField and a Label with javafx",
+            "body": "<p>I would like to hide or deactivate a <code>TextField</code> and its <code>Label</code> in my JavaFX application.  </p>\n\n<p>This is what I tried</p>\n\n<pre><code>myTextField.setVisible(false);\n</code></pre>\n\n<p>, but it's not working</p>\n\n<p>I use Eclipse V4.5.0 on windows 7 with jfx8 V2.0.0 </p>\n"
+        },
+        {
+            "tags": [
+                "eclipse",
+                "eclipse-rcp",
+                "rascal"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 9635795,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10211574073648552/picture?type=large",
+                "display_name": "Frosina Cvetkoska",
+                "link": "https://stackoverflow.com/users/9635795/frosina-cvetkoska"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "closed_date": 1523543758,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1523535907,
+            "creation_date": 1523532700,
+            "last_edit_date": 1523535907,
+            "question_id": 49795437,
+            "body_markdown": "This happens every 2-3 hours and eclipse just turns off, deleting everything that was not saved. What could be the reason for this? \r\n\r\n\r\n\r\n![Crash screenshot][1]\r\n\r\n  [1]: https://i.stack.imgur.com/BiXci.png",
+            "link": "https://stackoverflow.com/questions/49795437/rascal-eclipse-java-platform-se-binary-has-stopped-working",
+            "closed_reason": "unclear what you&#39;re asking",
+            "title": "Rascal Eclipse - Java platform SE binary has stopped working",
+            "body": "<p>This happens every 2-3 hours and eclipse just turns off, deleting everything that was not saved. What could be the reason for this? </p>\n\n<p><img src=\"https://i.stack.imgur.com/BiXci.png\" alt=\"Crash screenshot\"></p>\n"
+        },
+        {
+            "tags": [
+                "laravel",
+                "laravel-4",
+                "blade"
+            ],
+            "owner": {
+                "reputation": 886,
+                "user_id": 2443854,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/1303892912225e101911e4249dd021cb?s=128&d=identicon&r=PG",
+                "display_name": "user2443854",
+                "link": "https://stackoverflow.com/users/2443854/user2443854"
+            },
+            "is_answered": true,
+            "view_count": 230111,
+            "answer_count": 19,
+            "score": 177,
+            "last_activity_date": 1523535905,
+            "creation_date": 1373539003,
+            "last_edit_date": 1505919085,
+            "question_id": 17591181,
+            "body_markdown": "I am using laravel 4. I would like to access to the current URL inside an `@if` condition in a view using the Laravel&#39;s Blade templating engine but I don&#39;t know how to do it.\r\n\r\nI know that it can be done using something like `&lt;?php echo URL::current(); ?&gt;` but It&#39;s not possible inside an `@if` blade statement.\r\n\r\nAny suggestion?",
+            "link": "https://stackoverflow.com/questions/17591181/how-to-get-the-current-url-inside-if-statement-blade-in-laravel-4",
+            "title": "How to get the current URL inside @if statement (blade) in Laravel 4?",
+            "body": "<p>I am using laravel 4. I would like to access to the current URL inside an <code>@if</code> condition in a view using the Laravel's Blade templating engine but I don't know how to do it.</p>\n\n<p>I know that it can be done using something like <code>&lt;?php echo URL::current(); ?&gt;</code> but It's not possible inside an <code>@if</code> blade statement.</p>\n\n<p>Any suggestion?</p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "ggplot2"
+            ],
+            "owner": {
+                "reputation": 99,
+                "user_id": 5917787,
+                "user_type": "registered",
+                "accept_rate": 73,
+                "profile_image": "https://www.gravatar.com/avatar/e22451e7c0991676c482b2f831236ca2?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Jordan ",
+                "link": "https://stackoverflow.com/users/5917787/jordan"
+            },
+            "is_answered": true,
+            "view_count": 22,
+            "accepted_answer_id": 49795819,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1523535898,
+            "creation_date": 1523533793,
+            "last_edit_date": 1523535680,
+            "question_id": 49795780,
+            "body_markdown": "I have a data set that uses both the line type and color aesthetic.  The legend shows both aesthetics but I would only like one aesthetic (either color or line type) in the legend itself.\r\n\r\nThis also applies to another data set in which I want only one out of four lines larger than the rest which I do with an `ifelse` statement in the geom_line aesthetic, but the actual `ifelse` statement shows up in the legend.  \r\n\r\nI&#39;ve taken an example from the `mtcars` data set where I want only color to show up. \r\n\r\n    library(tidyverse)\r\n    mtcars &lt;- as.tibble(mtcars)\r\n\r\n    mtcars$gear &lt;- as.factor(mtcars$gear)\r\n    mtcars$cyl &lt;- as.factor(mtcars$cyl)\r\n\r\n    mtcars1 &lt;- mtcars %&gt;%\r\n      arrange(gear) %&gt;%\r\n      ggplot(aes(x = qsec, group = 1)) +\r\n      geom_point(aes(y=disp, group = cyl, color = cyl)) +\r\n      geom_line(aes(y=disp, group = cyl, color = cyl, linetype = cyl)) + \r\n      scale_color_manual(values=c(&quot;#000000&quot;, &quot;#E69F00&quot;, &quot;#56B4E9&quot;)) + \r\n      labs(title = &quot;MTCARS Example&quot;, colour=&quot;Cylinder&quot;,x= &quot;x&quot;,y=&quot;Disp&quot;) \r\n    print(mtcars1)\r\n\r\nIs it possible to manipulate the legend to only show one aesthetic? ",
+            "link": "https://stackoverflow.com/questions/49795780/set-only-one-aesthetic-to-show-up-in-ggplo2-legend",
+            "title": "Set only one aesthetic to show up in ggplo2 legend",
+            "body": "<p>I have a data set that uses both the line type and color aesthetic.  The legend shows both aesthetics but I would only like one aesthetic (either color or line type) in the legend itself.</p>\n\n<p>This also applies to another data set in which I want only one out of four lines larger than the rest which I do with an <code>ifelse</code> statement in the geom_line aesthetic, but the actual <code>ifelse</code> statement shows up in the legend.  </p>\n\n<p>I've taken an example from the <code>mtcars</code> data set where I want only color to show up. </p>\n\n<pre><code>library(tidyverse)\nmtcars &lt;- as.tibble(mtcars)\n\nmtcars$gear &lt;- as.factor(mtcars$gear)\nmtcars$cyl &lt;- as.factor(mtcars$cyl)\n\nmtcars1 &lt;- mtcars %&gt;%\n  arrange(gear) %&gt;%\n  ggplot(aes(x = qsec, group = 1)) +\n  geom_point(aes(y=disp, group = cyl, color = cyl)) +\n  geom_line(aes(y=disp, group = cyl, color = cyl, linetype = cyl)) + \n  scale_color_manual(values=c(\"#000000\", \"#E69F00\", \"#56B4E9\")) + \n  labs(title = \"MTCARS Example\", colour=\"Cylinder\",x= \"x\",y=\"Disp\") \nprint(mtcars1)\n</code></pre>\n\n<p>Is it possible to manipulate the legend to only show one aesthetic? </p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "objective-c",
+                "macos",
+                "avfoundation",
+                "avaudioengine"
+            ],
+            "owner": {
+                "reputation": 1614,
+                "user_id": 421797,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://www.gravatar.com/avatar/dc46813813af061cc28b442faaefce0d?s=128&d=identicon&r=PG",
+                "display_name": "horseshoe7",
+                "link": "https://stackoverflow.com/users/421797/horseshoe7"
+            },
+            "is_answered": true,
+            "view_count": 4410,
+            "answer_count": 5,
+            "score": 13,
+            "last_activity_date": 1523535883,
+            "creation_date": 1433413818,
+            "last_edit_date": 1433430818,
+            "question_id": 30641439,
+            "body_markdown": "I just watched the WWDC Video (Session 502 `AVAudioEngine` in Practice) on `AVAudioEngine` and am very excited to make an app built on this tech.\r\n\r\nI haven&#39;t been able to figure out how I might do level monitoring of the microphone input, or a mixer&#39;s output.\r\n\r\nCan anyone help?  To be clear, I&#39;m talking about monitoring the current input signal (and displaying this in the UI), not the input/output volume setting of a channel/track.\r\n\r\nI know you can do this with `AVAudioRecorder`, but this is not an `AVAudioNode` which the `AVAudioEngine` requires.",
+            "link": "https://stackoverflow.com/questions/30641439/level-metering-with-avaudioengine",
+            "title": "Level Metering with AVAudioEngine",
+            "body": "<p>I just watched the WWDC Video (Session 502 <code>AVAudioEngine</code> in Practice) on <code>AVAudioEngine</code> and am very excited to make an app built on this tech.</p>\n\n<p>I haven't been able to figure out how I might do level monitoring of the microphone input, or a mixer's output.</p>\n\n<p>Can anyone help?  To be clear, I'm talking about monitoring the current input signal (and displaying this in the UI), not the input/output volume setting of a channel/track.</p>\n\n<p>I know you can do this with <code>AVAudioRecorder</code>, but this is not an <code>AVAudioNode</code> which the <code>AVAudioEngine</code> requires.</p>\n"
+        },
+        {
+            "tags": [
+                "unity3d"
+            ],
+            "owner": {
+                "reputation": 3165,
+                "user_id": 785171,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://i.stack.imgur.com/HY8EN.png?s=128&g=1",
+                "display_name": "Krzysztof Bociurko",
+                "link": "https://stackoverflow.com/users/785171/krzysztof-bociurko"
+            },
+            "is_answered": false,
+            "view_count": 9,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523535883,
+            "creation_date": 1523535883,
+            "question_id": 49796485,
+            "body_markdown": "Unity has a [known issue](https://feedback.unity3d.com/suggestions/support-for-world-space-ui-elements-in-rendertocubemap) that UI is not visible in `Camera.RenderToCubemap` output. I&#39;m looking for a workaround for this issue.\r\n\r\nI have made an [example project with this bug](https://github.com/chanibal/bug-unity-rendertocubemap-world-space-ui) that clearly shows where the issue is.\r\n\r\nBasically, the camera does render world space UI elements to a 2D RenderTexture, but it does not render the same elements to a Cubemap RenderTexture.   \r\nOnly UI seems to be affected, everything else renders properly.\r\n![](https://github.com/chanibal/bug-unity-rendertocubemap-world-space-ui/raw/master/Screenshot.png)\r\n![](https://github.com/chanibal/bug-unity-rendertocubemap-world-space-ui/raw/master/Targets.png)\r\n\r\n**Possible ways to close this question**\r\n\r\n1. Some way to make `Camera.RenderToCubemap` work with UI. Tried changing layers and shaders of the UI elements, it looks like it doesn&#39;t even get near them when the cubemap is rendered.\r\n2. Rendering the camera to a cubemap manually. Haven&#39;t found any proper way to do this.\r\n3. Waiting for Unity to fix the issue. It&#39;s active for over an year, this isn&#39;t high on their list.\r\n\r\nI know that I can recreate UI functionality with custom meshes and so on, but this is very time and resource consuming. Sometimes even not possible, when the UI is advanced enough.",
+            "link": "https://stackoverflow.com/questions/49796485/how-to-make-ui-visible-in-rendertocubemap-output-or-how-to-make-cubemaps-anothe",
+            "title": "How to make UI visible in RenderToCubemap output (or how to make cubemaps another way)",
+            "body": "<p>Unity has a <a href=\"https://feedback.unity3d.com/suggestions/support-for-world-space-ui-elements-in-rendertocubemap\" rel=\"nofollow noreferrer\">known issue</a> that UI is not visible in <code>Camera.RenderToCubemap</code> output. I'm looking for a workaround for this issue.</p>\n\n<p>I have made an <a href=\"https://github.com/chanibal/bug-unity-rendertocubemap-world-space-ui\" rel=\"nofollow noreferrer\">example project with this bug</a> that clearly shows where the issue is.</p>\n\n<p>Basically, the camera does render world space UI elements to a 2D RenderTexture, but it does not render the same elements to a Cubemap RenderTexture.<br>\nOnly UI seems to be affected, everything else renders properly.\n<img src=\"https://github.com/chanibal/bug-unity-rendertocubemap-world-space-ui/raw/master/Screenshot.png\" alt=\"\">\n<img src=\"https://github.com/chanibal/bug-unity-rendertocubemap-world-space-ui/raw/master/Targets.png\" alt=\"\"></p>\n\n<p><strong>Possible ways to close this question</strong></p>\n\n<ol>\n<li>Some way to make <code>Camera.RenderToCubemap</code> work with UI. Tried changing layers and shaders of the UI elements, it looks like it doesn't even get near them when the cubemap is rendered.</li>\n<li>Rendering the camera to a cubemap manually. Haven't found any proper way to do this.</li>\n<li>Waiting for Unity to fix the issue. It's active for over an year, this isn't high on their list.</li>\n</ol>\n\n<p>I know that I can recreate UI functionality with custom meshes and so on, but this is very time and resource consuming. Sometimes even not possible, when the UI is advanced enough.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "eclipse",
+                "google-app-engine",
+                "eclipse-wtp"
+            ],
+            "owner": {
+                "reputation": 1913,
+                "user_id": 2848676,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://i.stack.imgur.com/BEAn9.jpg?s=128&g=1",
+                "display_name": "Michael Osofsky",
+                "link": "https://stackoverflow.com/users/2848676/michael-osofsky"
+            },
+            "is_answered": true,
+            "view_count": 38094,
+            "accepted_answer_id": 23530158,
+            "answer_count": 4,
+            "score": 14,
+            "last_activity_date": 1523535879,
+            "creation_date": 1399505130,
+            "last_edit_date": 1495542753,
+            "question_id": 23530157,
+            "body_markdown": "I&#39;m on step &quot;Running project on the Server&quot; from https://developers.google.com/appengine/docs/java/webtoolsplatform#dynamic_web_project and I ran into a problem:\r\n\r\n&gt; Error occurred during initialization of VM\r\n&gt; agent library failed to init: instrument\r\n&gt; Error opening zip file or JAR manifest missing : C:\\Program\r\n\r\nAnother person reported a similar problem here: https://stackoverflow.com/questions/18660629/error-opening-zip-file-or-jar-manifest-missing-c-program.  But the solution was for a different set of technologies.  I&#39;m using Eclipse, Web Tools Platform, and Google-App-Engine.\r\n\r\nMost likely it&#39;s because my Java is installed in C:\\Program Files, a directory which contains a space.  But I&#39;m not sure how to fix this.  I’m not sure how to safely move the Java\\jre7 directory to a directory without a space in it.",
+            "link": "https://stackoverflow.com/questions/23530157/error-opening-zip-file-or-jar-manifest-missing-c-program",
+            "title": "Error opening zip file or JAR manifest missing : C:\\Program",
+            "body": "<p>I'm on step \"Running project on the Server\" from <a href=\"https://developers.google.com/appengine/docs/java/webtoolsplatform#dynamic_web_project\" rel=\"nofollow noreferrer\">https://developers.google.com/appengine/docs/java/webtoolsplatform#dynamic_web_project</a> and I ran into a problem:</p>\n\n<blockquote>\n  <p>Error occurred during initialization of VM\n  agent library failed to init: instrument\n  Error opening zip file or JAR manifest missing : C:\\Program</p>\n</blockquote>\n\n<p>Another person reported a similar problem here: <a href=\"https://stackoverflow.com/questions/18660629/error-opening-zip-file-or-jar-manifest-missing-c-program\">Error opening zip file or JAR manifest missing : C:/Program</a>.  But the solution was for a different set of technologies.  I'm using Eclipse, Web Tools Platform, and Google-App-Engine.</p>\n\n<p>Most likely it's because my Java is installed in C:\\Program Files, a directory which contains a space.  But I'm not sure how to fix this.  I’m not sure how to safely move the Java\\jre7 directory to a directory without a space in it.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "list",
+                "dictionary"
+            ],
+            "owner": {
+                "reputation": 25,
+                "user_id": 6391477,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2a8d64cae1cba0718d50994cfc817c18?s=128&d=identicon&r=PG",
+                "display_name": "Greg Symsym",
+                "link": "https://stackoverflow.com/users/6391477/greg-symsym"
+            },
+            "is_answered": true,
+            "view_count": 47,
+            "accepted_answer_id": 49795680,
+            "answer_count": 4,
+            "score": 1,
+            "last_activity_date": 1523535879,
+            "creation_date": 1523532570,
+            "question_id": 49795389,
+            "body_markdown": "I must say I&#39;m rather new to Python and I can&#39;t figure how to solve my problem.\r\n\r\nI have a list which looks like this\r\n\r\n    ligne = [&#39;DR&#39;, &#39;0.8282312925170068&#39;]\r\nand I want it to have one extra element:\r\n\r\n    ligne = [&#39;DETECTION RATE&#39;, &#39;DR&#39;, &#39;0.8282312925170068&#39;].\r\n\r\n\r\nThe problem is I need to put the right attribute for each list.\r\nWhat I did was\r\n\r\n\t\tfor line in f.readlines():\r\n\t\t\tligne = line.split()\r\n\t\t\tfor step in {\r\n\t\t\t\t&quot;DR&quot; : (ligne = [&quot;Detection Rate&quot;] + ligne),\r\n\t\t\t\t&quot;FAR&quot; :(ligne = [&quot;False Alarm Rate&quot;] +ligne),\r\n\t\t\t\t&quot;FNR&quot; :(ligne = [&quot;False N Rate&quot;] + ligne),\r\n\t\t\t\t&quot;MOTA&quot;:(ligne = [&quot;MOTA&quot;] + ligne),\r\n\t\t\t\t&quot;MOTP&quot;:(ligne = [&quot;MOTP&quot;] + ligne),\r\n\t\t\t\t&quot;PFR&quot;:(ligne = [&quot;PFR&quot;] + ligne),\r\n\t\t\t\t&quot;Precision&quot;:(ligne = [&quot;Precision&quot;] + ligne),\r\n\t\t\t}.get(ligne[0]):step()\r\n\r\nbut this is not working since (ligne = [&quot;Detection Rate&quot;] + ligne) is not a function.\r\n\r\nHow cani do this?",
+            "link": "https://stackoverflow.com/questions/49795389/python-update-a-variable-in-a-list-with-a-dictionnary",
+            "title": "(PYTHON) Update a variable in a list with a dictionnary",
+            "body": "<p>I must say I'm rather new to Python and I can't figure how to solve my problem.</p>\n\n<p>I have a list which looks like this</p>\n\n<pre><code>ligne = ['DR', '0.8282312925170068']\n</code></pre>\n\n<p>and I want it to have one extra element:</p>\n\n<pre><code>ligne = ['DETECTION RATE', 'DR', '0.8282312925170068'].\n</code></pre>\n\n<p>The problem is I need to put the right attribute for each list.\nWhat I did was</p>\n\n<pre><code>    for line in f.readlines():\n        ligne = line.split()\n        for step in {\n            \"DR\" : (ligne = [\"Detection Rate\"] + ligne),\n            \"FAR\" :(ligne = [\"False Alarm Rate\"] +ligne),\n            \"FNR\" :(ligne = [\"False N Rate\"] + ligne),\n            \"MOTA\":(ligne = [\"MOTA\"] + ligne),\n            \"MOTP\":(ligne = [\"MOTP\"] + ligne),\n            \"PFR\":(ligne = [\"PFR\"] + ligne),\n            \"Precision\":(ligne = [\"Precision\"] + ligne),\n        }.get(ligne[0]):step()\n</code></pre>\n\n<p>but this is not working since (ligne = [\"Detection Rate\"] + ligne) is not a function.</p>\n\n<p>How cani do this?</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "gettext"
+            ],
+            "owner": {
+                "reputation": 42,
+                "user_id": 4982518,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://i.stack.imgur.com/W2UKI.jpg?s=128&g=1",
+                "display_name": "G&#246;ksel Tığlı",
+                "link": "https://stackoverflow.com/users/4982518/g%c3%b6ksel-t%c4%b1%c4%9fl%c4%b1"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1523535868,
+            "creation_date": 1523535868,
+            "question_id": 49796479,
+            "body_markdown": "I want to load multiple mo files in gettext at the same time\r\n\r\nAn example:\r\n\r\n    $lang = &#39;en_US&#39;;\r\n    \r\n    putenv(&#39;LC_ALL=&#39; . $lang);\r\n    setlocale(LC_ALL, $lang);\r\n    \r\n    bindtextdomain(&#39;module&#39;, ROOT . &#39;Language&#39;);\r\n    bindtextdomain(&#39;default&#39;, ROOT . &#39;Language&#39;);\r\n    \r\n    textdomain(&#39;module&#39;);\r\n    textdomain(&#39;default&#39;);\r\n\r\nBut I can not use two &quot;textdomains&quot; at the same time. This code gives only one language. I want to use multiple &quot;bindtextdomain&quot; and .mo files at the same time.\r\n\r\nI have many modules. Each module must be have separate &quot;mo&quot; files. And each module loads at the same files.\r\n\r\nHow i can use multiple textdomain ?",
+            "link": "https://stackoverflow.com/questions/49796479/how-i-can-use-multiple-textdomain-in-php-gettext",
+            "title": "How i can use multiple textdomain in php gettext?",
+            "body": "<p>I want to load multiple mo files in gettext at the same time</p>\n\n<p>An example:</p>\n\n<pre><code>$lang = 'en_US';\n\nputenv('LC_ALL=' . $lang);\nsetlocale(LC_ALL, $lang);\n\nbindtextdomain('module', ROOT . 'Language');\nbindtextdomain('default', ROOT . 'Language');\n\ntextdomain('module');\ntextdomain('default');\n</code></pre>\n\n<p>But I can not use two \"textdomains\" at the same time. This code gives only one language. I want to use multiple \"bindtextdomain\" and .mo files at the same time.</p>\n\n<p>I have many modules. Each module must be have separate \"mo\" files. And each module loads at the same files.</p>\n\n<p>How i can use multiple textdomain ?</p>\n"
+        },
+        {
+            "tags": [
+                "rx-java2"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 8528561,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/62188dfc7f2e1a56d65b939ee4383048?s=128&d=identicon&r=PG&f=1",
+                "display_name": "IS1_SO",
+                "link": "https://stackoverflow.com/users/8528561/is1-so"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523535867,
+            "creation_date": 1523455034,
+            "last_edit_date": 1523466901,
+            "question_id": 49777067,
+            "body_markdown": "I would like to merge two `Single&lt;MyData&gt;` such that if one of them fails but the other one succeeds then the error of the one that failed and the emission from the other one are reported, and then the resulting `Single&lt;MyData&gt;` (or `Observable&lt;MyData&gt;`) completes.\r\n\r\nIf both `Single&lt;MyData&gt;` fail then the result should also fail and also be marked as failed.\r\n\r\nWhat I would like to have at the end is:\r\n\r\n - If both succeed then the emitted values and a producer marked as completed. \r\n - If one succeeds and the other fails, the emitted value, the thrown error and the producer marked as complete.\r\n - If all fail, the errors and the producer marked as failed.\r\n\r\nIt&#39;s like an &#39;OR&#39; operation\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49777067/rxjava-merge-multiple-singles-and-complete-after-some-have-failed",
+            "title": "RxJava: Merge multiple singles and complete after some have failed",
+            "body": "<p>I would like to merge two <code>Single&lt;MyData&gt;</code> such that if one of them fails but the other one succeeds then the error of the one that failed and the emission from the other one are reported, and then the resulting <code>Single&lt;MyData&gt;</code> (or <code>Observable&lt;MyData&gt;</code>) completes.</p>\n\n<p>If both <code>Single&lt;MyData&gt;</code> fail then the result should also fail and also be marked as failed.</p>\n\n<p>What I would like to have at the end is:</p>\n\n<ul>\n<li>If both succeed then the emitted values and a producer marked as completed. </li>\n<li>If one succeeds and the other fails, the emitted value, the thrown error and the producer marked as complete.</li>\n<li>If all fail, the errors and the producer marked as failed.</li>\n</ul>\n\n<p>It's like an 'OR' operation</p>\n"
+        },
+        {
+            "tags": [
+                "maven",
+                "nexus"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 4053609,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-aDd6c44TW_o/AAAAAAAAAAI/AAAAAAAAABY/acxEH38Sa6c/photo.jpg?sz=128",
+                "display_name": "Justhin Yu",
+                "link": "https://stackoverflow.com/users/4053609/justhin-yu"
+            },
+            "is_answered": true,
+            "view_count": 30,
+            "accepted_answer_id": 45018254,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523535867,
+            "creation_date": 1499665202,
+            "last_edit_date": 1523535867,
+            "question_id": 45004459,
+            "body_markdown": "I&#39;ve installed Nexus on my computer under CentOS 7.2 and configured the port to be 8281. \r\n\r\n[Different port][1]&lt;br/&gt;\r\n[Config][2]\r\n\r\n  [1]: https://i.stack.imgur.com/Pmsb8.png\r\n  [2]: https://i.stack.imgur.com/fC5A2.png\r\n\r\nWhy is the the repositories&#39;s port of access address 80?\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/45004459/why-is-my-nexus-port-different",
+            "title": "Why is my nexus port different?",
+            "body": "<p>I've installed Nexus on my computer under CentOS 7.2 and configured the port to be 8281. </p>\n\n<p><img src=\"https://i.stack.imgur.com/Pmsb8.png\" alt=\"Different port\"><br/>\n<img src=\"https://i.stack.imgur.com/fC5A2.png\" alt=\"Config\"></p>\n\n<p>Why is the the repositories's port of access address 80?</p>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "arrays",
+                "char"
+            ],
+            "owner": {
+                "reputation": 18,
+                "user_id": 9635786,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a5083ce8fcf1144dfa0b0af2bb7f08e2?s=128&d=identicon&r=PG&f=1",
+                "display_name": "EmJov",
+                "link": "https://stackoverflow.com/users/9635786/emjov"
+            },
+            "is_answered": true,
+            "view_count": 55,
+            "accepted_answer_id": 49796400,
+            "answer_count": 3,
+            "score": 3,
+            "last_activity_date": 1523535855,
+            "creation_date": 1523535334,
+            "question_id": 49796288,
+            "body_markdown": "    char arr[2][6] = { &quot;hello&quot;, &quot;foo&quot; };\r\n\t\r\n\tcout &lt;&lt; arr[0] &lt;&lt; &quot; or &quot; &lt;&lt; *(arr) &lt;&lt; endl;// prints &quot;hello&quot;\r\n\tcout &lt;&lt; arr[1] &lt;&lt; &quot; or &quot; &lt;&lt; *(arr + 1) &lt;&lt; endl; // prints &quot;foo&quot;\r\n\t\r\n\tcout &lt;&lt; arr &lt;&lt; endl; // prints an address of &quot;hello&quot; (and &#39;h&#39;)\r\n\tcout &lt;&lt; arr + 1 &lt;&lt; endl; //prints an address of &quot;foo&quot; (and &#39;f&#39;)\r\n\t\r\n\tcout &lt;&lt; arr[0][1] &lt;&lt; endl; // prints &#39;e&#39;\r\n\tcout &lt;&lt; &amp;arr[0][1] &lt;&lt; endl; // prints &quot;ello&quot;\r\n\r\nSo, I&#39;d like to print an address of, say, &#39;e&#39; in &quot;hello&quot;. How do I do that?\r\n\r\nI know if I was dealing with an array of any other type, **&amp;arr[0][1]** would do the job, however with all of this *cout char(array) overloads* I&#39;m not sure if it&#39;s even possible? ",
+            "link": "https://stackoverflow.com/questions/49796288/how-to-print-an-address-of-xy-element-in-2d-char-array-c",
+            "title": "How to print an address of [x][y] element in 2D char array? (c++)",
+            "body": "<pre><code>char arr[2][6] = { \"hello\", \"foo\" };\n\ncout &lt;&lt; arr[0] &lt;&lt; \" or \" &lt;&lt; *(arr) &lt;&lt; endl;// prints \"hello\"\ncout &lt;&lt; arr[1] &lt;&lt; \" or \" &lt;&lt; *(arr + 1) &lt;&lt; endl; // prints \"foo\"\n\ncout &lt;&lt; arr &lt;&lt; endl; // prints an address of \"hello\" (and 'h')\ncout &lt;&lt; arr + 1 &lt;&lt; endl; //prints an address of \"foo\" (and 'f')\n\ncout &lt;&lt; arr[0][1] &lt;&lt; endl; // prints 'e'\ncout &lt;&lt; &amp;arr[0][1] &lt;&lt; endl; // prints \"ello\"\n</code></pre>\n\n<p>So, I'd like to print an address of, say, 'e' in \"hello\". How do I do that?</p>\n\n<p>I know if I was dealing with an array of any other type, <strong>&amp;arr[0][1]</strong> would do the job, however with all of this <em>cout char(array) overloads</em> I'm not sure if it's even possible? </p>\n"
+        },
+        {
+            "tags": [
+                "postgresql",
+                "ubuntu-16.04"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 3603185,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3e27b8814419b7a5b17cb27f44eaeb07?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Louis",
+                "link": "https://stackoverflow.com/users/3603185/louis"
+            },
+            "is_answered": true,
+            "view_count": 149,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1523535851,
+            "creation_date": 1498532684,
+            "last_edit_date": 1498539558,
+            "question_id": 44771668,
+            "body_markdown": "I have installed postgresql on Ubuntu 16.04, when I run `psql` command this error appears:\r\n\r\n&gt; could not connect to server: No such file or directory.\r\n&gt; Is the server running locally and accepting connections on Unix domain\r\n&gt; socket &quot;/var/run/postgresql/.s.PGSQL.5432&quot;?\r\n\r\nI tried to restart and reload postgres service but the error shows every time.",
+            "link": "https://stackoverflow.com/questions/44771668/postgresql-could-not-connect-to-server-no-such-file-or-directory",
+            "title": "postgresql could not connect to server - No such file or directory",
+            "body": "<p>I have installed postgresql on Ubuntu 16.04, when I run <code>psql</code> command this error appears:</p>\n\n<blockquote>\n  <p>could not connect to server: No such file or directory.\n  Is the server running locally and accepting connections on Unix domain\n  socket \"/var/run/postgresql/.s.PGSQL.5432\"?</p>\n</blockquote>\n\n<p>I tried to restart and reload postgres service but the error shows every time.</p>\n"
+        },
+        {
+            "tags": [
+                "qt",
+                "focus",
+                "keyboard-events"
+            ],
+            "owner": {
+                "reputation": 48,
+                "user_id": 7366420,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-IqQsYB_-syw/AAAAAAAAAAI/AAAAAAAAGfk/lo5XMmfWIko/photo.jpg?sz=128",
+                "display_name": "Alexandra Tupu",
+                "link": "https://stackoverflow.com/users/7366420/alexandra-tupu"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523535840,
+            "creation_date": 1523535011,
+            "last_edit_date": 1523535840,
+            "question_id": 49796174,
+            "body_markdown": "So for me the plan is like this:\r\n\r\nI scan a code bar he gets in first editext\r\nI scan another code bar he gets in the second edittext \r\nin this case i used focus and keyboard event \r\nmy problem is i scan first text is fine  \r\nI scan the second code some of letters go to second some go to first.\r\nI don&#39;t understand what is the problem \r\nhere is my code \r\n\r\n\r\n    void CWidget::keyPressEvent(QKeyEvent *event)\r\n    {\r\n      if(focusWidget() == ui-&gt;lePath &amp;&amp; !ui-&gt;lePath-&gt;text().isEmpty())\r\n      {\r\n        ui-&gt;leInformation-&gt;setFocus(); //leInformation second edit \r\n        ui-&gt;leInformation-&gt;setFocusPolicy(Qt::StrongFocus);\r\n        ui-&gt;leInformation-&gt;KeyPressEvent(event);\r\n      }\r\n      else\r\n      {\r\n        ui-&gt;lePath-&gt;setFocus(); //lePath - first edit text, first code scanned //goes here\r\n        ui-&gt;lePath-&gt;setFocusPolicy(Qt::StrongFocus);\r\n        ui-&gt;lePath-&gt;KeyPressEvent(event);\r\n      }\r\n    }\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\nlike is a strange think cause sometimes works sometimes no, if both codes scanned have digits they work if the second scanned has uppercase letters they go from the first uppercase letters they are wrote to first edit. but if they are lowercase they  are fine again. I m thinking is a problem with keyboard event how they see uppercase. somehow maybe with shift, and they change between two edits. \r\nif there is someone who has an idea on how i can write properly that keyboard event, please help thanks \r\n\r\n[![enter image description here][1]][1]\r\n \r\n  [1]: https://i.stack.imgur.com/O9UVh.png\r\n\r\nhere B should have been on the second. I&#39;m being sure on how uppercase are being entered on keyboard event is about shift + letter and shift moves you to the other edit but how i can change this \r\n",
+            "link": "https://stackoverflow.com/questions/49796174/qt-app-that-takes-in-edittext-code-bar-scanned-how-to-change-focus-between-two",
+            "title": "qt app that takes in edittext code bar scanned, how to change focus between two edits",
+            "body": "<p>So for me the plan is like this:</p>\n\n<p>I scan a code bar he gets in first editext\nI scan another code bar he gets in the second edittext \nin this case i used focus and keyboard event \nmy problem is i scan first text is fine<br>\nI scan the second code some of letters go to second some go to first.\nI don't understand what is the problem \nhere is my code </p>\n\n<pre><code>void CWidget::keyPressEvent(QKeyEvent *event)\n{\n  if(focusWidget() == ui-&gt;lePath &amp;&amp; !ui-&gt;lePath-&gt;text().isEmpty())\n  {\n    ui-&gt;leInformation-&gt;setFocus(); //leInformation second edit \n    ui-&gt;leInformation-&gt;setFocusPolicy(Qt::StrongFocus);\n    ui-&gt;leInformation-&gt;KeyPressEvent(event);\n  }\n  else\n  {\n    ui-&gt;lePath-&gt;setFocus(); //lePath - first edit text, first code scanned //goes here\n    ui-&gt;lePath-&gt;setFocusPolicy(Qt::StrongFocus);\n    ui-&gt;lePath-&gt;KeyPressEvent(event);\n  }\n}\n</code></pre>\n\n\n\n<p>like is a strange think cause sometimes works sometimes no, if both codes scanned have digits they work if the second scanned has uppercase letters they go from the first uppercase letters they are wrote to first edit. but if they are lowercase they  are fine again. I m thinking is a problem with keyboard event how they see uppercase. somehow maybe with shift, and they change between two edits. \nif there is someone who has an idea on how i can write properly that keyboard event, please help thanks </p>\n\n<p><a href=\"https://i.stack.imgur.com/O9UVh.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/O9UVh.png\" alt=\"enter image description here\"></a></p>\n\n<p>here B should have been on the second. I'm being sure on how uppercase are being entered on keyboard event is about shift + letter and shift moves you to the other edit but how i can change this </p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "xml",
+                "hashmap",
+                "jaxb"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 7560316,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/89cfbb275e4a3cde5dbbf1fe923f31f8?s=128&d=identicon&r=PG&f=1",
+                "display_name": "spencerktm30",
+                "link": "https://stackoverflow.com/users/7560316/spencerktm30"
+            },
+            "is_answered": false,
+            "view_count": 28,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523535838,
+            "creation_date": 1523470232,
+            "last_edit_date": 1523535838,
+            "question_id": 49781857,
+            "body_markdown": "I am having an issue with exporting a custom hashmap function to xml. The layout of my project is as follows. The package adt contains the following classes:\r\n\r\n    class HashMap implements Map&lt;K,V&gt; \r\n\r\nA custom hashmap implementation, pretty much identical to java.util.HashMap. (Note, same errors exist when I use java.util.HashMap)\r\n\r\n    class Database extends HashMap &lt;String,Table&gt;\r\n  \r\n\r\n    class Table extends HashMap &lt;Object, Row&gt; \r\n\r\n(Note: The key of type Object is always a string in my implementation)\r\n\r\n    class Row extends HashMap &lt;String, Object&gt; \r\n\r\n(Object is of type String, boolean, or int)\r\n\r\nI am trying to export a table to an xml file, and eventually import it again but I haven&#39;t gotten that far. Here is the function which I use to export it:\r\n\r\n    private Response xml(Table table, FileWriter file) {\r\n\t\tJAXBContext jaxbContext;\r\n\t\tMarshaller jaxbMarshaller;\r\n\t\ttry {\r\n\t\t\tjaxbContext = JAXBContext.newInstance(HashMap.class);\r\n\t\t\tjaxbMarshaller = jaxbContext.createMarshaller();\r\n\t\t\tjaxbMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);\r\n\t\t\tjaxbMarshaller.marshal(table, file);\r\n\t\t}catch (JAXBException e) {\r\n\t\t\te.printStackTrace(System.out);\r\n\t\t\treturn new Response(false,&quot;Export - JAXBException.&quot;,null);\r\n\t\t}//catch\r\n\t\treturn new Response(true,&quot;Export - Successfully wrote table to file.&quot;,null);\r\n\t}//xml\r\n\r\nAlso note... \r\n-  I can export flawlessly using JsonObjectBuilder from javax.json.* to a json file\r\n-  It is required to use the javax.xml library\r\n-  I really don&#39;t know what I&#39;m doing\r\n\r\nIt returns the code:\r\n\r\n    ?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;yes&quot;?&gt;\r\n    &lt;hashMap/&gt;\r\n\r\nThe table which I am trying to export does have data which is not represented in the XML output. Right now, the HashMap class has @XmlRootElement at the top. That is the only XML annotation in any class. \r\n\r\nI also receive a NullPointerException when I change this line\r\n\r\n    jaxbContext = JAXBContext.newInstance(HashMap.class);\r\nto this:\r\n\r\n    jaxbContext = JAXBContext.newInstance(Table.class);\r\nThe exception is as follows:\r\n\r\n    Exception in thread &quot;main&quot; java.lang.NullPointerException\r\n\tat com.sun.xml.internal.bind.v2.runtime.property.SingleMapNodeProperty.serializeBody(SingleMapNodeProperty.java:252)\r\n\tat com.sun.xml.internal.bind.v2.runtime.ClassBeanInfoImpl.serializeBody(ClassBeanInfoImpl.java:345)\r\n\tat com.sun.xml.internal.bind.v2.runtime.XMLSerializer.childAsSoleContent(XMLSerializer.java:578)\r\n\tat com.sun.xml.internal.bind.v2.runtime.ClassBeanInfoImpl.serializeRoot(ClassBeanInfoImpl.java:326)\r\n\tat com.sun.xml.internal.bind.v2.runtime.XMLSerializer.childAsRoot(XMLSerializer.java:479)\r\n\tat com.sun.xml.internal.bind.v2.runtime.MarshallerImpl.write(MarshallerImpl.java:308)\r\n\tat com.sun.xml.internal.bind.v2.runtime.MarshallerImpl.marshal(MarshallerImpl.java:236)\r\n\tat javax.xml.bind.helpers.AbstractMarshallerImpl.marshal(AbstractMarshallerImpl.java:95)\r\n\tat driver.DExport.xml(DExport.java:99)\r\n\tat driver.DExport.execute(DExport.java:59)\r\n\tat core.Server.interpret(Server.java:57)\r\n\tat core.Console.prompt(Console.java:56)\r\n\tat core.Console.main(Console.java:37)\r\n",
+            "link": "https://stackoverflow.com/questions/49781857/java-jaxb-exporting-hashmaps-to-xml",
+            "title": "Java JAXB exporting hashmaps to xml",
+            "body": "<p>I am having an issue with exporting a custom hashmap function to xml. The layout of my project is as follows. The package adt contains the following classes:</p>\n\n<pre><code>class HashMap implements Map&lt;K,V&gt; \n</code></pre>\n\n<p>A custom hashmap implementation, pretty much identical to java.util.HashMap. (Note, same errors exist when I use java.util.HashMap)</p>\n\n<pre><code>class Database extends HashMap &lt;String,Table&gt;\n\n\nclass Table extends HashMap &lt;Object, Row&gt; \n</code></pre>\n\n<p>(Note: The key of type Object is always a string in my implementation)</p>\n\n<pre><code>class Row extends HashMap &lt;String, Object&gt; \n</code></pre>\n\n<p>(Object is of type String, boolean, or int)</p>\n\n<p>I am trying to export a table to an xml file, and eventually import it again but I haven't gotten that far. Here is the function which I use to export it:</p>\n\n<pre><code>private Response xml(Table table, FileWriter file) {\n    JAXBContext jaxbContext;\n    Marshaller jaxbMarshaller;\n    try {\n        jaxbContext = JAXBContext.newInstance(HashMap.class);\n        jaxbMarshaller = jaxbContext.createMarshaller();\n        jaxbMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);\n        jaxbMarshaller.marshal(table, file);\n    }catch (JAXBException e) {\n        e.printStackTrace(System.out);\n        return new Response(false,\"Export - JAXBException.\",null);\n    }//catch\n    return new Response(true,\"Export - Successfully wrote table to file.\",null);\n}//xml\n</code></pre>\n\n<p>Also note... \n-  I can export flawlessly using JsonObjectBuilder from javax.json.* to a json file\n-  It is required to use the javax.xml library\n-  I really don't know what I'm doing</p>\n\n<p>It returns the code:</p>\n\n<pre><code>?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?&gt;\n&lt;hashMap/&gt;\n</code></pre>\n\n<p>The table which I am trying to export does have data which is not represented in the XML output. Right now, the HashMap class has @XmlRootElement at the top. That is the only XML annotation in any class. </p>\n\n<p>I also receive a NullPointerException when I change this line</p>\n\n<pre><code>jaxbContext = JAXBContext.newInstance(HashMap.class);\n</code></pre>\n\n<p>to this:</p>\n\n<pre><code>jaxbContext = JAXBContext.newInstance(Table.class);\n</code></pre>\n\n<p>The exception is as follows:</p>\n\n<pre><code>Exception in thread \"main\" java.lang.NullPointerException\nat com.sun.xml.internal.bind.v2.runtime.property.SingleMapNodeProperty.serializeBody(SingleMapNodeProperty.java:252)\nat com.sun.xml.internal.bind.v2.runtime.ClassBeanInfoImpl.serializeBody(ClassBeanInfoImpl.java:345)\nat com.sun.xml.internal.bind.v2.runtime.XMLSerializer.childAsSoleContent(XMLSerializer.java:578)\nat com.sun.xml.internal.bind.v2.runtime.ClassBeanInfoImpl.serializeRoot(ClassBeanInfoImpl.java:326)\nat com.sun.xml.internal.bind.v2.runtime.XMLSerializer.childAsRoot(XMLSerializer.java:479)\nat com.sun.xml.internal.bind.v2.runtime.MarshallerImpl.write(MarshallerImpl.java:308)\nat com.sun.xml.internal.bind.v2.runtime.MarshallerImpl.marshal(MarshallerImpl.java:236)\nat javax.xml.bind.helpers.AbstractMarshallerImpl.marshal(AbstractMarshallerImpl.java:95)\nat driver.DExport.xml(DExport.java:99)\nat driver.DExport.execute(DExport.java:59)\nat core.Server.interpret(Server.java:57)\nat core.Console.prompt(Console.java:56)\nat core.Console.main(Console.java:37)\n</code></pre>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 144
+}

@@ -1,0 +1,817 @@
+{
+    "items": [
+        {
+            "tags": [
+                "java",
+                "android"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 7083838,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/560632994139567/picture?type=large",
+                "display_name": "Usman Khan",
+                "link": "https://stackoverflow.com/users/7083838/usman-khan"
+            },
+            "is_answered": false,
+            "view_count": 25,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1523543122,
+            "creation_date": 1523538919,
+            "last_edit_date": 1523542078,
+            "question_id": 49797592,
+            "body_markdown": "I am taking image from camera as well as from gallery,after getting the image, I want to show the image in imageview.\r\n\r\nImage that is captured by camera successfully is shown in imageview but when I want to select it from gallery it does not show the image and it also does not show any error. It was working properly but later I add camera feature in activity, it&#39;s not working well.\r\n\r\n    public class DoReport extends AppCompatActivity {\r\n        private EditText subject,detail;\r\n        private ImageView pic;\r\n        private ImageView iv;\r\n        private Spinner  depart;\r\n        private String depat,sub,det;\r\n        //for image\r\n        private Bitmap selectedImage;\r\n        public static String image;\r\n        private Uri imageUri;\r\n        public final static int PHOTO_FROM_MEMORY_REQUESTED = 10;\r\n        static final int REQUEST_IMAGE_CAPTURE = 1;\r\n        String userChoosenTask;\r\n        @Override\r\n        protected void onCreate(Bundle savedInstanceState) {\r\n            super.onCreate(savedInstanceState);\r\n            setContentView(R.layout.activity_do_report);\r\n            subject = (EditText) findViewById(R.id.subject);\r\n            detail = (EditText) findViewById(R.id.detail);\r\n            depart = (Spinner) findViewById(R.id.Depat_Edit);\r\n            iv=(ImageView)findViewById(R.id.ImgView);\r\n        }\r\n        public void onBackClick(View v) {\r\n            Intent intent=new Intent(this,UserView.class);\r\n            startActivity(intent);\r\n            finish();\r\n        }\r\n\r\n        @Override\r\n        public void onBackPressed() {\r\n            super.onBackPressed();\r\n            Intent intent=new Intent(this,UserView.class);\r\n            startActivity(intent);\r\n            finish();\r\n        }\r\n        //to pic the image from galery\r\n\r\n        //this is new &lt;code&gt;\r\n        public void imgBtn(View v) {\r\n            selectImage();\r\n        }\r\n\r\n        private void updateSelectedPicture(Uri uri) {\r\n            try {\r\n                imageUri = uri;\r\n                InputStream imageStream = getContentResolver().openInputStream(imageUri);\r\n                selectedImage = BitmapFactory.decodeStream(imageStream);\r\n\r\n                iv.setImageDrawable(new BitmapDrawable(selectedImage));\r\n                image=encode(selectedImage);\r\n            } catch(FileNotFoundException ex) {\r\n                Log.e(&quot;File not found&quot;, &quot;Cannot find background file under received URI&quot;);\r\n            }\r\n        }\r\n\r\n        public static String encode(Bitmap image) {\r\n            Bitmap immagex=image;\r\n            ByteArrayOutputStream baos = new ByteArrayOutputStream();\r\n            immagex.compress(Bitmap.CompressFormat.JPEG, 20, baos);\r\n            byte[] b = baos.toByteArray();\r\n            String imageEncoded = Base64.encodeToString(b,Base64.DEFAULT);\r\n\r\n            Log.e(&quot;LOOK&quot;, imageEncoded);\r\n            return imageEncoded;\r\n        }\r\n\r\n        public void submit(View v) {\r\n            depat=depart.getSelectedItem().toString();\r\n            sub=subject.getText().toString();\r\n            det=detail.getText().toString();\r\n            if(sub.isEmpty()) {\r\n                subject.setError(&quot;subject is required&quot;);\r\n            } else if(det.isEmpty()) {\r\n                detail.setError(&quot;subject is required&quot;);\r\n            } else {\r\n                login_database(depat, sub, det, image);\r\n            }\r\n        }\r\n\r\n        private void login_database(final String depat, final String sub,final String det,final String pic) {\r\n            RequestQueue queue = Volley.newRequestQueue(this);\r\n            StringRequest request = new StringRequest(Request.Method.POST, Static.user_connect,//changes required\r\n                    new Response.Listener&lt;String&gt;() {\r\n                        public void onResponse(String response) {\r\n                            if ((response.contains(&quot;successful&quot;))) {\r\n                                Toast.makeText(DoReport.this, &quot;Successful Submitted&quot;,Toast.LENGTH_LONG).show();\r\n                                Intent i = new Intent (DoReport.this,UserView.class);\r\n                                startActivity(i);\r\n                                finish();\r\n                            } else {\r\n                                Toast.makeText(DoReport.this, &quot;Some error occured&quot;, Toast.LENGTH_LONG).show();//changes required\r\n                            }\r\n                        }\r\n                    },\r\n                    new Response.ErrorListener() {\r\n                        @Override\r\n                        public void onErrorResponse(VolleyError error) {\r\n                            Toast.makeText(DoReport.this, error.toString(), Toast.LENGTH_SHORT).show();\r\n                            Log.d(&quot;ERROR&quot;, toString());\r\n                        }\r\n                    }) {\r\n                @Override\r\n                protected Map&lt;String, String&gt; getParams() throws AuthFailureError {\r\n                    Map&lt;String, String&gt; map = new HashMap&lt;&gt;();\r\n                    map.put(&quot;key&quot;, &quot;3&quot;);//changes required\r\n                    map.put(&quot;Depat&quot;, depat);\r\n                    map.put(&quot;Detail&quot;, det);\r\n                    map.put(&quot;Pic&quot;, pic);\r\n                    map.put(&quot;Subject&quot;, sub);\r\n                    map.put(&quot;U_id&quot;,Static.id);\r\n                    return map;\r\n                }\r\n            };\r\n            queue.add(request);\r\n        }\r\n\r\n        /*//////////////////////////////////////////////////////////////////////////////////////////\r\n\r\n        code for selecting image from camera or gallery\r\n\r\n        *////////////////////////////////////////////////////////////////////////////////////////\r\n\r\n        private void dispatchTakePictureIntent() {\r\n            Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);\r\n            if (takePictureIntent.resolveActivity(getPackageManager()) != null) {\r\n                startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);\r\n            }\r\n        }\r\n        @Override\r\n        protected void onActivityResult(int requestCode, int resultCode, Intent data) {\r\n            if( requestCode== REQUEST_IMAGE_CAPTURE) {\r\n                try {\r\n                    if (requestCode == REQUEST_IMAGE_CAPTURE &amp;&amp; resultCode == RESULT_OK) {\r\n                        Bundle extras = data.getExtras();\r\n                        Bitmap imageBitmap = (Bitmap) extras.get(&quot;data&quot;);\r\n                        iv.setImageBitmap(imageBitmap);\r\n                        image = encode(imageBitmap);//this line is added to encode\r\n                    } else if (requestCode == PHOTO_FROM_MEMORY_REQUESTED &amp;&amp; resultCode == RESULT_OK) {\r\n                        updateSelectedPicture(data.getData());\r\n                    }\r\n                }\r\n                catch (Exception e){ Toast.makeText(DoReport.this, e.toString(), Toast.LENGTH_LONG).show();}\r\n            }\r\n        }\r\n\r\n        ///////////////it will show the dialogue box\r\n        private void selectImage() {\r\n            final CharSequence[] items = { &quot;Take Photo&quot;, &quot;Choose from Library&quot;, &quot;Cancel&quot; };\r\n            AlertDialog.Builder builder = new AlertDialog.Builder(DoReport.this);\r\n            builder.setTitle(&quot;Add Photo!&quot;);\r\n            builder.setItems(items, new DialogInterface.OnClickListener() {\r\n                @Override\r\n                public void onClick(DialogInterface dialog, int item) {\r\n                    boolean result=Utility.checkPermission(DoReport.this);\r\n                    if (items[item].equals(&quot;Take Photo&quot;)) {\r\n                        userChoosenTask=&quot;Take Photo&quot;;\r\n                        dispatchTakePictureIntent();\r\n                    } else if (items[item].equals(&quot;Choose from Library&quot;)) {\r\n                        userChoosenTask=&quot;Choose from Library&quot;;\r\n                        gallery();\r\n                    } else if (items[item].equals(&quot;Cancel&quot;)) {\r\n                        dialog.dismiss();\r\n                    }\r\n                }\r\n            });\r\n            builder.show();\r\n        }\r\n\r\n        public void gallery() {\r\n            Intent i = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);\r\n            startActivityForResult(i, PHOTO_FROM_MEMORY_REQUESTED);\r\n        }\r\n    }",
+            "link": "https://stackoverflow.com/questions/49797592/image-taken-from-gallery-is-unable-to-set-in-image-view",
+            "title": "image taken from gallery is unable to set in image view",
+            "body": "<p>I am taking image from camera as well as from gallery,after getting the image, I want to show the image in imageview.</p>\n\n<p>Image that is captured by camera successfully is shown in imageview but when I want to select it from gallery it does not show the image and it also does not show any error. It was working properly but later I add camera feature in activity, it's not working well.</p>\n\n<pre><code>public class DoReport extends AppCompatActivity {\n    private EditText subject,detail;\n    private ImageView pic;\n    private ImageView iv;\n    private Spinner  depart;\n    private String depat,sub,det;\n    //for image\n    private Bitmap selectedImage;\n    public static String image;\n    private Uri imageUri;\n    public final static int PHOTO_FROM_MEMORY_REQUESTED = 10;\n    static final int REQUEST_IMAGE_CAPTURE = 1;\n    String userChoosenTask;\n    @Override\n    protected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        setContentView(R.layout.activity_do_report);\n        subject = (EditText) findViewById(R.id.subject);\n        detail = (EditText) findViewById(R.id.detail);\n        depart = (Spinner) findViewById(R.id.Depat_Edit);\n        iv=(ImageView)findViewById(R.id.ImgView);\n    }\n    public void onBackClick(View v) {\n        Intent intent=new Intent(this,UserView.class);\n        startActivity(intent);\n        finish();\n    }\n\n    @Override\n    public void onBackPressed() {\n        super.onBackPressed();\n        Intent intent=new Intent(this,UserView.class);\n        startActivity(intent);\n        finish();\n    }\n    //to pic the image from galery\n\n    //this is new &lt;code&gt;\n    public void imgBtn(View v) {\n        selectImage();\n    }\n\n    private void updateSelectedPicture(Uri uri) {\n        try {\n            imageUri = uri;\n            InputStream imageStream = getContentResolver().openInputStream(imageUri);\n            selectedImage = BitmapFactory.decodeStream(imageStream);\n\n            iv.setImageDrawable(new BitmapDrawable(selectedImage));\n            image=encode(selectedImage);\n        } catch(FileNotFoundException ex) {\n            Log.e(\"File not found\", \"Cannot find background file under received URI\");\n        }\n    }\n\n    public static String encode(Bitmap image) {\n        Bitmap immagex=image;\n        ByteArrayOutputStream baos = new ByteArrayOutputStream();\n        immagex.compress(Bitmap.CompressFormat.JPEG, 20, baos);\n        byte[] b = baos.toByteArray();\n        String imageEncoded = Base64.encodeToString(b,Base64.DEFAULT);\n\n        Log.e(\"LOOK\", imageEncoded);\n        return imageEncoded;\n    }\n\n    public void submit(View v) {\n        depat=depart.getSelectedItem().toString();\n        sub=subject.getText().toString();\n        det=detail.getText().toString();\n        if(sub.isEmpty()) {\n            subject.setError(\"subject is required\");\n        } else if(det.isEmpty()) {\n            detail.setError(\"subject is required\");\n        } else {\n            login_database(depat, sub, det, image);\n        }\n    }\n\n    private void login_database(final String depat, final String sub,final String det,final String pic) {\n        RequestQueue queue = Volley.newRequestQueue(this);\n        StringRequest request = new StringRequest(Request.Method.POST, Static.user_connect,//changes required\n                new Response.Listener&lt;String&gt;() {\n                    public void onResponse(String response) {\n                        if ((response.contains(\"successful\"))) {\n                            Toast.makeText(DoReport.this, \"Successful Submitted\",Toast.LENGTH_LONG).show();\n                            Intent i = new Intent (DoReport.this,UserView.class);\n                            startActivity(i);\n                            finish();\n                        } else {\n                            Toast.makeText(DoReport.this, \"Some error occured\", Toast.LENGTH_LONG).show();//changes required\n                        }\n                    }\n                },\n                new Response.ErrorListener() {\n                    @Override\n                    public void onErrorResponse(VolleyError error) {\n                        Toast.makeText(DoReport.this, error.toString(), Toast.LENGTH_SHORT).show();\n                        Log.d(\"ERROR\", toString());\n                    }\n                }) {\n            @Override\n            protected Map&lt;String, String&gt; getParams() throws AuthFailureError {\n                Map&lt;String, String&gt; map = new HashMap&lt;&gt;();\n                map.put(\"key\", \"3\");//changes required\n                map.put(\"Depat\", depat);\n                map.put(\"Detail\", det);\n                map.put(\"Pic\", pic);\n                map.put(\"Subject\", sub);\n                map.put(\"U_id\",Static.id);\n                return map;\n            }\n        };\n        queue.add(request);\n    }\n\n    /*//////////////////////////////////////////////////////////////////////////////////////////\n\n    code for selecting image from camera or gallery\n\n    *////////////////////////////////////////////////////////////////////////////////////////\n\n    private void dispatchTakePictureIntent() {\n        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);\n        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {\n            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);\n        }\n    }\n    @Override\n    protected void onActivityResult(int requestCode, int resultCode, Intent data) {\n        if( requestCode== REQUEST_IMAGE_CAPTURE) {\n            try {\n                if (requestCode == REQUEST_IMAGE_CAPTURE &amp;&amp; resultCode == RESULT_OK) {\n                    Bundle extras = data.getExtras();\n                    Bitmap imageBitmap = (Bitmap) extras.get(\"data\");\n                    iv.setImageBitmap(imageBitmap);\n                    image = encode(imageBitmap);//this line is added to encode\n                } else if (requestCode == PHOTO_FROM_MEMORY_REQUESTED &amp;&amp; resultCode == RESULT_OK) {\n                    updateSelectedPicture(data.getData());\n                }\n            }\n            catch (Exception e){ Toast.makeText(DoReport.this, e.toString(), Toast.LENGTH_LONG).show();}\n        }\n    }\n\n    ///////////////it will show the dialogue box\n    private void selectImage() {\n        final CharSequence[] items = { \"Take Photo\", \"Choose from Library\", \"Cancel\" };\n        AlertDialog.Builder builder = new AlertDialog.Builder(DoReport.this);\n        builder.setTitle(\"Add Photo!\");\n        builder.setItems(items, new DialogInterface.OnClickListener() {\n            @Override\n            public void onClick(DialogInterface dialog, int item) {\n                boolean result=Utility.checkPermission(DoReport.this);\n                if (items[item].equals(\"Take Photo\")) {\n                    userChoosenTask=\"Take Photo\";\n                    dispatchTakePictureIntent();\n                } else if (items[item].equals(\"Choose from Library\")) {\n                    userChoosenTask=\"Choose from Library\";\n                    gallery();\n                } else if (items[item].equals(\"Cancel\")) {\n                    dialog.dismiss();\n                }\n            }\n        });\n        builder.show();\n    }\n\n    public void gallery() {\n        Intent i = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);\n        startActivityForResult(i, PHOTO_FROM_MEMORY_REQUESTED);\n    }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "mysql",
+                "pivot"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9407903,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-gj29v_MqHDs/AAAAAAAAAAI/AAAAAAAAABA/LrnEg08D0xs/photo.jpg?sz=128",
+                "display_name": "Satria stuart",
+                "link": "https://stackoverflow.com/users/9407903/satria-stuart"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "closed_date": 1523542740,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523543116,
+            "creation_date": 1523541959,
+            "last_edit_date": 1523543116,
+            "question_id": 49798707,
+            "body_markdown": "So I have this example pretty simple data in mysql \r\n\r\n**table Reporting**\r\n\r\n       user_id  |campaign_id | action_type | date_time  |\r\n            R12 |    T4      |   message   | 2018-02-03 |\r\n            R12 |    T4      |    call     | 2018-05-09 |\r\n           \r\nI want it to display the output of select query like this :\r\n\r\n     user_id|campaign_id | message_date_time | call_date_time |\r\n      R12   |  T4        |      2018-02-03   |  2018-05-09\r\n\r\nHow to query this table data to make the output like above?\r\nany help would be very appreciate .Thank you",
+            "link": "https://stackoverflow.com/questions/49798707/query-display-all-the-date-that-ever-exist",
+            "closed_reason": "duplicate",
+            "title": "query display all the date that ever exist",
+            "body": "<p>So I have this example pretty simple data in mysql </p>\n\n<p><strong>table Reporting</strong></p>\n\n<pre><code>   user_id  |campaign_id | action_type | date_time  |\n        R12 |    T4      |   message   | 2018-02-03 |\n        R12 |    T4      |    call     | 2018-05-09 |\n</code></pre>\n\n<p>I want it to display the output of select query like this :</p>\n\n<pre><code> user_id|campaign_id | message_date_time | call_date_time |\n  R12   |  T4        |      2018-02-03   |  2018-05-09\n</code></pre>\n\n<p>How to query this table data to make the output like above?\nany help would be very appreciate .Thank you</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "mapbox-gl-js"
+            ],
+            "owner": {
+                "reputation": 282,
+                "user_id": 2393786,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/cV0Od.jpg?s=128&g=1",
+                "display_name": "Stranger in the Q",
+                "link": "https://stackoverflow.com/users/2393786/stranger-in-the-q"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523543115,
+            "creation_date": 1523540405,
+            "last_edit_date": 1523543115,
+            "question_id": 49798117,
+            "body_markdown": "i want to disable rendering of only one extruded building in my case, i looking for something like this \r\n\r\n    map.on(&#39;load&#39;, function () {\r\n        map.addLayer({\r\n            &#39;id&#39;: &#39;3d-buildings&#39;,\r\n            &#39;source&#39;: &#39;mapbox&#39;,\r\n            &#39;source-layer&#39;: &#39;building&#39;,\r\n            &quot;filter&quot;: [&quot;!=&quot;, &quot;id&quot;, &quot;12345&quot;],\r\n            &#39;type&#39;: &#39;fill-extrusion&#39;,\r\n            &#39;paint&#39;: {\r\n                &#39;fill-extrusion-color&#39;: &#39;#bbb&#39;,\r\n                &#39;fill-extrusion-height&#39;: 10,\r\n                &#39;fill-extrusion-base&#39;: 0,\r\n                &#39;fill-extrusion-opacity&#39;: 1\r\n            }\r\n        });\r\n\r\n    })\r\n\r\n\r\nfollowing expression is incorrect:\r\n\r\n    &quot;filter&quot;: [&quot;!=&quot;, &quot;id&quot;, &quot;12345&quot;]\r\n\r\n**mapbox-gl-0.44.1**",
+            "link": "https://stackoverflow.com/questions/49798117/mapbox-disable-one-feature-rendering",
+            "title": "mapbox: disable one feature rendering",
+            "body": "<p>i want to disable rendering of only one extruded building in my case, i looking for something like this </p>\n\n<pre><code>map.on('load', function () {\n    map.addLayer({\n        'id': '3d-buildings',\n        'source': 'mapbox',\n        'source-layer': 'building',\n        \"filter\": [\"!=\", \"id\", \"12345\"],\n        'type': 'fill-extrusion',\n        'paint': {\n            'fill-extrusion-color': '#bbb',\n            'fill-extrusion-height': 10,\n            'fill-extrusion-base': 0,\n            'fill-extrusion-opacity': 1\n        }\n    });\n\n})\n</code></pre>\n\n<p>following expression is incorrect:</p>\n\n<pre><code>\"filter\": [\"!=\", \"id\", \"12345\"]\n</code></pre>\n\n<p><strong>mapbox-gl-0.44.1</strong></p>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "c++17",
+                "structured-bindings"
+            ],
+            "owner": {
+                "reputation": 49406,
+                "user_id": 256138,
+                "user_type": "registered",
+                "accept_rate": 77,
+                "profile_image": "https://www.gravatar.com/avatar/ed9e8c0ff767e38f8fade11f5af00a45?s=128&d=identicon&r=PG",
+                "display_name": "rubenvb",
+                "link": "https://stackoverflow.com/users/256138/rubenvb"
+            },
+            "is_answered": true,
+            "view_count": 56,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1523543114,
+            "creation_date": 1523538108,
+            "last_edit_date": 1523543114,
+            "question_id": 49797286,
+            "body_markdown": "Why are structured bindings defined through a uniquely named variable and all the vague &quot;name is bound to&quot; language?\r\n\r\nI personally thought structured bindings worked as follows. Given a struct:\r\n\r\n    struct Bla\r\n    {\r\n        int i;\r\n        short&amp; s;\r\n        double* d;\r\n    } bla;\r\n\r\nThe following:\r\n\r\n    cv-auto ref-operator [a, b, c] = bla;\r\n\r\nis (roughly) equivalent to\r\n\r\n    cv-auto ref-operator a = bla.i;\r\n    cv-auto ref-operator b = bla.s;\r\n    cv-auto ref-operator c = bla.d;\r\n\r\nAnd the equivalent expansions for arrays and tuples.\r\nBut apparently, that would be too simple and there&#39;s all this vague special language used to describe what needs to happen.\r\n\r\nSo I&#39;m clearly missing something, but what is the exact case where a well-defined expansion in the sense of, let&#39;s say, fold expressions, which a lot simpler to read up on in standardese?\r\n\r\nIt seems all the other behaviour of the variables defined by a structured binding actually follow the as-if simple expansion &quot;rule&quot; I&#39;d think would be used to define the concept.",
+            "link": "https://stackoverflow.com/questions/49797286/why-are-structured-bindings-defined-in-terms-of-a-uniquely-named-variable",
+            "title": "Why are structured bindings defined in terms of a uniquely named variable?",
+            "body": "<p>Why are structured bindings defined through a uniquely named variable and all the vague \"name is bound to\" language?</p>\n\n<p>I personally thought structured bindings worked as follows. Given a struct:</p>\n\n<pre><code>struct Bla\n{\n    int i;\n    short&amp; s;\n    double* d;\n} bla;\n</code></pre>\n\n<p>The following:</p>\n\n<pre><code>cv-auto ref-operator [a, b, c] = bla;\n</code></pre>\n\n<p>is (roughly) equivalent to</p>\n\n<pre><code>cv-auto ref-operator a = bla.i;\ncv-auto ref-operator b = bla.s;\ncv-auto ref-operator c = bla.d;\n</code></pre>\n\n<p>And the equivalent expansions for arrays and tuples.\nBut apparently, that would be too simple and there's all this vague special language used to describe what needs to happen.</p>\n\n<p>So I'm clearly missing something, but what is the exact case where a well-defined expansion in the sense of, let's say, fold expressions, which a lot simpler to read up on in standardese?</p>\n\n<p>It seems all the other behaviour of the variables defined by a structured binding actually follow the as-if simple expansion \"rule\" I'd think would be used to define the concept.</p>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "sql-server",
+                "performance"
+            ],
+            "owner": {
+                "reputation": 312,
+                "user_id": 274403,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://i.stack.imgur.com/4Qvtc.png?s=128&g=1",
+                "display_name": "Per G",
+                "link": "https://stackoverflow.com/users/274403/per-g"
+            },
+            "is_answered": false,
+            "view_count": 42,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523543113,
+            "creation_date": 1523534345,
+            "last_edit_date": 1523535191,
+            "question_id": 49795971,
+            "body_markdown": "I have a temp table full of GUIDs ##TempCleanseTheseCustomers.\r\n\r\nI want to delete several related tables to a customer table. Around 30 related tables. Here is some examples:\r\n\r\n\r\n    Delete from AddressHistory\r\n    Where CustomerId in (select CustomerId From ##TempCleanseTheseCustomers)\r\n\r\n    Delete from Address\r\n    Where CustomerId in (select CustomerId From ##TempCleanseTheseCustomers)\r\n\r\n\r\n    DECLARE @MessageMessageId uniqueidentifier\r\n    set @MessageMessageId = \r\n    (\r\n    SELECT        TOP (1)  Message.MessageId\r\n    FROM            Customer INNER JOIN\r\n                         CustomerMessage ON Customer.CustomerId = \r\n    CustomerMessage.CustomerId INNER JOIN\r\n                         Message ON CustomerMessage.MessageId = \r\n    Message.MessageId\r\n    Where Customer.CustomerId in (select CustomerId From \r\n    ##TempCleanseTheseCustomers)\r\n    )\r\n\r\n\r\n    Delete from MessageAttachment\r\n    Where MessageId = @MessageMessageId\r\n\r\n    Delete from Message\r\n    Where MessageId = @MessageMessageId\r\n\r\nHow can make this run as fast as possible? (##TempCleanseTheseCustomers contains over 2 million rows)\r\n\r\nI have tried moving the table to memory. Running it via C# code etc.",
+            "link": "https://stackoverflow.com/questions/49795971/sql-performance-on-many-deletes",
+            "title": "SQL performance on many deletes",
+            "body": "<p>I have a temp table full of GUIDs ##TempCleanseTheseCustomers.</p>\n\n<p>I want to delete several related tables to a customer table. Around 30 related tables. Here is some examples:</p>\n\n<pre><code>Delete from AddressHistory\nWhere CustomerId in (select CustomerId From ##TempCleanseTheseCustomers)\n\nDelete from Address\nWhere CustomerId in (select CustomerId From ##TempCleanseTheseCustomers)\n\n\nDECLARE @MessageMessageId uniqueidentifier\nset @MessageMessageId = \n(\nSELECT        TOP (1)  Message.MessageId\nFROM            Customer INNER JOIN\n                     CustomerMessage ON Customer.CustomerId = \nCustomerMessage.CustomerId INNER JOIN\n                     Message ON CustomerMessage.MessageId = \nMessage.MessageId\nWhere Customer.CustomerId in (select CustomerId From \n##TempCleanseTheseCustomers)\n)\n\n\nDelete from MessageAttachment\nWhere MessageId = @MessageMessageId\n\nDelete from Message\nWhere MessageId = @MessageMessageId\n</code></pre>\n\n<p>How can make this run as fast as possible? (##TempCleanseTheseCustomers contains over 2 million rows)</p>\n\n<p>I have tried moving the table to memory. Running it via C# code etc.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "linux",
+                "loops",
+                "networking",
+                "ping"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9571664,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/734861427bcf9f39094646574b2f0edf?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Alec M",
+                "link": "https://stackoverflow.com/users/9571664/alec-m"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523543112,
+            "creation_date": 1523542081,
+            "question_id": 49798741,
+            "body_markdown": "I wrote a brief python script to read through a text file containing multiple remote server IP addresses, I&#39;m wanting to ping each address then print which IPs are not reachable and which are. \r\n\r\n    import subprocess\r\n    `import os\r\n    response = subprocess.call([&#39;ping&#39;, &#39;-c&#39;, &#39;3&#39;])\r\n    file = open(&#39;IPlist.txt&#39;, &quot;r&quot;)\r\n    def check_IP_from_file(filename):\r\n    for lines in file:\r\n    ping_reply = subprocess.call([&#39;ping&#39;, &#39;-c&#39;, &#39;3&#39;])\r\n    if response == 0:\r\n    print lines, ping_reply\r\n    else: \r\n      print lines, &quot;is down!\r\n\r\n-------\r\n\r\nMy output looks like: \r\n\r\n    Usage: ping [-aAbBdDfhLnOqrRUvV] [-c count] [-i interval] [-I interface]\r\n    [-m mark] [-M pmtudisc_option] [-l preload] [-p pattern] [-Q tos]\r\n    [-s packetsize] [-S sndbuf] [-t ttl] [-T timestamp_option]\r\n    [-w deadline] [-W timeout] [hop1 ...]\r\n    destination\r\n    10.208.132.184 is down\r\n\r\n        \r\n\r\nIt seems to only check the last IP on the List and Spits out a bunch of options for Ping&#39;s usage. in my script I do have Ping options defined. this is where I am very confused. I&#39;m fairly new to python, so I&#39;m okay with being called a noob, just please point me in the right direction.",
+            "link": "https://stackoverflow.com/questions/49798741/troubleshooting-script-to-ping-multiple-remote-servers-with-python",
+            "title": "Troubleshooting Script to ping multiple remote servers with python",
+            "body": "<p>I wrote a brief python script to read through a text file containing multiple remote server IP addresses, I'm wanting to ping each address then print which IPs are not reachable and which are. </p>\n\n<pre><code>import subprocess\n`import os\nresponse = subprocess.call(['ping', '-c', '3'])\nfile = open('IPlist.txt', \"r\")\ndef check_IP_from_file(filename):\nfor lines in file:\nping_reply = subprocess.call(['ping', '-c', '3'])\nif response == 0:\nprint lines, ping_reply\nelse: \n  print lines, \"is down!\n</code></pre>\n\n<hr>\n\n<p>My output looks like: </p>\n\n<pre><code>Usage: ping [-aAbBdDfhLnOqrRUvV] [-c count] [-i interval] [-I interface]\n[-m mark] [-M pmtudisc_option] [-l preload] [-p pattern] [-Q tos]\n[-s packetsize] [-S sndbuf] [-t ttl] [-T timestamp_option]\n[-w deadline] [-W timeout] [hop1 ...]\ndestination\n10.208.132.184 is down\n</code></pre>\n\n<p>It seems to only check the last IP on the List and Spits out a bunch of options for Ping's usage. in my script I do have Ping options defined. this is where I am very confused. I'm fairly new to python, so I'm okay with being called a noob, just please point me in the right direction.</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "android-studio",
+                "notifications"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9636730,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-Y0P7U_3j0Qw/AAAAAAAAAAI/AAAAAAAAAOE/9wZ2u_gU4tY/photo.jpg?sz=128",
+                "display_name": "Mohana Priya",
+                "link": "https://stackoverflow.com/users/9636730/mohana-priya"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523543101,
+            "creation_date": 1523543101,
+            "question_id": 49799111,
+            "body_markdown": "I want to send a notification dynamically regarding the availability of the product to a customer in android app.It should check the db whether the selected product is available or not and send the notification to the customer.Can anyone help me to solve this?",
+            "link": "https://stackoverflow.com/questions/49799111/sending-notification-dynamically-in-android-app",
+            "title": "Sending notification dynamically in android app",
+            "body": "<p>I want to send a notification dynamically regarding the availability of the product to a customer in android app.It should check the db whether the selected product is available or not and send the notification to the customer.Can anyone help me to solve this?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "android",
+                "loops"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 8674470,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-d1Kx4aevYBU/AAAAAAAAAAI/AAAAAAAABuo/U4IZnBidqpU/photo.jpg?sz=128",
+                "display_name": "Hakan Kuru",
+                "link": "https://stackoverflow.com/users/8674470/hakan-kuru"
+            },
+            "is_answered": true,
+            "view_count": 32,
+            "accepted_answer_id": 49798575,
+            "answer_count": 1,
+            "score": -3,
+            "last_activity_date": 1523543100,
+            "creation_date": 1523540848,
+            "last_edit_date": 1523541602,
+            "question_id": 49798283,
+            "body_markdown": "android java loop problem\r\njson url = https://jsonplaceholder.typicode.com/users\r\ngetting sample json url string...\r\nJSON= String json code;\r\n\r\n **? itx[&#39;name&#39;] not work ?**\r\n\r\n                        Gson gson = new Gson();\r\n                    Object[] arr = gson.fromJson(JSON, Object[].class);\r\n                    int length = arr.length;\r\n                    int i=0;\r\n                    System.out.println(&quot;itxcc = &quot; + length);\r\n                       for(Object itx : arr) {\r\n                           // Like want.. only itx[&#39;name&#39;] field\r\n                           System.out.println(&quot;itxcc = &quot; + itx.toString());\r\n\r\n                       }\r\nlog output..\r\nı like accecs print child only &quot;name&quot; key or anything\r\n\r\n    04-12 13:37:04.398 4030-4069/com.unovasyon.unovasyon I/System.out: itxcc = {id=1.0, name=Leanne Graham, username=Bret, email=Sincere@april.biz, address={street=Kulas Light, suite=Apt. 556, city=Gwenborough, zipcode=92998-3874, geo={lat=-37.3159, lng=81.1496}}, phone=1-770-736-8031 x56442, website=hildegard.org, company={name=Romaguera-Crona, catchPhrase=Multi-layered client-server neural-net, bs=harness real-time e-markets}}\r\n    04-12 13:37:04.398 4030-4069/com.unovasyon.unovasyon I/System.out: itxcc = {id=2.0, name=Ervin Howell, username=Antonette, email=Shanna@melissa.tv, address={street=Victor Plains, suite=Suite 879, city=Wisokyburgh, zipcode=90566-7771, geo={lat=-43.9509, lng=-34.4618}}, phone=010-692-6593 x09125, website=anastasia.net, company={name=Deckow-Crist, catchPhrase=Proactive didactic contingency, bs=synergize scalable supply-chains}}\r\n    04-12 13:37:04.399 4030-4069/com.unovasyon.unovasyon I/System.out: itxcc = {id=3.0, name=Clementine Bauch, username=Samantha, email=Nathan@yesenia.net, address={street=Douglas Extension, suite=Suite 847, city=McKenziehaven, zipcode=59590-4157, geo={lat=-68.6102, lng=-47.0653}}, phone=1-463-123-4447, website=ramiro.info, company={name=Romaguera-Jacobson, catchPhrase=Face to face bifurcated interface, bs=e-enable strategic applications}}\r\n\r\nı am new learning easy example trying... \r\nLike want.. only itx[&#39;name&#39;] field or anythings",
+            "link": "https://stackoverflow.com/questions/49798283/object-array-loop",
+            "title": "Object-Array loop",
+            "body": "<p>android java loop problem\njson url = <a href=\"https://jsonplaceholder.typicode.com/users\" rel=\"nofollow noreferrer\">https://jsonplaceholder.typicode.com/users</a>\ngetting sample json url string...\nJSON= String json code;</p>\n\n<p><strong>? itx['name'] not work ?</strong></p>\n\n<pre><code>                    Gson gson = new Gson();\n                Object[] arr = gson.fromJson(JSON, Object[].class);\n                int length = arr.length;\n                int i=0;\n                System.out.println(\"itxcc = \" + length);\n                   for(Object itx : arr) {\n                       // Like want.. only itx['name'] field\n                       System.out.println(\"itxcc = \" + itx.toString());\n\n                   }\n</code></pre>\n\n<p>log output..\nı like accecs print child only \"name\" key or anything</p>\n\n<pre><code>04-12 13:37:04.398 4030-4069/com.unovasyon.unovasyon I/System.out: itxcc = {id=1.0, name=Leanne Graham, username=Bret, email=Sincere@april.biz, address={street=Kulas Light, suite=Apt. 556, city=Gwenborough, zipcode=92998-3874, geo={lat=-37.3159, lng=81.1496}}, phone=1-770-736-8031 x56442, website=hildegard.org, company={name=Romaguera-Crona, catchPhrase=Multi-layered client-server neural-net, bs=harness real-time e-markets}}\n04-12 13:37:04.398 4030-4069/com.unovasyon.unovasyon I/System.out: itxcc = {id=2.0, name=Ervin Howell, username=Antonette, email=Shanna@melissa.tv, address={street=Victor Plains, suite=Suite 879, city=Wisokyburgh, zipcode=90566-7771, geo={lat=-43.9509, lng=-34.4618}}, phone=010-692-6593 x09125, website=anastasia.net, company={name=Deckow-Crist, catchPhrase=Proactive didactic contingency, bs=synergize scalable supply-chains}}\n04-12 13:37:04.399 4030-4069/com.unovasyon.unovasyon I/System.out: itxcc = {id=3.0, name=Clementine Bauch, username=Samantha, email=Nathan@yesenia.net, address={street=Douglas Extension, suite=Suite 847, city=McKenziehaven, zipcode=59590-4157, geo={lat=-68.6102, lng=-47.0653}}, phone=1-463-123-4447, website=ramiro.info, company={name=Romaguera-Jacobson, catchPhrase=Face to face bifurcated interface, bs=e-enable strategic applications}}\n</code></pre>\n\n<p>ı am new learning easy example trying... \nLike want.. only itx['name'] field or anythings</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "php",
+                "python",
+                "django",
+                "html5"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 6150178,
+                "user_type": "registered",
+                "accept_rate": 25,
+                "profile_image": "https://graph.facebook.com/1743668519185712/picture?type=large",
+                "display_name": "William Jair Davila Vargas",
+                "link": "https://stackoverflow.com/users/6150178/william-jair-davila-vargas"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1523543099,
+            "creation_date": 1523543099,
+            "question_id": 49799107,
+            "body_markdown": "Good morning, my question is this: How can I transform the following PHP codes to a django view? I&#39;m transferring the following code [https://github.com/adolfintel/speedtest][1] to get a speed test but it&#39;s done in php.\r\n\r\n=========================================================================\r\n\r\nC&#243;digo 1\r\nDetalle de c&#243;digo de php file garbage.php\r\n\r\n    // Disable Compression\r\n            @ini_set(&#39;zlib.output_compression&#39;, &#39;Off&#39;);\r\n            @ini_set(&#39;output_buffering&#39;, &#39;Off&#39;);\r\n            @ini_set(&#39;output_handler&#39;, &#39;&#39;);\r\n            // Headers\r\n            header(&#39;HTTP/1.1 200 OK&#39;);\r\n            // Download follows...\r\n            header(&#39;Content-Description: File Transfer&#39;);\r\n            header(&#39;Content-Type: application/octet-stream&#39;);\r\n            header(&#39;Content-Disposition: attachment; filename=random.dat&#39;);\r\n            header(&#39;Content-Transfer-Encoding: binary&#39;);\r\n            // Never cache me\r\n            header(&#39;Cache-Control: no-store, no-cache, must-revalidate, max-age=0&#39;);\r\n            header(&#39;Cache-Control: post-check=0, pre-check=0&#39;, false);\r\n            header(&#39;Pragma: no-cache&#39;);\r\n            // Generate data\r\n            $data=openssl_random_pseudo_bytes(1048576);\r\n            // Deliver chunks of 1048576 bytes\r\n            $chunks=isset($_GET[&#39;ckSize&#39;]) ? intval($_GET[&#39;ckSize&#39;]) : 4;\r\n            if(empty($chunks)){$chunks = 4;}\r\n            if($chunks&gt;100){$chunks = 100;}\r\n            for($i=0;$i&lt;$chunks;$i++){\r\n                echo $data;\r\n                flush();\r\n            }\r\n\r\n=========================================================================\r\n\r\nC&#243;digo 2\r\nDetalle de c&#243;digo de php file empty.php\r\n\r\n    header( &quot;HTTP/1.1 200 OK&quot; );\r\n    header(&quot;Cache-Control: no-store, no-cache, must-revalidate, max-age=0&quot;);\r\n    header(&quot;Cache-Control: post-check=0, pre-check=0&quot;, false);\r\n    header(&quot;Pragma: no-cache&quot;);\r\n    header(&quot;Connection: keep-alive&quot;);\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49799107/php-speed-test-2-django-view",
+            "title": "PHP speed test 2 django view",
+            "body": "<p>Good morning, my question is this: How can I transform the following PHP codes to a django view? I'm transferring the following code [<a href=\"https://github.com/adolfintel/speedtest][1]\" rel=\"nofollow noreferrer\">https://github.com/adolfintel/speedtest][1]</a> to get a speed test but it's done in php.</p>\n\n<p>=========================================================================</p>\n\n<p>Código 1\nDetalle de código de php file garbage.php</p>\n\n<pre><code>// Disable Compression\n        @ini_set('zlib.output_compression', 'Off');\n        @ini_set('output_buffering', 'Off');\n        @ini_set('output_handler', '');\n        // Headers\n        header('HTTP/1.1 200 OK');\n        // Download follows...\n        header('Content-Description: File Transfer');\n        header('Content-Type: application/octet-stream');\n        header('Content-Disposition: attachment; filename=random.dat');\n        header('Content-Transfer-Encoding: binary');\n        // Never cache me\n        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');\n        header('Cache-Control: post-check=0, pre-check=0', false);\n        header('Pragma: no-cache');\n        // Generate data\n        $data=openssl_random_pseudo_bytes(1048576);\n        // Deliver chunks of 1048576 bytes\n        $chunks=isset($_GET['ckSize']) ? intval($_GET['ckSize']) : 4;\n        if(empty($chunks)){$chunks = 4;}\n        if($chunks&gt;100){$chunks = 100;}\n        for($i=0;$i&lt;$chunks;$i++){\n            echo $data;\n            flush();\n        }\n</code></pre>\n\n<p>=========================================================================</p>\n\n<p>Código 2\nDetalle de código de php file empty.php</p>\n\n<pre><code>header( \"HTTP/1.1 200 OK\" );\nheader(\"Cache-Control: no-store, no-cache, must-revalidate, max-age=0\");\nheader(\"Cache-Control: post-check=0, pre-check=0\", false);\nheader(\"Pragma: no-cache\");\nheader(\"Connection: keep-alive\");\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html",
+                "html-parsing"
+            ],
+            "owner": {
+                "reputation": 9,
+                "user_id": 5999743,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://lh4.googleusercontent.com/-WXwVzr-aVeI/AAAAAAAAAAI/AAAAAAAAe24/uV_Qd3Pbu-w/photo.jpg?sz=128",
+                "display_name": "EHazell",
+                "link": "https://stackoverflow.com/users/5999743/ehazell"
+            },
+            "is_answered": false,
+            "view_count": 36,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523543098,
+            "creation_date": 1523541289,
+            "last_edit_date": 1523543098,
+            "question_id": 49798466,
+            "body_markdown": "I&#39;m trying to declare a string in javascript that will consist of HTML and a javascript var to declare the ID.\r\n\r\nMy problem is that I keep seeing &quot;The server tag is not well formed&quot; OR &quot;Is not a valid identifier&quot;\r\n\r\nI believe this has something to do with the string/quotation configuration but I can&#39;t seem to find a clear answer.\r\n\r\n\r\nMy Problem\r\n    \r\n    var HTMLStr, newtbl = tbl + &quot;Table&quot;;\r\n    HTMLStr = &#39;&lt;tbody id=&quot;&#39; + newtbl + &#39;&quot; class=&quot;prodTbl&quot; runat=&quot;server&quot;&gt;&lt;tr&gt;&#39;;\r\n\r\nThis produces the following error:\r\n\r\n    Parser Error: &#39;&#39; + newtbl + &#39;&#39; is not a valid identifier.\r\n\r\nI see that in the error it changes the quotations and I&#39;ve tried switching the quotations multiple times between double and single quotes but nothing seems to be working.\r\n\r\nCan anyone provide some insight as to how I might be able to write this HTML string and declare the ID with a javascript variable??\r\n\r\nThanks again for all your help!\r\n\r\n________________________________Comment Answers/Edit________________________\r\n\r\nKolt Penny: So I am planning on assigning the string to a var which will then be assigned back to the DOM like such\r\n\r\n    $(&#39;#DOMName&#39;).html(HTMLStr);\r\nI also tried changing the &lt;tbody to &lt;table and still received &quot;server tag is not well formed&quot;\r\n\r\n---------------\r\nSvenWritesCode: The value of table in this instance is the string &quot;Salad&quot; which was passed to the function.\r\nAlso I did change the string to the indicated &lt;table id=&#39;&quot; + &quot;Test&quot; + &quot;&#39; class... and still received the error &quot;server tag is not well formed&quot;.\r\n\r\n(I am using asp.net as well this string would essentially be injected as a new table row in an asp.net table and will consist of a newly constructed table itself, resulting in the following)\r\n\r\n    asp:table\r\n       asp:tablerow\r\n          asp:tablecell /\r\n       /asp:tablerow\r\n       asp:tablerow\r\n          asp:tablecell\r\n             {HTML Table injection Point}\r\n          /asp:tablecell\r\n       /asp:tablerow\r\n    /asp:table       \r\n\r\n---------------\r\n",
+            "link": "https://stackoverflow.com/questions/49798466/building-html-as-string-with-variables-in-javascript",
+            "title": "Building HTML as String with Variables in Javascript",
+            "body": "<p>I'm trying to declare a string in javascript that will consist of HTML and a javascript var to declare the ID.</p>\n\n<p>My problem is that I keep seeing \"The server tag is not well formed\" OR \"Is not a valid identifier\"</p>\n\n<p>I believe this has something to do with the string/quotation configuration but I can't seem to find a clear answer.</p>\n\n<p>My Problem</p>\n\n<pre><code>var HTMLStr, newtbl = tbl + \"Table\";\nHTMLStr = '&lt;tbody id=\"' + newtbl + '\" class=\"prodTbl\" runat=\"server\"&gt;&lt;tr&gt;';\n</code></pre>\n\n<p>This produces the following error:</p>\n\n<pre><code>Parser Error: '' + newtbl + '' is not a valid identifier.\n</code></pre>\n\n<p>I see that in the error it changes the quotations and I've tried switching the quotations multiple times between double and single quotes but nothing seems to be working.</p>\n\n<p>Can anyone provide some insight as to how I might be able to write this HTML string and declare the ID with a javascript variable??</p>\n\n<p>Thanks again for all your help!</p>\n\n<p>________________________________Comment Answers/Edit________________________</p>\n\n<p>Kolt Penny: So I am planning on assigning the string to a var which will then be assigned back to the DOM like such</p>\n\n<pre><code>$('#DOMName').html(HTMLStr);\n</code></pre>\n\n<p>I also tried changing the \n\n<hr>\n\n<p>SvenWritesCode: The value of table in this instance is the string \"Salad\" which was passed to the function.\nAlso I did change the string to the indicated \n\n<p>(I am using asp.net as well this string would essentially be injected as a new table row in an asp.net table and will consist of a newly constructed table itself, resulting in the following)</p>\n\n<pre><code>asp:table\n   asp:tablerow\n      asp:tablecell /\n   /asp:tablerow\n   asp:tablerow\n      asp:tablecell\n         {HTML Table injection Point}\n      /asp:tablecell\n   /asp:tablerow\n/asp:table       \n</code></pre>\n\n<hr>\n"
+        },
+        {
+            "tags": [
+                "asp.net",
+                "asp.net-mvc"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9587245,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/994da4293cda16a7651640efae9c07b6?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Dmytro",
+                "link": "https://stackoverflow.com/users/9587245/dmytro"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523543094,
+            "creation_date": 1523543094,
+            "question_id": 49799110,
+            "body_markdown": "I am about to maintain an old Web application that has WebForms projects. I need to add a new project to the application. Can it in any way be an MVC Core project? I mean, can an MVC Core project co-exist in the same application with WebForms projects?",
+            "link": "https://stackoverflow.com/questions/49799110/using-net-core-project-with-web-forms-projects",
+            "title": "Using .Net Core project with Web Forms projects",
+            "body": "<p>I am about to maintain an old Web application that has WebForms projects. I need to add a new project to the application. Can it in any way be an MVC Core project? I mean, can an MVC Core project co-exist in the same application with WebForms projects?</p>\n"
+        },
+        {
+            "tags": [
+                "freemarker"
+            ],
+            "owner": {
+                "reputation": 22,
+                "user_id": 5170379,
+                "user_type": "registered",
+                "accept_rate": 40,
+                "profile_image": "https://graph.facebook.com/878156748934267/picture?type=large",
+                "display_name": "Robson Hermes",
+                "link": "https://stackoverflow.com/users/5170379/robson-hermes"
+            },
+            "is_answered": true,
+            "view_count": 11,
+            "accepted_answer_id": 49799106,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523543094,
+            "creation_date": 1523539404,
+            "question_id": 49797755,
+            "body_markdown": "How do I create a raw String literal that contains quotes?\r\n\r\nDocumentation says that:\r\n\r\n    ${r&quot;${foo}&quot;}\r\n\r\nwill print out:\r\n\r\n    ${foo}\r\n\r\n\r\nBut what I need is to print out:\r\n\r\n    ${foo&quot;bar&quot;}",
+            "link": "https://stackoverflow.com/questions/49797755/how-to-create-raw-string-literal-with-quote",
+            "title": "How to create raw string literal with quote?",
+            "body": "<p>How do I create a raw String literal that contains quotes?</p>\n\n<p>Documentation says that:</p>\n\n<pre><code>${r\"${foo}\"}\n</code></pre>\n\n<p>will print out:</p>\n\n<pre><code>${foo}\n</code></pre>\n\n<p>But what I need is to print out:</p>\n\n<pre><code>${foo\"bar\"}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "android",
+                "firebase",
+                "crashlytics",
+                "crashlytics-android"
+            ],
+            "owner": {
+                "reputation": 450,
+                "user_id": 5153345,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/4Y9ln.jpg?s=128&g=1",
+                "display_name": "Marcello Galhardo",
+                "link": "https://stackoverflow.com/users/5153345/marcello-galhardo"
+            },
+            "is_answered": false,
+            "view_count": 34,
+            "answer_count": 0,
+            "score": 4,
+            "last_activity_date": 1523543089,
+            "creation_date": 1523461478,
+            "last_edit_date": 1523543089,
+            "question_id": 49779331,
+            "body_markdown": "**Problem:** I’m working in a legacy project (it’s a very specific project) that require us to have a *Custom Exception Handler* that intercept an exception, kills the App before the crash occurs and restart the Application (without the crash dialog appears).\r\n\r\n**What I tried:**\r\n\r\nI&#39;m using the following Custom Exception Handler to restart the Application process:\r\n\r\n    public class UncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {\r\n    \r\n        (…)\r\n    \r\n        @Override\r\n        public void uncaughtException(final Thread thread, final Throwable throwable) {\r\n            (…)\r\n    \r\n            AppUtils.restartApplication(context);\r\n        }\r\n    \r\n    }\r\n\r\nAnd this is the `AppUtils.restartApplication(context)` code:\r\n\r\n\r\n    public final class AppUtils {\r\n    \r\n        (…)\r\n    \r\n        public static void restartApplication(@NonNull final Context context) {\r\n            startApplication(context);\r\n            closeApplication();\r\n        }\r\n    \r\n        private static void startApplication(@NonNull final Context context) {\r\n            final Intent rescueIntent = new Intent(context, Activity.class);\r\n            rescueIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);\r\n    \r\n            final PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, rescueIntent, rescueIntent.getFlags());\r\n            final AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);\r\n            alarmManager.set(AlarmManager.RTC, DateTime.now().plusSeconds(1).getMillis(), pendingIntent);\r\n        }\r\n    \r\n        private static void closeApplication() {\r\n            Process.killProcess(Process.myPid());\r\n            System.exit(SYSTEM_EXIT_STATUS_FORCE_QUIT);\r\n        }\r\n    \r\n    }\r\n\r\nBefore we was using Splunk and it was working very fine. But now I need to add support to *Firebase Crashlytics* and *Crashlytics* has it owns ExceptionHandler. \r\n\r\nSo I came to two scenarios that doesn&#39;t work for me:\r\n\r\n 1. Don&#39;t restart the App, so I can log it normally with Firebase;\r\n 2. Restart the App, so I can&#39;t log it with Firebase;\r\n\r\nI tried to bypass it using the `logException` method from Crashlytics inside my Custom Exception Handler logging everything was a non-fatal error, but it didn&#39;t work very well: sometimes it log properly, sometimes doesn&#39;t. I believe this happens because of the async in the Firebase `inicialization` and `logException` method.\r\n\r\nI&#39;d appreciate any help or suggestion. Thank you.",
+            "link": "https://stackoverflow.com/questions/49779331/firebase-crashlytics-using-custom-exception-handler-to-restart-the-app",
+            "title": "Firebase Crashlytics using Custom Exception Handler to restart the App",
+            "body": "<p><strong>Problem:</strong> I’m working in a legacy project (it’s a very specific project) that require us to have a <em>Custom Exception Handler</em> that intercept an exception, kills the App before the crash occurs and restart the Application (without the crash dialog appears).</p>\n\n<p><strong>What I tried:</strong></p>\n\n<p>I'm using the following Custom Exception Handler to restart the Application process:</p>\n\n<pre><code>public class UncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {\n\n    (…)\n\n    @Override\n    public void uncaughtException(final Thread thread, final Throwable throwable) {\n        (…)\n\n        AppUtils.restartApplication(context);\n    }\n\n}\n</code></pre>\n\n<p>And this is the <code>AppUtils.restartApplication(context)</code> code:</p>\n\n<pre><code>public final class AppUtils {\n\n    (…)\n\n    public static void restartApplication(@NonNull final Context context) {\n        startApplication(context);\n        closeApplication();\n    }\n\n    private static void startApplication(@NonNull final Context context) {\n        final Intent rescueIntent = new Intent(context, Activity.class);\n        rescueIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);\n\n        final PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, rescueIntent, rescueIntent.getFlags());\n        final AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);\n        alarmManager.set(AlarmManager.RTC, DateTime.now().plusSeconds(1).getMillis(), pendingIntent);\n    }\n\n    private static void closeApplication() {\n        Process.killProcess(Process.myPid());\n        System.exit(SYSTEM_EXIT_STATUS_FORCE_QUIT);\n    }\n\n}\n</code></pre>\n\n<p>Before we was using Splunk and it was working very fine. But now I need to add support to <em>Firebase Crashlytics</em> and <em>Crashlytics</em> has it owns ExceptionHandler. </p>\n\n<p>So I came to two scenarios that doesn't work for me:</p>\n\n<ol>\n<li>Don't restart the App, so I can log it normally with Firebase;</li>\n<li>Restart the App, so I can't log it with Firebase;</li>\n</ol>\n\n<p>I tried to bypass it using the <code>logException</code> method from Crashlytics inside my Custom Exception Handler logging everything was a non-fatal error, but it didn't work very well: sometimes it log properly, sometimes doesn't. I believe this happens because of the async in the Firebase <code>inicialization</code> and <code>logException</code> method.</p>\n\n<p>I'd appreciate any help or suggestion. Thank you.</p>\n"
+        },
+        {
+            "tags": [
+                "nginx"
+            ],
+            "owner": {
+                "reputation": 56,
+                "user_id": 9316240,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/4382349d956a6c3c3d6e2d0f9e837c36?s=128&d=identicon&r=PG&f=1",
+                "display_name": "John Somen",
+                "link": "https://stackoverflow.com/users/9316240/john-somen"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523543086,
+            "creation_date": 1523535743,
+            "question_id": 49796436,
+            "body_markdown": "I am trying to proxy an internet website in nginx. I want to proxy a website so that the user will not realize that everything is proxied. All traffix goes through the proxy.\r\n\r\nLet&#39;s proxy Google. I have the following `nginx.conf`:\r\n\r\n\tevents {\r\n\t}\r\n\r\n\thttp {\r\n\t  upstream proxy {\r\n\t    server www.google.com;\r\n\t  }\r\n\r\n\t  server {\r\n\t    listen 80;\r\n\r\n\t    location / {\r\n\t      proxy_pass              http://proxy/;\r\n\t      proxy_redirect          off;\r\n\t      proxy_buffering         off;\r\n\t      proxy_request_buffering off;\r\n\t    }\r\n\t  }\r\n\t}\r\n\r\nWhen I go to my browser and open `http://localhost`, the google site (or at least, a google-lookalike site) opens but I get the following strange message:\r\n\r\n    The requested URL / was not found on this server. That’s all we know.\r\n\r\nWhy is that? How can I resolve this?",
+            "link": "https://stackoverflow.com/questions/49796436/i-am-trying-to-proxy-an-internet-website-in-a-local-nginx",
+            "title": "I am trying to proxy an internet website in a local nginx",
+            "body": "<p>I am trying to proxy an internet website in nginx. I want to proxy a website so that the user will not realize that everything is proxied. All traffix goes through the proxy.</p>\n\n<p>Let's proxy Google. I have the following <code>nginx.conf</code>:</p>\n\n<pre><code>events {\n}\n\nhttp {\n  upstream proxy {\n    server www.google.com;\n  }\n\n  server {\n    listen 80;\n\n    location / {\n      proxy_pass              http://proxy/;\n      proxy_redirect          off;\n      proxy_buffering         off;\n      proxy_request_buffering off;\n    }\n  }\n}\n</code></pre>\n\n<p>When I go to my browser and open <code>http://localhost</code>, the google site (or at least, a google-lookalike site) opens but I get the following strange message:</p>\n\n<pre><code>The requested URL / was not found on this server. That’s all we know.\n</code></pre>\n\n<p>Why is that? How can I resolve this?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "cordova",
+                "printing",
+                "phonegap",
+                "escpos"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 7717245,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10202891636688952/picture?type=large",
+                "display_name": "Marco Gon&#231;alves",
+                "link": "https://stackoverflow.com/users/7717245/marco-gon%c3%a7alves"
+            },
+            "is_answered": false,
+            "view_count": 5,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523543083,
+            "creation_date": 1523543083,
+            "question_id": 49799104,
+            "body_markdown": "I currently have a Cordova app which should print a receipt, and for that, I&#39;m using this [plugin][1] but unfortunately, whenever I call the Quick Printer it doesn&#39;t seem to be called. In theory, I should get a pop-up window to choose which printer to use, but nothing appears. \r\n\r\nThe QuickPrinter app does have a &quot;Test your printer&quot; function, which pretty much prints some test text, and that does work. The problem is when I print from MY app, it just doesn&#39;t call the QuickPrinter application. I&#39;ve tested with 3 different methods, all of them to no avail. \r\n\r\nHere is the code that I&#39;m using\r\n\r\n[SendToPrinter][2]\r\n\r\n[Accepting Orders][3]\r\n\r\n[config.xml][4]\r\n\r\nI know for a fact that the function SendToPrinter is running, but the code that should open the popup just doesn&#39;t work.\r\n\r\n  [1]: https://github.com/diegoveloper/quickprinter\r\n  [2]: https://i.stack.imgur.com/nfvvp.png\r\n  [3]: https://i.stack.imgur.com/HOkup.png\r\n  [4]: https://i.stack.imgur.com/yiFsv.png",
+            "link": "https://stackoverflow.com/questions/49799104/quick-printer-not-being-called-from-my-cordova-app",
+            "title": "Quick Printer not being called from my cordova app",
+            "body": "<p>I currently have a Cordova app which should print a receipt, and for that, I'm using this <a href=\"https://github.com/diegoveloper/quickprinter\" rel=\"nofollow noreferrer\">plugin</a> but unfortunately, whenever I call the Quick Printer it doesn't seem to be called. In theory, I should get a pop-up window to choose which printer to use, but nothing appears. </p>\n\n<p>The QuickPrinter app does have a \"Test your printer\" function, which pretty much prints some test text, and that does work. The problem is when I print from MY app, it just doesn't call the QuickPrinter application. I've tested with 3 different methods, all of them to no avail. </p>\n\n<p>Here is the code that I'm using</p>\n\n<p><a href=\"https://i.stack.imgur.com/nfvvp.png\" rel=\"nofollow noreferrer\">SendToPrinter</a></p>\n\n<p><a href=\"https://i.stack.imgur.com/HOkup.png\" rel=\"nofollow noreferrer\">Accepting Orders</a></p>\n\n<p><a href=\"https://i.stack.imgur.com/yiFsv.png\" rel=\"nofollow noreferrer\">config.xml</a></p>\n\n<p>I know for a fact that the function SendToPrinter is running, but the code that should open the popup just doesn't work.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "heap-memory",
+                "union-find"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9636380,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5c0db8aeab3411f31d94cb42ae41c8ff?s=128&d=identicon&r=PG&f=1",
+                "display_name": "shreyas divan",
+                "link": "https://stackoverflow.com/users/9636380/shreyas-divan"
+            },
+            "is_answered": false,
+            "view_count": 31,
+            "closed_date": 1523543771,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1523543079,
+            "creation_date": 1523538874,
+            "last_edit_date": 1523543079,
+            "question_id": 49797574,
+            "body_markdown": "In my Program, I get the &#39;java.lang.OutOfMemoryError: Java heap space&#39; error. \r\n\r\nThis starts occurring when my 2-d array size is more than 68. \r\n\r\nOne work-around is to increase the heap size. \r\n\r\nThough, how do I understand if I can solve this by optimizing the code itself rather than increasing the heap size? \r\n\r\nHere is a snippet of the class and the constructor:\r\n\r\n    public class Percolation \r\n    {\r\n\t    int arr[][];\r\n\t    int check[];\r\n\t    int count;\r\n\t    WUnion w;\r\n\t\r\n\t    Percolation(int n)\r\n\t    {\r\n\t\t    arr = new int[n][n]; \r\n\t\t    check = new int[n]; \r\n\t\t    w = new WUnion(n*n);\r\n\t\t    count = 0;\r\n\t    }\r\n    ....\r\n    }\r\n\r\n    public static void main(String[] args)\r\n\t{\r\n\t\tint dim = 68;\r\n\t\tdouble sum=0;\r\n\t\tdouble calc=0.0;\r\n\t\tint row=0;\r\n\t\tint col=0;\r\n\t\tint perCount=0;\r\n\t\tPercolation p;\r\n\t\tRandom rn = new Random();\r\n\t\tfor(int y =0; y &lt; 200; y++) //Number of samples for mean calc\r\n\t\t{\r\n\t\t\tp = new Percolation(dim);\r\n        .....\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49797574/java-heap-memory-optimization-without-increasing-heap-size",
+            "closed_reason": "duplicate",
+            "title": "java heap - Memory optimization without increasing heap size",
+            "body": "<p>In my Program, I get the 'java.lang.OutOfMemoryError: Java heap space' error. </p>\n\n<p>This starts occurring when my 2-d array size is more than 68. </p>\n\n<p>One work-around is to increase the heap size. </p>\n\n<p>Though, how do I understand if I can solve this by optimizing the code itself rather than increasing the heap size? </p>\n\n<p>Here is a snippet of the class and the constructor:</p>\n\n<pre><code>public class Percolation \n{\n    int arr[][];\n    int check[];\n    int count;\n    WUnion w;\n\n    Percolation(int n)\n    {\n        arr = new int[n][n]; \n        check = new int[n]; \n        w = new WUnion(n*n);\n        count = 0;\n    }\n....\n}\n\npublic static void main(String[] args)\n{\n    int dim = 68;\n    double sum=0;\n    double calc=0.0;\n    int row=0;\n    int col=0;\n    int perCount=0;\n    Percolation p;\n    Random rn = new Random();\n    for(int y =0; y &lt; 200; y++) //Number of samples for mean calc\n    {\n        p = new Percolation(dim);\n    .....\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "ms-access"
+            ],
+            "owner": {
+                "reputation": 20,
+                "user_id": 6883934,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10210043232975668/picture?type=large",
+                "display_name": "Joseph Thompson",
+                "link": "https://stackoverflow.com/users/6883934/joseph-thompson"
+            },
+            "is_answered": false,
+            "view_count": 30,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523543073,
+            "creation_date": 1523542718,
+            "last_edit_date": 1523543073,
+            "question_id": 49798982,
+            "body_markdown": "So I have 2 access databases, 1 has data, the other one has no data but contains all the tables and columns that the other database has and more. What I need to do is to grab all the columns from each of the tables in the second database, and add them if they are missing in the 1st database. How would you go about accomplishing this? I have looked online, but I can&#39;t find examples of this specific scenario. I&#39;ve found it where people add columns to databases but they are specific and known.\r\n\r\nI need to write this in C#, and using different database sets. ",
+            "link": "https://stackoverflow.com/questions/49798982/access-database-update-in-c",
+            "title": "Access Database Update in C#",
+            "body": "<p>So I have 2 access databases, 1 has data, the other one has no data but contains all the tables and columns that the other database has and more. What I need to do is to grab all the columns from each of the tables in the second database, and add them if they are missing in the 1st database. How would you go about accomplishing this? I have looked online, but I can't find examples of this specific scenario. I've found it where people add columns to databases but they are specific and known.</p>\n\n<p>I need to write this in C#, and using different database sets. </p>\n"
+        },
+        {
+            "tags": [
+                "firebase",
+                "google-bigquery",
+                "firebase-analytics"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 9476230,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Laurent Guerguy",
+                "link": "https://stackoverflow.com/users/9476230/laurent-guerguy"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523543067,
+            "creation_date": 1523542535,
+            "last_edit_date": 1523543067,
+            "question_id": 49798909,
+            "body_markdown": "I&#180;m trying to find a query using BigQuery to get the cohort of new active users that Firebase gives in Analytics &gt; Cohorts. I want to apply filters to the cohort (like as a function of geographic location...) and you can&#180;t do that in Firebase.\r\n\r\nI have a query for the weekly cohort of active users but I can&#180;t work out the one for new active users (i.e. only for users who use the App for the first time)\r\n\r\nI started from the answer given by [Mikhail Berlyant][1]  in [Firebase exported to BigQuery: retention cohorts query][2] and use the event automatically generated by Firebase called  `user_engagement`. \r\n\r\nBelow I put the bit I changed at the beginning of the original query:\r\n\r\n    WITH activities AS (\r\n      SELECT user_dim.app_info.app_instance_id AS id,\r\n        FORMAT_DATE(&#39;%Y-%W&#39;, PARSE_DATE(&#39;%Y%m%d&#39;, event.date)) AS period\r\n      FROM `database.app_events_*`,\r\n      UNNEST(event_dim) AS event\r\n      WHERE event.name = &quot;user_engagement&quot;\r\n      AND (_TABLE_SUFFIX BETWEEN &#39;20180205&#39; AND &#39;20180331&#39;)\r\n      GROUP BY id, period\r\n    ), cohorts AS (\r\n      \r\n    (…..)\r\n    \r\n    FROM retention\r\n    JOIN cohorts_size ON cohorts_size.cohort = retention.cohort\r\n    ORDER BY cohort, period_lag, period_label \r\n\r\n\r\nFor the new active users I need the users who trigger the  `first_open`  event (i.e. the first time they open the App) and then  `user_engagement`  events when they use the App again in the following weeks.\r\n\r\nI have tried replacing\r\n\r\n    WHERE event.name = &quot;user_engagement&quot;\r\n\r\nby \r\n\r\n     WHERE event.name = &#39;user_engagement&#39; \r\n      AND user_dim.app_info.app_instance_id IN (SELECT \r\n      user_dim.app_info.app_instance_id FROM UNNEST(event_dim) AS event \r\n      WHERE event.name = &#39;first_open&#39;)\r\n\r\n\r\nBut it only gives the users with the event `first_open`  and doesn&#180;t see the users with the event  `user_engagement` in the following weeks as you can see in the results below. The only `period_lag` returned is 0, which means that no user returns in the following weeks and I know from Firebase cohort this is not the case.\r\n\r\nResults:\r\n\r\nPivot table result of the query\r\n\r\n[![enter image description here][3]][3]\r\n\r\nAny idea what I am doing wrong?\r\n\r\n\r\n  [1]: https://stackoverflow.com/users/5221944/mikhail-berlyant\r\n  [2]: https://stackoverflow.com/questions/41509431/firebase-exported-to-bigquery-retention-cohorts-query\r\n  [3]: https://i.stack.imgur.com/X828M.jpg",
+            "link": "https://stackoverflow.com/questions/49798909/query-for-weekly-new-active-users-cohort-from-firebase-using-bigquery",
+            "title": "Query for weekly new active users cohort from Firebase using BigQuery",
+            "body": "<p>I´m trying to find a query using BigQuery to get the cohort of new active users that Firebase gives in Analytics > Cohorts. I want to apply filters to the cohort (like as a function of geographic location...) and you can´t do that in Firebase.</p>\n\n<p>I have a query for the weekly cohort of active users but I can´t work out the one for new active users (i.e. only for users who use the App for the first time)</p>\n\n<p>I started from the answer given by <a href=\"https://stackoverflow.com/users/5221944/mikhail-berlyant\">Mikhail Berlyant</a>  in <a href=\"https://stackoverflow.com/questions/41509431/firebase-exported-to-bigquery-retention-cohorts-query\">Firebase exported to BigQuery: retention cohorts query</a> and use the event automatically generated by Firebase called  <code>user_engagement</code>. </p>\n\n<p>Below I put the bit I changed at the beginning of the original query:</p>\n\n<pre><code>WITH activities AS (\n  SELECT user_dim.app_info.app_instance_id AS id,\n    FORMAT_DATE('%Y-%W', PARSE_DATE('%Y%m%d', event.date)) AS period\n  FROM `database.app_events_*`,\n  UNNEST(event_dim) AS event\n  WHERE event.name = \"user_engagement\"\n  AND (_TABLE_SUFFIX BETWEEN '20180205' AND '20180331')\n  GROUP BY id, period\n), cohorts AS (\n\n(…..)\n\nFROM retention\nJOIN cohorts_size ON cohorts_size.cohort = retention.cohort\nORDER BY cohort, period_lag, period_label \n</code></pre>\n\n<p>For the new active users I need the users who trigger the  <code>first_open</code>  event (i.e. the first time they open the App) and then  <code>user_engagement</code>  events when they use the App again in the following weeks.</p>\n\n<p>I have tried replacing</p>\n\n<pre><code>WHERE event.name = \"user_engagement\"\n</code></pre>\n\n<p>by </p>\n\n<pre><code> WHERE event.name = 'user_engagement' \n  AND user_dim.app_info.app_instance_id IN (SELECT \n  user_dim.app_info.app_instance_id FROM UNNEST(event_dim) AS event \n  WHERE event.name = 'first_open')\n</code></pre>\n\n<p>But it only gives the users with the event <code>first_open</code>  and doesn´t see the users with the event  <code>user_engagement</code> in the following weeks as you can see in the results below. The only <code>period_lag</code> returned is 0, which means that no user returns in the following weeks and I know from Firebase cohort this is not the case.</p>\n\n<p>Results:</p>\n\n<p>Pivot table result of the query</p>\n\n<p><a href=\"https://i.stack.imgur.com/X828M.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/X828M.jpg\" alt=\"enter image description here\"></a></p>\n\n<p>Any idea what I am doing wrong?</p>\n"
+        },
+        {
+            "tags": [
+                "python-3.x"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9632459,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1907745622631986/picture?type=large",
+                "display_name": "Himanshu Lagachu",
+                "link": "https://stackoverflow.com/users/9632459/himanshu-lagachu"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1523543055,
+            "creation_date": 1523475608,
+            "last_edit_date": 1523543055,
+            "question_id": 49783233,
+            "body_markdown": "I am trying to run this model of seed predation and population dynamics but I am new to coding and I am only getting one predation value that gets repeated over different generations. How can I get different predation values for different year?\r\nAlso, Is there an issue with the normalizing method used?\r\n\r\n\r\n    import numpy as np\r\n    import matplotlib.pyplot as plt\r\n\r\n    def is_odd(year):\r\n        return ((year % 2) == 1)\r\n\r\n    def reproduction(p_iter, year, dead):\r\n        if is_odd(year):\r\n            predation = dead\r\n            seedsProd = p_iter*s_oddd       \r\n            seedsPred = K*predation*200*(seedsProd/np.sum(seedsProd))\r\n            return (seedsProd - seedsPred) + np.array([0,0,p_iter[2]])\r\n        else:\r\n            predation = dead\r\n            seedsProd = p_iter*s_even\r\n            seedsPred = K*predation*200*(seedsProd/np.sum(seedsProd))\r\n            return (seedsProd - seedsPred) +np.array([0,p_iter[1],0])\r\n    def normalize(p_iter):\r\n        if is_odd(year):\r\n            x = np.copy(p_iter)\r\n            x[2] = 0\r\n            x = (K-p_iter[2]) * x / sum(x)\r\n            x[2] = p_iter[2]\r\n            return x\r\n        else:\r\n            x = np.copy(p_iter)\r\n            x[1] = 0\r\n            x = (K-p_iter[1]) * x / sum(x)\r\n            x[1] = p_iter[1]\r\n            return x\r\n\r\nPredation is defined here:\r\n\r\n    def predation():\r\n        return (np.array(np.round(np.random.uniform(0.4,0.6),2)))\r\n\r\n    #max_years\r\n    Y = 100\r\n\r\n    #carrying capacity\r\n    K = 1000\r\n\r\n    #initial populaton\r\n    p_1, p_2, p_3 = 998., 1., 1.\r\n\r\n    #seed released per plant\r\n    s_1, s_2, s_3 = 200, 260, 260\r\n\r\n    p_init = np.array([p_1, p_2, p_3],dtype=float)\r\n    s_oddd = np.array([s_1, s_2, 0.0])\r\n    s_even = np.array([s_1, 0.0, s_3])\r\n    n = len(p_init)\r\n    m = np.append(p_init,s_oddd)\r\n\r\n    p_iter = p_init\r\n    dead = 0\r\n    norm = 0\r\n\r\n    for year in range(1,Y+1):\r\n        dead = predation()\r\n        seeds = reproduction(p_iter, year, dead)\r\n        p_iter = np.maximum(seeds,np.zeros(p_iter.shape))\r\n        p_iter = normalize(p_iter)\r\n    \r\n        m = np.vstack((m, [*p_iter]+[*seeds] ))\r\n",
+            "link": "https://stackoverflow.com/questions/49783233/how-to-get-different-predation-values-every-year-for-my-simulation",
+            "title": "How to get different predation values every year for my simulation?",
+            "body": "<p>I am trying to run this model of seed predation and population dynamics but I am new to coding and I am only getting one predation value that gets repeated over different generations. How can I get different predation values for different year?\nAlso, Is there an issue with the normalizing method used?</p>\n\n<pre><code>import numpy as np\nimport matplotlib.pyplot as plt\n\ndef is_odd(year):\n    return ((year % 2) == 1)\n\ndef reproduction(p_iter, year, dead):\n    if is_odd(year):\n        predation = dead\n        seedsProd = p_iter*s_oddd       \n        seedsPred = K*predation*200*(seedsProd/np.sum(seedsProd))\n        return (seedsProd - seedsPred) + np.array([0,0,p_iter[2]])\n    else:\n        predation = dead\n        seedsProd = p_iter*s_even\n        seedsPred = K*predation*200*(seedsProd/np.sum(seedsProd))\n        return (seedsProd - seedsPred) +np.array([0,p_iter[1],0])\ndef normalize(p_iter):\n    if is_odd(year):\n        x = np.copy(p_iter)\n        x[2] = 0\n        x = (K-p_iter[2]) * x / sum(x)\n        x[2] = p_iter[2]\n        return x\n    else:\n        x = np.copy(p_iter)\n        x[1] = 0\n        x = (K-p_iter[1]) * x / sum(x)\n        x[1] = p_iter[1]\n        return x\n</code></pre>\n\n<p>Predation is defined here:</p>\n\n<pre><code>def predation():\n    return (np.array(np.round(np.random.uniform(0.4,0.6),2)))\n\n#max_years\nY = 100\n\n#carrying capacity\nK = 1000\n\n#initial populaton\np_1, p_2, p_3 = 998., 1., 1.\n\n#seed released per plant\ns_1, s_2, s_3 = 200, 260, 260\n\np_init = np.array([p_1, p_2, p_3],dtype=float)\ns_oddd = np.array([s_1, s_2, 0.0])\ns_even = np.array([s_1, 0.0, s_3])\nn = len(p_init)\nm = np.append(p_init,s_oddd)\n\np_iter = p_init\ndead = 0\nnorm = 0\n\nfor year in range(1,Y+1):\n    dead = predation()\n    seeds = reproduction(p_iter, year, dead)\n    p_iter = np.maximum(seeds,np.zeros(p_iter.shape))\n    p_iter = normalize(p_iter)\n\n    m = np.vstack((m, [*p_iter]+[*seeds] ))\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "asp.net",
+                "webpack",
+                "yarn"
+            ],
+            "owner": {
+                "reputation": 4977,
+                "user_id": 711674,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/c7560ae5fac8aca6de538d5c28232b1c?s=128&d=identicon&r=PG",
+                "display_name": "Will P.",
+                "link": "https://stackoverflow.com/users/711674/will-p"
+            },
+            "is_answered": false,
+            "view_count": 3,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523543049,
+            "creation_date": 1523543049,
+            "question_id": 49799096,
+            "body_markdown": "I have a ASP.NET 4.5 web project which is being developed in Visual Studio 2017.  I am running webpack to transpile less, typescript, and standalone vue files in the project.  This is being done by running `yarn run build:$(ConfigurationName)` in a pre-build event, which ties to scripts in my package.json which looks like so:\r\n\r\n    &quot;scripts&quot;: {\r\n      &quot;build:Debug&quot;: &quot;webpack --config webpack.dev.config.js&quot;,\r\n      &quot;build:Release&quot;: &quot;webpack --config webpack.prod.config.js&quot;\r\n    }\r\n\r\nThis is all working well enough.  I would like to extend this setup to watch my solution for changes to the ts, less, and vue files, and trigger the webpack execution when changes occur.  I have found that webpack has a [watch][1] property which should in theory do what I am looking for.  However, when I enable it, it seems to perform the watching on the same thread as the build process, which prevents it from ever completing the build.\r\n\r\nIs there a setting or another way to have webpack or some other tool watch my project&#39;s ts/less/vue files for changes and trigger the webpack call?  Or maybe a way to move the initial call to webpack to a different thread than the build thread?  I&#39;d like to avoid using any extensions or outside applications to keep things simpler for the other developers.\r\n\r\nThanks in advance.\r\n\r\n  [1]: https://webpack.js.org/configuration/watch/",
+            "link": "https://stackoverflow.com/questions/49799096/how-to-run-webpack-with-watch-true-without-blocking-build-thread",
+            "title": "How to run webpack with watch=true without blocking build thread",
+            "body": "<p>I have a ASP.NET 4.5 web project which is being developed in Visual Studio 2017.  I am running webpack to transpile less, typescript, and standalone vue files in the project.  This is being done by running <code>yarn run build:$(ConfigurationName)</code> in a pre-build event, which ties to scripts in my package.json which looks like so:</p>\n\n<pre><code>\"scripts\": {\n  \"build:Debug\": \"webpack --config webpack.dev.config.js\",\n  \"build:Release\": \"webpack --config webpack.prod.config.js\"\n}\n</code></pre>\n\n<p>This is all working well enough.  I would like to extend this setup to watch my solution for changes to the ts, less, and vue files, and trigger the webpack execution when changes occur.  I have found that webpack has a <a href=\"https://webpack.js.org/configuration/watch/\" rel=\"nofollow noreferrer\">watch</a> property which should in theory do what I am looking for.  However, when I enable it, it seems to perform the watching on the same thread as the build process, which prevents it from ever completing the build.</p>\n\n<p>Is there a setting or another way to have webpack or some other tool watch my project's ts/less/vue files for changes and trigger the webpack call?  Or maybe a way to move the initial call to webpack to a different thread than the build thread?  I'd like to avoid using any extensions or outside applications to keep things simpler for the other developers.</p>\n\n<p>Thanks in advance.</p>\n"
+        },
+        {
+            "tags": [
+                "angularjs",
+                "mongodb",
+                "mongoose"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 8479890,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-ijV_n8pRV2g/AAAAAAAAAAI/AAAAAAAAAPc/3_2ONsDYO4c/photo.jpg?sz=128",
+                "display_name": "James Brett",
+                "link": "https://stackoverflow.com/users/8479890/james-brett"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523543044,
+            "creation_date": 1523543044,
+            "question_id": 49799094,
+            "body_markdown": "I am trying to get a single document by ID from a $http request using mongoose and Angularjs (learning Angular CLI). Any help would be greatly appreciated.\r\n\r\nI can get the id but cannot figure out how to pass it to the routing\r\n\r\nController for Single Article View:\r\n\r\n    let _id = $routeParams;\r\n\r\n    \r\n    console.log(_id);\r\n\r\n    $http({\r\n        cache: true,\r\n        method: &#39;GET&#39;,\r\n        url: &#39;/article/:id&#39;,\r\n        params: { _id }\r\n    }).then(function successCallback(res) {\r\n        $scope.article = res.data;\r\n    }).catch(function errorCallback(err) {\r\n        if (err) {\r\n            alert(&#39;THERE WAS AN ERROR&#39;);\r\n        }\r\n    })\r\n\r\nHtml:\r\n   \r\n            &lt;a id=&quot;modalButton&quot; ng-href=&quot;/articles/{{article._id}}&quot;&gt;READ MORE...&lt;/a&gt;\r\n\r\n\r\nMongoose Routing: \r\n\r\n    router.get(&#39;/:id&#39;, function(req, res, next){\r\n    Article.findById(req.params.id, function(err, article){\r\n            if(err) {\r\n            return err;\r\n         } else {\r\n            res.json(article);\r\n            console.log(article);\r\n       } \r\n    });\r\n    });\r\n\r\nArticle Scheme: \r\n\r\n    var ArticleSchema = new mongoose.Schema({\r\n    image: String,\r\n    title: String,\r\n    about: String,\r\n    article: String,\r\n    _id: String\r\n    });\r\n\r\n    module.exports = mongoose.model(&#39;Article&#39;, ArticleSchema);\r\n\r\n\r\nI would really appreciate any help. This has been giving me trouble for a week now.",
+            "link": "https://stackoverflow.com/questions/49799094/how-to-get-document-by-id-using-mongoose-with-angularjs",
+            "title": "How to get document by ID using mongoose with Angularjs",
+            "body": "<p>I am trying to get a single document by ID from a $http request using mongoose and Angularjs (learning Angular CLI). Any help would be greatly appreciated.</p>\n\n<p>I can get the id but cannot figure out how to pass it to the routing</p>\n\n<p>Controller for Single Article View:</p>\n\n<pre><code>let _id = $routeParams;\n\n\nconsole.log(_id);\n\n$http({\n    cache: true,\n    method: 'GET',\n    url: '/article/:id',\n    params: { _id }\n}).then(function successCallback(res) {\n    $scope.article = res.data;\n}).catch(function errorCallback(err) {\n    if (err) {\n        alert('THERE WAS AN ERROR');\n    }\n})\n</code></pre>\n\n<p>Html:</p>\n\n<pre><code>        &lt;a id=\"modalButton\" ng-href=\"/articles/{{article._id}}\"&gt;READ MORE...&lt;/a&gt;\n</code></pre>\n\n<p>Mongoose Routing: </p>\n\n<pre><code>router.get('/:id', function(req, res, next){\nArticle.findById(req.params.id, function(err, article){\n        if(err) {\n        return err;\n     } else {\n        res.json(article);\n        console.log(article);\n   } \n});\n});\n</code></pre>\n\n<p>Article Scheme: </p>\n\n<pre><code>var ArticleSchema = new mongoose.Schema({\nimage: String,\ntitle: String,\nabout: String,\narticle: String,\n_id: String\n});\n\nmodule.exports = mongoose.model('Article', ArticleSchema);\n</code></pre>\n\n<p>I would really appreciate any help. This has been giving me trouble for a week now.</p>\n"
+        },
+        {
+            "tags": [
+                "excel",
+                "vba",
+                "excel-vba"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9627219,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/b8ea1641688a15c3c343f03c76a5f763?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Kyle Hong",
+                "link": "https://stackoverflow.com/users/9627219/kyle-hong"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523543038,
+            "creation_date": 1523543038,
+            "question_id": 49799092,
+            "body_markdown": "Hi I have a workbook that I work on and save the current worksheet as a new workbook to send it to someone. I have done it until it prompts me with SaveAs Dialog Box but I want it to save it into a specific folder and with the name I specified and a range value. when I run it, it saves it under Windows default download folder and name as &quot;False&quot;. Please help.\r\n\r\nAlso, when I copy the worksheet to a new workbook, when I open the new workbook, it prompt me with a dialog box that says &quot;this workbook contains link  blah blah&quot; and ask me to update... is it possible to code in a way that when I save as a new workbook, there is no link to the original work book? Please help me !!\r\n\r\n    Sub Save_As_Workbook()\r\n\r\n    Dim wb As Workbook\r\n    Dim wbnew As Workbook\r\n    Dim ws As Worksheet\r\n    Dim filename As String\r\n    Dim userprofile As String\r\n\r\n    userprofile = Environ$(&quot;userprofile&quot;)\r\n    Set wb = ActiveWorkbook\r\n    Set ws = wb.Worksheets(&quot;PL&quot;)\r\n    Set wbnew = Workbooks.Add\r\n    wb.Activate\r\n\r\n    ActiveSheet.Copy Before:=wbnew.Sheets(1)\r\n    ActiveSheet.UsedRange.Value = ActiveSheet.UsedRange.Value\r\n    \r\n\r\n\r\n    wbnew.SaveAs filename = userprofile &amp; &quot;\\Dropbox\\PL Folder\\&quot;outshipment&quot; &amp; _\r\n    &quot;PO&quot; &amp; &quot; &quot; &amp; ActiveSheet.Range(&quot;H1&quot;).Value\r\n\r\n\r\n    wbnew.Close\r\n\r\n    End Sub\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49799092/save-worksheet-as-new-workbook-to-a-specific-folder",
+            "title": "save worksheet as new workbook to a specific folder",
+            "body": "<p>Hi I have a workbook that I work on and save the current worksheet as a new workbook to send it to someone. I have done it until it prompts me with SaveAs Dialog Box but I want it to save it into a specific folder and with the name I specified and a range value. when I run it, it saves it under Windows default download folder and name as \"False\". Please help.</p>\n\n<p>Also, when I copy the worksheet to a new workbook, when I open the new workbook, it prompt me with a dialog box that says \"this workbook contains link  blah blah\" and ask me to update... is it possible to code in a way that when I save as a new workbook, there is no link to the original work book? Please help me !!</p>\n\n<pre><code>Sub Save_As_Workbook()\n\nDim wb As Workbook\nDim wbnew As Workbook\nDim ws As Worksheet\nDim filename As String\nDim userprofile As String\n\nuserprofile = Environ$(\"userprofile\")\nSet wb = ActiveWorkbook\nSet ws = wb.Worksheets(\"PL\")\nSet wbnew = Workbooks.Add\nwb.Activate\n\nActiveSheet.Copy Before:=wbnew.Sheets(1)\nActiveSheet.UsedRange.Value = ActiveSheet.UsedRange.Value\n\n\n\nwbnew.SaveAs filename = userprofile &amp; \"\\Dropbox\\PL Folder\\\"outshipment\" &amp; _\n\"PO\" &amp; \" \" &amp; ActiveSheet.Range(\"H1\").Value\n\n\nwbnew.Close\n\nEnd Sub\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "mysql",
+                "sql",
+                "phpmyadmin",
+                "innodb"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9629735,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-1525m0SvOD4/AAAAAAAAAAI/AAAAAAAAAFY/SbGSIKVR7KM/photo.jpg?sz=128",
+                "display_name": "Icesolider",
+                "link": "https://stackoverflow.com/users/9629735/icesolider"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523543035,
+            "creation_date": 1523541597,
+            "last_edit_date": 1523543035,
+            "question_id": 49798588,
+            "body_markdown": "I&#39;m actually building a database on phpMyAdmin and I&#39;m asking my self if something is possible and how could I implement it?  \r\n\r\nThe fact is that I&#39;m building lists through a website and then saving it inside of my database, but this list is only composed of items I already have stored in my database on another table.  \r\n\r\nI thought than a column with a `SET` datatype and all the selected items would be a memory gain and a clarity improvement instead of creating **x** lines linked to the created list by an ID column.\r\n\r\nSo, the question I&#39;m asking is, can I create this kind of set for a column, which will update by it-self when I&#39;ll add items in the other table ? If yes, can I do it through phpMyAdmin interface or do I have to work on the MySQL server it-self.\r\n\r\nThanks for your help and time, fellas ! :)",
+            "link": "https://stackoverflow.com/questions/49798588/how-can-you-add-data-into-a-set-column-taken-from-another-table",
+            "title": "How can you add data into a set column taken from another table?",
+            "body": "<p>I'm actually building a database on phpMyAdmin and I'm asking my self if something is possible and how could I implement it?  </p>\n\n<p>The fact is that I'm building lists through a website and then saving it inside of my database, but this list is only composed of items I already have stored in my database on another table.  </p>\n\n<p>I thought than a column with a <code>SET</code> datatype and all the selected items would be a memory gain and a clarity improvement instead of creating <strong>x</strong> lines linked to the created list by an ID column.</p>\n\n<p>So, the question I'm asking is, can I create this kind of set for a column, which will update by it-self when I'll add items in the other table ? If yes, can I do it through phpMyAdmin interface or do I have to work on the MySQL server it-self.</p>\n\n<p>Thanks for your help and time, fellas ! :)</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "javafx",
+                "graph",
+                "layer"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 5665047,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1090764844276710/picture?type=large",
+                "display_name": "Chris Hoffmann",
+                "link": "https://stackoverflow.com/users/5665047/chris-hoffmann"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1523543034,
+            "creation_date": 1523446282,
+            "last_edit_date": 1523543034,
+            "question_id": 49773983,
+            "body_markdown": "I reimplemented this graph &quot;library&quot;, suggested in this answer:\r\n[JavaFx Graph likewise yFiles][1]\r\n\r\n\r\n\r\nIt works well. Roland also specifies, that we should use different layers for example for resize indicators.\r\n\r\nCan anybody explain how you would implement this? At the moment I don&#39;t really have a clue...\r\n\r\n\r\n  [1]: https://stackoverflow.com/a/30696075/5665047",
+            "link": "https://stackoverflow.com/questions/49773983/javafx-graph-selectionlayering",
+            "title": "JavaFx Graph SelectionLayering",
+            "body": "<p>I reimplemented this graph \"library\", suggested in this answer:\n<a href=\"https://stackoverflow.com/a/30696075/5665047\">JavaFx Graph likewise yFiles</a></p>\n\n<p>It works well. Roland also specifies, that we should use different layers for example for resize indicators.</p>\n\n<p>Can anybody explain how you would implement this? At the moment I don't really have a clue...</p>\n"
+        },
+        {
+            "tags": [
+                "vba",
+                "excel-vba"
+            ],
+            "owner": {
+                "reputation": 7,
+                "user_id": 3067123,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/bde6337b6f05ffcf91e91dca86bee5fe?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Adalbert",
+                "link": "https://stackoverflow.com/users/3067123/adalbert"
+            },
+            "is_answered": true,
+            "view_count": 21,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523543033,
+            "creation_date": 1523542756,
+            "question_id": 49798996,
+            "body_markdown": "I&#39;m trying to modify vba that is comparing two columns. I&#39;ve found it on the internet (exceltip.com) and it looks like this:\r\n\r\n    Sub PullUniques()\r\n        Dim rngCell As Range\r\n        For Each rngCell In Range(&quot;A2:A40&quot;)\r\n            If WorksheetFunction.CountIf(Range(&quot;B2:B40&quot;), rngCell) = 0 Then\r\n                Range(&quot;C&quot; &amp; Rows.Count).End(xlUp).Offset(1) = rngCell\r\n            End If\r\n        Next\r\n        For Each rngCell In Range(&quot;B2:B40&quot;)\r\n            If WorksheetFunction.CountIf(Range(&quot;A2:A40&quot;), rngCell) = 0 Then\r\n                Range(&quot;D&quot; &amp; Rows.Count).End(xlUp).Offset(1) = rngCell\r\n            End If\r\n        Next\r\n    End Sub\r\n\r\nSince it only handles 40 rows I&#39;ve tried to edit to something like this:\r\n\r\n    Sub PullUniques()\r\n        Dim rngCell As Range\r\n        For Each rngCell In Range(&quot;A2&quot;).End(xlDown)\r\n            If WorksheetFunction.CountIf(Range(&quot;B2&quot;).End(xlDown), rngCell) = 0 Then\r\n                Range(&quot;C&quot; &amp; Rows.Count).End(xlUp).Offset(1) = rngCell\r\n            End If\r\n        Next\r\n        For Each rngCell In Range(&quot;B2&quot;).End(xlDown)\r\n            If WorksheetFunction.CountIf(Range(&quot;A2&quot;).End(xlDown), rngCell) = 0 Then\r\n                Range(&quot;D&quot; &amp; Rows.Count).End(xlUp).Offset(1) = rngCell\r\n            End If\r\n        Next\r\n    End Sub\r\n\r\nBut it gaves me only one row that isnt matching for column. Probably I use &quot;End(xlDown)&quot; in wrong way.\r\n\r\nRight now I created something like this, but it sucks on performance I think (the file I will compare wont exceed 100k rows anyway):\r\n\r\n    Sub PullUniques()\r\n        Dim rngCell As Range\r\n        For Each rngCell In Range(&quot;A2:A99999&quot;)\r\n            If WorksheetFunction.CountIf(Range(&quot;B2:B99999&quot;), rngCell) = 0 Then\r\n                Range(&quot;C&quot; &amp; Rows.Count).End(xlUp).Offset(1) = rngCell\r\n            End If\r\n        Next\r\n        For Each rngCell In Range(&quot;B2:B99999&quot;)\r\n            If WorksheetFunction.CountIf(Range(&quot;A2:A99999&quot;), rngCell) = 0 Then\r\n                Range(&quot;D&quot; &amp; Rows.Count).End(xlUp).Offset(1) = rngCell\r\n            End If\r\n        Next\r\n    End Sub\r\n\r\n\r\nIs there a way to optimize it? Why does the End(xlDown) fails?\r\n\r\nThanks",
+            "link": "https://stackoverflow.com/questions/49798996/vba-comparing-2-columns-of-data",
+            "title": "Vba comparing 2 columns of data",
+            "body": "<p>I'm trying to modify vba that is comparing two columns. I've found it on the internet (exceltip.com) and it looks like this:</p>\n\n<pre><code>Sub PullUniques()\n    Dim rngCell As Range\n    For Each rngCell In Range(\"A2:A40\")\n        If WorksheetFunction.CountIf(Range(\"B2:B40\"), rngCell) = 0 Then\n            Range(\"C\" &amp; Rows.Count).End(xlUp).Offset(1) = rngCell\n        End If\n    Next\n    For Each rngCell In Range(\"B2:B40\")\n        If WorksheetFunction.CountIf(Range(\"A2:A40\"), rngCell) = 0 Then\n            Range(\"D\" &amp; Rows.Count).End(xlUp).Offset(1) = rngCell\n        End If\n    Next\nEnd Sub\n</code></pre>\n\n<p>Since it only handles 40 rows I've tried to edit to something like this:</p>\n\n<pre><code>Sub PullUniques()\n    Dim rngCell As Range\n    For Each rngCell In Range(\"A2\").End(xlDown)\n        If WorksheetFunction.CountIf(Range(\"B2\").End(xlDown), rngCell) = 0 Then\n            Range(\"C\" &amp; Rows.Count).End(xlUp).Offset(1) = rngCell\n        End If\n    Next\n    For Each rngCell In Range(\"B2\").End(xlDown)\n        If WorksheetFunction.CountIf(Range(\"A2\").End(xlDown), rngCell) = 0 Then\n            Range(\"D\" &amp; Rows.Count).End(xlUp).Offset(1) = rngCell\n        End If\n    Next\nEnd Sub\n</code></pre>\n\n<p>But it gaves me only one row that isnt matching for column. Probably I use \"End(xlDown)\" in wrong way.</p>\n\n<p>Right now I created something like this, but it sucks on performance I think (the file I will compare wont exceed 100k rows anyway):</p>\n\n<pre><code>Sub PullUniques()\n    Dim rngCell As Range\n    For Each rngCell In Range(\"A2:A99999\")\n        If WorksheetFunction.CountIf(Range(\"B2:B99999\"), rngCell) = 0 Then\n            Range(\"C\" &amp; Rows.Count).End(xlUp).Offset(1) = rngCell\n        End If\n    Next\n    For Each rngCell In Range(\"B2:B99999\")\n        If WorksheetFunction.CountIf(Range(\"A2:A99999\"), rngCell) = 0 Then\n            Range(\"D\" &amp; Rows.Count).End(xlUp).Offset(1) = rngCell\n        End If\n    Next\nEnd Sub\n</code></pre>\n\n<p>Is there a way to optimize it? Why does the End(xlDown) fails?</p>\n\n<p>Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "d3.js"
+            ],
+            "owner": {
+                "reputation": 5860,
+                "user_id": 576682,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/4bf67432be46991fde147b0b0fa74312?s=128&d=identicon&r=PG",
+                "display_name": "Ant&#39;s",
+                "link": "https://stackoverflow.com/users/576682/ants"
+            },
+            "is_answered": true,
+            "view_count": 14,
+            "accepted_answer_id": 49799088,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1523543029,
+            "creation_date": 1523542474,
+            "question_id": 49798885,
+            "body_markdown": "I&#39;m very new to d3.js and I tried creating a very simple progress [here][1].\r\n\r\nThe code is:\r\n\r\n    var data = [2000, 200]; // here are the data values; v1 = total, v2 = current value\r\n      \r\n      var chart = d3.select(&quot;#container&quot;).append(&quot;svg&quot;) // creating the svg object inside the \r\n        .attr(&quot;class&quot;, &quot;chart&quot;)\r\n        .attr(&quot;width&quot;, 400) // bar has a fixed width\r\n        .attr(&quot;height&quot;, 30 * data.length);\r\n      \r\n      var x = d3.scale.linear() // takes the fixed width and creates the percentage from the data\r\n        .domain([0, d3.max(data)])\r\n        .range([0, 400]); \r\n      \r\n      chart.selectAll(&quot;rect&quot;) // this is what actually creates the bars\r\n        .data(data)\r\n        .enter().append(&quot;rect&quot;)\r\n        .attr(&quot;width&quot;, x)\r\n        .attr(&quot;height&quot;, 10)\r\n        .attr(&quot;rx&quot;, 5) // rounded corners\r\n        .attr(&quot;ry&quot;, 5);\r\n        \r\n     var text = [0,200,2000]   \r\n        \r\n      chart.selectAll(&quot;text&quot;) // adding the text labels to the bar\r\n        .data(text)\r\n        .enter().append(&quot;text&quot;)\r\n        .attr(&quot;x&quot;, x)\r\n        .attr(&quot;y&quot;, 20) // y position of the text inside bar\r\n        .attr(&quot;dx&quot;, -3) // padding-right\r\n        .attr(&quot;dy&quot;, &quot;.35em&quot;) // vertical-align: middle\r\n        .attr(&quot;text-anchor&quot;, &quot;end&quot;) // text-align: right\r\n        .text(String);\r\n    \r\nIts rendering the graph. Have some couple of issues here:\r\n\r\n1. For the text, I&#39;m rendering `0` always, but its not visible. \r\n2. I want the current value text to be displayed below and start and end should be moved above the markers. \r\n\r\nThanks for the help!\r\n\r\n  [1]: https://jsfiddle.net/4hyj8mu2/162/",
+            "link": "https://stackoverflow.com/questions/49798885/moving-labels-above-the-rect-in-d3",
+            "title": "Moving labels above the rect in d3",
+            "body": "<p>I'm very new to d3.js and I tried creating a very simple progress <a href=\"https://jsfiddle.net/4hyj8mu2/162/\" rel=\"nofollow noreferrer\">here</a>.</p>\n\n<p>The code is:</p>\n\n<pre><code>var data = [2000, 200]; // here are the data values; v1 = total, v2 = current value\n\n  var chart = d3.select(\"#container\").append(\"svg\") // creating the svg object inside the \n    .attr(\"class\", \"chart\")\n    .attr(\"width\", 400) // bar has a fixed width\n    .attr(\"height\", 30 * data.length);\n\n  var x = d3.scale.linear() // takes the fixed width and creates the percentage from the data\n    .domain([0, d3.max(data)])\n    .range([0, 400]); \n\n  chart.selectAll(\"rect\") // this is what actually creates the bars\n    .data(data)\n    .enter().append(\"rect\")\n    .attr(\"width\", x)\n    .attr(\"height\", 10)\n    .attr(\"rx\", 5) // rounded corners\n    .attr(\"ry\", 5);\n\n var text = [0,200,2000]   \n\n  chart.selectAll(\"text\") // adding the text labels to the bar\n    .data(text)\n    .enter().append(\"text\")\n    .attr(\"x\", x)\n    .attr(\"y\", 20) // y position of the text inside bar\n    .attr(\"dx\", -3) // padding-right\n    .attr(\"dy\", \".35em\") // vertical-align: middle\n    .attr(\"text-anchor\", \"end\") // text-align: right\n    .text(String);\n</code></pre>\n\n<p>Its rendering the graph. Have some couple of issues here:</p>\n\n<ol>\n<li>For the text, I'm rendering <code>0</code> always, but its not visible. </li>\n<li>I want the current value text to be displayed below and start and end should be moved above the markers. </li>\n</ol>\n\n<p>Thanks for the help!</p>\n"
+        },
+        {
+            "tags": [
+                "node.js",
+                "sockets",
+                "socket.io"
+            ],
+            "owner": {
+                "reputation": 118,
+                "user_id": 6141880,
+                "user_type": "registered",
+                "accept_rate": 62,
+                "profile_image": "https://graph.facebook.com/1678541972412107/picture?type=large",
+                "display_name": "Rachel Dockter",
+                "link": "https://stackoverflow.com/users/6141880/rachel-dockter"
+            },
+            "is_answered": false,
+            "view_count": 5,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523543027,
+            "creation_date": 1523543027,
+            "question_id": 49799086,
+            "body_markdown": "im currently developing a game on Node js using sockets.\r\n\r\nIf you can picture a multiplayer game and having 3 seperate rooms. So i go on the website, room 1 has 16/16 players so i go to room 2. That sort of deal.\r\n\r\nLogically, the game information for the game running in room 1 should only be sent to the users in room 1 so something like this.\r\n\r\n    for (var i = 0; i &lt; this.rooms.length; i++){\r\n         for (var j = 0; j &lt; this.rooms[i].players; j++){\r\n             io.sockets.connected[this.rooms[i].players[j].socketid].emit(&#39;updateGame&#39;, this.rooms[i]);\r\n         }\r\n    }\r\n\r\nI havnt tested it or anything but that would be the general logic behind it. \r\n\r\nIt looks very server heavy since its a fast moving game where on a bigger scale this would have maybe 500 players each at 60fps.\r\n\r\nAlternativly i could just emit the infomation of all games to everyone\r\n\r\n    this.socket.of(&#39;game&#39;).emit(&#39;updateGame&#39;, this.rooms);\r\n\r\nAnd display the correct one client side.\r\n\r\nWhat would be logically best taking into consideration the server stress, efficiancy, best practise etc. It seems like the second one but the thought of sending every single game/ room to the client when they are only play 1 bugs me abit.\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49799086/logical-issue-regarding-broadcasting-messages-to-clients",
+            "title": "Logical issue regarding broadcasting messages to clients",
+            "body": "<p>im currently developing a game on Node js using sockets.</p>\n\n<p>If you can picture a multiplayer game and having 3 seperate rooms. So i go on the website, room 1 has 16/16 players so i go to room 2. That sort of deal.</p>\n\n<p>Logically, the game information for the game running in room 1 should only be sent to the users in room 1 so something like this.</p>\n\n<pre><code>for (var i = 0; i &lt; this.rooms.length; i++){\n     for (var j = 0; j &lt; this.rooms[i].players; j++){\n         io.sockets.connected[this.rooms[i].players[j].socketid].emit('updateGame', this.rooms[i]);\n     }\n}\n</code></pre>\n\n<p>I havnt tested it or anything but that would be the general logic behind it. </p>\n\n<p>It looks very server heavy since its a fast moving game where on a bigger scale this would have maybe 500 players each at 60fps.</p>\n\n<p>Alternativly i could just emit the infomation of all games to everyone</p>\n\n<pre><code>this.socket.of('game').emit('updateGame', this.rooms);\n</code></pre>\n\n<p>And display the correct one client side.</p>\n\n<p>What would be logically best taking into consideration the server stress, efficiancy, best practise etc. It seems like the second one but the thought of sending every single game/ room to the client when they are only play 1 bugs me abit.</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "dictionary",
+                "position",
+                "zoom",
+                "marker"
+            ],
+            "owner": {
+                "reputation": 91,
+                "user_id": 5757534,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/948071895283257/picture?type=large",
+                "display_name": "Ashok Reddy M",
+                "link": "https://stackoverflow.com/users/5757534/ashok-reddy-m"
+            },
+            "is_answered": false,
+            "view_count": 4,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523543027,
+            "creation_date": 1523542696,
+            "last_edit_date": 1523543027,
+            "question_id": 49798971,
+            "body_markdown": "I am using Custom marker my problem is that when i perform zoom in or out operation marker changes its position.\r\n**this is the marker** [Marker(Vector Image)][1]\r\n\r\nHow to solve this problem ?\r\n\r\n\r\n  [1]: https://lh3.ggpht.com/Tr5sntMif9qOPrKV_UVl7K8A_V3xQDgA7Sw_qweLUFlg76d_vGFA7q1xIKZ6IcmeGqg=s180",
+            "link": "https://stackoverflow.com/questions/49798971/custom-marker-position-was-changes-while-zoom-in-and-zoom-out-android-map",
+            "title": "Custom Marker Position was Changes while Zoom-in and Zoom-out android Map",
+            "body": "<p>I am using Custom marker my problem is that when i perform zoom in or out operation marker changes its position.\n<strong>this is the marker</strong> <a href=\"https://lh3.ggpht.com/Tr5sntMif9qOPrKV_UVl7K8A_V3xQDgA7Sw_qweLUFlg76d_vGFA7q1xIKZ6IcmeGqg=s180\" rel=\"nofollow noreferrer\">Marker(Vector Image)</a></p>\n\n<p>How to solve this problem ?</p>\n"
+        },
+        {
+            "tags": [
+                "xamarin"
+            ],
+            "owner": {
+                "reputation": 1109,
+                "user_id": 1700747,
+                "user_type": "registered",
+                "accept_rate": 69,
+                "profile_image": "https://www.gravatar.com/avatar/2ee9e3311d4c44b4d5a56c864f11807c?s=128&d=identicon&r=PG",
+                "display_name": "blue piranha",
+                "link": "https://stackoverflow.com/users/1700747/blue-piranha"
+            },
+            "is_answered": true,
+            "view_count": 23,
+            "accepted_answer_id": 49782672,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523543026,
+            "creation_date": 1523472910,
+            "question_id": 49782558,
+            "body_markdown": "I have class which returns a list\r\n\r\n    class Book\r\n    {\r\n        public string Title { get; set; }\r\n        public string Author { get; set; }\r\n        public string Year { get; set; }\r\n\r\n        public static List&lt;Book&gt; GetList()\r\n        {\r\n            var bookList = new List&lt;Book&gt;();\r\n            bookList.Add(new Book\r\n            {\r\n                Author = &quot;Robin Cook&quot;,\r\n                Title = &quot;Vector&quot;,\r\n                Year = &quot;1999&quot;\r\n\r\n            });\r\n            bookList.Add(new Book\r\n            {\r\n                Author = &quot;J.K. Rowling&quot;,\r\n                Title = &quot;Harry Potter and Prisoner of Azkaban&quot;,\r\n                Year = &quot;1999&quot;\r\n            });\r\n            bookList.Add(new Book\r\n            {\r\n                Author = &quot;George R.R. Martin&quot;,\r\n                Title = &quot;A Dance with Dragons&quot;,\r\n                Year = &quot;2011&quot;\r\n            });\r\n\r\n            return bookList;\r\n        }\r\n    }\r\n\r\nI would like the page to have a listview with each cell containing triplet Author - Title - Year, that is, \r\n\r\n     Robin Cook - Vector - 1999\r\n     ...\r\n\r\nIn XAML code behind, I have\r\n\r\n     var listView = new ListView();\r\n     listView.ItemsSource = Book.GetList();\r\n\r\n     var cellTemplate = new DataTemplate(() =&gt;\r\n     {\r\n          var textCell = new TextCell();\r\n          var titleLabel = new Label();\r\n          var authorLabel = new Label();\r\n          var yearLabel = new Label();\r\n\r\n          titleLabel.SetBinding(Label.TextProperty, &quot;Title&quot;);\r\n          authorLabel.SetBinding(Label.TextProperty, &quot;Author&quot;);\r\n          yearLabel.SetBinding(Label.TextProperty, &quot;Year&quot;);\r\n          textCell.Text = titleLabel.Text + &quot; - &quot; + authorLabel.Text + &quot; - &quot; + yearLabel;\r\n                \r\n      return textCell;\r\n     });\r\n\r\n     listView.ItemTemplate = cellTemplate;\r\n     Content = listView;\r\n\r\nAll I see are empty cells with hyphens. Can you please tell what am I missing?\r\n",
+            "link": "https://stackoverflow.com/questions/49782558/displaying-object-with-multiple-properties-in-listview",
+            "title": "Displaying object with multiple properties in Listview",
+            "body": "<p>I have class which returns a list</p>\n\n<pre><code>class Book\n{\n    public string Title { get; set; }\n    public string Author { get; set; }\n    public string Year { get; set; }\n\n    public static List&lt;Book&gt; GetList()\n    {\n        var bookList = new List&lt;Book&gt;();\n        bookList.Add(new Book\n        {\n            Author = \"Robin Cook\",\n            Title = \"Vector\",\n            Year = \"1999\"\n\n        });\n        bookList.Add(new Book\n        {\n            Author = \"J.K. Rowling\",\n            Title = \"Harry Potter and Prisoner of Azkaban\",\n            Year = \"1999\"\n        });\n        bookList.Add(new Book\n        {\n            Author = \"George R.R. Martin\",\n            Title = \"A Dance with Dragons\",\n            Year = \"2011\"\n        });\n\n        return bookList;\n    }\n}\n</code></pre>\n\n<p>I would like the page to have a listview with each cell containing triplet Author - Title - Year, that is, </p>\n\n<pre><code> Robin Cook - Vector - 1999\n ...\n</code></pre>\n\n<p>In XAML code behind, I have</p>\n\n<pre><code> var listView = new ListView();\n listView.ItemsSource = Book.GetList();\n\n var cellTemplate = new DataTemplate(() =&gt;\n {\n      var textCell = new TextCell();\n      var titleLabel = new Label();\n      var authorLabel = new Label();\n      var yearLabel = new Label();\n\n      titleLabel.SetBinding(Label.TextProperty, \"Title\");\n      authorLabel.SetBinding(Label.TextProperty, \"Author\");\n      yearLabel.SetBinding(Label.TextProperty, \"Year\");\n      textCell.Text = titleLabel.Text + \" - \" + authorLabel.Text + \" - \" + yearLabel;\n\n  return textCell;\n });\n\n listView.ItemTemplate = cellTemplate;\n Content = listView;\n</code></pre>\n\n<p>All I see are empty cells with hyphens. Can you please tell what am I missing?</p>\n"
+        },
+        {
+            "tags": [
+                "websphere",
+                "osgi",
+                "osgi-bundle"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 2228774,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a1ea1f2c4402d28fc18b5b6e4de5874c?s=128&d=identicon&r=PG",
+                "display_name": "Arun Raja",
+                "link": "https://stackoverflow.com/users/2228774/arun-raja"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523543026,
+            "creation_date": 1523530973,
+            "question_id": 49794871,
+            "body_markdown": "As part of cost cutting, management want to cease usage of websphere application servers in developer systems.\r\n\r\nI was given task to convert the EAR file to one fat OSGI bundle and deploy it in equinox container. if successful, this set up will be shared among developers and will only be used in developer machines and not in higher enviroments.\r\n\r\nI have searched many websites but didn&#39;t find any concrete solution.\r\nKindly share your ideas if any to solve the problem.",
+            "link": "https://stackoverflow.com/questions/49794871/how-to-convert-ear-application-into-one-large-osgi-bundle-and-deploy-it-in-equin",
+            "title": "How to convert EAR application into one large OSGI bundle and deploy it in Equinox container?",
+            "body": "<p>As part of cost cutting, management want to cease usage of websphere application servers in developer systems.</p>\n\n<p>I was given task to convert the EAR file to one fat OSGI bundle and deploy it in equinox container. if successful, this set up will be shared among developers and will only be used in developer machines and not in higher enviroments.</p>\n\n<p>I have searched many websites but didn't find any concrete solution.\nKindly share your ideas if any to solve the problem.</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 229
+}

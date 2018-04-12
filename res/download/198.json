@@ -1,0 +1,839 @@
+{
+    "items": [
+        {
+            "tags": [
+                "c++",
+                "multithreading",
+                "gdb",
+                "boost-asio"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 8440195,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/1368ddd1c5a909743ad9082ce0a26ef0?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Hestalon",
+                "link": "https://stackoverflow.com/users/8440195/hestalon"
+            },
+            "is_answered": false,
+            "view_count": 39,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523525974,
+            "creation_date": 1523525231,
+            "last_edit_date": 1523525974,
+            "question_id": 49792891,
+            "body_markdown": "I&#39;am currently struggeling with an deadlock issue, but can&#39;t figure out if it&#39;s a wrong useage of Boost:Asio, or anything else...\r\n\r\nThe biggest issue is i can&#39;t reproduce it since it does not happen every time, it&#39;s more like &quot;once in a lifetime&quot;, so it must be some kind of raise condition. The whole gdb backtrace is this:\r\n\r\n    (gdb) thread apply all bt\r\n    \r\n    Thread 1 (process 23619):\r\n    #0  0x00007f66a24ea42d in __lll_lock_wait () from /lib64/libpthread.so.0\r\n    #1  0x00007f66a24e5dcb in _L_lock_812 () from /lib64/libpthread.so.0\r\n    #2  0x00007f66a24e5c98 in pthread_mutex_lock () from /lib64/libpthread.so.0\r\n    #3  0x0000000000426968 in pthread_mutex_lock (m=0xb77288) at /usr/include/boost/thread/pthread/mutex.hpp:62\r\n    #4  lock (this=0xb77288) at /usr/include/boost/thread/pthread/mutex.hpp:116\r\n    #5  lock (this=0xb77288) at /usr/include/boost/thread/lockable_adapter.hpp:42\r\n    #6  lock_guard (m_=..., this=&lt;synthetic pointer&gt;) at /usr/include/boost/thread/lock_guard.hpp:38\r\n    #7  EndpointGroup::addEndpoint (this=0xb77288, endpoint=std::shared_ptr (count 1, weak 1) 0xbe4528) at /tmp/mediacontrol/src/EndpointGroup.cpp:80\r\n    #8  0x0000000000429b29 in EndpointManager::getQueuedOrNewEndpoint (this=this@entry=0x6abd60 &lt;EndpointManager::getInstance()::instance&gt;)\r\n        at /tmp/mediacontrol/src/EndpointManager.cpp:54\r\n    #9  0x000000000042a620 in EndpointManager::fetchEndpoint (this=0x6abd60 &lt;EndpointManager::getInstance()::instance&gt;, endpointAddress=&quot;185.150.4.67&quot;)\r\n        at /tmp/mediacontrol/src/EndpointManager.cpp:67\r\n    #10 0x000000000041404b in Client::processAlloc (this=this@entry=0xb76bb8, message=message@entry=0xbba290, response=response@entry=0xb8af60)\r\n        at /tmp/mediacontrol/src/Client.cpp:279\r\n    #11 0x000000000041546e in Client::receiveMessage (this=0xb76bb8, message=0xbba290, response=response@entry=0xb8af60) at /tmp/mediacontrol/src/Client.cpp:46\r\n    #12 0x00000000004178e6 in operator() (__closure=&lt;optimized out&gt;, receivedBytes=&lt;optimized out&gt;, ec=...) at /tmp/mediacontrol/src/ClientConnection.cpp:119\r\n    #13 operator() (this=0x7ffc352d6da0) at /usr/include/boost/asio/detail/bind_handler.hpp:127\r\n    #14 asio_handler_invoke&lt;boost::asio::detail::binder2&lt;ClientConnection::doRead()::__lambda0, boost::system::error_code, long unsigned int&gt; &gt; (function=...)\r\n        at /usr/include/boost/asio/handler_invoke_hook.hpp:69\r\n    #15 invoke&lt;boost::asio::detail::binder2&lt;ClientConnection::doRead()::__lambda0, boost::system::error_code, long unsigned int&gt;, ClientConnection::doRead()::__lambda0&gt; (\r\n        context=..., function=...) at /usr/include/boost/asio/detail/handler_invoke_helpers.hpp:37\r\n    #16 boost::asio::detail::reactive_socket_recv_op&lt;boost::asio::mutable_buffers_1, ClientConnection::doRead()::__lambda0&gt;::do_complete(boost::asio::detail::io_service_impl *, boost::asio::detail::operation *, const boost::system::error_code &amp;, std::size_t) (owner=&lt;optimized out&gt;, base=&lt;optimized out&gt;)\r\n        at /usr/include/boost/asio/detail/reactive_socket_recv_op.hpp:110\r\n    #17 0x000000000042f7d0 in complete (bytes_transferred=&lt;optimized out&gt;, ec=..., owner=..., this=&lt;optimized out&gt;)\r\n        at /usr/include/boost/asio/detail/task_io_service_operation.hpp:38\r\n    #18 do_run_one (ec=..., this_thread=..., lock=..., this=0xb43b50) at /usr/include/boost/asio/detail/impl/task_io_service.ipp:372\r\n    #19 boost::asio::detail::task_io_service::run (this=0xb43b50, ec=...) at /usr/include/boost/asio/detail/impl/task_io_service.ipp:149\r\n    #20 0x000000000042cc85 in run (this=0xb43ad0) at /usr/include/boost/asio/impl/io_service.ipp:59\r\n    #21 MediaControl::run (this=this@entry=0xb43ad0) at /tmp/mediacontrol/src/MediaControl.cpp:82\r\n    #22 0x0000000000410f6f in main (argc=&lt;optimized out&gt;, argv=&lt;optimized out&gt;) at /tmp/mediacontrol/src/main.cpp:106\r\n\r\nThe program (simplified):\r\n\r\n 1. Receive Alloc message\r\n 2. Create and run an asio::io_service\r\n 3. Pass the asio::io_service to a &quot;EndpointGroup&quot; to use it with a asio::high_resolution_timer\r\n 4. Starting the timer\r\n 5. Add an item to a list used in the function after the timer expired (MUTEX) &lt;- here blocks it\r\n 6. Timer expires and uses the list (MUTEX)\r\n\r\nI have also to note in the &quot;EndpointGroup&quot; these two lock_guards are the only ones in this class. The functions seem to be different but the &quot;RtpEndpoint&quot; does not start the &quot;EndpointGroup&quot; anymore it will be started on creating.\r\nThe related functions:\r\n\r\n    // create a service which is used for async operations\r\n    io_service_ptr ThreadPoolManager::createNewService()\r\n    {\r\n    \tio_service_ptr io_service = std::make_shared&lt;asio::io_service&gt;();\r\n    \twork_ptr work = std::make_shared&lt;asio::io_service::work&gt;(*io_service);\r\n    \tio_services_endpoint.push_back(io_service);\r\n    \twork_endpoint.push_back(work);\r\n    \tthreads_endpoint.create_thread(bind(&amp;asio::io_service::run, io_service));\r\n    \treturn io_service;\r\n    }\r\n\r\n    // simply start this function over and over again every 10ms\r\n    void EndpointGroup::invokeSendingOnEndpoints(size_t offset)\r\n    {\r\n    \tpTimer.expires_from_now(std::chrono::milliseconds(PTIME_INTERVAL - offset));\r\n    \tauto self(shared_from_this());\r\n    \tpTimer.async_wait([this, self](system::error_code ec)\r\n    \t{\r\n    \t\tif (!ec)\r\n    \t\t{\r\n    \t\t\tvector&lt;rtp_endpoint_ptr&gt; iterationEndpoints;\r\n    \t\t\t{\r\n    \t\t\t\tboost::lock_guard&lt;EndpointGroup&gt; guard(*this);\r\n    \t\t\t\titerationEndpoints = endpoints;\r\n    \t\t\t}\r\n    \t\t\tfor (rtp_endpoint_ptr endpoint : iterationEndpoints)\r\n    \t\t\t{\r\n    \t\t\t\t// do fancy stuff\r\n    \t\t\t}\r\n    \t\t\t++pTimerIterations;\r\n    \t\t\t// check how many milliseconds passed since start of the function\r\n    \t\t\tinvokeSendingOnEndpoints(std::chrono::duration_cast&lt;std::chrono::milliseconds&gt;((std::chrono::high_resolution_clock::now() - start)).count() / (pTimerIterations * PTIME_INTERVAL));\r\n    \t\t}\r\n    \t\telse\r\n    \t\t{\r\n    \t\t\t// just write error happend....    \r\n    \t\t}\r\n    \t});\r\n    }\r\n\r\n    bool EndpointGroup::addEndpoint(const rtp_endpoint_ptr&amp; endpoint)\r\n    {\r\n    \tboost::lock_guard&lt;EndpointGroup&gt; guard(*this);\r\n    \tendpoints.push_back(endpoint);\r\n    \treturn true;\r\n    }\r\n\r\n\r\nAppreciate any suggestions how to debug this and hopefully solve this issue.",
+            "link": "https://stackoverflow.com/questions/49792891/deadlock-with-one-thread-boost",
+            "title": "Deadlock with one thread Boost",
+            "body": "<p>I'am currently struggeling with an deadlock issue, but can't figure out if it's a wrong useage of Boost:Asio, or anything else...</p>\n\n<p>The biggest issue is i can't reproduce it since it does not happen every time, it's more like \"once in a lifetime\", so it must be some kind of raise condition. The whole gdb backtrace is this:</p>\n\n<pre><code>(gdb) thread apply all bt\n\nThread 1 (process 23619):\n#0  0x00007f66a24ea42d in __lll_lock_wait () from /lib64/libpthread.so.0\n#1  0x00007f66a24e5dcb in _L_lock_812 () from /lib64/libpthread.so.0\n#2  0x00007f66a24e5c98 in pthread_mutex_lock () from /lib64/libpthread.so.0\n#3  0x0000000000426968 in pthread_mutex_lock (m=0xb77288) at /usr/include/boost/thread/pthread/mutex.hpp:62\n#4  lock (this=0xb77288) at /usr/include/boost/thread/pthread/mutex.hpp:116\n#5  lock (this=0xb77288) at /usr/include/boost/thread/lockable_adapter.hpp:42\n#6  lock_guard (m_=..., this=&lt;synthetic pointer&gt;) at /usr/include/boost/thread/lock_guard.hpp:38\n#7  EndpointGroup::addEndpoint (this=0xb77288, endpoint=std::shared_ptr (count 1, weak 1) 0xbe4528) at /tmp/mediacontrol/src/EndpointGroup.cpp:80\n#8  0x0000000000429b29 in EndpointManager::getQueuedOrNewEndpoint (this=this@entry=0x6abd60 &lt;EndpointManager::getInstance()::instance&gt;)\n    at /tmp/mediacontrol/src/EndpointManager.cpp:54\n#9  0x000000000042a620 in EndpointManager::fetchEndpoint (this=0x6abd60 &lt;EndpointManager::getInstance()::instance&gt;, endpointAddress=\"185.150.4.67\")\n    at /tmp/mediacontrol/src/EndpointManager.cpp:67\n#10 0x000000000041404b in Client::processAlloc (this=this@entry=0xb76bb8, message=message@entry=0xbba290, response=response@entry=0xb8af60)\n    at /tmp/mediacontrol/src/Client.cpp:279\n#11 0x000000000041546e in Client::receiveMessage (this=0xb76bb8, message=0xbba290, response=response@entry=0xb8af60) at /tmp/mediacontrol/src/Client.cpp:46\n#12 0x00000000004178e6 in operator() (__closure=&lt;optimized out&gt;, receivedBytes=&lt;optimized out&gt;, ec=...) at /tmp/mediacontrol/src/ClientConnection.cpp:119\n#13 operator() (this=0x7ffc352d6da0) at /usr/include/boost/asio/detail/bind_handler.hpp:127\n#14 asio_handler_invoke&lt;boost::asio::detail::binder2&lt;ClientConnection::doRead()::__lambda0, boost::system::error_code, long unsigned int&gt; &gt; (function=...)\n    at /usr/include/boost/asio/handler_invoke_hook.hpp:69\n#15 invoke&lt;boost::asio::detail::binder2&lt;ClientConnection::doRead()::__lambda0, boost::system::error_code, long unsigned int&gt;, ClientConnection::doRead()::__lambda0&gt; (\n    context=..., function=...) at /usr/include/boost/asio/detail/handler_invoke_helpers.hpp:37\n#16 boost::asio::detail::reactive_socket_recv_op&lt;boost::asio::mutable_buffers_1, ClientConnection::doRead()::__lambda0&gt;::do_complete(boost::asio::detail::io_service_impl *, boost::asio::detail::operation *, const boost::system::error_code &amp;, std::size_t) (owner=&lt;optimized out&gt;, base=&lt;optimized out&gt;)\n    at /usr/include/boost/asio/detail/reactive_socket_recv_op.hpp:110\n#17 0x000000000042f7d0 in complete (bytes_transferred=&lt;optimized out&gt;, ec=..., owner=..., this=&lt;optimized out&gt;)\n    at /usr/include/boost/asio/detail/task_io_service_operation.hpp:38\n#18 do_run_one (ec=..., this_thread=..., lock=..., this=0xb43b50) at /usr/include/boost/asio/detail/impl/task_io_service.ipp:372\n#19 boost::asio::detail::task_io_service::run (this=0xb43b50, ec=...) at /usr/include/boost/asio/detail/impl/task_io_service.ipp:149\n#20 0x000000000042cc85 in run (this=0xb43ad0) at /usr/include/boost/asio/impl/io_service.ipp:59\n#21 MediaControl::run (this=this@entry=0xb43ad0) at /tmp/mediacontrol/src/MediaControl.cpp:82\n#22 0x0000000000410f6f in main (argc=&lt;optimized out&gt;, argv=&lt;optimized out&gt;) at /tmp/mediacontrol/src/main.cpp:106\n</code></pre>\n\n<p>The program (simplified):</p>\n\n<ol>\n<li>Receive Alloc message</li>\n<li>Create and run an asio::io_service</li>\n<li>Pass the asio::io_service to a \"EndpointGroup\" to use it with a asio::high_resolution_timer</li>\n<li>Starting the timer</li>\n<li>Add an item to a list used in the function after the timer expired (MUTEX) &lt;- here blocks it</li>\n<li>Timer expires and uses the list (MUTEX)</li>\n</ol>\n\n<p>I have also to note in the \"EndpointGroup\" these two lock_guards are the only ones in this class. The functions seem to be different but the \"RtpEndpoint\" does not start the \"EndpointGroup\" anymore it will be started on creating.\nThe related functions:</p>\n\n<pre><code>// create a service which is used for async operations\nio_service_ptr ThreadPoolManager::createNewService()\n{\n    io_service_ptr io_service = std::make_shared&lt;asio::io_service&gt;();\n    work_ptr work = std::make_shared&lt;asio::io_service::work&gt;(*io_service);\n    io_services_endpoint.push_back(io_service);\n    work_endpoint.push_back(work);\n    threads_endpoint.create_thread(bind(&amp;asio::io_service::run, io_service));\n    return io_service;\n}\n\n// simply start this function over and over again every 10ms\nvoid EndpointGroup::invokeSendingOnEndpoints(size_t offset)\n{\n    pTimer.expires_from_now(std::chrono::milliseconds(PTIME_INTERVAL - offset));\n    auto self(shared_from_this());\n    pTimer.async_wait([this, self](system::error_code ec)\n    {\n        if (!ec)\n        {\n            vector&lt;rtp_endpoint_ptr&gt; iterationEndpoints;\n            {\n                boost::lock_guard&lt;EndpointGroup&gt; guard(*this);\n                iterationEndpoints = endpoints;\n            }\n            for (rtp_endpoint_ptr endpoint : iterationEndpoints)\n            {\n                // do fancy stuff\n            }\n            ++pTimerIterations;\n            // check how many milliseconds passed since start of the function\n            invokeSendingOnEndpoints(std::chrono::duration_cast&lt;std::chrono::milliseconds&gt;((std::chrono::high_resolution_clock::now() - start)).count() / (pTimerIterations * PTIME_INTERVAL));\n        }\n        else\n        {\n            // just write error happend....    \n        }\n    });\n}\n\nbool EndpointGroup::addEndpoint(const rtp_endpoint_ptr&amp; endpoint)\n{\n    boost::lock_guard&lt;EndpointGroup&gt; guard(*this);\n    endpoints.push_back(endpoint);\n    return true;\n}\n</code></pre>\n\n<p>Appreciate any suggestions how to debug this and hopefully solve this issue.</p>\n"
+        },
+        {
+            "tags": [
+                "jquery",
+                "autocomplete"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9061614,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1930536940542778/picture?type=large",
+                "display_name": "Patrick Galletti",
+                "link": "https://stackoverflow.com/users/9061614/patrick-galletti"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523525973,
+            "creation_date": 1523520081,
+            "question_id": 49791069,
+            "body_markdown": "I have this strange problem where the results of the autocomplete function in jquery, are showing in the top-left part of the page and not under the textbox.\r\n\r\n    \r\n\r\nHere is the function.\r\n\r\n    $(function() {\r\n\t\t$( &quot;.txtauto&quot; ).autocomplete({\r\n\t\t\tsource: &#39;php/getSuggerimenti.php&#39;\r\n\t\t});\r\n\t});\r\n\r\nAnd this is the textbox.\r\n\r\n    &lt;input type=&#39;text&#39; class=&#39;txtauto&#39; name=&#39;primo1&#39; /&gt;\r\n\r\nThe jquery version i&#39;m using is the 3.3.1.",
+            "link": "https://stackoverflow.com/questions/49791069/jquery-autocomplete-result-not-showing-in-the-right-place",
+            "title": "Jquery autocomplete result not showing in the right place",
+            "body": "<p>I have this strange problem where the results of the autocomplete function in jquery, are showing in the top-left part of the page and not under the textbox.</p>\n\n<p>Here is the function.</p>\n\n<pre><code>$(function() {\n    $( \".txtauto\" ).autocomplete({\n        source: 'php/getSuggerimenti.php'\n    });\n});\n</code></pre>\n\n<p>And this is the textbox.</p>\n\n<pre><code>&lt;input type='text' class='txtauto' name='primo1' /&gt;\n</code></pre>\n\n<p>The jquery version i'm using is the 3.3.1.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html",
+                "css"
+            ],
+            "owner": {
+                "reputation": 329,
+                "user_id": 4072697,
+                "user_type": "registered",
+                "accept_rate": 51,
+                "profile_image": "https://www.gravatar.com/avatar/53dfcce14e3aa177bd3cea458a183574?s=128&d=identicon&r=PG&f=1",
+                "display_name": "auto",
+                "link": "https://stackoverflow.com/users/4072697/auto"
+            },
+            "is_answered": false,
+            "view_count": 37,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1523525973,
+            "creation_date": 1523400195,
+            "question_id": 49763882,
+            "body_markdown": "I would like an image to become fixed where it is once it appears on screen during a scroll, but become unfixed if the user scrolls back up.\r\n\r\nHowever, when I use a JS on scroll function to change the image position to fixed, it suddenly &quot;jumps&quot;/resizes, and I&#39;m not sure why. My fix was to create variables that alter the width and left values of the image after it becomes fixed, but I want to do this will multiple images on a page and each one seems to require a different width and left adjustment. I&#39;m not sure what is conceptually causing this issue. Simply resetting the width and left to their original values does not work. Does a fixed position resize and image. \r\n\r\n\r\nHere is a [jsfiddle](https://jsfiddle.net/k56qkk5b/1/) of the issue. And here is the code. JS:\r\n\r\n \r\n\r\n     var sitckyImageWidth = &quot;38.4%&quot;;\r\n      var normalImageWidth = &quot;48%&quot;;\r\n    \r\n    \r\n    document.addEventListener(&quot;scroll&quot;, function(){\r\n    \r\n      var windowTop = $(window).scrollTop();\r\n      var  windowWidth = window.innerWidth;\r\n      var  windowHeight = window.innerHeight;\r\n       \r\n       //loop through each div and grab top/bottom/midpoint info and find id\r\n       $(&#39;.articles&#39;).each(function(i){\r\n         var top = $(this).offset().top;\r\n         var bottom = top+ $(this).height();\r\n         var midPoint = (bottom+top)/2;\r\n         var thisId = this.id;\r\n         var newId;\r\n    \r\n        //use container div info to find media info\r\n         var newId = thisId+&quot;Media&quot;;\r\n         var sectionImage=document.getElementById(newId);\r\n         var sectionImageTop = $(sectionImage).offset().top;\r\n    \r\n          //if article is on the page, change position to fixed and set top position\r\n         if (top&lt;=windowTop&amp;&amp;bottom&gt;windowTop){\r\n    \r\n           $(sectionImage).css(&quot;top&quot;,&quot;10px&quot;)\r\n           $(sectionImage).css(&quot;position&quot;,&quot;fixed&quot;)\r\n           //$(sectionImage).css(&quot;width&quot;,sitckyImageWidth)\r\n         }\r\n          //if container is not at top of the page, return to relative\r\n         if (bottom&lt;=windowTop||(bottom&gt;windowTop&amp;&amp;top&gt;windowTop)){\r\n           $(sectionImage).css(&quot;position&quot;,&quot;relative&quot;)\r\n         }\r\n       })\r\n    }); //end scroll",
+            "link": "https://stackoverflow.com/questions/49763882/image-resizes-when-position-is-changed-to-fixed-on-scroll",
+            "title": "Image resizes when position is changed to fixed on scroll",
+            "body": "<p>I would like an image to become fixed where it is once it appears on screen during a scroll, but become unfixed if the user scrolls back up.</p>\n\n<p>However, when I use a JS on scroll function to change the image position to fixed, it suddenly \"jumps\"/resizes, and I'm not sure why. My fix was to create variables that alter the width and left values of the image after it becomes fixed, but I want to do this will multiple images on a page and each one seems to require a different width and left adjustment. I'm not sure what is conceptually causing this issue. Simply resetting the width and left to their original values does not work. Does a fixed position resize and image. </p>\n\n<p>Here is a <a href=\"https://jsfiddle.net/k56qkk5b/1/\" rel=\"nofollow noreferrer\">jsfiddle</a> of the issue. And here is the code. JS:</p>\n\n<pre><code> var sitckyImageWidth = \"38.4%\";\n  var normalImageWidth = \"48%\";\n\n\ndocument.addEventListener(\"scroll\", function(){\n\n  var windowTop = $(window).scrollTop();\n  var  windowWidth = window.innerWidth;\n  var  windowHeight = window.innerHeight;\n\n   //loop through each div and grab top/bottom/midpoint info and find id\n   $('.articles').each(function(i){\n     var top = $(this).offset().top;\n     var bottom = top+ $(this).height();\n     var midPoint = (bottom+top)/2;\n     var thisId = this.id;\n     var newId;\n\n    //use container div info to find media info\n     var newId = thisId+\"Media\";\n     var sectionImage=document.getElementById(newId);\n     var sectionImageTop = $(sectionImage).offset().top;\n\n      //if article is on the page, change position to fixed and set top position\n     if (top&lt;=windowTop&amp;&amp;bottom&gt;windowTop){\n\n       $(sectionImage).css(\"top\",\"10px\")\n       $(sectionImage).css(\"position\",\"fixed\")\n       //$(sectionImage).css(\"width\",sitckyImageWidth)\n     }\n      //if container is not at top of the page, return to relative\n     if (bottom&lt;=windowTop||(bottom&gt;windowTop&amp;&amp;top&gt;windowTop)){\n       $(sectionImage).css(\"position\",\"relative\")\n     }\n   })\n}); //end scroll\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "unit-testing",
+                "xctest",
+                "teamcity-8.0",
+                "xctestcase"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9624844,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/0c96b11242610dc345744b50e507976a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "testtest",
+                "link": "https://stackoverflow.com/users/9624844/testtest"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523525972,
+            "creation_date": 1523525972,
+            "question_id": 49793161,
+            "body_markdown": "I did some unit test using xctest and I want to run them in Teamcity without using the option &quot;Command line&quot;. Does anyone have an idea how to proceed ???\r\n\r\nThank you ",
+            "link": "https://stackoverflow.com/questions/49793161/how-to-run-unit-test-in-teamcity",
+            "title": "How to run unit test in TeamCity ?",
+            "body": "<p>I did some unit test using xctest and I want to run them in Teamcity without using the option \"Command line\". Does anyone have an idea how to proceed ???</p>\n\n<p>Thank you </p>\n"
+        },
+        {
+            "tags": [
+                "jquery",
+                "twitter-bootstrap",
+                "bootstrap-modal",
+                "responsiveness"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 3773585,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/zKyLD.jpg?s=128&g=1",
+                "display_name": "Prashant Saxena",
+                "link": "https://stackoverflow.com/users/3773585/prashant-saxena"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1523525971,
+            "creation_date": 1523525971,
+            "question_id": 49793160,
+            "body_markdown": "Anyone suggest me solution for the issue that I facing while trying to jump the input field on focus through the keyboard in the bootstrap model for a mobile website running on Android devices.\r\n\r\nThis issue is working fine on IOS devices only problem in Andriod devices.\r\n\r\nAlos, I change the model position fixed to the absolute but still same issue facing.",
+            "link": "https://stackoverflow.com/questions/49793160/bootstrap-model-jump-when-i-focus-input-fields",
+            "title": "Bootstrap model jump when I focus input fields",
+            "body": "<p>Anyone suggest me solution for the issue that I facing while trying to jump the input field on focus through the keyboard in the bootstrap model for a mobile website running on Android devices.</p>\n\n<p>This issue is working fine on IOS devices only problem in Andriod devices.</p>\n\n<p>Alos, I change the model position fixed to the absolute but still same issue facing.</p>\n"
+        },
+        {
+            "tags": [
+                "debugging",
+                "makefile",
+                "autotools",
+                "lldb"
+            ],
+            "owner": {
+                "reputation": 8602,
+                "user_id": 1020773,
+                "user_type": "registered",
+                "accept_rate": 98,
+                "profile_image": "https://www.gravatar.com/avatar/22784328a011350c18cbfcc27d28fb76?s=128&d=identicon&r=PG",
+                "display_name": "H Bellamy",
+                "link": "https://stackoverflow.com/users/1020773/h-bellamy"
+            },
+            "is_answered": false,
+            "view_count": 3,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523525966,
+            "creation_date": 1523525966,
+            "question_id": 49793158,
+            "body_markdown": "I have an autotools project with tests that I run using `make check`.\r\n\r\nHowever, I am unable to actually debug test failures.\r\n\r\nIs there a way to run a test and break into the source code with lldb",
+            "link": "https://stackoverflow.com/questions/49793158/debugging-autotools-test-with-llvm",
+            "title": "Debugging autotools test with llvm",
+            "body": "<p>I have an autotools project with tests that I run using <code>make check</code>.</p>\n\n<p>However, I am unable to actually debug test failures.</p>\n\n<p>Is there a way to run a test and break into the source code with lldb</p>\n"
+        },
+        {
+            "tags": [
+                "webgl",
+                "webvr"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9635200,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "shiva sunkara",
+                "link": "https://stackoverflow.com/users/9635200/shiva-sunkara"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523525965,
+            "creation_date": 1523525965,
+            "question_id": 49793156,
+            "body_markdown": "I am new to three js. i want to display a video on plane Geometry . i tried with the following code but it is showing a blank web page with out any errors\r\n\r\n\t\t\tvar video = document.getElementById(&#39;video&#39;);\r\n\t\t\tvideo.src = &quot;***VIDEO URL***&quot;;\r\n\t\t\tvideo.load();\r\n\t\t\tvideo.play();\r\n           var texture = new THREE.VideoTexture(videoImage);\r\n\t\t\ttexture.needsUpdate;\r\n\t\t\ttexture.minFilter = THREE.LinearFilter;\r\n\t\t\ttexture.magFilter = THREE.LinearFilter;\r\n\t\t\ttexture.format = THREE.RGBFormat;\r\n\t\t\ttexture.crossOrigin = &#39;anonymous&#39;;\r\n           var meshPlace = new THREE.Mesh(\r\n\t\t\tnew THREE.PlaneGeometry(USE_WIDTH, USE_HEIGHT , 40),\r\n\t\t  \tnew THREE.MeshBasicMaterial({ map: texture }),);\r\n\t\t\tscene.add( meshPlace );\r\n",
+            "link": "https://stackoverflow.com/questions/49793156/how-to-add-video-to-a-plane-geometry-using-three-js",
+            "title": "How to add video to a plane geometry using three js",
+            "body": "<p>I am new to three js. i want to display a video on plane Geometry . i tried with the following code but it is showing a blank web page with out any errors</p>\n\n<pre><code>        var video = document.getElementById('video');\n        video.src = \"***VIDEO URL***\";\n        video.load();\n        video.play();\n       var texture = new THREE.VideoTexture(videoImage);\n        texture.needsUpdate;\n        texture.minFilter = THREE.LinearFilter;\n        texture.magFilter = THREE.LinearFilter;\n        texture.format = THREE.RGBFormat;\n        texture.crossOrigin = 'anonymous';\n       var meshPlace = new THREE.Mesh(\n        new THREE.PlaneGeometry(USE_WIDTH, USE_HEIGHT , 40),\n        new THREE.MeshBasicMaterial({ map: texture }),);\n        scene.add( meshPlace );\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "javafx-2",
+                "javafx",
+                "scrollpane"
+            ],
+            "owner": {
+                "reputation": 38765,
+                "user_id": 551406,
+                "user_type": "registered",
+                "accept_rate": 95,
+                "profile_image": "https://i.stack.imgur.com/asxye.jpg?s=128&g=1",
+                "display_name": "berry120",
+                "link": "https://stackoverflow.com/users/551406/berry120"
+            },
+            "is_answered": true,
+            "view_count": 3260,
+            "accepted_answer_id": 17687839,
+            "answer_count": 2,
+            "score": 7,
+            "last_activity_date": 1523525963,
+            "creation_date": 1374009505,
+            "question_id": 17687188,
+            "body_markdown": "The [ScrollBar][1] class in JavaFX contains a property for setting the unit increment, which is what I&#39;m after - however I can&#39;t find how to get at this ScrollBar, or set the unit increment some other way from the [ScrollPane][2] class! I presume I must be missing something obvious - how do I achieve this?\r\n\r\n\r\n  [1]: http://docs.oracle.com/javafx/2/api/javafx/scene/control/ScrollBar.html\r\n  [2]: http://docs.oracle.com/javafx/2/api/javafx/scene/control/ScrollPane.html",
+            "link": "https://stackoverflow.com/questions/17687188/how-can-i-set-the-unit-increment-for-a-scroll-pane-in-javafx",
+            "title": "How can I set the unit increment for a scroll pane in JavaFX?",
+            "body": "<p>The <a href=\"http://docs.oracle.com/javafx/2/api/javafx/scene/control/ScrollBar.html\">ScrollBar</a> class in JavaFX contains a property for setting the unit increment, which is what I'm after - however I can't find how to get at this ScrollBar, or set the unit increment some other way from the <a href=\"http://docs.oracle.com/javafx/2/api/javafx/scene/control/ScrollPane.html\">ScrollPane</a> class! I presume I must be missing something obvious - how do I achieve this?</p>\n"
+        },
+        {
+            "tags": [
+                "multithreading",
+                "overflow",
+                "mutex",
+                "uart"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9486904,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-qMceMokSrnY/AAAAAAAAAAI/AAAAAAAAAHA/7MKqSXtUCyw/photo.jpg?sz=128",
+                "display_name": "M.Sadegh Zeighami",
+                "link": "https://stackoverflow.com/users/9486904/m-sadegh-zeighami"
+            },
+            "is_answered": false,
+            "view_count": 25,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523525959,
+            "creation_date": 1520963044,
+            "last_edit_date": 1522394767,
+            "question_id": 49262602,
+            "body_markdown": "FIRST see below EDIT part.\r\n\r\nI use beaglebone black, ker 3.8, and GCC compiler for a signal processing project. \r\nI receive the raw data from three GPS modules through uart communication asynchronously. So, I used 3 threads which check 3 UARTs (BB-UART1, BB-UART2, BB-UART4) continuously to receive raw data, here called the &quot;reading threads&quot;. after each data packet received from each module, I decode the received data packet and extract important data packet. \r\nwhen, decoding is finished in the threads, I perform the signal processing in a separate thread, called &quot;signal processing thread&quot;, using above 3-important decoded data packet.\r\nas it&#39;s obvious, I should synchronize the reading threads with signal processing thread. I use pthread_cond_wait and pthread_cond_signal for that.\r\nthe code operates fine and synchronization and signal processing are performed efficiently. each data packet received in 0.1 second (10 times in a second).\r\nIn the signal processing thread, after signal processing, I send the signal processing result to the user through separate UART, BB-UART5.\r\nwhen I add this part of the code, &quot;THIS&quot; line, after some time, which all parts or OK and the signal processing results are sent to user, the signal processing thread is frozen and locked in a mutex. In fact the mutex unlocking is not performed in previous step.\r\nI spent many time, some weeks, to find the reason. when I remove the mutex and other tools for threads synchronization (to make the whole code simple to debug) an array of data in somewhere is overflowed and its data are changed to overflowed values. However when I don&#39;t add &quot;THIS&quot; line, overflow not occurred any time.\r\nwhen I remove the &quot;write&quot; function (of BB-UART5) in signal processing thread all operations are OK.\r\n\r\nthe signal processing thread:\r\n\r\n    void *signal_processing_thread (void *arg){\r\n\r\n\tint i, j;\r\n\tchar str[512];\r\n\r\n\tprintf(&quot;000000000000000000000000000000000000000000\\r\\n&quot;);\r\n\tprintf(&quot;0-signal_processing_thread is running!\\r\\n&quot;);\r\n\tprintf(&quot;000000000000000000000000000000000000000000\\r\\n&quot;);\r\n\r\n\twhile(1){\r\n\t\tpthread_mutex_lock(&amp;th1); // the code lock here after add &quot;THIS&quot; line\r\n\t\tpthread_mutex_lock(&amp;th2);\r\n\t\tpthread_mutex_lock(&amp;th3);\r\n\t\t\t\r\n\t\tif ((!decode_completed[0])|(!decode_completed[1])|(!decode_completed[2])){\r\n\t\t\tpthread_mutex_unlock(&amp;th1);\r\n\t\t\tpthread_mutex_unlock(&amp;th2);\r\n\t\t\tpthread_mutex_unlock(&amp;th3);\r\n\t\t\tcontinue;\r\n\t\t}\r\n\t\t// data packets are ready in reading threads\r\n        \r\n        // signal processing start\r\n        \r\n\r\n\r\n        // signal processing done\r\n\r\n        // send the results\r\n\t\tsprintf (str,&quot;some string\\r\\n\\0&quot;,some variables);\r\n\t\tprintf (str);\r\n            \r\n        for (i=0;i&lt;256;i++)\r\n            if (str[i]==0)\r\n                 break;\r\n\t\twrite (uart5_id, str, i); // &quot;THIS&quot; line\r\n\t\t\t\r\n\t\tdecode_completed [0] = 0;\r\n\t\tdecode_completed [1] = 0;\r\n\t\tdecode_completed [2] = 0;\r\n\r\n\t\tpthread_cond_signal(&amp;cv1);\r\n\t\tpthread_mutex_unlock(&amp;th1);\r\n\r\n\t\tpthread_cond_signal(&amp;cv2);\r\n\t\tpthread_mutex_unlock(&amp;th2);\t\t\t\r\n\r\n\t\tpthread_cond_signal(&amp;cv3);\r\n\t\tpthread_mutex_unlock(&amp;th3);\r\n\t}\r\n\t\r\n\tprintf(&quot;signal processing thread is closed!\\r\\n&quot;);\r\n    }\r\n\r\nthe reading threads:\r\n\r\n    void *getdecodedata1_thread (void *arg){\r\n\t\tint ret, count, count_decode=0;\r\n\t\tchar buffer[2024], buffer_decode[2024];\r\n\t\tint i;\r\n\t\t\r\n\t\tprintf(&quot;1-getdecodedata_thread is running!\\r\\n&quot;);\r\n\t\t\r\n\t\tcount = 0;\r\n\r\n\t\tpthread_mutex_lock(&amp;th1);\t\t\r\n\t\twhile(1){\r\n\t\t\tfor (i=0;i&lt;500;i++){\t\r\n\t\t\t\tret = read(uart1_id, buffer+count ,255); \r\n\t\t\t\t\r\n\t\t\t\tif (ret&lt;1)\r\n\t\t\t\t\tcontinue;\r\n\t\t\t\t\r\n\t\t\t\t// data received\r\n\r\n\t\t\t\tcount += ret;\r\n\t\t\t\tif (count&gt;1000) break;\t\t\t\t\r\n\t\t\t}\r\n\t\t\tif (count&gt;0){ // packet received\r\n\t\t\t\tfor (i=0;i&lt;count;i++) \r\n\t\t\t\t\tbuffer_decode1[count_decode3+i]=buffer[i];\r\n\t\t\t\t\r\n\t\t\t\tcount_decode1 += count;\r\n\t\t\t\t\r\n\t\t\t\tif (count_decode1&gt;15){\r\n\t\t\t\t\t// decode\r\n\t\t\t\t\t// ....\r\n\t\t\t\t\t// decode done\r\n\t\t\t\t}\r\n\t\t\t\tcount = 0;\r\n\r\n\t\t\t}\r\n\t\t\tif \t(decode is completed) {\t\t\r\n\t\t\t\t\r\n\t\t\t\tdecode_completed [0] = 1; // newdata\r\n\t\t\t\t\r\n\t\t\t\tprintf(&quot;WAIT_1\\n&quot;);\r\n\t\t\t\t\r\n\t\t\t\tpthread_cond_wait(&amp;cv1,&amp;th1);\r\n\t\t\t\tpthread_mutex_unlock(&amp;th1);\r\n\t\t\t\tpthread_mutex_lock(&amp;th1);\r\n\t\t\t\t\r\n\t\t\t\tprintf(&quot;RELEASE_1\\n&quot;);\r\n\t\t\t}\r\n\t\t}\r\n     }\t\r\n    void *getdecodedata2_thread (void *arg){\r\n\t\tint ret, count, count_decode=0;\r\n\t\tchar buffer[2024], buffer_decode[2024];\r\n\t\tint i;\r\n\t\t\r\n\t\tprintf(&quot;2-getdecodedata_thread is running!\\r\\n&quot;);\r\n\t\t\r\n\t\tcount = 0;\r\n\r\n\t\tpthread_mutex_lock(&amp;th2);\t\t\r\n\t\twhile(1){\r\n\t\t\tfor (i=0;i&lt;500;i++){\t\r\n\t\t\t\tret = read(uart2_id, buffer+count ,255); \r\n\t\t\t\t\r\n\t\t\t\tif (ret&lt;1)\r\n\t\t\t\t\tcontinue;\r\n\t\t\t\t\r\n\t\t\t\t// data received\r\n\r\n\t\t\t\tcount += ret;\r\n\t\t\t\tif (count&gt;1000) break;\t\t\t\t\r\n\t\t\t}\r\n\t\t\tif (count&gt;0){ // packet received\r\n\t\t\t\tfor (i=0;i&lt;count;i++) \r\n\t\t\t\t\tbuffer_decode3[count_decode2+i]=buffer[i];\r\n\t\t\t\t\r\n\t\t\t\tcount_decode2 += count;\r\n\t\t\t\t\r\n\t\t\t\tif (count_decode2&gt;15){\r\n\t\t\t\t\t// decode\r\n\t\t\t\t\t// ....\r\n\t\t\t\t\t// decode done\r\n\t\t\t\t}\r\n\t\t\t\tcount = 0;\r\n\r\n\t\t\t}\r\n\t\t\tif \t(decode is completed) {\t\t\r\n\t\t\t\t\r\n\t\t\t\tdecode_completed [1] = 1; // newdata\r\n\t\t\t\t\r\n\t\t\t\tprintf(&quot;WAIT_2\\n&quot;);\r\n\t\t\t\t\r\n\t\t\t\tpthread_cond_wait(&amp;cv2,&amp;th2);\r\n\t\t\t\tpthread_mutex_unlock(&amp;th2);\r\n\t\t\t\tpthread_mutex_lock(&amp;th2);\r\n\t\t\t\t\r\n\t\t\t\tprintf(&quot;RELEASE_2\\n&quot;);\r\n\t\t\t}\r\n\t\t}\r\n    }\r\n\r\n    void *getdecodedata3_thread (void *arg){\r\n\t\tint ret, count, count_decode=0;\r\n\t\tchar buffer[2024], buffer_decode[2024];\r\n\t\tint i;\r\n\t\t\r\n\t\tprintf(&quot;3-getdecodedata_thread is running!\\r\\n&quot;);\r\n\t\t\r\n\t\tcount = 0;\r\n\r\n\t\tpthread_mutex_lock(&amp;th3);\t\t\r\n\t\twhile(1){\r\n\t\t\tfor (i=0;i&lt;500;i++){\t\r\n\t\t\t\tret = read(uart4_id, buffer+count ,255); \r\n\t\t\t\t\r\n\t\t\t\tif (ret&lt;1)\r\n\t\t\t\t\tcontinue;\r\n\t\t\t\t\r\n\t\t\t\t// data received\r\n\r\n\t\t\t\tcount += ret;\r\n\t\t\t\tif (count&gt;1000) break;\t\t\t\t\r\n\t\t\t}\r\n\t\t\tif (count&gt;0){ // packet received\r\n\t\t\t\tfor (i=0;i&lt;count;i++) \r\n\t\t\t\t\tbuffer_decode3[count_decode3+i]=buffer[i];\r\n\t\t\t\t\r\n\t\t\t\tcount_decode3 += count;\r\n\t\t\t\t\r\n\t\t\t\tif (count_decode3&gt;15){\r\n\t\t\t\t\t// decode\r\n\t\t\t\t\t// ....\r\n\t\t\t\t\t// decode done\r\n\t\t\t\t}\r\n\t\t\t\tcount = 0;\r\n\r\n\t\t\t}\r\n\t\t\tif \t(decode is completed) {\t\t\r\n\t\t\t\t\r\n\t\t\t\tdecode_completed [2] = 1; // newdata\r\n\t\t\t\t\r\n\t\t\t\tprintf(&quot;WAIT_3\\n&quot;);\r\n\t\t\t\t\r\n\t\t\t\tpthread_cond_wait(&amp;cv3,&amp;th3);\r\n\t\t\t\tpthread_mutex_unlock(&amp;th3);\r\n\t\t\t\tpthread_mutex_lock(&amp;th3);\r\n\t\t\t\t\r\n\t\t\t\tprintf(&quot;RELEASE_3\\n&quot;);\r\n\t\t\t}\r\n\t\t}\r\n    }\r\n\r\n\r\n\r\nEDIT: I&#39;ve found that the problem is in another place of the code. in some where I use &quot;write&quot; function to send some bytes to UART5 and in a separate thread I read simultaneously (non-blocking) UART5 to receive commands. I think a problem like &quot;SegFault&quot; is occurred and the above problem is seen. when I comment the &quot;read&quot; function of UART5, all things is correct and mutexes work finely. How can I use the UART5 to read and write simultaneously?",
+            "link": "https://stackoverflow.com/questions/49262602/multithreading-and-uart-write",
+            "title": "MultiThreading and Uart write",
+            "body": "<p>FIRST see below EDIT part.</p>\n\n<p>I use beaglebone black, ker 3.8, and GCC compiler for a signal processing project. \nI receive the raw data from three GPS modules through uart communication asynchronously. So, I used 3 threads which check 3 UARTs (BB-UART1, BB-UART2, BB-UART4) continuously to receive raw data, here called the \"reading threads\". after each data packet received from each module, I decode the received data packet and extract important data packet. \nwhen, decoding is finished in the threads, I perform the signal processing in a separate thread, called \"signal processing thread\", using above 3-important decoded data packet.\nas it's obvious, I should synchronize the reading threads with signal processing thread. I use pthread_cond_wait and pthread_cond_signal for that.\nthe code operates fine and synchronization and signal processing are performed efficiently. each data packet received in 0.1 second (10 times in a second).\nIn the signal processing thread, after signal processing, I send the signal processing result to the user through separate UART, BB-UART5.\nwhen I add this part of the code, \"THIS\" line, after some time, which all parts or OK and the signal processing results are sent to user, the signal processing thread is frozen and locked in a mutex. In fact the mutex unlocking is not performed in previous step.\nI spent many time, some weeks, to find the reason. when I remove the mutex and other tools for threads synchronization (to make the whole code simple to debug) an array of data in somewhere is overflowed and its data are changed to overflowed values. However when I don't add \"THIS\" line, overflow not occurred any time.\nwhen I remove the \"write\" function (of BB-UART5) in signal processing thread all operations are OK.</p>\n\n<p>the signal processing thread:</p>\n\n<pre><code>void *signal_processing_thread (void *arg){\n\nint i, j;\nchar str[512];\n\nprintf(\"000000000000000000000000000000000000000000\\r\\n\");\nprintf(\"0-signal_processing_thread is running!\\r\\n\");\nprintf(\"000000000000000000000000000000000000000000\\r\\n\");\n\nwhile(1){\n    pthread_mutex_lock(&amp;th1); // the code lock here after add \"THIS\" line\n    pthread_mutex_lock(&amp;th2);\n    pthread_mutex_lock(&amp;th3);\n\n    if ((!decode_completed[0])|(!decode_completed[1])|(!decode_completed[2])){\n        pthread_mutex_unlock(&amp;th1);\n        pthread_mutex_unlock(&amp;th2);\n        pthread_mutex_unlock(&amp;th3);\n        continue;\n    }\n    // data packets are ready in reading threads\n\n    // signal processing start\n\n\n\n    // signal processing done\n\n    // send the results\n    sprintf (str,\"some string\\r\\n\\0\",some variables);\n    printf (str);\n\n    for (i=0;i&lt;256;i++)\n        if (str[i]==0)\n             break;\n    write (uart5_id, str, i); // \"THIS\" line\n\n    decode_completed [0] = 0;\n    decode_completed [1] = 0;\n    decode_completed [2] = 0;\n\n    pthread_cond_signal(&amp;cv1);\n    pthread_mutex_unlock(&amp;th1);\n\n    pthread_cond_signal(&amp;cv2);\n    pthread_mutex_unlock(&amp;th2);         \n\n    pthread_cond_signal(&amp;cv3);\n    pthread_mutex_unlock(&amp;th3);\n}\n\nprintf(\"signal processing thread is closed!\\r\\n\");\n}\n</code></pre>\n\n<p>the reading threads:</p>\n\n<pre><code>void *getdecodedata1_thread (void *arg){\n    int ret, count, count_decode=0;\n    char buffer[2024], buffer_decode[2024];\n    int i;\n\n    printf(\"1-getdecodedata_thread is running!\\r\\n\");\n\n    count = 0;\n\n    pthread_mutex_lock(&amp;th1);       \n    while(1){\n        for (i=0;i&lt;500;i++){    \n            ret = read(uart1_id, buffer+count ,255); \n\n            if (ret&lt;1)\n                continue;\n\n            // data received\n\n            count += ret;\n            if (count&gt;1000) break;              \n        }\n        if (count&gt;0){ // packet received\n            for (i=0;i&lt;count;i++) \n                buffer_decode1[count_decode3+i]=buffer[i];\n\n            count_decode1 += count;\n\n            if (count_decode1&gt;15){\n                // decode\n                // ....\n                // decode done\n            }\n            count = 0;\n\n        }\n        if  (decode is completed) {     \n\n            decode_completed [0] = 1; // newdata\n\n            printf(\"WAIT_1\\n\");\n\n            pthread_cond_wait(&amp;cv1,&amp;th1);\n            pthread_mutex_unlock(&amp;th1);\n            pthread_mutex_lock(&amp;th1);\n\n            printf(\"RELEASE_1\\n\");\n        }\n    }\n }  \nvoid *getdecodedata2_thread (void *arg){\n    int ret, count, count_decode=0;\n    char buffer[2024], buffer_decode[2024];\n    int i;\n\n    printf(\"2-getdecodedata_thread is running!\\r\\n\");\n\n    count = 0;\n\n    pthread_mutex_lock(&amp;th2);       \n    while(1){\n        for (i=0;i&lt;500;i++){    \n            ret = read(uart2_id, buffer+count ,255); \n\n            if (ret&lt;1)\n                continue;\n\n            // data received\n\n            count += ret;\n            if (count&gt;1000) break;              \n        }\n        if (count&gt;0){ // packet received\n            for (i=0;i&lt;count;i++) \n                buffer_decode3[count_decode2+i]=buffer[i];\n\n            count_decode2 += count;\n\n            if (count_decode2&gt;15){\n                // decode\n                // ....\n                // decode done\n            }\n            count = 0;\n\n        }\n        if  (decode is completed) {     \n\n            decode_completed [1] = 1; // newdata\n\n            printf(\"WAIT_2\\n\");\n\n            pthread_cond_wait(&amp;cv2,&amp;th2);\n            pthread_mutex_unlock(&amp;th2);\n            pthread_mutex_lock(&amp;th2);\n\n            printf(\"RELEASE_2\\n\");\n        }\n    }\n}\n\nvoid *getdecodedata3_thread (void *arg){\n    int ret, count, count_decode=0;\n    char buffer[2024], buffer_decode[2024];\n    int i;\n\n    printf(\"3-getdecodedata_thread is running!\\r\\n\");\n\n    count = 0;\n\n    pthread_mutex_lock(&amp;th3);       \n    while(1){\n        for (i=0;i&lt;500;i++){    \n            ret = read(uart4_id, buffer+count ,255); \n\n            if (ret&lt;1)\n                continue;\n\n            // data received\n\n            count += ret;\n            if (count&gt;1000) break;              \n        }\n        if (count&gt;0){ // packet received\n            for (i=0;i&lt;count;i++) \n                buffer_decode3[count_decode3+i]=buffer[i];\n\n            count_decode3 += count;\n\n            if (count_decode3&gt;15){\n                // decode\n                // ....\n                // decode done\n            }\n            count = 0;\n\n        }\n        if  (decode is completed) {     \n\n            decode_completed [2] = 1; // newdata\n\n            printf(\"WAIT_3\\n\");\n\n            pthread_cond_wait(&amp;cv3,&amp;th3);\n            pthread_mutex_unlock(&amp;th3);\n            pthread_mutex_lock(&amp;th3);\n\n            printf(\"RELEASE_3\\n\");\n        }\n    }\n}\n</code></pre>\n\n<p>EDIT: I've found that the problem is in another place of the code. in some where I use \"write\" function to send some bytes to UART5 and in a separate thread I read simultaneously (non-blocking) UART5 to receive commands. I think a problem like \"SegFault\" is occurred and the above problem is seen. when I comment the \"read\" function of UART5, all things is correct and mutexes work finely. How can I use the UART5 to read and write simultaneously?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "jquery",
+                "css",
+                "dom",
+                "dynamic"
+            ],
+            "owner": {
+                "reputation": 80,
+                "user_id": 666160,
+                "user_type": "registered",
+                "accept_rate": 74,
+                "profile_image": "https://www.gravatar.com/avatar/b8bad0b59ae84ceeae696d846e624466?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Игор Рајачић",
+                "link": "https://stackoverflow.com/users/666160/%d0%98%d0%b3%d0%be%d1%80-%d0%a0%d0%b0%d1%98%d0%b0%d1%87%d0%b8%d1%9b"
+            },
+            "is_answered": true,
+            "view_count": 7813,
+            "accepted_answer_id": 8358840,
+            "answer_count": 4,
+            "score": 1,
+            "last_activity_date": 1523525934,
+            "creation_date": 1322840453,
+            "last_edit_date": 1464772446,
+            "question_id": 8358776,
+            "body_markdown": "I have some basic code here.  It just creates a div element to a certain defined position, and the ID is not dynamic.\r\n\r\n    var i=1;\r\n    while (i&lt;=6)\r\n    {\r\n        jQuery(&#39;&lt;div/&gt;&#39;, {\r\n            id: &#39;karta_back&#39;\r\n            // I don&#39;t know how to insert CSS here\r\n        }).appendTo(&#39;#igrac1&#39;);\r\n    \r\n        ++i;\r\n    }\r\n\r\nThe problem is with dynamic ids.  With css, I don&#39;t know how to define the CSS inside that function.  For this example, I used the internal CSS that is defined somewhere in the document.  With the position, I suppose that cards need to be CSS absolute positioned to perform like i would like.\r\n\r\nThis is the result that I have with this simple code I wrote:\r\nhttp://dl.dropbox.com/u/2849320/achieved.png\r\n\r\nThis is what i want to achieve:\r\nhttp://dl.dropbox.com/u/2849320/want%20to%20achieve.jpg\r\n\r\nHow can I do this?\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/8358776/jquery-create-div-with-dynamic-id-and-defined-css-attributes-which-define-look",
+            "title": "jQuery create DIV with dynamic ID and defined CSS attributes (which define look and position of that div)",
+            "body": "<p>I have some basic code here.  It just creates a div element to a certain defined position, and the ID is not dynamic.</p>\n\n<pre><code>var i=1;\nwhile (i&lt;=6)\n{\n    jQuery('&lt;div/&gt;', {\n        id: 'karta_back'\n        // I don't know how to insert CSS here\n    }).appendTo('#igrac1');\n\n    ++i;\n}\n</code></pre>\n\n<p>The problem is with dynamic ids.  With css, I don't know how to define the CSS inside that function.  For this example, I used the internal CSS that is defined somewhere in the document.  With the position, I suppose that cards need to be CSS absolute positioned to perform like i would like.</p>\n\n<p>This is the result that I have with this simple code I wrote:\n<a href=\"http://dl.dropbox.com/u/2849320/achieved.png\" rel=\"nofollow\">http://dl.dropbox.com/u/2849320/achieved.png</a></p>\n\n<p>This is what i want to achieve:\n<a href=\"http://dl.dropbox.com/u/2849320/want%20to%20achieve.jpg\" rel=\"nofollow\">http://dl.dropbox.com/u/2849320/want%20to%20achieve.jpg</a></p>\n\n<p>How can I do this?</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "mysql",
+                "sql"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9634781,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Lara",
+                "link": "https://stackoverflow.com/users/9634781/lara"
+            },
+            "is_answered": false,
+            "view_count": 65,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1523525930,
+            "creation_date": 1523521604,
+            "last_edit_date": 1523523055,
+            "question_id": 49791524,
+            "body_markdown": "I have 2 tables. The first contains a list of groups. The second contains the time of publication of posts.\r\nYou need to get a list of groups, and post to them, but the posts should be sorted by time.\r\nWhen I do in the grouping, then the time of fasting is not the same.\r\n\r\n\r\n                table time_post\r\n    +----+---------------+--------+-----------+\r\n    | id |  id_public    | img_id | time_post |\r\n    +----+---------------+--------+-----------+\r\n    |  1 |             1 |      2 |         5 |\r\n    |  2 |             2 |      1 |         1 |\r\n    |  7 |             1 |      1 |        55 |\r\n    |  8 |             1 |      3 |         2 |\r\n    | 10 |             3 |      3 |         4 |\r\n    | 11 |             3 |      3 |         2 |\r\n    +----+---------------+--------+-----------+\r\n\r\n         table public\r\n    +----+-----------+-------------+--------------+-----------+\r\n    | id | id_public | time_update | access_token | text_send |\r\n    +----+-----------+-------------+--------------+-----------+\r\n    |  1 |      9876 |           0 | 1234         |           |\r\n    |  2 |     12345 |           0 | 12345        |           |\r\n    |  3 |     22222 |           0 |              |           |\r\n    +----+-----------+-------------+--------------+-----------+\r\n                     To get this result\r\n    +-----------+-------------+--------------+-----------+\r\n    | id_public | time_post   | access_token | text_send |\r\n    +-----------+-------------+--------------+-----------+\r\n    |      9876 |           2 | 1234         |           |\r\n    |     12345 |           1 | 12345        |           |\r\n    |     22222 |           2 |              |           |\r\n    +-----------+-------------+--------------+-----------+\r\n\r\ntime_post should be sorted by the minimum\r\n  \r\n\r\n ",
+            "link": "https://stackoverflow.com/questions/49791524/sql-request-group-by",
+            "title": "sql request GROUP BY",
+            "body": "<p>I have 2 tables. The first contains a list of groups. The second contains the time of publication of posts.\nYou need to get a list of groups, and post to them, but the posts should be sorted by time.\nWhen I do in the grouping, then the time of fasting is not the same.</p>\n\n<pre><code>            table time_post\n+----+---------------+--------+-----------+\n| id |  id_public    | img_id | time_post |\n+----+---------------+--------+-----------+\n|  1 |             1 |      2 |         5 |\n|  2 |             2 |      1 |         1 |\n|  7 |             1 |      1 |        55 |\n|  8 |             1 |      3 |         2 |\n| 10 |             3 |      3 |         4 |\n| 11 |             3 |      3 |         2 |\n+----+---------------+--------+-----------+\n\n     table public\n+----+-----------+-------------+--------------+-----------+\n| id | id_public | time_update | access_token | text_send |\n+----+-----------+-------------+--------------+-----------+\n|  1 |      9876 |           0 | 1234         |           |\n|  2 |     12345 |           0 | 12345        |           |\n|  3 |     22222 |           0 |              |           |\n+----+-----------+-------------+--------------+-----------+\n                 To get this result\n+-----------+-------------+--------------+-----------+\n| id_public | time_post   | access_token | text_send |\n+-----------+-------------+--------------+-----------+\n|      9876 |           2 | 1234         |           |\n|     12345 |           1 | 12345        |           |\n|     22222 |           2 |              |           |\n+-----------+-------------+--------------+-----------+\n</code></pre>\n\n<p>time_post should be sorted by the minimum</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "ios",
+                "deep-linking",
+                "branch.io"
+            ],
+            "owner": {
+                "reputation": 1159,
+                "user_id": 1048566,
+                "user_type": "registered",
+                "accept_rate": 65,
+                "profile_image": "https://www.gravatar.com/avatar/cd1b01043ad7ad20f1eb631f0ced1990?s=128&d=identicon&r=PG",
+                "display_name": "Ilya Karnaukhov",
+                "link": "https://stackoverflow.com/users/1048566/ilya-karnaukhov"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523525927,
+            "creation_date": 1523525927,
+            "question_id": 49793149,
+            "body_markdown": "My branch.io link works as expected for iOS, Android, and Desktop, except when I look at what the crawler sees. How do I tell all crawlers using a branch.io link to go to the Google Play page of my app (so I get the backlinks)?",
+            "link": "https://stackoverflow.com/questions/49793149/branch-io-redirect-crawlers-to-google-play",
+            "title": "Branch.io redirect crawlers to Google Play",
+            "body": "<p>My branch.io link works as expected for iOS, Android, and Desktop, except when I look at what the crawler sees. How do I tell all crawlers using a branch.io link to go to the Google Play page of my app (so I get the backlinks)?</p>\n"
+        },
+        {
+            "tags": [
+                "git",
+                "go",
+                "header",
+                "authorization",
+                "clone"
+            ],
+            "owner": {
+                "reputation": 409,
+                "user_id": 1240018,
+                "user_type": "registered",
+                "accept_rate": 54,
+                "profile_image": "https://i.stack.imgur.com/etLZe.jpg?s=128&g=1",
+                "display_name": "eventhorizon",
+                "link": "https://stackoverflow.com/users/1240018/eventhorizon"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523525921,
+            "creation_date": 1523525921,
+            "question_id": 49793147,
+            "body_markdown": "I am looking for a way to clone a private git repository.\r\n\r\nMy restrictions:\r\n\r\n - use http\r\n - use &quot;Authorization&quot; header (Basic/Bearer)\r\n\r\nUsing the &quot;PlainClone&quot; function where the credentials are contained inside the url (http://username:password@mygitrepo.com) does not work (forbidden by the server).\r\n\r\nSource of my problem is some code in portainer:\r\n\r\n    // ClonePrivateRepositoryWithBasicAuth clones a private git repository using the specified URL in the specified\r\n    // destination folder. It will use the specified username and password for basic HTTP authentication.\r\n    func (service *Service) ClonePrivateRepositoryWithBasicAuth(repositoryURL, destination, username, password string) error {\r\n    \tcredentials := username + &quot;:&quot; + url.PathEscape(password)\r\n\t    repositoryURL = strings.Replace(repositoryURL, &quot;://&quot;, &quot;://&quot;+credentials+&quot;@&quot;, 1)\r\n\t    return cloneRepository(repositoryURL, destination)\r\n    }\r\n    \r\n    func cloneRepository(repositoryURL, destination string) error {\r\n\t    _, err := git.PlainClone(destination, false, &amp;git.CloneOptions{\r\n\t    \tURL: repositoryURL,\r\n\t    })\r\n\t    return err\r\n    }\r\n\r\nAs far as I understood it is possible to add some &quot;clone configuration&quot; (CloneOptions) containing the method (Auth transport.AuthMethod). But that is all I know - and that just in theory... :-|\r\n\r\nAny idea? I am really brand new to go :-)",
+            "link": "https://stackoverflow.com/questions/49793147/go-git-support-for-authorization-header",
+            "title": "go-git support for &quot;Authorization&quot; header",
+            "body": "<p>I am looking for a way to clone a private git repository.</p>\n\n<p>My restrictions:</p>\n\n<ul>\n<li>use http</li>\n<li>use \"Authorization\" header (Basic/Bearer)</li>\n</ul>\n\n<p>Using the \"PlainClone\" function where the credentials are contained inside the url (<a href=\"http://username:password@mygitrepo.com\" rel=\"nofollow noreferrer\">http://username:password@mygitrepo.com</a>) does not work (forbidden by the server).</p>\n\n<p>Source of my problem is some code in portainer:</p>\n\n<pre><code>// ClonePrivateRepositoryWithBasicAuth clones a private git repository using the specified URL in the specified\n// destination folder. It will use the specified username and password for basic HTTP authentication.\nfunc (service *Service) ClonePrivateRepositoryWithBasicAuth(repositoryURL, destination, username, password string) error {\n    credentials := username + \":\" + url.PathEscape(password)\n    repositoryURL = strings.Replace(repositoryURL, \"://\", \"://\"+credentials+\"@\", 1)\n    return cloneRepository(repositoryURL, destination)\n}\n\nfunc cloneRepository(repositoryURL, destination string) error {\n    _, err := git.PlainClone(destination, false, &amp;git.CloneOptions{\n        URL: repositoryURL,\n    })\n    return err\n}\n</code></pre>\n\n<p>As far as I understood it is possible to add some \"clone configuration\" (CloneOptions) containing the method (Auth transport.AuthMethod). But that is all I know - and that just in theory... :-|</p>\n\n<p>Any idea? I am really brand new to go :-)</p>\n"
+        },
+        {
+            "tags": [
+                "assert",
+                "qpython3"
+            ],
+            "owner": {
+                "reputation": 586,
+                "user_id": 6074182,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://www.gravatar.com/avatar/eea96ceabd30de865464b40ddbd2e64d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Aemyl",
+                "link": "https://stackoverflow.com/users/6074182/aemyl"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523525916,
+            "creation_date": 1523525916,
+            "question_id": 49793146,
+            "body_markdown": "I recently tried to use the `assert`-statement in QPython3, but it doesn&#39;t do anything. The python docs say:\r\n\r\nThe simple form, `assert expression` is equivalent to\r\n\r\n    if __debug__:\r\n        if not expression: raise AssertionError\r\n\r\nThe extended form, `assert expression1, expression2` is equivalent to\r\n\r\n    if __debug__:\r\n        if not expression1: raise AssertionError(expression2)\r\n\r\nSo it depends on `__debug__` if the `assert` statement gets executed. I printed the value of `__debug__` in a script as well as in the console and in both cases it was `False`. Unfortunatley, I wasn&#39;t able to figure out how to change that. The value of `__debug__` can&#39;t be changed at runtime, so I expected it to be in the options.\r\n\r\nFYI: I know I could just code it without `assert` (It&#39;s uncommon anyway), it is just pure curiosity.",
+            "link": "https://stackoverflow.com/questions/49793146/how-to-enable-assert-debug-in-qpython3",
+            "title": "How to enable assert / __debug__ in QPython3?",
+            "body": "<p>I recently tried to use the <code>assert</code>-statement in QPython3, but it doesn't do anything. The python docs say:</p>\n\n<p>The simple form, <code>assert expression</code> is equivalent to</p>\n\n<pre><code>if __debug__:\n    if not expression: raise AssertionError\n</code></pre>\n\n<p>The extended form, <code>assert expression1, expression2</code> is equivalent to</p>\n\n<pre><code>if __debug__:\n    if not expression1: raise AssertionError(expression2)\n</code></pre>\n\n<p>So it depends on <code>__debug__</code> if the <code>assert</code> statement gets executed. I printed the value of <code>__debug__</code> in a script as well as in the console and in both cases it was <code>False</code>. Unfortunatley, I wasn't able to figure out how to change that. The value of <code>__debug__</code> can't be changed at runtime, so I expected it to be in the options.</p>\n\n<p>FYI: I know I could just code it without <code>assert</code> (It's uncommon anyway), it is just pure curiosity.</p>\n"
+        },
+        {
+            "tags": [
+                "reactjs",
+                "this",
+                "bind"
+            ],
+            "owner": {
+                "reputation": 337,
+                "user_id": 1340552,
+                "user_type": "registered",
+                "accept_rate": 64,
+                "profile_image": "https://www.gravatar.com/avatar/6417e0cd61d020ff71400a0c362cb353?s=128&d=identicon&r=PG",
+                "display_name": "ozgrozer",
+                "link": "https://stackoverflow.com/users/1340552/ozgrozer"
+            },
+            "is_answered": true,
+            "view_count": 23,
+            "accepted_answer_id": 49793144,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1523525912,
+            "creation_date": 1523524495,
+            "last_edit_date": 1523525183,
+            "question_id": 49792610,
+            "body_markdown": "When I type anything into the input which is inside of the `&lt;Input&gt;` component, I wanna execute the `handleInput()` function which is inside of the `&lt;MainProvider&gt;` component.\r\n\r\nThis (`onChange={store.handleInput.bind(this)}`) looks like working but it can&#39;t pass `this`.\r\n\r\nIn the console I just get `undefined` message.\r\n\r\nHere&#39;s an example code.\r\n\r\n&lt;!-- language: lang-react-jsx --&gt;\r\n\r\n    const MainContext = React.createContext()\r\n    \r\n    class MainProvider extends React.Component {\r\n      handleInput (e) {\r\n        console.log(e)\r\n      }\r\n    \r\n      render () {\r\n        const store = {\r\n          handleInput: () =&gt; this.handleInput()\r\n        }\r\n    \r\n        return (\r\n          &lt;MainContext.Provider value={store}&gt;\r\n            {this.props.children}\r\n          &lt;/MainContext.Provider&gt;\r\n        )\r\n      }\r\n    }\r\n    \r\n    class Input extends React.Component {\r\n      render () {\r\n        return (\r\n          &lt;MainContext.Consumer&gt;\r\n            {(store) =&gt; (\r\n              &lt;input {...this.props} onChange={store.handleInput.bind(this)} /&gt;\r\n            )}\r\n          &lt;/MainContext.Consumer&gt;\r\n        )\r\n      }\r\n    }\r\n    \r\n    class App extends React.Component {\r\n      render () {\r\n        return (\r\n          &lt;MainProvider&gt;\r\n            &lt;Input name=&#39;one&#39; /&gt;\r\n            &lt;Input name=&#39;two&#39; /&gt;\r\n          &lt;/MainProvider&gt;\r\n        )\r\n      }\r\n    }\r\n\r\nHow can I pass `this` in the `onChange` event? I&#39;m using React 16.3.1.\r\n",
+            "link": "https://stackoverflow.com/questions/49792610/react-context-api-cant-bind-this",
+            "title": "React Context API can&#39;t bind &#39;this&#39;",
+            "body": "<p>When I type anything into the input which is inside of the <code>&lt;Input&gt;</code> component, I wanna execute the <code>handleInput()</code> function which is inside of the <code>&lt;MainProvider&gt;</code> component.</p>\n\n<p>This (<code>onChange={store.handleInput.bind(this)}</code>) looks like working but it can't pass <code>this</code>.</p>\n\n<p>In the console I just get <code>undefined</code> message.</p>\n\n<p>Here's an example code.</p>\n\n<pre class=\"lang-react-jsx prettyprint-override\"><code>const MainContext = React.createContext()\n\nclass MainProvider extends React.Component {\n  handleInput (e) {\n    console.log(e)\n  }\n\n  render () {\n    const store = {\n      handleInput: () =&gt; this.handleInput()\n    }\n\n    return (\n      &lt;MainContext.Provider value={store}&gt;\n        {this.props.children}\n      &lt;/MainContext.Provider&gt;\n    )\n  }\n}\n\nclass Input extends React.Component {\n  render () {\n    return (\n      &lt;MainContext.Consumer&gt;\n        {(store) =&gt; (\n          &lt;input {...this.props} onChange={store.handleInput.bind(this)} /&gt;\n        )}\n      &lt;/MainContext.Consumer&gt;\n    )\n  }\n}\n\nclass App extends React.Component {\n  render () {\n    return (\n      &lt;MainProvider&gt;\n        &lt;Input name='one' /&gt;\n        &lt;Input name='two' /&gt;\n      &lt;/MainProvider&gt;\n    )\n  }\n}\n</code></pre>\n\n<p>How can I pass <code>this</code> in the <code>onChange</code> event? I'm using React 16.3.1.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "ecmascript-6"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 8316795,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/52807bb21a110bbaedbdd8047e4d615f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Gnex",
+                "link": "https://stackoverflow.com/users/8316795/gnex"
+            },
+            "is_answered": true,
+            "view_count": 43,
+            "accepted_answer_id": 49792831,
+            "answer_count": 4,
+            "score": -4,
+            "last_activity_date": 1523525907,
+            "creation_date": 1523524924,
+            "question_id": 49792771,
+            "body_markdown": "I have a little question about joining arrays. I have an array of letters, something like that:\r\n\r\n    let array = [&#39;a&#39;,&#39;b&#39;,&#39;&#39;,&#39;c&#39;]\r\n    \r\nI wan&#39;t to join elements in array to have output like that:\r\n\r\n    let array = [&#39;ab&#39;,&#39;c&#39;]\r\nCan you help me? I was searching but everything i found was about removing whitespaces from arrays or string :(",
+            "link": "https://stackoverflow.com/questions/49792771/join-array-without-removing-whitespace",
+            "title": "Join array without removing whitespace",
+            "body": "<p>I have a little question about joining arrays. I have an array of letters, something like that:</p>\n\n<pre><code>let array = ['a','b','','c']\n</code></pre>\n\n<p>I wan't to join elements in array to have output like that:</p>\n\n<pre><code>let array = ['ab','c']\n</code></pre>\n\n<p>Can you help me? I was searching but everything i found was about removing whitespaces from arrays or string :(</p>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "postgresql",
+                "left-join"
+            ],
+            "owner": {
+                "reputation": 391,
+                "user_id": 2688876,
+                "user_type": "registered",
+                "accept_rate": 27,
+                "profile_image": "https://graph.facebook.com/1371238108/picture?type=large",
+                "display_name": "Agoeng Liu",
+                "link": "https://stackoverflow.com/users/2688876/agoeng-liu"
+            },
+            "is_answered": true,
+            "view_count": 20,
+            "accepted_answer_id": 49792563,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523525906,
+            "creation_date": 1523523130,
+            "last_edit_date": 1523524466,
+            "question_id": 49792103,
+            "body_markdown": "i have \r\n\r\n    table customer {ID(primary key-autoincrement),CUSTOMERNAME}\r\n    table item {ID (primary Key-autoincrement),PRODUCT,PRICE}\r\n    table price {ID (primary key-autoincrement),CUSTOMERID (foreign key),ITEMID (foreign-key),PRICE}\r\n\r\nNow I am filling data like this : \r\n\r\n    table customer : {1,ABC},{2,DEF}\r\n    table item  :{1,EGG,50},{2,BRUSH,100},{3,SHOES,290},{4,SOCKS,120},{5,PILLOW,200}\r\n    table price :{1,1,3,320}\r\n\r\nif I get the price for customer ABC (customer ID :1), then will be displayed result like this (5 records)\r\n\r\n    {1,1,EGG,50},{2,1,BRUSH,100},{3,1,SHOES,320},{4,1,SOCKS,120},{5,1,PILLOW,200}\r\n\r\nbut if I want to display price for customer DEF, then only displayed 4 records\r\n\r\n    {1,1,EGG,50},{2,1,BRUSH,100},{4,1,SOCKS,120},{5,1,PILLOW,200}\r\n\r\nmy question how to display price for item with item ID (3) with default price 290 for customer DEF ?\r\n\r\ni use left outer join for this case then takes record with joined, then for second case they only returned 4 records\r\n\r\nhere my query (returned 4 records)\r\n\r\n    SELECT TMP.&quot;ID&quot;,TMP.&quot;IDCUSTOMER&quot;,TMI.&quot;NAME&quot;,\r\n    CASE WHEN TMP.&quot;PRICE&quot; IS NULL THEN TMI.&quot;PRICE&quot; ELSE TMP.&quot;PRICE&quot; END AS &quot;CUSTOMPRICE&quot;\r\n    FROM mitem TMI \r\n    LEFT OUTER JOIN mprice TMP ON TMP.&quot;IDITEM&quot;=TMI.&quot;ID&quot;\r\n    LEFT OUTER JOIN mcustomer TMC ON TMC.&quot;ID&quot;=TMP.&quot;IDCUSTOMER&quot;\r\n    WHERE TMP.&quot;IDCUSTOMER&quot;=&#39;2&#39; OR TMP.&quot;ID&quot; IS NULL\r\n\r\n\r\nAny idea beside without using UNION to join result ?\r\nThanks in advanced\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49792103/how-to-get-record-not-joined-result-postgresql",
+            "title": "How to get record not joined result PostgreSQL",
+            "body": "<p>i have </p>\n\n<pre><code>table customer {ID(primary key-autoincrement),CUSTOMERNAME}\ntable item {ID (primary Key-autoincrement),PRODUCT,PRICE}\ntable price {ID (primary key-autoincrement),CUSTOMERID (foreign key),ITEMID (foreign-key),PRICE}\n</code></pre>\n\n<p>Now I am filling data like this : </p>\n\n<pre><code>table customer : {1,ABC},{2,DEF}\ntable item  :{1,EGG,50},{2,BRUSH,100},{3,SHOES,290},{4,SOCKS,120},{5,PILLOW,200}\ntable price :{1,1,3,320}\n</code></pre>\n\n<p>if I get the price for customer ABC (customer ID :1), then will be displayed result like this (5 records)</p>\n\n<pre><code>{1,1,EGG,50},{2,1,BRUSH,100},{3,1,SHOES,320},{4,1,SOCKS,120},{5,1,PILLOW,200}\n</code></pre>\n\n<p>but if I want to display price for customer DEF, then only displayed 4 records</p>\n\n<pre><code>{1,1,EGG,50},{2,1,BRUSH,100},{4,1,SOCKS,120},{5,1,PILLOW,200}\n</code></pre>\n\n<p>my question how to display price for item with item ID (3) with default price 290 for customer DEF ?</p>\n\n<p>i use left outer join for this case then takes record with joined, then for second case they only returned 4 records</p>\n\n<p>here my query (returned 4 records)</p>\n\n<pre><code>SELECT TMP.\"ID\",TMP.\"IDCUSTOMER\",TMI.\"NAME\",\nCASE WHEN TMP.\"PRICE\" IS NULL THEN TMI.\"PRICE\" ELSE TMP.\"PRICE\" END AS \"CUSTOMPRICE\"\nFROM mitem TMI \nLEFT OUTER JOIN mprice TMP ON TMP.\"IDITEM\"=TMI.\"ID\"\nLEFT OUTER JOIN mcustomer TMC ON TMC.\"ID\"=TMP.\"IDCUSTOMER\"\nWHERE TMP.\"IDCUSTOMER\"='2' OR TMP.\"ID\" IS NULL\n</code></pre>\n\n<p>Any idea beside without using UNION to join result ?\nThanks in advanced</p>\n"
+        },
+        {
+            "tags": [
+                "google-drive-sdk",
+                "google-oauth",
+                "google-oauth2",
+                "oauth2client",
+                "google-javascript-api"
+            ],
+            "owner": {
+                "reputation": 27,
+                "user_id": 1778639,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/068514c3663f57259ef7ab54ae638db9?s=128&d=identicon&r=PG",
+                "display_name": "spyDeveloper",
+                "link": "https://stackoverflow.com/users/1778639/spydeveloper"
+            },
+            "is_answered": true,
+            "view_count": 14,
+            "accepted_answer_id": 49792754,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523525906,
+            "creation_date": 1523523347,
+            "last_edit_date": 1523525906,
+            "question_id": 49792200,
+            "body_markdown": "I have created a web app which is making use of Google Drive API/ REST v2 (https://developers.google.com/drive/v2/web/about-sdk) to perform actions such as create/update/rename/delete of documents etc.\r\nI am authorizing requests with OAuth 2.0 (client side - that means every access token is valid for ~1h and then silently I am getting a new token) and then perform previous actions using that token.\r\n\r\nI have a new requirement for the authorized user to share his/her documents for writing/updating them (I found out that API has option for inserting permissions (https://developers.google.com/drive/v2/reference/permissions/insert : role: writer, type: anyone). \r\n\r\nIs it possible for a non-authenticated user to be able to write/update documents (programmatically - via Google Drive API v2 or another API?) that have been created from the authenticated user that shared these? (something that is similar to google docs/ sharing when a user is sharing his document and offline users are able to edit it?\r\n\r\nThanks.\r\n",
+            "link": "https://stackoverflow.com/questions/49792200/google-drive-api-share-document-for-offline-writing-updating",
+            "title": "Google Drive API Share document for offline writing/updating",
+            "body": "<p>I have created a web app which is making use of Google Drive API/ REST v2 (<a href=\"https://developers.google.com/drive/v2/web/about-sdk\" rel=\"nofollow noreferrer\">https://developers.google.com/drive/v2/web/about-sdk</a>) to perform actions such as create/update/rename/delete of documents etc.\nI am authorizing requests with OAuth 2.0 (client side - that means every access token is valid for ~1h and then silently I am getting a new token) and then perform previous actions using that token.</p>\n\n<p>I have a new requirement for the authorized user to share his/her documents for writing/updating them (I found out that API has option for inserting permissions (<a href=\"https://developers.google.com/drive/v2/reference/permissions/insert\" rel=\"nofollow noreferrer\">https://developers.google.com/drive/v2/reference/permissions/insert</a> : role: writer, type: anyone). </p>\n\n<p>Is it possible for a non-authenticated user to be able to write/update documents (programmatically - via Google Drive API v2 or another API?) that have been created from the authenticated user that shared these? (something that is similar to google docs/ sharing when a user is sharing his document and offline users are able to edit it?</p>\n\n<p>Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "argparse"
+            ],
+            "owner": {
+                "reputation": 47,
+                "user_id": 5106253,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://graph.facebook.com/10207412646419526/picture?type=large",
+                "display_name": "Paul D Smith",
+                "link": "https://stackoverflow.com/users/5106253/paul-d-smith"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523525900,
+            "creation_date": 1523525900,
+            "question_id": 49793141,
+            "body_markdown": "This is a program that already exists and I&#39;m trying to extend it - so my hands are tied somewhat :-(.\r\n\r\nI have a program where I want to add an option that takes an unknown number of values so I&#39;m trying to use nargs=&#39;+&#39;.  I can spot when a value is not actually for my option and is a positional argument and I can then use setattr to set the positional argument - but argparse doesn&#39;t get a chance to find the positional argument itself so complains.\r\n\r\nThe syntax for the command, as show in arparse generated help text, is\r\n\r\n    command [--option value [value...]] positional\r\n\r\nIn theory this is possible if I did this instead\r\n\r\n    command positional [--option value [value...]]\r\n\r\nThis is precisely how examples, even in the argparse documentation, work but that is NOT how the command is currently used, NOT how users typically provide programs with options and NOT how argparse generated help text shows the expected syntax.\r\n\r\nSo it there a way to somehow both handle the positional but also tell argparse &#39;oh, I found this positional so no need to complain that it is missing&#39;?\r\n",
+            "link": "https://stackoverflow.com/questions/49793141/argparse-nargs-and-positionals",
+            "title": "argparse nargs and positionals",
+            "body": "<p>This is a program that already exists and I'm trying to extend it - so my hands are tied somewhat :-(.</p>\n\n<p>I have a program where I want to add an option that takes an unknown number of values so I'm trying to use nargs='+'.  I can spot when a value is not actually for my option and is a positional argument and I can then use setattr to set the positional argument - but argparse doesn't get a chance to find the positional argument itself so complains.</p>\n\n<p>The syntax for the command, as show in arparse generated help text, is</p>\n\n<pre><code>command [--option value [value...]] positional\n</code></pre>\n\n<p>In theory this is possible if I did this instead</p>\n\n<pre><code>command positional [--option value [value...]]\n</code></pre>\n\n<p>This is precisely how examples, even in the argparse documentation, work but that is NOT how the command is currently used, NOT how users typically provide programs with options and NOT how argparse generated help text shows the expected syntax.</p>\n\n<p>So it there a way to somehow both handle the positional but also tell argparse 'oh, I found this positional so no need to complain that it is missing'?</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "objective-c"
+            ],
+            "owner": {
+                "reputation": 115,
+                "user_id": 848732,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ae0ac8e4cb9f1d80627f20e30895167a?s=128&d=identicon&r=PG",
+                "display_name": "Henry Zhang",
+                "link": "https://stackoverflow.com/users/848732/henry-zhang"
+            },
+            "is_answered": false,
+            "view_count": 38,
+            "answer_count": 1,
+            "score": -2,
+            "last_activity_date": 1523525896,
+            "creation_date": 1523521703,
+            "last_edit_date": 1523521899,
+            "question_id": 49791565,
+            "body_markdown": "![images][1]\r\n\r\nWhen I touched the indication input, and click learn more, this will show from current viewController, however, when i touched the button &quot;完成&quot; which means done, the viewconteoller never go to the method as viewWillAppear or viewDidAppear, my viewController is landscape and this is potrait,so this cause the problem, I need go get the event when this page dismissed to fix the direction, anyone had good ideas to resolve this? Thanks\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/JUZM1.jpg",
+            "link": "https://stackoverflow.com/questions/49791565/get-viewcontrolelr-appear-event",
+            "title": "get viewControlelr appear event",
+            "body": "<p><img src=\"https://i.stack.imgur.com/JUZM1.jpg\" alt=\"images\"></p>\n\n<p>When I touched the indication input, and click learn more, this will show from current viewController, however, when i touched the button \"完成\" which means done, the viewconteoller never go to the method as viewWillAppear or viewDidAppear, my viewController is landscape and this is potrait,so this cause the problem, I need go get the event when this page dismissed to fix the direction, anyone had good ideas to resolve this? Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "django",
+                "count",
+                "subquery",
+                "distinct"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8004414,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ab47f41e5fe4d10e9066bf3526e2a52a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Julius Tvarijonavicius",
+                "link": "https://stackoverflow.com/users/8004414/julius-tvarijonavicius"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1523525893,
+            "creation_date": 1523517102,
+            "last_edit_date": 1523525893,
+            "question_id": 49790180,
+            "body_markdown": "I want to count all distinct programs with certains fields for every faculty.\r\n\r\n    test_count = Faculty.objects.annotate(\r\n        count=Subquery(\r\n            Program.objects.filter(faculty=OuterRef(&#39;pk&#39;))\r\n                .values(&#39;faculty&#39;, &#39;title&#39;, &#39;form&#39;, &#39;level&#39;, &#39;years&#39;)\r\n                .distinct()\r\n                .annotate(count=Count(&#39;pk&#39;))\r\n                .values(&#39;count&#39;))\r\n)\r\n\r\nI&#39;m getting error:\r\n\t\r\n\r\n&gt; (1242, &#39;Subquery returns more than 1 row&#39;)\r\n\r\nThis due to passing multiple values in the first values list. If i pass on on value it will count, but the count won&#39;t be distinct. Are there are workarounds or others ways counting like this? Or should i resort to raw SQL.",
+            "link": "https://stackoverflow.com/questions/49790180/django-query-set-count-on-multiple-distinct-values",
+            "title": "Django query set COUNT on multiple DISTINCT VALUES",
+            "body": "<p>I want to count all distinct programs with certains fields for every faculty.</p>\n\n<pre><code>test_count = Faculty.objects.annotate(\n    count=Subquery(\n        Program.objects.filter(faculty=OuterRef('pk'))\n            .values('faculty', 'title', 'form', 'level', 'years')\n            .distinct()\n            .annotate(count=Count('pk'))\n            .values('count'))\n</code></pre>\n\n<p>)</p>\n\n<p>I'm getting error:</p>\n\n<blockquote>\n  <p>(1242, 'Subquery returns more than 1 row')</p>\n</blockquote>\n\n<p>This due to passing multiple values in the first values list. If i pass on on value it will count, but the count won't be distinct. Are there are workarounds or others ways counting like this? Or should i resort to raw SQL.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "unity3d"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 6082121,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5ea8806d16296b88651e1f8431df10f8?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Chokuen",
+                "link": "https://stackoverflow.com/users/6082121/chokuen"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523525889,
+            "creation_date": 1523525353,
+            "last_edit_date": 1523525889,
+            "question_id": 49792943,
+            "body_markdown": "OS : macOS(high sierra) / Unity : 2017.3.1.f1\r\n\r\nHello, I&#39;m processing unity &#39;performance reporting&#39;.\r\n\r\nOn Android, work well.\r\nOn macOS, work well.\r\nbut on iOS, nothing happen.\r\n\r\nI did below \r\n(just followed Unity Documentation : https://docs.unity3d.com/Manual/UnityPerformanceReportingSymbols.html?_ga=2.140411701.744493884.1523240923-1985243764.1495603759)\r\n\r\n1. Turn on &#39;PERFORMANCE REPORTING&#39; switch on Services tab on Unity Editor\r\n2. Make Error code and Build the application.(for iOS the application built from Xcode)\r\n3. Run application on each platform(Android, macOS, iOS)\r\n4. Check Unity Dash board.\r\n\r\nCan checked REPORT from Android and macOS.\r\nbut never find the REPORT from iOS.\r\n\r\nCould anyone helping me?\r\nThanks in advance.",
+            "link": "https://stackoverflow.com/questions/49792943/unity-performance-reporting-on-ios",
+            "title": "Unity performance reporting on iOS",
+            "body": "<p>OS : macOS(high sierra) / Unity : 2017.3.1.f1</p>\n\n<p>Hello, I'm processing unity 'performance reporting'.</p>\n\n<p>On Android, work well.\nOn macOS, work well.\nbut on iOS, nothing happen.</p>\n\n<p>I did below \n(just followed Unity Documentation : <a href=\"https://docs.unity3d.com/Manual/UnityPerformanceReportingSymbols.html?_ga=2.140411701.744493884.1523240923-1985243764.1495603759\" rel=\"nofollow noreferrer\">https://docs.unity3d.com/Manual/UnityPerformanceReportingSymbols.html?_ga=2.140411701.744493884.1523240923-1985243764.1495603759</a>)</p>\n\n<ol>\n<li>Turn on 'PERFORMANCE REPORTING' switch on Services tab on Unity Editor</li>\n<li>Make Error code and Build the application.(for iOS the application built from Xcode)</li>\n<li>Run application on each platform(Android, macOS, iOS)</li>\n<li>Check Unity Dash board.</li>\n</ol>\n\n<p>Can checked REPORT from Android and macOS.\nbut never find the REPORT from iOS.</p>\n\n<p>Could anyone helping me?\nThanks in advance.</p>\n"
+        },
+        {
+            "tags": [
+                "ruby-on-rails",
+                "shoulda"
+            ],
+            "owner": {
+                "reputation": 2428,
+                "user_id": 170527,
+                "user_type": "registered",
+                "accept_rate": 82,
+                "profile_image": "https://www.gravatar.com/avatar/d58a042e02e02b72aa35e3e1181a7a6f?s=128&d=identicon&r=PG",
+                "display_name": "map7",
+                "link": "https://stackoverflow.com/users/170527/map7"
+            },
+            "is_answered": true,
+            "view_count": 15,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523525889,
+            "creation_date": 1523514661,
+            "question_id": 49789501,
+            "body_markdown": "I&#39;ve just upgraded to shoulda-matchers 3.1.2 from 2.8.0 on Rails 4.1 and now my validate uniqueness scoped to test fails with this message;\r\n\r\n\r\n      1) Invoice should validate that :invoice_no is case-sensitively unique within the scope of :ledger_id\r\n         Failure/Error: it { is_expected.to validate_uniqueness_of(:invoice_no).scoped_to(:ledger_id)}\r\n         \r\n           Invoice did not properly validate that :invoice_no is case-sensitively\r\n           unique within the scope of :ledger_id.\r\n             :ledger_id does not seem to be an attribute on Invoice.\r\n         # ./spec/models/invoice_spec.rb:6:in `block (2 levels) in &lt;top (required)&gt;&#39;\r\n\r\n\r\nHere is my test\r\n\r\n    require &#39;rails_helper&#39;\r\n    \r\n    RSpec.describe Invoice, :type =&gt; :model do\r\n      it { is_expected.to validate_uniqueness_of(:invoice_no).scoped_to(:ledger_id)}\r\n      it { is_expected.to validate_presence_of(:ledger_id)}\r\n\r\n\r\nThe test for the presence of :ledger_id passes.\r\n\r\nHere is my model\r\n\r\n      validates :ledger_id, presence: true\r\n      validates_uniqueness_of :invoice_no, scope: :ledger_id, case_sensitive: false",
+            "link": "https://stackoverflow.com/questions/49789501/shoulda-matchers-attribute-does-not-seem-to-be-an-attribute-on-model",
+            "title": "shoulda-matchers attribute does not seem to be an attribute on model",
+            "body": "<p>I've just upgraded to shoulda-matchers 3.1.2 from 2.8.0 on Rails 4.1 and now my validate uniqueness scoped to test fails with this message;</p>\n\n<pre><code>  1) Invoice should validate that :invoice_no is case-sensitively unique within the scope of :ledger_id\n     Failure/Error: it { is_expected.to validate_uniqueness_of(:invoice_no).scoped_to(:ledger_id)}\n\n       Invoice did not properly validate that :invoice_no is case-sensitively\n       unique within the scope of :ledger_id.\n         :ledger_id does not seem to be an attribute on Invoice.\n     # ./spec/models/invoice_spec.rb:6:in `block (2 levels) in &lt;top (required)&gt;'\n</code></pre>\n\n<p>Here is my test</p>\n\n<pre><code>require 'rails_helper'\n\nRSpec.describe Invoice, :type =&gt; :model do\n  it { is_expected.to validate_uniqueness_of(:invoice_no).scoped_to(:ledger_id)}\n  it { is_expected.to validate_presence_of(:ledger_id)}\n</code></pre>\n\n<p>The test for the presence of :ledger_id passes.</p>\n\n<p>Here is my model</p>\n\n<pre><code>  validates :ledger_id, presence: true\n  validates_uniqueness_of :invoice_no, scope: :ledger_id, case_sensitive: false\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "string",
+                "text",
+                "ms-word",
+                "document"
+            ],
+            "owner": {
+                "reputation": 20,
+                "user_id": 4345877,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/598d3b0fe906c34f128a119c6aaf7427?s=128&d=identicon&r=PG&f=1",
+                "display_name": "KING BHAI",
+                "link": "https://stackoverflow.com/users/4345877/king-bhai"
+            },
+            "is_answered": true,
+            "view_count": 23,
+            "accepted_answer_id": 49793136,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523525883,
+            "creation_date": 1523525190,
+            "question_id": 49792873,
+            "body_markdown": "I have many word document files in which i need to change few letters which are common in all files. I want to make a Script for replacing the text in all files once. I am using windows machine and R is installed. Suggest me even if you have any other way of doing it.\r\nThis files are microsoft word document files and stored in one folder. I have code which get data into R list and find and replace the text. But it creates the file with changed format.\r\nPlease suggest me a better way.",
+            "link": "https://stackoverflow.com/questions/49792873/how-to-find-and-replace-string-in-multiple-word-docx-files-using-r-programmin",
+            "title": "How to find and replace string in multiple word (.docx) files using R programming without changing it&#39;s original format",
+            "body": "<p>I have many word document files in which i need to change few letters which are common in all files. I want to make a Script for replacing the text in all files once. I am using windows machine and R is installed. Suggest me even if you have any other way of doing it.\nThis files are microsoft word document files and stored in one folder. I have code which get data into R list and find and replace the text. But it creates the file with changed format.\nPlease suggest me a better way.</p>\n"
+        },
+        {
+            "tags": [
+                "excel",
+                "userform",
+                "flowchart"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9631590,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3cdee2a52cfb4e09915274a64b15beb8?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Abhishek",
+                "link": "https://stackoverflow.com/users/9631590/abhishek"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1523525883,
+            "creation_date": 1523462358,
+            "last_edit_date": 1523525883,
+            "question_id": 49779656,
+            "body_markdown": "I have a Userform to create a flow chart. How to repeat insertion of shapes using `commandbutton1` and to move the box at a equidistant location ie. how to repeat the `if statements` until `commandbutton1` is pressed?\r\n\r\nThis code is only selecting the first shape, and I&#39;d like to insert shapes on the click of `cmdbutton1`. \r\n\r\n    Sub CommandButton1_Click()   \r\n        If OptionButton1 = True Then    \r\n            Sheets(&quot;Sheet2&quot;).Select\r\n            ActiveSheet.Shapes.AddShape(1, 68, 99, 136, 57).Select     \r\n            Selection.ShapeRange(1).TextFrame2.TextRange.Characters.Text = Me.TextBox1.Value    \r\n            Selection.ShapeRange.TextFrame2.AutoSize = msoAutoSizeShapeToFitText\r\n            UserForm1.TextBox1.Value = &quot;&quot;   \r\n        ElseIf OptionButton2 = True Then   \r\n            Sheets(&quot;Sheet2&quot;).Select\r\n            ActiveSheet.Shapes.AddShape(9, 68, 99, 136, 57).Select\r\n            Selection.ShapeRange(1).TextFrame2.TextRange.Characters.Text = Me.TextBox1.Value\r\n            Selection.ShapeRange.TextFrame2.AutoSize = msoAutoSizeShapeToFitText\r\n            UserForm1.TextBox1.Value = &quot;&quot;   \r\n        ElseIf OptionButton3 = True Then   \r\n            Sheets(&quot;Sheet2&quot;).Select\r\n            ActiveSheet.Shapes.AddShape(2, 68, 99, 136, 57).Select\r\n            Selection.ShapeRange(1).TextFrame2.TextRange.Characters.Text = Me.TextBox1.Value\r\n            Selection.ShapeRange.TextFrame2.AutoSize = msoAutoSizeShapeToFitText\r\n            UserForm1.TextBox1.Value = &quot;&quot;\r\n        End If\r\n    \r\n        ActiveSheet.Shapes.AddConnector(msoConnectorStraight, 135.75, 120, 135.5, 165).Select\r\n        Selection.ShapeRange.Line.EndArrowheadStyle = msoArrowheadTriangle\r\n    End Sub",
+            "link": "https://stackoverflow.com/questions/49779656/flow-chart-using-userform-in-excel",
+            "title": "Flow chart using Userform in Excel",
+            "body": "<p>I have a Userform to create a flow chart. How to repeat insertion of shapes using <code>commandbutton1</code> and to move the box at a equidistant location ie. how to repeat the <code>if statements</code> until <code>commandbutton1</code> is pressed?</p>\n\n<p>This code is only selecting the first shape, and I'd like to insert shapes on the click of <code>cmdbutton1</code>. </p>\n\n<pre><code>Sub CommandButton1_Click()   \n    If OptionButton1 = True Then    \n        Sheets(\"Sheet2\").Select\n        ActiveSheet.Shapes.AddShape(1, 68, 99, 136, 57).Select     \n        Selection.ShapeRange(1).TextFrame2.TextRange.Characters.Text = Me.TextBox1.Value    \n        Selection.ShapeRange.TextFrame2.AutoSize = msoAutoSizeShapeToFitText\n        UserForm1.TextBox1.Value = \"\"   \n    ElseIf OptionButton2 = True Then   \n        Sheets(\"Sheet2\").Select\n        ActiveSheet.Shapes.AddShape(9, 68, 99, 136, 57).Select\n        Selection.ShapeRange(1).TextFrame2.TextRange.Characters.Text = Me.TextBox1.Value\n        Selection.ShapeRange.TextFrame2.AutoSize = msoAutoSizeShapeToFitText\n        UserForm1.TextBox1.Value = \"\"   \n    ElseIf OptionButton3 = True Then   \n        Sheets(\"Sheet2\").Select\n        ActiveSheet.Shapes.AddShape(2, 68, 99, 136, 57).Select\n        Selection.ShapeRange(1).TextFrame2.TextRange.Characters.Text = Me.TextBox1.Value\n        Selection.ShapeRange.TextFrame2.AutoSize = msoAutoSizeShapeToFitText\n        UserForm1.TextBox1.Value = \"\"\n    End If\n\n    ActiveSheet.Shapes.AddConnector(msoConnectorStraight, 135.75, 120, 135.5, 165).Select\n    Selection.ShapeRange.Line.EndArrowheadStyle = msoArrowheadTriangle\nEnd Sub\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "arrays",
+                "numpy"
+            ],
+            "owner": {
+                "reputation": 1776,
+                "user_id": 4179779,
+                "user_type": "registered",
+                "accept_rate": 70,
+                "profile_image": "https://i.stack.imgur.com/8GlBe.jpg?s=128&g=1",
+                "display_name": "jameshwart lopez",
+                "link": "https://stackoverflow.com/users/4179779/jameshwart-lopez"
+            },
+            "is_answered": true,
+            "view_count": 31,
+            "accepted_answer_id": 49793132,
+            "answer_count": 1,
+            "score": 3,
+            "last_activity_date": 1523525877,
+            "creation_date": 1523525424,
+            "last_edit_date": 1523525800,
+            "question_id": 49792966,
+            "body_markdown": "I have list of arrays and i am using .all() and .any() to check if the array im searching is in the list of arrays. \r\n\r\n    t = np.array([[1,2,3], [4,5,6] , [7,8,9], [10, 11, 12]])\r\n    \r\n    t2 = np.array([1,2,3])\r\n    \r\n    print((t == t2).all(1))\r\n    outpu:&gt; [ True False False False]\r\n\r\nhere i can check if t2 is in t\r\n\r\n    print((t == t2).all(1).any())\r\n    outpu:&gt; True\r\n\r\nMy question is can i get on what index in t that t2 exist with .all and .any method? \r\n",
+            "link": "https://stackoverflow.com/questions/49792966/get-index-of-the-search-array-with-all-and-any",
+            "title": "Get Index of the search array with .all() and any()",
+            "body": "<p>I have list of arrays and i am using .all() and .any() to check if the array im searching is in the list of arrays. </p>\n\n<pre><code>t = np.array([[1,2,3], [4,5,6] , [7,8,9], [10, 11, 12]])\n\nt2 = np.array([1,2,3])\n\nprint((t == t2).all(1))\noutpu:&gt; [ True False False False]\n</code></pre>\n\n<p>here i can check if t2 is in t</p>\n\n<pre><code>print((t == t2).all(1).any())\noutpu:&gt; True\n</code></pre>\n\n<p>My question is can i get on what index in t that t2 exist with .all and .any method? </p>\n"
+        },
+        {
+            "tags": [
+                "plotly",
+                "plotly.js"
+            ],
+            "owner": {
+                "reputation": 72,
+                "user_id": 3732277,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://i.stack.imgur.com/BYXqC.jpg?s=128&g=1",
+                "display_name": "bytesnz",
+                "link": "https://stackoverflow.com/users/3732277/bytesnz"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523525875,
+            "creation_date": 1522255568,
+            "last_edit_date": 1523525875,
+            "question_id": 49540054,
+            "body_markdown": "I have a complex graph that has multiple y-axis on each side. I have spread the axis out using the `position` property on the yaxis objects in the layout and it is working nice for larger screens. Unfortunately, I need to be able to handle smaller screens as well. When the screen gets too small, the y-axis start to smoosh into each other. For example:\r\n\r\nhttps://jsfiddle.net/bytesnz/172twam7/1/\r\n\r\nIs there another way to layout the y-axis so this doesn&#39;t happen?",
+            "link": "https://stackoverflow.com/questions/49540054/plotly-js-multiple-y-axis-smoosh",
+            "title": "Plotly.js Multiple y-axis smoosh",
+            "body": "<p>I have a complex graph that has multiple y-axis on each side. I have spread the axis out using the <code>position</code> property on the yaxis objects in the layout and it is working nice for larger screens. Unfortunately, I need to be able to handle smaller screens as well. When the screen gets too small, the y-axis start to smoosh into each other. For example:</p>\n\n<p><a href=\"https://jsfiddle.net/bytesnz/172twam7/1/\" rel=\"nofollow noreferrer\">https://jsfiddle.net/bytesnz/172twam7/1/</a></p>\n\n<p>Is there another way to layout the y-axis so this doesn't happen?</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net",
+                "asp.net-mvc",
+                "asp.net-mvc-4"
+            ],
+            "owner": {
+                "reputation": 4333,
+                "user_id": 1705266,
+                "user_type": "registered",
+                "accept_rate": 77,
+                "profile_image": "https://i.stack.imgur.com/eV8wY.png?s=128&g=1",
+                "display_name": "Sam",
+                "link": "https://stackoverflow.com/users/1705266/sam"
+            },
+            "is_answered": true,
+            "view_count": 109,
+            "bounty_amount": 50,
+            "bounty_closes_date": 1523898103,
+            "accepted_answer_id": 49621869,
+            "answer_count": 3,
+            "score": 2,
+            "last_activity_date": 1523525871,
+            "creation_date": 1522725927,
+            "last_edit_date": 1523295368,
+            "question_id": 49621741,
+            "body_markdown": "I have an old version of ASP.NET MVC app that doesn&#39;t have a `Startup.cs`. I wanted to implement a clean way to have an `HttpClient` that I would use for my API calls to third parties.\r\n\r\nHere&#39;s what I&#39;ve done so far based on some ideas/recommendations I&#39;ve received for this question. The problem is that when I make the API call, it goes nowhere. I put it in a `try catch` but I&#39;m not even getting an exception. The API provider tells me that they&#39;re not seeing the search parameter.\r\n\r\nFirst, I created this `HttpClientAccessor` for lazy loading.\r\n\r\n    public static class HttpClientAccessor\r\n    {\r\n       public static Func&lt;HttpClient&gt; ValueFactory = () =&gt;\r\n       {\r\n          var client = new HttpClient();\r\n    \r\n          client.BaseAddress = new Uri(&quot;https://apiUrl.com&quot;);\r\n          client.DefaultRequestHeaders.Accept.Clear();\r\n          client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(&quot;application/json&quot;));\r\n          client.DefaultRequestHeaders.TryAddWithoutValidation(&quot;APIAccessToken&quot;, &quot;token1&quot;);\r\n          client.DefaultRequestHeaders.TryAddWithoutValidation(&quot;UserToken&quot;, &quot;token2&quot;);\r\n    \r\n           return client;\r\n       };\r\n    \r\n       private static Lazy&lt;HttpClient&gt; client = new Lazy&lt;HttpClient&gt;(ValueFactory);\r\n    \r\n       public static HttpClient HttpClient\r\n       {\r\n          get { return client.Value; }\r\n       }\r\n    }\r\n\r\nI then created an API client of my own so that I can have the API call functions in one place which looks like this:\r\n\r\n    public class MyApiClient\r\n    {\r\n    \r\n       public async Task GetSomeData()\r\n       {\r\n           var client = HttpClientAccessor.HttpClient;\r\n           try\r\n           {\r\n               var result = await client.GetStringAsync(&quot;somedata/search?text=test&quot;);\r\n               var output = JObject.Parse(result);\r\n           }\r\n           catch(Exception e)\r\n           {\r\n               var error = e.Message;\r\n           }\r\n        }\r\n    }\r\n\r\nThen in my ASP.NET Controller action, I do this:\r\n\r\n    public class MyController : Controller\r\n    {\r\n       private static readonly MyApiClient _apiClient = new MyApiClient ();\r\n    \r\n       public ActionResult ApiTest()\r\n       {\r\n           var data = _apiClient.GetSomeData().Wait();\r\n       }\r\n    }\r\n\r\nAny idea where my mistake is?\r\n\r\nUPDATE:\r\nThis simple approach works fine:\r\n\r\n    public class MyController : Controller\r\n    {\r\n       private static readonly HttpClient _client = new HttpClient();\r\n    \r\n       public ActionResult ApiTest()\r\n       {\r\n           _client.BaseAddress = new Uri(&quot;https://apiUrl.com&quot;);\r\n           _client.DefaultRequestHeaders.Accept.Clear();\r\n           _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(&quot;application/json&quot;));\r\n           _client.DefaultRequestHeaders.TryAddWithoutValidation(&quot;APIAccessToken&quot;, &quot;token1&quot;);\r\n           _client.DefaultRequestHeaders.TryAddWithoutValidation(&quot;UserToken&quot;, &quot;token2&quot;);\r\n    \r\n           var response = _client.GetStringAsync(&quot;somedata/search?text=test&quot;).Result;\r\n       }\r\n    }\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49621741/creating-httpclient-in-older-asp-net-mvc-app-without-startup",
+            "title": "Creating HttpClient in older ASP.NET MVC app without Startup",
+            "body": "<p>I have an old version of ASP.NET MVC app that doesn't have a <code>Startup.cs</code>. I wanted to implement a clean way to have an <code>HttpClient</code> that I would use for my API calls to third parties.</p>\n\n<p>Here's what I've done so far based on some ideas/recommendations I've received for this question. The problem is that when I make the API call, it goes nowhere. I put it in a <code>try catch</code> but I'm not even getting an exception. The API provider tells me that they're not seeing the search parameter.</p>\n\n<p>First, I created this <code>HttpClientAccessor</code> for lazy loading.</p>\n\n<pre><code>public static class HttpClientAccessor\n{\n   public static Func&lt;HttpClient&gt; ValueFactory = () =&gt;\n   {\n      var client = new HttpClient();\n\n      client.BaseAddress = new Uri(\"https://apiUrl.com\");\n      client.DefaultRequestHeaders.Accept.Clear();\n      client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(\"application/json\"));\n      client.DefaultRequestHeaders.TryAddWithoutValidation(\"APIAccessToken\", \"token1\");\n      client.DefaultRequestHeaders.TryAddWithoutValidation(\"UserToken\", \"token2\");\n\n       return client;\n   };\n\n   private static Lazy&lt;HttpClient&gt; client = new Lazy&lt;HttpClient&gt;(ValueFactory);\n\n   public static HttpClient HttpClient\n   {\n      get { return client.Value; }\n   }\n}\n</code></pre>\n\n<p>I then created an API client of my own so that I can have the API call functions in one place which looks like this:</p>\n\n<pre><code>public class MyApiClient\n{\n\n   public async Task GetSomeData()\n   {\n       var client = HttpClientAccessor.HttpClient;\n       try\n       {\n           var result = await client.GetStringAsync(\"somedata/search?text=test\");\n           var output = JObject.Parse(result);\n       }\n       catch(Exception e)\n       {\n           var error = e.Message;\n       }\n    }\n}\n</code></pre>\n\n<p>Then in my ASP.NET Controller action, I do this:</p>\n\n<pre><code>public class MyController : Controller\n{\n   private static readonly MyApiClient _apiClient = new MyApiClient ();\n\n   public ActionResult ApiTest()\n   {\n       var data = _apiClient.GetSomeData().Wait();\n   }\n}\n</code></pre>\n\n<p>Any idea where my mistake is?</p>\n\n<p>UPDATE:\nThis simple approach works fine:</p>\n\n<pre><code>public class MyController : Controller\n{\n   private static readonly HttpClient _client = new HttpClient();\n\n   public ActionResult ApiTest()\n   {\n       _client.BaseAddress = new Uri(\"https://apiUrl.com\");\n       _client.DefaultRequestHeaders.Accept.Clear();\n       _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(\"application/json\"));\n       _client.DefaultRequestHeaders.TryAddWithoutValidation(\"APIAccessToken\", \"token1\");\n       _client.DefaultRequestHeaders.TryAddWithoutValidation(\"UserToken\", \"token2\");\n\n       var response = _client.GetStringAsync(\"somedata/search?text=test\").Result;\n   }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "asp.net-core-2.0",
+                "asp.net-boilerplate"
+            ],
+            "owner": {
+                "reputation": 548,
+                "user_id": 6265620,
+                "user_type": "registered",
+                "accept_rate": 74,
+                "profile_image": "https://i.stack.imgur.com/uf6qO.jpg?s=128&g=1",
+                "display_name": "Tao Zhou",
+                "link": "https://stackoverflow.com/users/6265620/tao-zhou"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523525869,
+            "creation_date": 1523520752,
+            "last_edit_date": 1523525869,
+            "question_id": 49791270,
+            "body_markdown": "For `ICustomValidate` in ASP.NET Boilerplate, we could validate the value for the field, I am wondering whether it is able and recommended to check whether the added the name of the Student is already exist in the `ICustomValidate`.    \r\nEg. when creating a new student, we will check whether the student with the same name already exists, can we move this logic to `ICustomValidate`?",
+            "link": "https://stackoverflow.com/questions/49791270/asp-net-boilerplate-icustomvalidate-for-existing-record",
+            "title": "ASP.NET Boilerplate ICustomValidate for existing record",
+            "body": "<p>For <code>ICustomValidate</code> in ASP.NET Boilerplate, we could validate the value for the field, I am wondering whether it is able and recommended to check whether the added the name of the Student is already exist in the <code>ICustomValidate</code>.<br>\nEg. when creating a new student, we will check whether the student with the same name already exists, can we move this logic to <code>ICustomValidate</code>?</p>\n"
+        },
+        {
+            "tags": [
+                "database",
+                "mongodb",
+                "indexing",
+                "database-design",
+                "sphinx"
+            ],
+            "owner": {
+                "reputation": 1770,
+                "user_id": 1114043,
+                "user_type": "registered",
+                "accept_rate": 51,
+                "profile_image": "https://i.stack.imgur.com/EwPfY.jpg?s=128&g=1",
+                "display_name": "loki",
+                "link": "https://stackoverflow.com/users/1114043/loki"
+            },
+            "is_answered": true,
+            "view_count": 12,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523525866,
+            "creation_date": 1523517575,
+            "question_id": 49790319,
+            "body_markdown": "I want to create an app like (for example) Tinder. So I must be able to list all users around me that correspond also to some criteria (age, religion, etc.). \r\n\r\nActually all the users are stored in mongoDB but mongoDB look like very bad to do such query, example I do\r\n\r\n    db.runCommand( { dropDatabase: 1 } )\r\n    \r\n    db.createCollection(&quot;users&quot;); \r\n    \r\n    db.users.createIndex( { &quot;locs.loc&quot; : &quot;2dsphere&quot; } )\r\n    \r\n    \r\n    function randInt(n) { return parseInt(Math.random()*n); }\r\n    function randFloat(n) { return Math.random()*n; }\r\n    \r\n    for(var j=0; j&lt;10; j++) {  \r\n      print(&quot;Building op &quot;+j);\r\n      var bulkop=db.users.initializeOrderedBulkOp() ;\r\n      for (var i = 0; i &lt; 1000000; ++i) {\r\n        bulkop.insert(    \r\n          {\r\n            locs: [\r\n              {\r\n                loc : { \r\n                  type: &quot;Point&quot;, \r\n                  coordinates: [ randFloat(180), randFloat(90) ] \r\n                }\r\n              },\r\n              {\r\n                loc : { \r\n                  type: &quot;Point&quot;, \r\n                  coordinates: [ randFloat(180), randFloat(90) ] \r\n                }\r\n              }\r\n            ]\r\n          }  \r\n        )\r\n      };\r\n      print(&quot;Executing op &quot;+j);\r\n      bulkop.execute();\r\n    }\r\n\r\nthen\r\n\r\n    db.runCommand(\r\n       {\r\n         geoNear: &quot;users&quot;,\r\n         near: { type: &quot;Point&quot;, coordinates: [ 73.9667, 40.78 ] },\r\n         spherical: true,\r\n         query: { category: &quot;xyz&quot; }\r\n       }\r\n    )\r\n\r\nand it&#39;s took me **4 min** to return\r\n\r\n       &quot;waitedMS&quot; : NumberLong(0),\r\n       &quot;results&quot; : [ ],\r\n       &quot;stats&quot; : {\r\n               &quot;nscanned&quot; : 10018218,\r\n               &quot;objectsLoaded&quot; : 15000000,\r\n               &quot;maxDistance&quot; : 0,\r\n               &quot;time&quot; : 219873\r\n       },\r\n       &quot;ok&quot; : 1\r\n\r\nSo definitively I must use something else **but what** ? I m quite sure I need a **memory index** like [sphinx][1] (so simply store all the records in memory and do on each query a full scan of all the rows). Actually It&#39;s work pretty well but sphinx index is oriented to index **text document** and I m not sure it&#39;s will fit well my need. \r\n\r\n\r\n  [1]: http://sphinxsearch.com/",
+            "link": "https://stackoverflow.com/questions/49790319/database-index-vs-full-table-scan-of-memory-index",
+            "title": "Database index VS full table scan of memory index",
+            "body": "<p>I want to create an app like (for example) Tinder. So I must be able to list all users around me that correspond also to some criteria (age, religion, etc.). </p>\n\n<p>Actually all the users are stored in mongoDB but mongoDB look like very bad to do such query, example I do</p>\n\n<pre><code>db.runCommand( { dropDatabase: 1 } )\n\ndb.createCollection(\"users\"); \n\ndb.users.createIndex( { \"locs.loc\" : \"2dsphere\" } )\n\n\nfunction randInt(n) { return parseInt(Math.random()*n); }\nfunction randFloat(n) { return Math.random()*n; }\n\nfor(var j=0; j&lt;10; j++) {  \n  print(\"Building op \"+j);\n  var bulkop=db.users.initializeOrderedBulkOp() ;\n  for (var i = 0; i &lt; 1000000; ++i) {\n    bulkop.insert(    \n      {\n        locs: [\n          {\n            loc : { \n              type: \"Point\", \n              coordinates: [ randFloat(180), randFloat(90) ] \n            }\n          },\n          {\n            loc : { \n              type: \"Point\", \n              coordinates: [ randFloat(180), randFloat(90) ] \n            }\n          }\n        ]\n      }  \n    )\n  };\n  print(\"Executing op \"+j);\n  bulkop.execute();\n}\n</code></pre>\n\n<p>then</p>\n\n<pre><code>db.runCommand(\n   {\n     geoNear: \"users\",\n     near: { type: \"Point\", coordinates: [ 73.9667, 40.78 ] },\n     spherical: true,\n     query: { category: \"xyz\" }\n   }\n)\n</code></pre>\n\n<p>and it's took me <strong>4 min</strong> to return</p>\n\n<pre><code>   \"waitedMS\" : NumberLong(0),\n   \"results\" : [ ],\n   \"stats\" : {\n           \"nscanned\" : 10018218,\n           \"objectsLoaded\" : 15000000,\n           \"maxDistance\" : 0,\n           \"time\" : 219873\n   },\n   \"ok\" : 1\n</code></pre>\n\n<p>So definitively I must use something else <strong>but what</strong> ? I m quite sure I need a <strong>memory index</strong> like <a href=\"http://sphinxsearch.com/\" rel=\"nofollow noreferrer\">sphinx</a> (so simply store all the records in memory and do on each query a full scan of all the rows). Actually It's work pretty well but sphinx index is oriented to index <strong>text document</strong> and I m not sure it's will fit well my need. </p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 54
+}

@@ -1,0 +1,819 @@
+{
+    "items": [
+        {
+            "tags": [
+                "python",
+                "web-scraping",
+                "scrapy",
+                "web-crawler"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 8970287,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/nRCPs.jpg?s=128&g=1",
+                "display_name": "Константин",
+                "link": "https://stackoverflow.com/users/8970287/%d0%9a%d0%be%d0%bd%d1%81%d1%82%d0%b0%d0%bd%d1%82%d0%b8%d0%bd"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523540863,
+            "creation_date": 1523539979,
+            "last_edit_date": 1523540521,
+            "question_id": 49797957,
+            "body_markdown": "Here is my spider\r\n\r\n    from scrapy import Selector\r\n    from scrapy.spiders import CrawlSpider, Rule\r\n    from scrapy.linkextractors import LinkExtractor\r\n\r\n    from Diplom.items import QuestionItem\r\n\r\n\r\n    class ConsultSpider(CrawlSpider):\r\n        name = &quot;consultation&quot;\r\n        allowed_domains = [&#39;health.mail.ru&#39;]\r\n        start_urls = [&#39;https://health.mail.ru/consultation/1579497&#39;]\r\n\r\n        rules = {\r\n            Rule(LinkExtractor(allow=(&#39;.*\\/consultation\\/\\d+&#39;),), callback=&quot;parse_item&quot;, follow=True),\r\n\r\n         }\r\n\r\n        def parse_item(self, response):\r\n            items = []\r\n            root = Selector(response)\r\n            posts = root.xpath(&#39;/html/body/div[2]/div[1]/div[5]/div/div[1]/div[1]/div[2]&#39;)\r\n            for post in posts:\r\n                item = QuestionItem()\r\n                item[&#39;question&#39;] = post.xpath(\r\n                &#39;//div[1]/div/div/div[2]/div[2]&#39;).extract()\r\n                item[&#39;answer&#39;] = post.xpath(&#39;//div[3]/div[2]/div[2]&#39;).extract()\r\n                items.append(item)\r\n            return items\r\nThe problem is that spider enter to links as described in rule\r\n&gt; INFO: Crawled 8 pages (at 8 pages/min), scraped 0 items (at 0 items/min)\r\n\r\n, but this doesn&#39;t return any items. My code works if i change the class and  write like this \r\n    \r\n\r\n    class ConsultSpider(scrapy.Spider):\r\n    ....\r\nbut this is not working with Rules.",
+            "link": "https://stackoverflow.com/questions/49797957/scrapy-crawl-pages-but-doesnt-scraped-items",
+            "title": "Scrapy crawl pages but doesn&#39;t scraped items",
+            "body": "<p>Here is my spider</p>\n\n<pre><code>from scrapy import Selector\nfrom scrapy.spiders import CrawlSpider, Rule\nfrom scrapy.linkextractors import LinkExtractor\n\nfrom Diplom.items import QuestionItem\n\n\nclass ConsultSpider(CrawlSpider):\n    name = \"consultation\"\n    allowed_domains = ['health.mail.ru']\n    start_urls = ['https://health.mail.ru/consultation/1579497']\n\n    rules = {\n        Rule(LinkExtractor(allow=('.*\\/consultation\\/\\d+'),), callback=\"parse_item\", follow=True),\n\n     }\n\n    def parse_item(self, response):\n        items = []\n        root = Selector(response)\n        posts = root.xpath('/html/body/div[2]/div[1]/div[5]/div/div[1]/div[1]/div[2]')\n        for post in posts:\n            item = QuestionItem()\n            item['question'] = post.xpath(\n            '//div[1]/div/div/div[2]/div[2]').extract()\n            item['answer'] = post.xpath('//div[3]/div[2]/div[2]').extract()\n            items.append(item)\n        return items\n</code></pre>\n\n<p>The problem is that spider enter to links as described in rule</p>\n\n<blockquote>\n  <p>INFO: Crawled 8 pages (at 8 pages/min), scraped 0 items (at 0 items/min)</p>\n</blockquote>\n\n<p>but this doesn't return any items. My code works if I change the class and  write like this </p>\n\n<pre><code>class ConsultSpider(scrapy.Spider):\n....\n</code></pre>\n\n<p>but this is not working with <code>Rule</code>s.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "django",
+                "django-rest-framework",
+                "serializer"
+            ],
+            "owner": {
+                "reputation": 650,
+                "user_id": 3599803,
+                "user_type": "registered",
+                "accept_rate": 44,
+                "profile_image": "https://www.gravatar.com/avatar/7c976bab406c2a31849cfb1a017ee616?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3599803",
+                "link": "https://stackoverflow.com/users/3599803/user3599803"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1523540858,
+            "creation_date": 1523539946,
+            "question_id": 49797941,
+            "body_markdown": "In short, I want to have a global default serializer per model. My use case here is to create dynamic serializer- i.e creating `ModelSerializer` classes on the fly.\r\n\r\n    class Customer(models.Model):\r\n       name = models.CharField(max_length=200)\r\n       code = models.CharField(max_length=200)\r\n       # many more fields..\r\n    \r\n    class CustomerTicket(models.Model):\r\n       customer = models.ForeignKey(Customer)\r\n       date = models.DateTimeField(auto_now_add=True)\r\n       # more fields..\r\n\r\nCustomer will be referenced by many other models, and hence it will be serialized as a nested object. I don&#39;t want the &#39;code&#39; field to appear in the output - no matter what it should always be excluded.\r\n\r\nNow I&#39;d like to create a function:\r\n\r\n    def serialize_default(model, fields, queryset):\r\n        class S(serializers.ModelSerializer):\r\n            class Meta:\r\n                model = model \r\n                fields = fields\r\n                depth = 1\r\n        return S(queryset, many=True)\r\n\r\nif I serialize `CustomerTicket` queryset using this function, I will get all the customer fields as a nested object. I know I can override it locally, but I want to define a CustomerSerializer that will be used by default (for the nested Customer here) unless other serializer is specified as a field. How to achieve this?",
+            "link": "https://stackoverflow.com/questions/49797941/django-rest-framework-global-default-model-serializer",
+            "title": "django rest framework - global default model serializer",
+            "body": "<p>In short, I want to have a global default serializer per model. My use case here is to create dynamic serializer- i.e creating <code>ModelSerializer</code> classes on the fly.</p>\n\n<pre><code>class Customer(models.Model):\n   name = models.CharField(max_length=200)\n   code = models.CharField(max_length=200)\n   # many more fields..\n\nclass CustomerTicket(models.Model):\n   customer = models.ForeignKey(Customer)\n   date = models.DateTimeField(auto_now_add=True)\n   # more fields..\n</code></pre>\n\n<p>Customer will be referenced by many other models, and hence it will be serialized as a nested object. I don't want the 'code' field to appear in the output - no matter what it should always be excluded.</p>\n\n<p>Now I'd like to create a function:</p>\n\n<pre><code>def serialize_default(model, fields, queryset):\n    class S(serializers.ModelSerializer):\n        class Meta:\n            model = model \n            fields = fields\n            depth = 1\n    return S(queryset, many=True)\n</code></pre>\n\n<p>if I serialize <code>CustomerTicket</code> queryset using this function, I will get all the customer fields as a nested object. I know I can override it locally, but I want to define a CustomerSerializer that will be used by default (for the nested Customer here) unless other serializer is specified as a field. How to achieve this?</p>\n"
+        },
+        {
+            "tags": [
+                "oracle-apex",
+                "oracle-apex-5",
+                "oracle-apex-5.1"
+            ],
+            "owner": {
+                "reputation": 7,
+                "user_id": 4427508,
+                "user_type": "registered",
+                "accept_rate": 55,
+                "profile_image": "https://www.gravatar.com/avatar/6e0c810cff683ef1d32cd794aa0b0b1c?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Abinnaya",
+                "link": "https://stackoverflow.com/users/4427508/abinnaya"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523540857,
+            "creation_date": 1523529285,
+            "last_edit_date": 1523540857,
+            "question_id": 49794338,
+            "body_markdown": "I have used a checkbox in intractive report, now i have a delete button also here.\r\n\r\ni need to delete the records which user checked on checkbox.\r\n\r\nmy select query in intractive report is below.\r\n\r\n    select distinct\r\n        a.GUID,\r\n        a.CREATED_BY,\r\n        a.created_date,\r\n        apex_item.checkbox(1,b.DYNAMIC_GROUP_ID) Delete_Members\r\n    from NON_DYNAMIC_USER_GROUP_MEMBERS a,\r\n        NON_DYNAMIC_USER_GROUPS b\r\n    where a.DYNAMIC_GROUP_ID in\r\n        (select DYNAMIC_GROUP_ID\r\n        from NON_DYNAMIC_USER_GROUPS\r\n        where instr(&#39;,&#39;||DYNAMIC_GROUP_ID||&#39;,&#39; , &#39;,&#39;||:P153_ID_HIDDEN||&#39;,&#39;) &gt; 0);\r\n\r\n\r\nI need here to delete the records where the check box is checked.",
+            "link": "https://stackoverflow.com/questions/49794338/application-apex-item-checkbox-in-apex",
+            "title": "Application apex_item_checkbox in apex",
+            "body": "<p>I have used a checkbox in intractive report, now i have a delete button also here.</p>\n\n<p>i need to delete the records which user checked on checkbox.</p>\n\n<p>my select query in intractive report is below.</p>\n\n<pre><code>select distinct\n    a.GUID,\n    a.CREATED_BY,\n    a.created_date,\n    apex_item.checkbox(1,b.DYNAMIC_GROUP_ID) Delete_Members\nfrom NON_DYNAMIC_USER_GROUP_MEMBERS a,\n    NON_DYNAMIC_USER_GROUPS b\nwhere a.DYNAMIC_GROUP_ID in\n    (select DYNAMIC_GROUP_ID\n    from NON_DYNAMIC_USER_GROUPS\n    where instr(','||DYNAMIC_GROUP_ID||',' , ','||:P153_ID_HIDDEN||',') &gt; 0);\n</code></pre>\n\n<p>I need here to delete the records where the check box is checked.</p>\n"
+        },
+        {
+            "tags": [
+                "acumatica"
+            ],
+            "owner": {
+                "reputation": 134,
+                "user_id": 5930571,
+                "user_type": "registered",
+                "accept_rate": 84,
+                "profile_image": "https://www.gravatar.com/avatar/c3a2d80a8139de353f4be2f6d80a67e1?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Muralidharan Ramakrishnan",
+                "link": "https://stackoverflow.com/users/5930571/muralidharan-ramakrishnan"
+            },
+            "is_answered": true,
+            "view_count": 15,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523540855,
+            "creation_date": 1523518985,
+            "question_id": 49790712,
+            "body_markdown": "Trying to implement up &amp; down button to move the record in a grid. how to enable the option\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/ZgZiS.png",
+            "link": "https://stackoverflow.com/questions/49790712/how-to-give-up-down-button-in-the-grid",
+            "title": "How to give up &amp; down button in the grid",
+            "body": "<p>Trying to implement up &amp; down button to move the record in a grid. how to enable the option</p>\n\n<p><a href=\"https://i.stack.imgur.com/ZgZiS.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/ZgZiS.png\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "regex"
+            ],
+            "owner": {
+                "reputation": 17968,
+                "user_id": 68571,
+                "user_type": "registered",
+                "accept_rate": 79,
+                "profile_image": "https://i.stack.imgur.com/Yw9Lg.png?s=128&g=1",
+                "display_name": "VansFannel",
+                "link": "https://stackoverflow.com/users/68571/vansfannel"
+            },
+            "is_answered": true,
+            "view_count": 45,
+            "closed_date": 1523520877,
+            "accepted_answer_id": 49791259,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1523540854,
+            "creation_date": 1523520448,
+            "last_edit_date": 1523540854,
+            "question_id": 49791168,
+            "body_markdown": "I&#39;m working with C# and .NET Framework 4.7.1.\r\n\r\nI will have a string that will represent a *mathematical formula*. I want to replace the *variable* `x` inside the string what when this `x` represents the variable but not when it is part of the *word* `exp`.\r\n\r\nIf I have the string \r\n\r\n    &quot;exp(x+1.0)&quot; \r\n\r\nand I want to replace the `x` with `2`, I want to get the string \r\n\r\n    &quot;exp(2+1.0)&quot;\r\n\r\nI know I can use [String.Replace][1] but this replace every `x` with `2`, getting \r\n\r\n    &quot;e2p(2+1.0)&quot;\r\n\r\nIs there another way to do it correctly? The only mathematical function that will have an `x` is `exp`, so I only have to take care not replace it in `exp`.\r\n\r\nI can have, `x*x` or `2*x` but I cannot have `2x`. By the way, `x` and `exp` will always lowercase.\r\n\r\n  [1]: https://msdn.microsoft.com/es-es/library/fk49wtc1(v=vs.110).aspx",
+            "link": "https://stackoverflow.com/questions/49791168/replace-x-when-not-in-exp-string",
+            "closed_reason": "duplicate",
+            "title": "Replace x when not in exp string",
+            "body": "<p>I'm working with C# and .NET Framework 4.7.1.</p>\n\n<p>I will have a string that will represent a <em>mathematical formula</em>. I want to replace the <em>variable</em> <code>x</code> inside the string what when this <code>x</code> represents the variable but not when it is part of the <em>word</em> <code>exp</code>.</p>\n\n<p>If I have the string </p>\n\n<pre><code>\"exp(x+1.0)\" \n</code></pre>\n\n<p>and I want to replace the <code>x</code> with <code>2</code>, I want to get the string </p>\n\n<pre><code>\"exp(2+1.0)\"\n</code></pre>\n\n<p>I know I can use <a href=\"https://msdn.microsoft.com/es-es/library/fk49wtc1(v=vs.110).aspx\" rel=\"nofollow noreferrer\">String.Replace</a> but this replace every <code>x</code> with <code>2</code>, getting </p>\n\n<pre><code>\"e2p(2+1.0)\"\n</code></pre>\n\n<p>Is there another way to do it correctly? The only mathematical function that will have an <code>x</code> is <code>exp</code>, so I only have to take care not replace it in <code>exp</code>.</p>\n\n<p>I can have, <code>x*x</code> or <code>2*x</code> but I cannot have <code>2x</code>. By the way, <code>x</code> and <code>exp</code> will always lowercase.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "typescript",
+                "angular"
+            ],
+            "owner": {
+                "reputation": 52,
+                "user_id": 3884871,
+                "user_type": "registered",
+                "accept_rate": 44,
+                "profile_image": "https://www.gravatar.com/avatar/bbfcf8d658b776a5425b0b2decae98fd?s=128&d=identicon&r=PG&f=1",
+                "display_name": "jeffeld",
+                "link": "https://stackoverflow.com/users/3884871/jeffeld"
+            },
+            "is_answered": true,
+            "view_count": 1656,
+            "accepted_answer_id": 37541090,
+            "answer_count": 2,
+            "score": 6,
+            "last_activity_date": 1523540852,
+            "creation_date": 1464684259,
+            "question_id": 37540910,
+            "body_markdown": "Using [mgechev&#39;s angular2-seed](https://github.com/mgechev/angular2-seed), I&#39;m trying to get to grips with Angular2 and\r\nTypescript for a new project, but have run into this problem.\r\n\r\nI want to use Numeral in a component, so I:\r\n\r\n1. Installed Numeral using `npm install numeral`\r\n2. Installed the typing for Numeral using `typings install dt~numeraljs --global --save`\r\n3. In my component added `import { numeral } from &#39;/typings/globals/numeraljs&#39;;`\r\n4. Added the line of code: `let num:Number = new Number(numeral().unformat(text));`\r\n\r\nSo far, so good. Everything seems to transpile ok. Until I get to the browser, where I get in the console:\r\n\r\n    Error: XHR error (404 Not Found) loading http://localhost:5555/typings/globals/numeraljs.js(…)\r\n\r\n\r\nWhat am I doing wrong here? Have I missed a step out to tell Typescript where the actual code is?",
+            "link": "https://stackoverflow.com/questions/37540910/in-typescript-how-do-i-use-a-javascript-module-when-importing-from-typeings",
+            "title": "In Typescript how do I use a Javascript module when importing from Typeings",
+            "body": "<p>Using <a href=\"https://github.com/mgechev/angular2-seed\" rel=\"noreferrer\">mgechev's angular2-seed</a>, I'm trying to get to grips with Angular2 and\nTypescript for a new project, but have run into this problem.</p>\n\n<p>I want to use Numeral in a component, so I:</p>\n\n<ol>\n<li>Installed Numeral using <code>npm install numeral</code></li>\n<li>Installed the typing for Numeral using <code>typings install dt~numeraljs --global --save</code></li>\n<li>In my component added <code>import { numeral } from '/typings/globals/numeraljs';</code></li>\n<li>Added the line of code: <code>let num:Number = new Number(numeral().unformat(text));</code></li>\n</ol>\n\n<p>So far, so good. Everything seems to transpile ok. Until I get to the browser, where I get in the console:</p>\n\n<pre><code>Error: XHR error (404 Not Found) loading http://localhost:5555/typings/globals/numeraljs.js(…)\n</code></pre>\n\n<p>What am I doing wrong here? Have I missed a step out to tell Typescript where the actual code is?</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "database",
+                "multithreading",
+                "entity-framework-core",
+                ".net-core"
+            ],
+            "owner": {
+                "reputation": 2084,
+                "user_id": 3835864,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://www.gravatar.com/avatar/23849ddf20ea28efac995fc9a58aefb7?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Wapac",
+                "link": "https://stackoverflow.com/users/3835864/wapac"
+            },
+            "is_answered": false,
+            "view_count": 459,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1523540851,
+            "creation_date": 1474477160,
+            "last_edit_date": 1474477826,
+            "question_id": 39622441,
+            "body_markdown": "**Background**\r\n\r\nI am trying to write an **async** server that works with SQLite DB. I am using .NET Core with [Entity Framework Core][1].\r\n\r\nI am using UnitOfWork with GenericRepository patterns, but as my sample code below shows, this is not really related to these patterns.\r\n\r\nI am using Windows 10, but I would expect any supported .NET Core platform to behave the same.\r\n\r\n**What I want to Achieve**\r\n\r\nWhat I want to achieve is a reasonable transaction behavior. I have reduced the whole problem to a simple scenario, in which I look into the database if a certain object exists and if not I add it, otherwise I fail. This whole operation is in a transaction and the expected scenarios are:\r\n\r\n*One*\r\n\r\n   1. The object does not exist in the database.\r\n   2. Thread 1 checks whether the object exists in the database ands sees that it does not exist. \r\n   3. Thread 1 adds the object to the database. \r\n   4. Object exists in the database.\r\n\r\n*Two*\r\n\r\n   1. The object exists in the database.\r\n   2. Thread 1 checks whether the object exists in the database and sees that it exists. \r\n   3. Thread 1 reports failure because the object exists. \r\n   4. Object still exists in the database.\r\n\r\n*Three*\r\n\r\n   1. The object does not exist in the database.\r\n   2. Thread 1 checks whether the object exists in the database and sees that it does not exist. \r\n   3. Thread 2 checks whether the object exists in the database and sees that it does not exist. \r\n   4. Thread 1 attempts to add the object to the database. \r\n   5. Thread 2 attempts to add the object to the database. \r\n   6. Either thread 1 or thread 2 succeeds in adding the object to the database, the other thread fails because of the transaction constraints.\r\n   7. Object exists in the database.\r\n\r\n\r\nObviously, scenarios One and Two work perfectly, because there is only a single thread operating. The problem is with the number Three.\r\n\r\n\r\n**The Problem**\r\n\r\nThe problem is that when in situation Three we enter step 5, the whole thing blows up. There is a 30 second hang for both threads and most of the time neither of the threads manages to add the object to the database.\r\n\r\nI know how to solve this easily with a global application lock, but I would like to know if it is possible to solve this without locking and thus preserving async/await functionality for the database access.\r\n\r\nSometimes, one thread manages to add the object, the other thread fails, but even then it takes those 30 seconds for both threads to complete the operation, which is entirely unusable.\r\n\r\n\r\n\r\n**Sample Output**\r\n\r\n    17:41:18|first: Started\r\n    17:41:19|main: Press ENTER\r\n    17:41:19|second: Started\r\n    17:41:20|second: Object does not exist, entering wait ...\r\n    17:41:20|first: Object does not exist, entering wait ...\r\n    17:41:22|first: Wait done\r\n    17:41:22|second: Wait done\r\n    17:41:22|first: Call Insert\r\n    17:41:22|second: Call Insert\r\n    17:41:22|second: Call SaveThrowAsync\r\n    17:41:22|first: Call SaveThrowAsync\r\n    17:41:22|first: Call Commit\r\n    17:41:52|second: Exception: Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while updating the entries. See the inner exception for details. ---&gt; Microsoft.Data.Sqlite.SqliteException: SQLite Error 5: &#39;database is locked&#39;.\r\n       at Microsoft.Data.Sqlite.Interop.MarshalEx.ThrowExceptionForRC(Int32 rc, Sqlite3Handle db)\r\n       at Microsoft.Data.Sqlite.SqliteCommand.ExecuteReader(CommandBehavior behavior)\r\n       at Microsoft.Data.Sqlite.SqliteCommand.ExecuteReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)\r\n       at Microsoft.Data.Sqlite.SqliteCommand.&lt;ExecuteDbDataReaderAsync&gt;d__53.MoveNext()\r\n    --- End of stack trace from previous location where exception was thrown ---\r\n       at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\r\n       at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\r\n       at Microsoft.EntityFrameworkCore.Storage.Internal.RelationalCommand.&lt;ExecuteAsync&gt;d__20.MoveNext()\r\n    --- End of stack trace from previous location where exception was thrown ---\r\n       at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\r\n       at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\r\n       at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.&lt;ExecuteAsync&gt;d__32.MoveNext()\r\n       --- End of inner exception stack trace ---\r\n       at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.&lt;ExecuteAsync&gt;d__32.MoveNext()\r\n    --- End of stack trace from previous location where exception was thrown ---\r\n       at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\r\n       at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\r\n       at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.&lt;ExecuteAsync&gt;d__1.MoveNext()\r\n    --- End of stack trace from previous location where exception was thrown ---\r\n       at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\r\n       at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\r\n       at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.&lt;SaveChangesAsync&gt;d__47.MoveNext()\r\n    --- End of stack trace from previous location where exception was thrown ---\r\n       at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\r\n       at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\r\n       at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.&lt;SaveChangesAsync&gt;d__45.MoveNext()\r\n    --- End of stack trace from previous location where exception was thrown ---\r\n       at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\r\n       at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\r\n       at Microsoft.EntityFrameworkCore.DbContext.&lt;SaveChangesAsync&gt;d__30.MoveNext()\r\n    --- End of stack trace from previous location where exception was thrown ---\r\n       at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\r\n       at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\r\n       at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()\r\n       at ConsoleApp1.UnitOfWork.&lt;SaveThrowAsync&gt;d__6.MoveNext() in X:\\Dev\\NetCore\\shit\\test1\\src\\ConsoleApp1\\UnitOfWork.cs:line 35\r\n    --- End of stack trace from previous location where exception was thrown ---\r\n       at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\r\n       at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\r\n       at System.Runtime.CompilerServices.TaskAwaiter.GetResult()\r\n       at ConsoleApp1.Program.&lt;ThreadProc&gt;d__2.MoveNext() in X:\\Dev\\NetCore\\shit\\test1\\src\\ConsoleApp1\\Program.cs:line 72\r\n    17:41:52|first: Exception: Microsoft.Data.Sqlite.SqliteException: SQLite Error 5: &#39;database is locked&#39;.\r\n       at Microsoft.Data.Sqlite.Interop.MarshalEx.ThrowExceptionForRC(Int32 rc, Sqlite3Handle db)\r\n       at Microsoft.Data.Sqlite.SqliteCommand.ExecuteReader(CommandBehavior behavior)\r\n       at Microsoft.Data.Sqlite.SqliteCommand.ExecuteNonQuery()\r\n       at Microsoft.Data.Sqlite.SqliteTransaction.Commit()\r\n       at Microsoft.EntityFrameworkCore.Storage.RelationalTransaction.Commit()\r\n       at ConsoleApp1.Program.&lt;ThreadProc&gt;d__2.MoveNext() in X:\\Dev\\NetCore\\shit\\test1\\src\\ConsoleApp1\\Program.cs:line 75\r\n    17:41:52|second: Finished\r\n    17:41:52|first: Finished\r\n    17:42:00|main: We have 0 object(s) in the database.\r\n\r\n\r\n\r\n**Code**\r\n\r\nI&#39;ve tried to cut off everything not related to keep this minimal. If you want to run the program, just create these files in Visual Studio, wait for .NET Core project sync, compile the project, run &quot;add-migration first&quot; and &quot;update-database&quot; to create the database and you can run it. Without Visual Studio, you need to use &quot;dotnet&quot; and &quot;dotnet ef&quot; commands.\r\n\r\nProgram.cs:\r\n\r\n    using Microsoft.EntityFrameworkCore.Storage;\r\n    using System;\r\n    using System.Collections.Generic;\r\n    using System.Linq;\r\n    using System.Threading;\r\n    using System.Threading.Tasks;\r\n    \r\n    namespace ConsoleApp1\r\n    {\r\n      public class Program\r\n      {\r\n        public static void Main(string[] args)\r\n        {\r\n          Thread thread1 = new Thread(new ParameterizedThreadStart(ThreadProc));\r\n          thread1.Start(&quot;first&quot;);\r\n    \r\n          Thread.Sleep(1000);\r\n    \r\n          Thread thread2 = new Thread(new ParameterizedThreadStart(ThreadProc));\r\n          thread2.Start(&quot;second&quot;);\r\n    \r\n          log(&quot;main&quot;, &quot;Press ENTER&quot;);\r\n          Console.ReadLine();\r\n    \r\n          using (UnitOfWork uow = new UnitOfWork())\r\n          {\r\n            IEnumerable&lt;DatabaseObject&gt; dbos = uow.DatabaseObjectRepository.GetAsync().Result;\r\n            log(&quot;main&quot;, &quot;We have {0} object(s) in the database.&quot;, dbos.Count());\r\n            foreach (DatabaseObject dbo in dbos)\r\n              log(&quot;main&quot;, &quot; -&gt; id:{0}, value:{1}&quot;, dbo.DatabaseObjectId, dbo.Value);\r\n          }\r\n        }\r\n    \r\n        public static void log(string Id, string Format, params object[] Args)\r\n        {\r\n          string prefix = string.Format(&quot;{0}|{1}: &quot;, DateTime.Now.ToString(&quot;HH:mm:ss&quot;), Id);\r\n          string msg = string.Format(prefix + Format, Args);\r\n          Console.WriteLine(msg);\r\n        }\r\n    \r\n        public async static void ThreadProc(object State)\r\n        {\r\n          string id = (string)State; \r\n          log(id, &quot;Started&quot;, id);\r\n    \r\n          int ourObjectId = 1234;\r\n    \r\n          using (UnitOfWork uow = new UnitOfWork())\r\n          {\r\n            using (IDbContextTransaction transaction = await uow.BeginTransactionAsync())\r\n            {\r\n              bool rollback = false;\r\n              try\r\n              {\r\n                DatabaseObject dbo = (await uow.DatabaseObjectRepository.GetAsync(o =&gt; o.DatabaseObjectId == ourObjectId)).FirstOrDefault();\r\n                if (dbo == null)\r\n                {\r\n                  log(id, &quot;Object does not exist, entering wait ...&quot;);\r\n                  await Task.Delay(2000); // Same result with Thread.Sleep(2000) instead.\r\n                  log(id, &quot;Wait done&quot;);\r\n    \r\n                  dbo = new DatabaseObject()\r\n                  {\r\n                    DatabaseObjectId = ourObjectId,\r\n                    Value = id\r\n                  };\r\n    \r\n                  log(id, &quot;Call Insert&quot;);\r\n                  uow.DatabaseObjectRepository.Insert(dbo);\r\n    \r\n                  log(id, &quot;Call SaveThrowAsync&quot;);\r\n                  await uow.SaveThrowAsync();\r\n    \r\n                  log(id, &quot;Call Commit&quot;);\r\n                  transaction.Commit(); // .NET Core should commit automatically on transaction Dispose, but that does not work for me.\r\n                }\r\n                else\r\n                {\r\n                  log(id, &quot;Object already exists&quot;);\r\n                  rollback = true;\r\n                }\r\n              }\r\n              catch (Exception exception)\r\n              {\r\n                log(id, &quot;Exception: {0}&quot;, exception.ToString());\r\n              }\r\n    \r\n              if (rollback)\r\n              {\r\n                log(id, &quot;Rolling back&quot;);\r\n                transaction.Rollback();\r\n              }\r\n            }\r\n          }\r\n    \r\n          log(id, &quot;Finished&quot;);\r\n        }\r\n      }\r\n    }\r\n\r\n\r\n\r\n\r\nUnitOfWork.cs:\r\n\r\n    using Microsoft.EntityFrameworkCore.Storage;\r\n    using System;\r\n    using System.Threading.Tasks;\r\n    \r\n    namespace ConsoleApp1\r\n    {\r\n      public class UnitOfWork : IDisposable\r\n      {\r\n        private DatabaseContext context = null;\r\n        public DatabaseContext Context\r\n        {\r\n          get\r\n          {\r\n            if (context == null)\r\n              context = new DatabaseContext();\r\n     \r\n            return context;\r\n          }\r\n        }\r\n     \r\n        private GenericRepository&lt;DatabaseObject&gt; databaseObjectRepository;\r\n        public GenericRepository&lt;DatabaseObject&gt; DatabaseObjectRepository\r\n        {\r\n          get\r\n          {\r\n            if (databaseObjectRepository == null)\r\n              databaseObjectRepository = new GenericRepository&lt;DatabaseObject&gt;(Context);\r\n     \r\n            return databaseObjectRepository;\r\n          }\r\n        }\r\n     \r\n        public async Task SaveThrowAsync()\r\n        {\r\n          await Context.SaveChangesAsync();\r\n        }\r\n     \r\n        public async Task&lt;IDbContextTransaction&gt; BeginTransactionAsync()\r\n        {\r\n          return await Context.Database.BeginTransactionAsync();\r\n        }\r\n     \r\n     \r\n        private bool disposed = false;\r\n     \r\n        public void Dispose()\r\n        {\r\n          Dispose(true);\r\n          GC.SuppressFinalize(this);\r\n        }\r\n     \r\n        protected virtual void Dispose(bool Disposing)\r\n        {\r\n          if (disposed) return;\r\n     \r\n          if (Disposing)\r\n          {\r\n            if (context != null) context.Dispose();\r\n            context = null;\r\n            disposed = true;\r\n          }\r\n        }\r\n      }\r\n    }\r\n\r\n\r\nGenericRepository.cs:\r\n\r\n    using System;\r\n    using System.Collections.Generic;\r\n    using System.Linq;\r\n    using System.Threading.Tasks;\r\n    using System.Linq.Expressions;\r\n    using Microsoft.EntityFrameworkCore;\r\n    \r\n    namespace ConsoleApp1\r\n    {\r\n      public class GenericRepository&lt;TEntity&gt; where TEntity : class\r\n      {\r\n        internal DatabaseContext context;\r\n        internal DbSet&lt;TEntity&gt; dbSet;\r\n    \r\n        public GenericRepository(DatabaseContext context)\r\n        {\r\n          this.context = context;\r\n          dbSet = context.Set&lt;TEntity&gt;();\r\n        }\r\n    \r\n        public virtual async Task&lt;IEnumerable&lt;TEntity&gt;&gt; GetAsync(Expression&lt;Func&lt;TEntity, bool&gt;&gt; filter = null)\r\n        {\r\n          IQueryable&lt;TEntity&gt; query = dbSet;\r\n    \r\n          if (filter != null)\r\n            query = query.Where(filter);\r\n    \r\n          List&lt;TEntity&gt; result = await query.ToListAsync();\r\n          return result;\r\n        }\r\n    \r\n        public virtual void Insert(TEntity entity)\r\n        {\r\n          dbSet.Add(entity);\r\n        }\r\n    \r\n        public virtual void Update(TEntity entityToUpdate)\r\n        {\r\n          dbSet.Attach(entityToUpdate);\r\n          context.Entry(entityToUpdate).State = EntityState.Modified;\r\n        }\r\n      }\r\n    }\r\n\r\n\r\nDatabaseObject.cs:\r\n\r\n    namespace ConsoleApp1\r\n    {\r\n      public class DatabaseObject\r\n      {\r\n        public int DatabaseObjectId { get; set; }\r\n        public string Value { get; set; }\r\n      }\r\n    }\r\n\r\nDatabaseContext.cs:\r\n\r\n    using Microsoft.EntityFrameworkCore;\r\n    \r\n    namespace ConsoleApp1\r\n    {\r\n      public class DatabaseContext : DbContext\r\n      {\r\n        public DbSet&lt;DatabaseObject&gt; DatabaseObjects { get; set; }\r\n    \r\n        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)\r\n        {\r\n          optionsBuilder.UseSqlite(&quot;Filename=mysqlite.db&quot;);\r\n        }\r\n      }\r\n    }\r\n\r\n\r\nproject.json:\r\n\r\n    {\r\n      &quot;version&quot;: &quot;1.0.0-*&quot;,\r\n      &quot;buildOptions&quot;: {\r\n        &quot;emitEntryPoint&quot;: true\r\n      },\r\n     \r\n      &quot;dependencies&quot;: {\r\n        &quot;Microsoft.EntityFrameworkCore.Sqlite&quot;: &quot;1.0.0&quot;,\r\n        &quot;Microsoft.EntityFrameworkCore.Design&quot;: {\r\n          &quot;version&quot;: &quot;1.0.0-preview2-final&quot;,\r\n          &quot;type&quot;: &quot;build&quot;\r\n        },\r\n        &quot;Microsoft.NETCore.App&quot;: {\r\n          &quot;version&quot;: &quot;1.0.0&quot;\r\n        },\r\n        &quot;System.Runtime.InteropServices&quot;: &quot;4.1.0&quot;,\r\n        &quot;Microsoft.EntityFrameworkCore.Tools&quot;: &quot;1.0.0-preview2-final&quot;\r\n      },\r\n     \r\n      &quot;frameworks&quot;: {\r\n        &quot;netcoreapp1.0&quot;: {\r\n          &quot;imports&quot;: &quot;dnxcore50&quot;\r\n        }\r\n      },\r\n      &quot;tools&quot;: {\r\n        &quot;Microsoft.EntityFrameworkCore.Tools&quot;: &quot;1.0.0-preview2-final&quot;\r\n      },\r\n      &quot;runtimes&quot;: {\r\n        &quot;win10-x64&quot;: {}\r\n      }\r\n    }\r\n\r\n\r\n\r\n\r\n\r\n  [1]: https://docs.efproject.net/en/latest/",
+            "link": "https://stackoverflow.com/questions/39622441/concurrent-threads-in-db-transaction-cause-major-delay-in-net-core-ef-core",
+            "title": "Concurrent threads in DB transaction cause major delay in .NET Core EF Core",
+            "body": "<p><strong>Background</strong></p>\n\n<p>I am trying to write an <strong>async</strong> server that works with SQLite DB. I am using .NET Core with <a href=\"https://docs.efproject.net/en/latest/\" rel=\"nofollow\">Entity Framework Core</a>.</p>\n\n<p>I am using UnitOfWork with GenericRepository patterns, but as my sample code below shows, this is not really related to these patterns.</p>\n\n<p>I am using Windows 10, but I would expect any supported .NET Core platform to behave the same.</p>\n\n<p><strong>What I want to Achieve</strong></p>\n\n<p>What I want to achieve is a reasonable transaction behavior. I have reduced the whole problem to a simple scenario, in which I look into the database if a certain object exists and if not I add it, otherwise I fail. This whole operation is in a transaction and the expected scenarios are:</p>\n\n<p><em>One</em></p>\n\n<ol>\n<li>The object does not exist in the database.</li>\n<li>Thread 1 checks whether the object exists in the database ands sees that it does not exist. </li>\n<li>Thread 1 adds the object to the database. </li>\n<li>Object exists in the database.</li>\n</ol>\n\n<p><em>Two</em></p>\n\n<ol>\n<li>The object exists in the database.</li>\n<li>Thread 1 checks whether the object exists in the database and sees that it exists. </li>\n<li>Thread 1 reports failure because the object exists. </li>\n<li>Object still exists in the database.</li>\n</ol>\n\n<p><em>Three</em></p>\n\n<ol>\n<li>The object does not exist in the database.</li>\n<li>Thread 1 checks whether the object exists in the database and sees that it does not exist. </li>\n<li>Thread 2 checks whether the object exists in the database and sees that it does not exist. </li>\n<li>Thread 1 attempts to add the object to the database. </li>\n<li>Thread 2 attempts to add the object to the database. </li>\n<li>Either thread 1 or thread 2 succeeds in adding the object to the database, the other thread fails because of the transaction constraints.</li>\n<li>Object exists in the database.</li>\n</ol>\n\n<p>Obviously, scenarios One and Two work perfectly, because there is only a single thread operating. The problem is with the number Three.</p>\n\n<p><strong>The Problem</strong></p>\n\n<p>The problem is that when in situation Three we enter step 5, the whole thing blows up. There is a 30 second hang for both threads and most of the time neither of the threads manages to add the object to the database.</p>\n\n<p>I know how to solve this easily with a global application lock, but I would like to know if it is possible to solve this without locking and thus preserving async/await functionality for the database access.</p>\n\n<p>Sometimes, one thread manages to add the object, the other thread fails, but even then it takes those 30 seconds for both threads to complete the operation, which is entirely unusable.</p>\n\n<p><strong>Sample Output</strong></p>\n\n<pre><code>17:41:18|first: Started\n17:41:19|main: Press ENTER\n17:41:19|second: Started\n17:41:20|second: Object does not exist, entering wait ...\n17:41:20|first: Object does not exist, entering wait ...\n17:41:22|first: Wait done\n17:41:22|second: Wait done\n17:41:22|first: Call Insert\n17:41:22|second: Call Insert\n17:41:22|second: Call SaveThrowAsync\n17:41:22|first: Call SaveThrowAsync\n17:41:22|first: Call Commit\n17:41:52|second: Exception: Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while updating the entries. See the inner exception for details. ---&gt; Microsoft.Data.Sqlite.SqliteException: SQLite Error 5: 'database is locked'.\n   at Microsoft.Data.Sqlite.Interop.MarshalEx.ThrowExceptionForRC(Int32 rc, Sqlite3Handle db)\n   at Microsoft.Data.Sqlite.SqliteCommand.ExecuteReader(CommandBehavior behavior)\n   at Microsoft.Data.Sqlite.SqliteCommand.ExecuteReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)\n   at Microsoft.Data.Sqlite.SqliteCommand.&lt;ExecuteDbDataReaderAsync&gt;d__53.MoveNext()\n--- End of stack trace from previous location where exception was thrown ---\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\n   at Microsoft.EntityFrameworkCore.Storage.Internal.RelationalCommand.&lt;ExecuteAsync&gt;d__20.MoveNext()\n--- End of stack trace from previous location where exception was thrown ---\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\n   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.&lt;ExecuteAsync&gt;d__32.MoveNext()\n   --- End of inner exception stack trace ---\n   at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.&lt;ExecuteAsync&gt;d__32.MoveNext()\n--- End of stack trace from previous location where exception was thrown ---\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\n   at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.&lt;ExecuteAsync&gt;d__1.MoveNext()\n--- End of stack trace from previous location where exception was thrown ---\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\n   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.&lt;SaveChangesAsync&gt;d__47.MoveNext()\n--- End of stack trace from previous location where exception was thrown ---\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\n   at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.&lt;SaveChangesAsync&gt;d__45.MoveNext()\n--- End of stack trace from previous location where exception was thrown ---\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\n   at Microsoft.EntityFrameworkCore.DbContext.&lt;SaveChangesAsync&gt;d__30.MoveNext()\n--- End of stack trace from previous location where exception was thrown ---\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()\n   at ConsoleApp1.UnitOfWork.&lt;SaveThrowAsync&gt;d__6.MoveNext() in X:\\Dev\\NetCore\\shit\\test1\\src\\ConsoleApp1\\UnitOfWork.cs:line 35\n--- End of stack trace from previous location where exception was thrown ---\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\n   at System.Runtime.CompilerServices.TaskAwaiter.GetResult()\n   at ConsoleApp1.Program.&lt;ThreadProc&gt;d__2.MoveNext() in X:\\Dev\\NetCore\\shit\\test1\\src\\ConsoleApp1\\Program.cs:line 72\n17:41:52|first: Exception: Microsoft.Data.Sqlite.SqliteException: SQLite Error 5: 'database is locked'.\n   at Microsoft.Data.Sqlite.Interop.MarshalEx.ThrowExceptionForRC(Int32 rc, Sqlite3Handle db)\n   at Microsoft.Data.Sqlite.SqliteCommand.ExecuteReader(CommandBehavior behavior)\n   at Microsoft.Data.Sqlite.SqliteCommand.ExecuteNonQuery()\n   at Microsoft.Data.Sqlite.SqliteTransaction.Commit()\n   at Microsoft.EntityFrameworkCore.Storage.RelationalTransaction.Commit()\n   at ConsoleApp1.Program.&lt;ThreadProc&gt;d__2.MoveNext() in X:\\Dev\\NetCore\\shit\\test1\\src\\ConsoleApp1\\Program.cs:line 75\n17:41:52|second: Finished\n17:41:52|first: Finished\n17:42:00|main: We have 0 object(s) in the database.\n</code></pre>\n\n<p><strong>Code</strong></p>\n\n<p>I've tried to cut off everything not related to keep this minimal. If you want to run the program, just create these files in Visual Studio, wait for .NET Core project sync, compile the project, run \"add-migration first\" and \"update-database\" to create the database and you can run it. Without Visual Studio, you need to use \"dotnet\" and \"dotnet ef\" commands.</p>\n\n<p>Program.cs:</p>\n\n<pre><code>using Microsoft.EntityFrameworkCore.Storage;\nusing System;\nusing System.Collections.Generic;\nusing System.Linq;\nusing System.Threading;\nusing System.Threading.Tasks;\n\nnamespace ConsoleApp1\n{\n  public class Program\n  {\n    public static void Main(string[] args)\n    {\n      Thread thread1 = new Thread(new ParameterizedThreadStart(ThreadProc));\n      thread1.Start(\"first\");\n\n      Thread.Sleep(1000);\n\n      Thread thread2 = new Thread(new ParameterizedThreadStart(ThreadProc));\n      thread2.Start(\"second\");\n\n      log(\"main\", \"Press ENTER\");\n      Console.ReadLine();\n\n      using (UnitOfWork uow = new UnitOfWork())\n      {\n        IEnumerable&lt;DatabaseObject&gt; dbos = uow.DatabaseObjectRepository.GetAsync().Result;\n        log(\"main\", \"We have {0} object(s) in the database.\", dbos.Count());\n        foreach (DatabaseObject dbo in dbos)\n          log(\"main\", \" -&gt; id:{0}, value:{1}\", dbo.DatabaseObjectId, dbo.Value);\n      }\n    }\n\n    public static void log(string Id, string Format, params object[] Args)\n    {\n      string prefix = string.Format(\"{0}|{1}: \", DateTime.Now.ToString(\"HH:mm:ss\"), Id);\n      string msg = string.Format(prefix + Format, Args);\n      Console.WriteLine(msg);\n    }\n\n    public async static void ThreadProc(object State)\n    {\n      string id = (string)State; \n      log(id, \"Started\", id);\n\n      int ourObjectId = 1234;\n\n      using (UnitOfWork uow = new UnitOfWork())\n      {\n        using (IDbContextTransaction transaction = await uow.BeginTransactionAsync())\n        {\n          bool rollback = false;\n          try\n          {\n            DatabaseObject dbo = (await uow.DatabaseObjectRepository.GetAsync(o =&gt; o.DatabaseObjectId == ourObjectId)).FirstOrDefault();\n            if (dbo == null)\n            {\n              log(id, \"Object does not exist, entering wait ...\");\n              await Task.Delay(2000); // Same result with Thread.Sleep(2000) instead.\n              log(id, \"Wait done\");\n\n              dbo = new DatabaseObject()\n              {\n                DatabaseObjectId = ourObjectId,\n                Value = id\n              };\n\n              log(id, \"Call Insert\");\n              uow.DatabaseObjectRepository.Insert(dbo);\n\n              log(id, \"Call SaveThrowAsync\");\n              await uow.SaveThrowAsync();\n\n              log(id, \"Call Commit\");\n              transaction.Commit(); // .NET Core should commit automatically on transaction Dispose, but that does not work for me.\n            }\n            else\n            {\n              log(id, \"Object already exists\");\n              rollback = true;\n            }\n          }\n          catch (Exception exception)\n          {\n            log(id, \"Exception: {0}\", exception.ToString());\n          }\n\n          if (rollback)\n          {\n            log(id, \"Rolling back\");\n            transaction.Rollback();\n          }\n        }\n      }\n\n      log(id, \"Finished\");\n    }\n  }\n}\n</code></pre>\n\n<p>UnitOfWork.cs:</p>\n\n<pre><code>using Microsoft.EntityFrameworkCore.Storage;\nusing System;\nusing System.Threading.Tasks;\n\nnamespace ConsoleApp1\n{\n  public class UnitOfWork : IDisposable\n  {\n    private DatabaseContext context = null;\n    public DatabaseContext Context\n    {\n      get\n      {\n        if (context == null)\n          context = new DatabaseContext();\n\n        return context;\n      }\n    }\n\n    private GenericRepository&lt;DatabaseObject&gt; databaseObjectRepository;\n    public GenericRepository&lt;DatabaseObject&gt; DatabaseObjectRepository\n    {\n      get\n      {\n        if (databaseObjectRepository == null)\n          databaseObjectRepository = new GenericRepository&lt;DatabaseObject&gt;(Context);\n\n        return databaseObjectRepository;\n      }\n    }\n\n    public async Task SaveThrowAsync()\n    {\n      await Context.SaveChangesAsync();\n    }\n\n    public async Task&lt;IDbContextTransaction&gt; BeginTransactionAsync()\n    {\n      return await Context.Database.BeginTransactionAsync();\n    }\n\n\n    private bool disposed = false;\n\n    public void Dispose()\n    {\n      Dispose(true);\n      GC.SuppressFinalize(this);\n    }\n\n    protected virtual void Dispose(bool Disposing)\n    {\n      if (disposed) return;\n\n      if (Disposing)\n      {\n        if (context != null) context.Dispose();\n        context = null;\n        disposed = true;\n      }\n    }\n  }\n}\n</code></pre>\n\n<p>GenericRepository.cs:</p>\n\n<pre><code>using System;\nusing System.Collections.Generic;\nusing System.Linq;\nusing System.Threading.Tasks;\nusing System.Linq.Expressions;\nusing Microsoft.EntityFrameworkCore;\n\nnamespace ConsoleApp1\n{\n  public class GenericRepository&lt;TEntity&gt; where TEntity : class\n  {\n    internal DatabaseContext context;\n    internal DbSet&lt;TEntity&gt; dbSet;\n\n    public GenericRepository(DatabaseContext context)\n    {\n      this.context = context;\n      dbSet = context.Set&lt;TEntity&gt;();\n    }\n\n    public virtual async Task&lt;IEnumerable&lt;TEntity&gt;&gt; GetAsync(Expression&lt;Func&lt;TEntity, bool&gt;&gt; filter = null)\n    {\n      IQueryable&lt;TEntity&gt; query = dbSet;\n\n      if (filter != null)\n        query = query.Where(filter);\n\n      List&lt;TEntity&gt; result = await query.ToListAsync();\n      return result;\n    }\n\n    public virtual void Insert(TEntity entity)\n    {\n      dbSet.Add(entity);\n    }\n\n    public virtual void Update(TEntity entityToUpdate)\n    {\n      dbSet.Attach(entityToUpdate);\n      context.Entry(entityToUpdate).State = EntityState.Modified;\n    }\n  }\n}\n</code></pre>\n\n<p>DatabaseObject.cs:</p>\n\n<pre><code>namespace ConsoleApp1\n{\n  public class DatabaseObject\n  {\n    public int DatabaseObjectId { get; set; }\n    public string Value { get; set; }\n  }\n}\n</code></pre>\n\n<p>DatabaseContext.cs:</p>\n\n<pre><code>using Microsoft.EntityFrameworkCore;\n\nnamespace ConsoleApp1\n{\n  public class DatabaseContext : DbContext\n  {\n    public DbSet&lt;DatabaseObject&gt; DatabaseObjects { get; set; }\n\n    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)\n    {\n      optionsBuilder.UseSqlite(\"Filename=mysqlite.db\");\n    }\n  }\n}\n</code></pre>\n\n<p>project.json:</p>\n\n<pre><code>{\n  \"version\": \"1.0.0-*\",\n  \"buildOptions\": {\n    \"emitEntryPoint\": true\n  },\n\n  \"dependencies\": {\n    \"Microsoft.EntityFrameworkCore.Sqlite\": \"1.0.0\",\n    \"Microsoft.EntityFrameworkCore.Design\": {\n      \"version\": \"1.0.0-preview2-final\",\n      \"type\": \"build\"\n    },\n    \"Microsoft.NETCore.App\": {\n      \"version\": \"1.0.0\"\n    },\n    \"System.Runtime.InteropServices\": \"4.1.0\",\n    \"Microsoft.EntityFrameworkCore.Tools\": \"1.0.0-preview2-final\"\n  },\n\n  \"frameworks\": {\n    \"netcoreapp1.0\": {\n      \"imports\": \"dnxcore50\"\n    }\n  },\n  \"tools\": {\n    \"Microsoft.EntityFrameworkCore.Tools\": \"1.0.0-preview2-final\"\n  },\n  \"runtimes\": {\n    \"win10-x64\": {}\n  }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "struts2",
+                "inversion-of-control"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9581411,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/af425907698eb029b134f8c33ac0fb5f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Akuzuki29087",
+                "link": "https://stackoverflow.com/users/9581411/akuzuki29087"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523540849,
+            "creation_date": 1523540849,
+            "question_id": 49798285,
+            "body_markdown": "I&#39;m walking through someone else&#39;s code and I ran into this comment:\r\n\r\n    //product service IOC\r\n\tprivate ProductService productService;\r\n\r\nMy question is quite straightforward: How does IOC playout in this scenario? My understanding of IOC is that A avoid having dependencies on B actively, but instead, let spring decide when it should have dependency on B later, passively. \r\n\r\nHere&#39;s the snippet for class ListAction&#39;s definition :\r\n\r\n    public class ListAction extends ActionSupport {\r\n        \r\n        //product service IOC\r\n        private ProductService productService;\r\n        \r\n        //product list\r\n        private List&lt; Product &gt; productlist;\r\n        \r\n        //get product ID\r\n        private Long productId;\r\n        \r\n        private UserService userService;\r\n        \r\n        private HttpServletRequest request;\r\n        \r\n        private HttpServletResponse response;\r\n    \r\n        private HttpSession session;\r\n        \r\n         private ServletContext application;\r\n         \r\n         \r\n         //paging service  \r\n         \r\n         private int page;\r\n         \r\n         private int maxpage;\r\n         \r\n        \r\n         \r\n         private int type;\r\n         \r\n         \r\n         \r\n        public int getType() {\r\n            return type;\r\n        }\r\n    \r\n        public void setType(int type) {\r\n            this.type = type;\r\n        }\r\n    \r\n        // page maxpage store in request \r\n        public int getPage() {\r\n            return page;\r\n        }\r\n    \r\n        public void setPage(int page) {\r\n            this.page = page;\r\n        }\r\n    \r\n        \r\n        \r\n        public int getMaxpage() {\r\n            return maxpage;\r\n        }\r\n    \r\n        public void setMaxpage(int maxpage) {\r\n            this.maxpage = maxpage;\r\n        }\r\n    \r\n        public ProductService getProductService() {\r\n            return productService;\r\n        }\r\n    \r\n        public void setProductService(ProductService productService) {\r\n            this.productService = productService;\r\n        }\r\n    \r\n        public List&lt;Product&gt; getProductlist() {\r\n            return productlist;\r\n        }\r\n    \r\n        public void setProductlist(List&lt;Product&gt; productlist) {\r\n            this.productlist = productlist;\r\n        }\r\n        \r\n        \r\n        public Long getProductId() {\r\n            return productId;\r\n        }\r\n    \r\n        public void setProductId(Long productId) {\r\n            this.productId = productId;\r\n        } \r\n\r\n\r\nAnd here&#39;s the complete definition for the ProductInterface interface:\r\n\r\n    public interface ProductService {\r\n        \r\n        //get product object by ID\r\n        public Product getProduct( long productId );\r\n        \r\n        //get all product \r\n        \r\n        public List&lt;Product&gt; getALLProducts( );\r\n        \r\n        //2014.8.28 product&#39;s CRUD operation\r\n        \r\n        public void addProduct( Product product );\r\n        \r\n        public void deleteProduct( long productId );\r\n        \r\n        public void UpdateProduct( Product product );\r\n        \r\n        //paging 2014.8.29\r\n        \r\n        public List&lt;Product&gt; getByPage( int pageNo, int pageSize  );\r\n        \r\n        public int maxSize( );\r\n        \r\n        //fuzzy lookup\r\n        \r\n        public List&lt;Product&gt; find ( Map&lt;String , String &gt;keymap, int pageNo, int pageSize  );\r\n        \r\n        \r\n        //quantity lookup \r\n        \r\n        public int findnum( Map&lt;String , String &gt;keymap );\r\n         \r\n    } \r\n\r\n\r\nAnd I see a lot of getters and setters in the definition for class ListAction, and since it extends ActionSupport class, would it be safe to assume that those getters and setters will be called by struts (I&#39;m sure it&#39;s not spring but I could be completely wrong) and therefore IOC is performed/enacted?\r\n\r\nPlease someone enlighten me?",
+            "link": "https://stackoverflow.com/questions/49798285/how-does-ioc-come-into-play-in-this-scenario",
+            "title": "How does IOC come into play in this scenario?",
+            "body": "<p>I'm walking through someone else's code and I ran into this comment:</p>\n\n<pre><code>//product service IOC\nprivate ProductService productService;\n</code></pre>\n\n<p>My question is quite straightforward: How does IOC playout in this scenario? My understanding of IOC is that A avoid having dependencies on B actively, but instead, let spring decide when it should have dependency on B later, passively. </p>\n\n<p>Here's the snippet for class ListAction's definition :</p>\n\n<pre><code>public class ListAction extends ActionSupport {\n\n    //product service IOC\n    private ProductService productService;\n\n    //product list\n    private List&lt; Product &gt; productlist;\n\n    //get product ID\n    private Long productId;\n\n    private UserService userService;\n\n    private HttpServletRequest request;\n\n    private HttpServletResponse response;\n\n    private HttpSession session;\n\n     private ServletContext application;\n\n\n     //paging service  \n\n     private int page;\n\n     private int maxpage;\n\n\n\n     private int type;\n\n\n\n    public int getType() {\n        return type;\n    }\n\n    public void setType(int type) {\n        this.type = type;\n    }\n\n    // page maxpage store in request \n    public int getPage() {\n        return page;\n    }\n\n    public void setPage(int page) {\n        this.page = page;\n    }\n\n\n\n    public int getMaxpage() {\n        return maxpage;\n    }\n\n    public void setMaxpage(int maxpage) {\n        this.maxpage = maxpage;\n    }\n\n    public ProductService getProductService() {\n        return productService;\n    }\n\n    public void setProductService(ProductService productService) {\n        this.productService = productService;\n    }\n\n    public List&lt;Product&gt; getProductlist() {\n        return productlist;\n    }\n\n    public void setProductlist(List&lt;Product&gt; productlist) {\n        this.productlist = productlist;\n    }\n\n\n    public Long getProductId() {\n        return productId;\n    }\n\n    public void setProductId(Long productId) {\n        this.productId = productId;\n    } \n</code></pre>\n\n<p>And here's the complete definition for the ProductInterface interface:</p>\n\n<pre><code>public interface ProductService {\n\n    //get product object by ID\n    public Product getProduct( long productId );\n\n    //get all product \n\n    public List&lt;Product&gt; getALLProducts( );\n\n    //2014.8.28 product's CRUD operation\n\n    public void addProduct( Product product );\n\n    public void deleteProduct( long productId );\n\n    public void UpdateProduct( Product product );\n\n    //paging 2014.8.29\n\n    public List&lt;Product&gt; getByPage( int pageNo, int pageSize  );\n\n    public int maxSize( );\n\n    //fuzzy lookup\n\n    public List&lt;Product&gt; find ( Map&lt;String , String &gt;keymap, int pageNo, int pageSize  );\n\n\n    //quantity lookup \n\n    public int findnum( Map&lt;String , String &gt;keymap );\n\n} \n</code></pre>\n\n<p>And I see a lot of getters and setters in the definition for class ListAction, and since it extends ActionSupport class, would it be safe to assume that those getters and setters will be called by struts (I'm sure it's not spring but I could be completely wrong) and therefore IOC is performed/enacted?</p>\n\n<p>Please someone enlighten me?</p>\n"
+        },
+        {
+            "tags": [
+                "jenkins"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9636601,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Mohamed Ahmed",
+                "link": "https://stackoverflow.com/users/9636601/mohamed-ahmed"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1523540847,
+            "creation_date": 1523540847,
+            "question_id": 49798282,
+            "body_markdown": "while I&#39;m trying to build in Jenkins I got this error\r\n\r\nBuilding in workspace /var/lib/jenkins/workspace/Tiger_Develop\r\n &gt; git rev-parse --is-inside-work-tree # timeout=10\r\nFetching changes from the remote Git repository\r\n &gt; git config remote.origin.url https://bitbucket.org/xxxx/xxx # timeout=10\r\nFetching upstream changes from https://bitbucket.org/xxxx/xxxx\r\n &gt; git --version # timeout=10\r\nusing GIT_ASKPASS to set credentials \r\n &gt; git fetch --tags --progress https://bitbucket.org/xxxx/xxxx +refs/heads/*:refs/remotes/origin/*\r\n &gt; git rev-parse refs/remotes/origin/develop^{commit} # timeout=10\r\n &gt; git rev-parse refs/remotes/origin/origin/develop^{commit} # timeout=10\r\nChecking out Revision 2f2165807c2007c35079cb736cde7894e25bc435 (refs/remotes/origin/develop)\r\n &gt; git config core.sparsecheckout # timeout=10\r\n &gt; git checkout -f 2f2165807c2007c35079cb736cde7894e25bc435\r\nCommit message: &quot;Merged in branches/TIG-6062-saved-query-order-is-not-saved- (pull request #1059)&quot;\r\n &gt; git rev-list --no-walk 2f2165807c2007c35079cb736cde7894e25bc435 # timeout=10\r\nFATAL: class org.jfrog.hudson.maven3.ArtifactoryMaven3Configurator needs to implement the setUp method\r\njava.lang.UnsupportedOperationException: class org.jfrog.hudson.maven3.ArtifactoryMaven3Configurator needs to implement the setUp method\r\n\tat hudson.tasks.BuildWrapper.setUp(BuildWrapper.java:155)\r\n\tat hudson.tasks.BuildWrapper.setUp(BuildWrapper.java:142)\r\n\tat org.jfrog.hudson.maven3.ArtifactoryMaven3Configurator.setUp(ArtifactoryMaven3Configurator.java:436)\r\n\tat hudson.model.Build$BuildExecution.doRun(Build.java:157)\r\n\tat hudson.model.AbstractBuild$AbstractBuildExecution.run(AbstractBuild.java:504)\r\n\tat hudson.model.Run.execute(Run.java:1727)\r\n\tat hudson.model.FreeStyleBuild.run(FreeStyleBuild.java:43)\r\n\tat hudson.model.ResourceController.execute(ResourceController.java:97)\r\n\tat hudson.model.Executor.run(Executor.java:429)\r\nFinished: FAILURE",
+            "link": "https://stackoverflow.com/questions/49798282/jenkins-error-while-build",
+            "title": "Jenkins error while build",
+            "body": "<p>while I'm trying to build in Jenkins I got this error</p>\n\n<p>Building in workspace /var/lib/jenkins/workspace/Tiger_Develop</p>\n\n<blockquote>\n  <p>git rev-parse --is-inside-work-tree # timeout=10\n  Fetching changes from the remote Git repository\n  git config remote.origin.url <a href=\"https://bitbucket.org/xxxx/xxx\" rel=\"nofollow noreferrer\">https://bitbucket.org/xxxx/xxx</a> # timeout=10\n  Fetching upstream changes from <a href=\"https://bitbucket.org/xxxx/xxxx\" rel=\"nofollow noreferrer\">https://bitbucket.org/xxxx/xxxx</a>\n  git --version # timeout=10\n  using GIT_ASKPASS to set credentials \n  git fetch --tags --progress <a href=\"https://bitbucket.org/xxxx/xxxx\" rel=\"nofollow noreferrer\">https://bitbucket.org/xxxx/xxxx</a> +refs/heads/<em>:refs/remotes/origin/</em>\n  git rev-parse refs/remotes/origin/develop^{commit} # timeout=10\n  git rev-parse refs/remotes/origin/origin/develop^{commit} # timeout=10\n  Checking out Revision 2f2165807c2007c35079cb736cde7894e25bc435 (refs/remotes/origin/develop)\n  git config core.sparsecheckout # timeout=10\n  git checkout -f 2f2165807c2007c35079cb736cde7894e25bc435\n  Commit message: \"Merged in branches/TIG-6062-saved-query-order-is-not-saved- (pull request #1059)\"\n  git rev-list --no-walk 2f2165807c2007c35079cb736cde7894e25bc435 # timeout=10\n  FATAL: class org.jfrog.hudson.maven3.ArtifactoryMaven3Configurator needs to implement the setUp method\n  java.lang.UnsupportedOperationException: class org.jfrog.hudson.maven3.ArtifactoryMaven3Configurator needs to implement the setUp method\n      at hudson.tasks.BuildWrapper.setUp(BuildWrapper.java:155)\n      at hudson.tasks.BuildWrapper.setUp(BuildWrapper.java:142)\n      at org.jfrog.hudson.maven3.ArtifactoryMaven3Configurator.setUp(ArtifactoryMaven3Configurator.java:436)\n      at hudson.model.Build$BuildExecution.doRun(Build.java:157)\n      at hudson.model.AbstractBuild$AbstractBuildExecution.run(AbstractBuild.java:504)\n      at hudson.model.Run.execute(Run.java:1727)\n      at hudson.model.FreeStyleBuild.run(FreeStyleBuild.java:43)\n      at hudson.model.ResourceController.execute(ResourceController.java:97)\n      at hudson.model.Executor.run(Executor.java:429)\n  Finished: FAILURE</p>\n</blockquote>\n"
+        },
+        {
+            "tags": [
+                ".htaccess",
+                "redirect",
+                "mod-rewrite"
+            ],
+            "owner": {
+                "reputation": 60,
+                "user_id": 5373871,
+                "user_type": "registered",
+                "accept_rate": 86,
+                "profile_image": "https://www.gravatar.com/avatar/4881b802d48dcb72052947291a5e7d94?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Laurent",
+                "link": "https://stackoverflow.com/users/5373871/laurent"
+            },
+            "is_answered": true,
+            "view_count": 12,
+            "accepted_answer_id": 49798160,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1523540844,
+            "creation_date": 1523537626,
+            "last_edit_date": 1523540542,
+            "question_id": 49797119,
+            "body_markdown": "I need to redirect only this URL https://www.mywebsite.com/?lang=en to https://www.mywebsite.com/en/\r\n\r\nI try with this without success\r\n\r\n    RewriteCond %{REQUEST_URI} https://www.mywebsite.com/  \r\n    RewriteCond %{QUERY_STRING} lang=en\r\n    RewriteRule ^(.*)$ https://www.mywebsite.com/en/ [R=301,L]",
+            "link": "https://stackoverflow.com/questions/49797119/htaccess-redirect-only-one-url-with-query-string",
+            "title": "Htaccess redirect only one URL with query string",
+            "body": "<p>I need to redirect only this URL <a href=\"https://www.mywebsite.com/?lang=en\" rel=\"nofollow noreferrer\">https://www.mywebsite.com/?lang=en</a> to <a href=\"https://www.mywebsite.com/en/\" rel=\"nofollow noreferrer\">https://www.mywebsite.com/en/</a></p>\n\n<p>I try with this without success</p>\n\n<pre><code>RewriteCond %{REQUEST_URI} https://www.mywebsite.com/  \nRewriteCond %{QUERY_STRING} lang=en\nRewriteRule ^(.*)$ https://www.mywebsite.com/en/ [R=301,L]\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "sass"
+            ],
+            "owner": {
+                "reputation": 7,
+                "user_id": 9429248,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/0f5c8265fb292344f8652d1f044092b7?s=128&d=identicon&r=PG&f=1",
+                "display_name": "SmugisIGalva",
+                "link": "https://stackoverflow.com/users/9429248/smugisigalva"
+            },
+            "is_answered": false,
+            "view_count": 9,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523540842,
+            "creation_date": 1523540842,
+            "question_id": 49798280,
+            "body_markdown": "I have such SCSS code.\r\n\r\n     .c-notification {\r\n      &amp;__container {\r\n        top: 7px;\r\n        z-index: $z-index-10;\r\n      }\r\n    }\r\n\r\nWhat exactly does &quot;&amp;__container&quot; is it inclusion or something?\r\nhttps://sass-lang.com/guide I found nothing like this.",
+            "link": "https://stackoverflow.com/questions/49798280/ampersend-in-this-scss-code-mean",
+            "title": "Ampersend in this SCSS code mean?",
+            "body": "<p>I have such SCSS code.</p>\n\n<pre><code> .c-notification {\n  &amp;__container {\n    top: 7px;\n    z-index: $z-index-10;\n  }\n}\n</code></pre>\n\n<p>What exactly does \"&amp;__container\" is it inclusion or something?\n<a href=\"https://sass-lang.com/guide\" rel=\"nofollow noreferrer\">https://sass-lang.com/guide</a> I found nothing like this.</p>\n"
+        },
+        {
+            "tags": [
+                "swift",
+                "ios-charts"
+            ],
+            "owner": {
+                "reputation": 507,
+                "user_id": 2731526,
+                "user_type": "registered",
+                "accept_rate": 81,
+                "profile_image": "https://www.gravatar.com/avatar/9a8bc1fd53ea6a91840b5b44bbc72837?s=128&d=identicon&r=PG",
+                "display_name": "Jim",
+                "link": "https://stackoverflow.com/users/2731526/jim"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523540837,
+            "creation_date": 1523540837,
+            "question_id": 49798279,
+            "body_markdown": "I&#39;m using the Charts framework and I&#39;m experiencing some very weird behavior in my line chart. \r\n\r\nWhen I segue to the `ChartViewContoller` and the default selection has data, the chart renders normally:\r\n\r\n![1rm_normal](https://user-images.githubusercontent.com/15971824/38504723-4e153fc2-3bca-11e8-9be7-e6787220d96a.png)\r\n\r\nbut if I segue to this view controller when the default selection doesn&#39;t have any data and *then* select an item that has data, it looks like this:\r\n\r\n1) segue to this:\r\n\r\n![1rm_nodatamessage](https://user-images.githubusercontent.com/15971824/38504835-9f75bdec-3bca-11e8-8ad5-a9a8a05e0da2.png)\r\n\r\n2) then select an item that has data:\r\n\r\n![1rm_squished](https://user-images.githubusercontent.com/15971824/38504725-4e31fdba-3bca-11e8-98a6-f13972cbdc98.png)\r\n\r\nOf course `viewDidLoad` is called when I segue to the view controller and as long as the default selection has data when I segue to it, I can select another item that has data or doesn&#39;t and the chart will continue to render properly. So the difference appears to be in `viewDidLoad` but I&#39;ve tried everything I can think of but nothing fixes the problem. Here&#39;s my `viewDidLoad`:\r\n\r\n     override func viewDidLoad() {\r\n        super.viewDidLoad()\r\n        \r\n        view.backgroundColor = UIColor(hexString: &quot;232B35&quot;)\r\n        \r\n        self.title = &quot;1RM&quot;\r\n        \r\n        chartView.delegate = self\r\n        chartView.chartDescription?.enabled = false\r\n        \r\n        let leftAxis = chartView.leftAxis\r\n        leftAxis.axisMinimum = 190\r\n        leftAxis.labelTextColor = NSUIColor.white\r\n        \r\n        let xAxis = chartView.xAxis\r\n        xAxis.labelPosition = .bottom\r\n        xAxis.axisMinimum = 0\r\n        xAxis.granularity = 1\r\n        xAxis.axisLineWidth = 5\r\n        xAxis.valueFormatter = self\r\n        xAxis.labelTextColor = NSUIColor.white\r\n        \r\n        \r\n        chartView.configureDefaults()\r\n        chartView.rightAxis.enabled = false // this fixed the extra xAxis grid lines\r\n        \r\n        chartView.backgroundColor = NSUIColor(red: 35/255.0, green: 43/255.0, blue: 53/255.0, alpha: 1.0)\r\n        \r\n        fetchData()\r\n        \r\n        chartView.setVisibleXRangeMaximum(7)\r\n        \r\n        chartView.animate(yAxisDuration: 1.0)\r\n    }\r\n\r\nhere&#39;s what&#39;s happening in `fetchData()`:\r\n\r\n    func fetchData() {\r\n        \r\n        chartView.data = nil\r\n        \r\n        let liftName = UserDefaults.selectedLiftForChart()\r\n        let liftEvents = dataManager.fetchLiftsEventsOfTypeByName(liftName)\r\n        \r\n        guard liftEvents.count &gt; 0 else {\r\n            chartView.noDataText = &quot;There&#39;s no \\(liftName) data to display&quot;\r\n            shouldHideData = true\r\n\r\n            return }\r\n        \r\n        // put them into a Dictionary grouped by each unique day\r\n        let groupedEvents = Dictionary(grouping: liftEvents, by: { floor($0.date.timeIntervalSince1970 / 86400) })\r\n        \r\n        // grab the maximum 1RM from each day\r\n        let dailyMaximums = groupedEvents.map { $1.max(by: { $0.oneRepMax &lt; $1.oneRepMax }) }\r\n        \r\n        // MARK: - TODO: Fix the silly unwrapping\r\n        sortedLiftEvents = dailyMaximums.sorted(by: { $0?.date.compare(($1?.date)!) == .orderedAscending }) as! [LiftEvent]\r\n        \r\n        let intervalBetweenDates: TimeInterval = 3600 * 24 // 3600 = 1 hour\r\n        let startDate = (sortedLiftEvents.first?.date)! - intervalBetweenDates\r\n        let lastDate = sortedLiftEvents.last?.date\r\n        \r\n        let dateFormatter = DateFormatter()\r\n        dateFormatter.dateFormat = &quot;MMM d&quot;\r\n        let dates:[Date] = intervalDates(from: startDate, to: lastDate!, with: intervalBetweenDates)\r\n        \r\n        days = dates.map {dateFormatter.string(from: $0)}\r\n\r\n        generateLineData()\r\n\r\n    }\r\n\r\nand finally, this is the `generateLineData` method:\r\n\r\n    func fetchData() {\r\n        \r\n        chartView.data = nil\r\n        \r\n        let liftName = UserDefaults.selectedLiftForChart()\r\n        let liftEvents = dataManager.fetchLiftsEventsOfTypeByName(liftName)\r\n        \r\n        guard liftEvents.count &gt; 0 else {\r\n            chartView.noDataText = &quot;There&#39;s no \\(liftName) data to display&quot;\r\n            shouldHideData = true\r\n\r\n            return }\r\n        \r\n        // put them into a Dictionary grouped by each unique day\r\n        let groupedEvents = Dictionary(grouping: liftEvents, by: { floor($0.date.timeIntervalSince1970 / 86400) })\r\n        \r\n        // grab the maximum 1RM from each day\r\n        let dailyMaximums = groupedEvents.map { $1.max(by: { $0.oneRepMax &lt; $1.oneRepMax }) }\r\n        \r\n        // MARK: - TODO: Fix the silly unwrapping\r\n        sortedLiftEvents = dailyMaximums.sorted(by: { $0?.date.compare(($1?.date)!) == .orderedAscending }) as! [LiftEvent]\r\n        \r\n        let intervalBetweenDates: TimeInterval = 3600 * 24 // 3600 = 1 hour\r\n        let startDate = (sortedLiftEvents.first?.date)! - intervalBetweenDates\r\n        let lastDate = sortedLiftEvents.last?.date\r\n        \r\n        let dateFormatter = DateFormatter()\r\n        dateFormatter.dateFormat = &quot;MMM d&quot;\r\n        let dates:[Date] = intervalDates(from: startDate, to: lastDate!, with: intervalBetweenDates)\r\n        \r\n        days = dates.map {dateFormatter.string(from: $0)}\r\n\r\n        generateLineData()\r\n\r\n    }\r\n\r\nI&#39;ve tried putting `chartView.setVisibleXRangeMaximum(7)` in the method that sets the chart data and verified that `chartView.visibleXRange` is 7 each time the chart is rendered but it doesn&#39;t make a difference. I&#39;ve also made sure that the max `XRange` is being set after the data is set for the chart.\r\n\r\nIs there anything else I can try or is this perhaps a bug that hasn&#39;t been fixed yet?\r\n\r\nThanks",
+            "link": "https://stackoverflow.com/questions/49798279/charts-line-chart-doesnt-render-line-chart-properly",
+            "title": "Charts&#39; line chart doesn&#39;t render line chart properly",
+            "body": "<p>I'm using the Charts framework and I'm experiencing some very weird behavior in my line chart. </p>\n\n<p>When I segue to the <code>ChartViewContoller</code> and the default selection has data, the chart renders normally:</p>\n\n<p><img src=\"https://user-images.githubusercontent.com/15971824/38504723-4e153fc2-3bca-11e8-9be7-e6787220d96a.png\" alt=\"1rm_normal\"></p>\n\n<p>but if I segue to this view controller when the default selection doesn't have any data and <em>then</em> select an item that has data, it looks like this:</p>\n\n<p>1) segue to this:</p>\n\n<p><img src=\"https://user-images.githubusercontent.com/15971824/38504835-9f75bdec-3bca-11e8-8ad5-a9a8a05e0da2.png\" alt=\"1rm_nodatamessage\"></p>\n\n<p>2) then select an item that has data:</p>\n\n<p><img src=\"https://user-images.githubusercontent.com/15971824/38504725-4e31fdba-3bca-11e8-98a6-f13972cbdc98.png\" alt=\"1rm_squished\"></p>\n\n<p>Of course <code>viewDidLoad</code> is called when I segue to the view controller and as long as the default selection has data when I segue to it, I can select another item that has data or doesn't and the chart will continue to render properly. So the difference appears to be in <code>viewDidLoad</code> but I've tried everything I can think of but nothing fixes the problem. Here's my <code>viewDidLoad</code>:</p>\n\n<pre><code> override func viewDidLoad() {\n    super.viewDidLoad()\n\n    view.backgroundColor = UIColor(hexString: \"232B35\")\n\n    self.title = \"1RM\"\n\n    chartView.delegate = self\n    chartView.chartDescription?.enabled = false\n\n    let leftAxis = chartView.leftAxis\n    leftAxis.axisMinimum = 190\n    leftAxis.labelTextColor = NSUIColor.white\n\n    let xAxis = chartView.xAxis\n    xAxis.labelPosition = .bottom\n    xAxis.axisMinimum = 0\n    xAxis.granularity = 1\n    xAxis.axisLineWidth = 5\n    xAxis.valueFormatter = self\n    xAxis.labelTextColor = NSUIColor.white\n\n\n    chartView.configureDefaults()\n    chartView.rightAxis.enabled = false // this fixed the extra xAxis grid lines\n\n    chartView.backgroundColor = NSUIColor(red: 35/255.0, green: 43/255.0, blue: 53/255.0, alpha: 1.0)\n\n    fetchData()\n\n    chartView.setVisibleXRangeMaximum(7)\n\n    chartView.animate(yAxisDuration: 1.0)\n}\n</code></pre>\n\n<p>here's what's happening in <code>fetchData()</code>:</p>\n\n<pre><code>func fetchData() {\n\n    chartView.data = nil\n\n    let liftName = UserDefaults.selectedLiftForChart()\n    let liftEvents = dataManager.fetchLiftsEventsOfTypeByName(liftName)\n\n    guard liftEvents.count &gt; 0 else {\n        chartView.noDataText = \"There's no \\(liftName) data to display\"\n        shouldHideData = true\n\n        return }\n\n    // put them into a Dictionary grouped by each unique day\n    let groupedEvents = Dictionary(grouping: liftEvents, by: { floor($0.date.timeIntervalSince1970 / 86400) })\n\n    // grab the maximum 1RM from each day\n    let dailyMaximums = groupedEvents.map { $1.max(by: { $0.oneRepMax &lt; $1.oneRepMax }) }\n\n    // MARK: - TODO: Fix the silly unwrapping\n    sortedLiftEvents = dailyMaximums.sorted(by: { $0?.date.compare(($1?.date)!) == .orderedAscending }) as! [LiftEvent]\n\n    let intervalBetweenDates: TimeInterval = 3600 * 24 // 3600 = 1 hour\n    let startDate = (sortedLiftEvents.first?.date)! - intervalBetweenDates\n    let lastDate = sortedLiftEvents.last?.date\n\n    let dateFormatter = DateFormatter()\n    dateFormatter.dateFormat = \"MMM d\"\n    let dates:[Date] = intervalDates(from: startDate, to: lastDate!, with: intervalBetweenDates)\n\n    days = dates.map {dateFormatter.string(from: $0)}\n\n    generateLineData()\n\n}\n</code></pre>\n\n<p>and finally, this is the <code>generateLineData</code> method:</p>\n\n<pre><code>func fetchData() {\n\n    chartView.data = nil\n\n    let liftName = UserDefaults.selectedLiftForChart()\n    let liftEvents = dataManager.fetchLiftsEventsOfTypeByName(liftName)\n\n    guard liftEvents.count &gt; 0 else {\n        chartView.noDataText = \"There's no \\(liftName) data to display\"\n        shouldHideData = true\n\n        return }\n\n    // put them into a Dictionary grouped by each unique day\n    let groupedEvents = Dictionary(grouping: liftEvents, by: { floor($0.date.timeIntervalSince1970 / 86400) })\n\n    // grab the maximum 1RM from each day\n    let dailyMaximums = groupedEvents.map { $1.max(by: { $0.oneRepMax &lt; $1.oneRepMax }) }\n\n    // MARK: - TODO: Fix the silly unwrapping\n    sortedLiftEvents = dailyMaximums.sorted(by: { $0?.date.compare(($1?.date)!) == .orderedAscending }) as! [LiftEvent]\n\n    let intervalBetweenDates: TimeInterval = 3600 * 24 // 3600 = 1 hour\n    let startDate = (sortedLiftEvents.first?.date)! - intervalBetweenDates\n    let lastDate = sortedLiftEvents.last?.date\n\n    let dateFormatter = DateFormatter()\n    dateFormatter.dateFormat = \"MMM d\"\n    let dates:[Date] = intervalDates(from: startDate, to: lastDate!, with: intervalBetweenDates)\n\n    days = dates.map {dateFormatter.string(from: $0)}\n\n    generateLineData()\n\n}\n</code></pre>\n\n<p>I've tried putting <code>chartView.setVisibleXRangeMaximum(7)</code> in the method that sets the chart data and verified that <code>chartView.visibleXRange</code> is 7 each time the chart is rendered but it doesn't make a difference. I've also made sure that the max <code>XRange</code> is being set after the data is set for the chart.</p>\n\n<p>Is there anything else I can try or is this perhaps a bug that hasn't been fixed yet?</p>\n\n<p>Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "arrays"
+            ],
+            "owner": {
+                "reputation": 30,
+                "user_id": 6013582,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9e42899d113b3618fb733911d1e95cb2?s=128&d=identicon&r=PG&f=1",
+                "display_name": "scott_",
+                "link": "https://stackoverflow.com/users/6013582/scott"
+            },
+            "is_answered": false,
+            "view_count": 34,
+            "answer_count": 2,
+            "score": -1,
+            "last_activity_date": 1523540836,
+            "creation_date": 1523496351,
+            "question_id": 49786611,
+            "body_markdown": "I&#39;m being completely beaten up by types in Java.\r\n\r\nI have coordinates in a txt file, which ultimately I want to format into an array of these co-ordinates, with each array item being a double.\r\n\r\nEach line of my txt file looks like so:\r\n\r\n    13.716              , 6.576600074768066  \r\n\r\nCurrently, I&#39;m trying to split this line into an array of two Strings, which I will then try and parse into doubles, but I keep getting the error in the title.  Where am I going wrong? \r\n\r\nAny other better approaches on converting my Arraylist of Strings to a formatted list of double coordinates would be great, like so\r\n\r\n    [[0,1], [0,2], 0,4]\r\nCode:\r\n\r\n     public static String[] getFileContents(String path) throws FileNotFoundException, IOException\r\n        {\r\n            InputStream in = new FileInputStream(new File(path));\r\n            BufferedReader reader = new BufferedReader(new InputStreamReader(in));\r\n        \r\n            List&lt;String&gt; data = new ArrayList&lt;String&gt;();\r\n            StringBuilder out = new StringBuilder();\r\n            String line;\r\n    //        Skips 1376 characters before accessing data\r\n            reader.skip(1378);\r\n            while ((line = reader.readLine()) != null) {            \r\n                    data.add(line);\r\n    //                System.out.println(line);\r\n            }  \r\n            \r\n            for (int i=0; i &lt; data.size(); i++){\r\n                data.set(i, data.get(i).split(&quot;,&quot;));\r\n            }\r\n    //        String[] dataArr = data.toArray(new String[data.size()]);\r\n    //        Test that dataArr[0] is correct\r\n    //        System.out.println(data.size()); \r\n    //        List&lt;String&gt; formattedData = new ArrayList&lt;String&gt;();\r\n    //        for (int i = 0; i &lt; data.size(); i++){\r\n    //            formattedData.add(dataArr[i].split(&quot;,&quot;));\r\n    //        }\r\n            reader.close(); \r\n            return dataArr;\r\n        }\r\n",
+            "link": "https://stackoverflow.com/questions/49786611/incompatible-types-string-cannot-be-converted-to-string",
+            "title": "incompatible types: String[] cannot be converted to String",
+            "body": "<p>I'm being completely beaten up by types in Java.</p>\n\n<p>I have coordinates in a txt file, which ultimately I want to format into an array of these co-ordinates, with each array item being a double.</p>\n\n<p>Each line of my txt file looks like so:</p>\n\n<pre><code>13.716              , 6.576600074768066  \n</code></pre>\n\n<p>Currently, I'm trying to split this line into an array of two Strings, which I will then try and parse into doubles, but I keep getting the error in the title.  Where am I going wrong? </p>\n\n<p>Any other better approaches on converting my Arraylist of Strings to a formatted list of double coordinates would be great, like so</p>\n\n<pre><code>[[0,1], [0,2], 0,4]\n</code></pre>\n\n<p>Code:</p>\n\n<pre><code> public static String[] getFileContents(String path) throws FileNotFoundException, IOException\n    {\n        InputStream in = new FileInputStream(new File(path));\n        BufferedReader reader = new BufferedReader(new InputStreamReader(in));\n\n        List&lt;String&gt; data = new ArrayList&lt;String&gt;();\n        StringBuilder out = new StringBuilder();\n        String line;\n//        Skips 1376 characters before accessing data\n        reader.skip(1378);\n        while ((line = reader.readLine()) != null) {            \n                data.add(line);\n//                System.out.println(line);\n        }  \n\n        for (int i=0; i &lt; data.size(); i++){\n            data.set(i, data.get(i).split(\",\"));\n        }\n//        String[] dataArr = data.toArray(new String[data.size()]);\n//        Test that dataArr[0] is correct\n//        System.out.println(data.size()); \n//        List&lt;String&gt; formattedData = new ArrayList&lt;String&gt;();\n//        for (int i = 0; i &lt; data.size(); i++){\n//            formattedData.add(dataArr[i].split(\",\"));\n//        }\n        reader.close(); \n        return dataArr;\n    }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "mit-scratch"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 9559189,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/09669be7ceb43ead63aadf8691850d72?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Gabe",
+                "link": "https://stackoverflow.com/users/9559189/gabe"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523540834,
+            "creation_date": 1523540834,
+            "question_id": 49798276,
+            "body_markdown": "I am trying to make a multiple choice quiz in Scratch, but I am having trouble with coding the buttons. I have created the buttons, but I do not know how to get them so the users can click on them to choose answers. How can I get them to work? \r\n[Here is a screenshot of the code and the actual quiz.][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/Py8RZ.png",
+            "link": "https://stackoverflow.com/questions/49798276/creating-a-button-in-scratch",
+            "title": "Creating a button in scratch",
+            "body": "<p>I am trying to make a multiple choice quiz in Scratch, but I am having trouble with coding the buttons. I have created the buttons, but I do not know how to get them so the users can click on them to choose answers. How can I get them to work? \n<a href=\"https://i.stack.imgur.com/Py8RZ.png\" rel=\"nofollow noreferrer\">Here is a screenshot of the code and the actual quiz.</a></p>\n"
+        },
+        {
+            "tags": [
+                "jenkins"
+            ],
+            "owner": {
+                "reputation": 20,
+                "user_id": 4742425,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-0jy0HRAiVmE/AAAAAAAAAAI/AAAAAAAAACU/oqq-RKhNtLg/photo.jpg?sz=128",
+                "display_name": "akhil krishna",
+                "link": "https://stackoverflow.com/users/4742425/akhil-krishna"
+            },
+            "is_answered": false,
+            "view_count": 5,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523540830,
+            "creation_date": 1523540830,
+            "question_id": 49798275,
+            "body_markdown": "We have a Jenkins server installed on the windows server, but planning to move Jenkins to ubuntu server. How can I migrate users to old Jenkins server to new server? \r\nTried with copying config.xml, secrets, users folder to the new server, but not able to log in. ",
+            "link": "https://stackoverflow.com/questions/49798275/migrate-jenkin-users-from-old-server-to-new",
+            "title": "Migrate jenkin users from old server to new",
+            "body": "<p>We have a Jenkins server installed on the windows server, but planning to move Jenkins to ubuntu server. How can I migrate users to old Jenkins server to new server? \nTried with copying config.xml, secrets, users folder to the new server, but not able to log in. </p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "criteria",
+                "intervals"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 8893110,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/49183cd029286a7956ec1940b1aa4d5d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Emilie",
+                "link": "https://stackoverflow.com/users/8893110/emilie"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1523540828,
+            "creation_date": 1523522836,
+            "last_edit_date": 1523535755,
+            "question_id": 49791989,
+            "body_markdown": "I am using R to analyze wheel running data from mice experiment. I have the following data frame:\r\n\r\n    daily\tdiff\tdiff_abs\tRSI\trevRSI\tdate\r\n    31115\t0\t0\tNA\t41.2414625757225\t01/25\r\n    26455\t-4660\t4660\tNA\t48.2658030703815\t01/26\r\n    43746\t17291\t17291\tNA\t45.9494803496455\t01/27\r\n    56477\t12731\t12731\tNA\t48.9645147955033\t01/28\r\n    20487\t-35990\t35990\tNA\t50.8358888804281\t01/29\r\n    48091\t27604\t27604\tNA\t27.3308517626451\t01/30\r\n    40780\t-7311\t7311\tNA\t55.0797465588814\t01/31\r\n    66862\t26082\t26082\tNA\t47.1060765697854\t02/01\r\n    56070\t-10792\t10792\t58.7585374242775\t54.7090598105694\t02/02\r\n    36727\t-19343\t19343\t51.7341969296185\t52.8298034135076\t02/03\r\n    39402\t2675\t2675\t54.0505196503545\t36.9980600069096\t02/04\r\n    46852\t7450\t7450\t51.0354852044967\t50.6400779877448\t02/05\r\n    54062\t7210\t7210\t49.1641111195719\t48.523901908252\t02/06\r\n    82605\t28543\t28543\t72.6691482373549\t48.3957328746788\t02/07\r\n    31816\t-50789\t50789\t44.9202534411186\t53.2082055322621\t02/08\r\n    50723\t18907\t18907\t52.8939234302146\t34.3408339939252\t02/09\r\n    52931\t2208\t2208\t45.2909401894306\t49.3214157131005\t02/10\r\n    48032\t-4899\t4899\t47.1701965864924\t48.7951434058106\t02/11\r\n    75867\t27835\t27835\t63.0019399930904\t45.400714012296\t02/12\r\n    37012\t-38855\t38855\t49.3599220122552\t52.3590727677325\t02/13\r\n    52604\t15592\t15592\t51.476098091748\t33.3383758162519\t02/14\r\n    60330\t7726\t7726\t51.6042671253212\t52.719803210509\t02/15\r\n    71204\t10874\t10874\t46.7917944677379\t58.8525137798564\t02/16\r\n    71719\t515\t515\t65.6591660060748\t71.5165371132449\t02/17\r\n    52457\t-19262\t19262\t50.6785842868995\t76.8903074849309\t02/18\r\n    56043\t3586\t3586\t51.2048565941894\t64.6605567935721\t02/19\r\n    59807\t3764\t3764\t54.599285987704\t71.2648737251093\t02/20\r\n    70630\t10823\t10823\t47.6409272322675\t73.3683338802169\t02/21\r\n    63446\t-7184\t7184\t66.6616241837481\t89.0878793194177\t02/22\r\n    48314\t-15132\t15132\t47.280196789491\t61.6081268190681\t02/23\r\n    47610\t-704\t704\t41.1474862201436\t43.4304453935326\t02/24\r\n    42970\t-4640\t4640\t28.4834628867551\t34.2488899851998\t02/25\r\n    29427\t-13543\t13543\t23.109692515069\t27.2125091182907\t02/26\r\n    33773\t4346\t4346\t35.3394432064279\t41.9740001500713\t02/27\r\n    28021\t-5752\t5752\t28.7351262748907\t39.5260512811454\t02/28\r\n    29896\t1875\t1875\t26.6316661197831\t40.432047746235\t03/01\r\n    26062\t-3834\t3834\t10.9121206805824\t38.1126164545335\t03/02\r\n    47014\t20952\t20952\t38.3918731809319\t32.1529563466628\t03/03\r\n    56928\t9914\t9914\t56.5695546064674\t51.6408833585561\t03/04\r\n    73152\t16224\t16224\t65.7511100148002\t55.2920789479607\t03/05\r\n    81706\t8554\t8554\t72.7874908817093\t60.3469873993958\t03/06\r\n    46541\t-35165\t35165\t58.0259998499287\t56.7947848600666\t03/07\r\n    57490\t10949\t10949\t60.4739487188546\t39.5527595903204\t03/08\r\n    50016\t-7474\t7474\t59.567952253765\t55.3361524561763\t03/09\r\n    58886\t8870\t8870\t61.8873835454665\t48.9233030011869\t03/10\r\n    73397\t14511\t14511\t67.8470436533372\t53.8702524564152\t03/11\r\n    42330\t-31067\t31067\t48.3591166414439\t50.062386569873\t03/12\r\n    42819\t489\t489\t44.7079210520393\t31.5655846006373\t03/13\r\n    47877\t5058\t5058\t39.6530126006042\t50.021484430949\t03/14\r\n    64070\t16193\t16193\t43.2052151399334\t54.2381247338469\t03/15\r\n    66901\t2831\t2831\t60.4472404096796\t65.200747697026\t03/16\r\n    46032\t-20869\t20869\t44.6638475438237\t70.6002913025385\t03/17\r\n    52302\t6270\t6270\t51.0766969988131\t58.9211826366076\t03/18\r\n    51276\t-1026\t1026\t46.1297475435848\t61.7373482579221\t03/19\r\n    73265\t21989\t21989\t49.937613430127\t61.4629369889115\t03/20\r\n    70792\t-2473\t2473\t68.4344153993627\t87.5024084356554\t03/21\r\n    42774\t-28018\t28018\t49.978515569051\t78.8086504788302\t03/22\r\n    39119\t-3655\t3655\t45.7618752661531\t80.5670973928131\t03/23\r\n    36909\t-2210\t2210\t34.799252302974\tNA\t03/28\r\n    27299\t-9610\t9610\t29.3997086974615\tNA\t03/29\r\n    31802\t4503\t4503\t41.0788173633924\tNA\t03/30\r\n    34434\t2632\t2632\t38.2626517420779\tNA\t03/31\r\n    33950\t-484\t484\t38.5370630110885\tNA\t04/01\r\n    30444\t-3506\t3506\t12.4975915643446\tNA\t04/02\r\n    36077\t5633\t5633\t21.1913495211698\tNA\t04/03\r\n    2607\t-33470\t33470\t19.4329026071869\tNA\t04/04\r\n\r\n(the `NA` are supposed to be there, is due to how `RSI` and `revRSI` are calculated based on `daily`)\r\n\r\nI am interested in finding the intervals where the following criteria are met:\r\n\r\n 1. `RSI &lt; 50` for 9 consecutive observations or more\r\n 2. `RSI &lt; 25` for at least 1 observation\r\n\r\nThe first observation where `RSI &lt; 50` is the first data point in the interval.\r\nThe interval stops with the observation `revRSI &gt; 50` (not included in the interval).\r\nIf after `&gt;9` consecutive observations of `RSI &lt; 50` there appears `RSI &gt; 50` *before* `revRSI &gt; 50`, the interval is not terminated. It should only terminate when `revRSI &gt; 50`.\r\n\r\nIf possible, I would like the output to appear in an extra column added to the dataframe posted (something like value as either `1/0` or `TRUE/FALSE`, or `FIRST/LAST` to indicate the interval).\r\n\r\nI tried searching, but was unable to find anything relating to this. \r\nI am hoping somebody might have some good advice or could point me in the right direction :)\r\nI will have half a year of observations from 30 animals, so I am hoping I will not have to do this manually ;)\r\n\r\nThanks!\r\n",
+            "link": "https://stackoverflow.com/questions/49791989/r-report-range-in-data-where-several-criteria-are-met",
+            "title": "R: Report range in data where several criteria are met",
+            "body": "<p>I am using R to analyze wheel running data from mice experiment. I have the following data frame:</p>\n\n<pre><code>daily   diff    diff_abs    RSI revRSI  date\n31115   0   0   NA  41.2414625757225    01/25\n26455   -4660   4660    NA  48.2658030703815    01/26\n43746   17291   17291   NA  45.9494803496455    01/27\n56477   12731   12731   NA  48.9645147955033    01/28\n20487   -35990  35990   NA  50.8358888804281    01/29\n48091   27604   27604   NA  27.3308517626451    01/30\n40780   -7311   7311    NA  55.0797465588814    01/31\n66862   26082   26082   NA  47.1060765697854    02/01\n56070   -10792  10792   58.7585374242775    54.7090598105694    02/02\n36727   -19343  19343   51.7341969296185    52.8298034135076    02/03\n39402   2675    2675    54.0505196503545    36.9980600069096    02/04\n46852   7450    7450    51.0354852044967    50.6400779877448    02/05\n54062   7210    7210    49.1641111195719    48.523901908252 02/06\n82605   28543   28543   72.6691482373549    48.3957328746788    02/07\n31816   -50789  50789   44.9202534411186    53.2082055322621    02/08\n50723   18907   18907   52.8939234302146    34.3408339939252    02/09\n52931   2208    2208    45.2909401894306    49.3214157131005    02/10\n48032   -4899   4899    47.1701965864924    48.7951434058106    02/11\n75867   27835   27835   63.0019399930904    45.400714012296 02/12\n37012   -38855  38855   49.3599220122552    52.3590727677325    02/13\n52604   15592   15592   51.476098091748 33.3383758162519    02/14\n60330   7726    7726    51.6042671253212    52.719803210509 02/15\n71204   10874   10874   46.7917944677379    58.8525137798564    02/16\n71719   515 515 65.6591660060748    71.5165371132449    02/17\n52457   -19262  19262   50.6785842868995    76.8903074849309    02/18\n56043   3586    3586    51.2048565941894    64.6605567935721    02/19\n59807   3764    3764    54.599285987704 71.2648737251093    02/20\n70630   10823   10823   47.6409272322675    73.3683338802169    02/21\n63446   -7184   7184    66.6616241837481    89.0878793194177    02/22\n48314   -15132  15132   47.280196789491 61.6081268190681    02/23\n47610   -704    704 41.1474862201436    43.4304453935326    02/24\n42970   -4640   4640    28.4834628867551    34.2488899851998    02/25\n29427   -13543  13543   23.109692515069 27.2125091182907    02/26\n33773   4346    4346    35.3394432064279    41.9740001500713    02/27\n28021   -5752   5752    28.7351262748907    39.5260512811454    02/28\n29896   1875    1875    26.6316661197831    40.432047746235 03/01\n26062   -3834   3834    10.9121206805824    38.1126164545335    03/02\n47014   20952   20952   38.3918731809319    32.1529563466628    03/03\n56928   9914    9914    56.5695546064674    51.6408833585561    03/04\n73152   16224   16224   65.7511100148002    55.2920789479607    03/05\n81706   8554    8554    72.7874908817093    60.3469873993958    03/06\n46541   -35165  35165   58.0259998499287    56.7947848600666    03/07\n57490   10949   10949   60.4739487188546    39.5527595903204    03/08\n50016   -7474   7474    59.567952253765 55.3361524561763    03/09\n58886   8870    8870    61.8873835454665    48.9233030011869    03/10\n73397   14511   14511   67.8470436533372    53.8702524564152    03/11\n42330   -31067  31067   48.3591166414439    50.062386569873 03/12\n42819   489 489 44.7079210520393    31.5655846006373    03/13\n47877   5058    5058    39.6530126006042    50.021484430949 03/14\n64070   16193   16193   43.2052151399334    54.2381247338469    03/15\n66901   2831    2831    60.4472404096796    65.200747697026 03/16\n46032   -20869  20869   44.6638475438237    70.6002913025385    03/17\n52302   6270    6270    51.0766969988131    58.9211826366076    03/18\n51276   -1026   1026    46.1297475435848    61.7373482579221    03/19\n73265   21989   21989   49.937613430127 61.4629369889115    03/20\n70792   -2473   2473    68.4344153993627    87.5024084356554    03/21\n42774   -28018  28018   49.978515569051 78.8086504788302    03/22\n39119   -3655   3655    45.7618752661531    80.5670973928131    03/23\n36909   -2210   2210    34.799252302974 NA  03/28\n27299   -9610   9610    29.3997086974615    NA  03/29\n31802   4503    4503    41.0788173633924    NA  03/30\n34434   2632    2632    38.2626517420779    NA  03/31\n33950   -484    484 38.5370630110885    NA  04/01\n30444   -3506   3506    12.4975915643446    NA  04/02\n36077   5633    5633    21.1913495211698    NA  04/03\n2607    -33470  33470   19.4329026071869    NA  04/04\n</code></pre>\n\n<p>(the <code>NA</code> are supposed to be there, is due to how <code>RSI</code> and <code>revRSI</code> are calculated based on <code>daily</code>)</p>\n\n<p>I am interested in finding the intervals where the following criteria are met:</p>\n\n<ol>\n<li><code>RSI &lt; 50</code> for 9 consecutive observations or more</li>\n<li><code>RSI &lt; 25</code> for at least 1 observation</li>\n</ol>\n\n<p>The first observation where <code>RSI &lt; 50</code> is the first data point in the interval.\nThe interval stops with the observation <code>revRSI &gt; 50</code> (not included in the interval).\nIf after <code>&gt;9</code> consecutive observations of <code>RSI &lt; 50</code> there appears <code>RSI &gt; 50</code> <em>before</em> <code>revRSI &gt; 50</code>, the interval is not terminated. It should only terminate when <code>revRSI &gt; 50</code>.</p>\n\n<p>If possible, I would like the output to appear in an extra column added to the dataframe posted (something like value as either <code>1/0</code> or <code>TRUE/FALSE</code>, or <code>FIRST/LAST</code> to indicate the interval).</p>\n\n<p>I tried searching, but was unable to find anything relating to this. \nI am hoping somebody might have some good advice or could point me in the right direction :)\nI will have half a year of observations from 30 animals, so I am hoping I will not have to do this manually ;)</p>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "reactjs",
+                "validation",
+                "jsx",
+                "mask"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9636153,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ac352d0aad213e4f39ffe2cb85b3b6f8?s=128&d=identicon&r=PG&f=1",
+                "display_name": "kadijna",
+                "link": "https://stackoverflow.com/users/9636153/kadijna"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1523540827,
+            "creation_date": 1523537084,
+            "last_edit_date": 1523540827,
+            "question_id": 49796914,
+            "body_markdown": "I try to use components but none help me. I used the react-input-mask and react-material-ui-form-validator because my components are from MUI. Does anyone know how to do it or how they can work together?\r\n\r\nI want to make a form with phone, zip code and ID. Where the data has a mask and are validated when sending the request.\r\n\r\nhttps://material-ui-next.com/demos/text-fields/\r\n\r\nhttps://github.com/sanniassin/react-input-mask\r\n\r\nhttps://github.com/NewOldMax/react-material-ui-form-validator\r\n\r\n\r\n    import React from &#39;react&#39;;\r\n    import {\r\n    Grid, withStyles\r\n    } from &#39;material-ui&#39;;\r\n    import { TextValidator, ValidatorForm } from &#39;react-material-ui-form- \r\n    validator&#39;;\r\n    import { ValidatorComponent } from &#39;react-form-validator-core&#39;;\r\n    import InputMask from &#39;react-input-mask&#39;;\r\n\r\n\r\n    class FormMaskVal extends React.Component {\r\n\r\n    constructor(props) {\r\n    super(props);\r\n\r\n    this.state = {\r\n        formData: {\r\n           name:&#39;&#39;\r\n        }\r\n    this.handleChange = this.handleChange.bind(this);\r\n    this.handleSubmit = this.handleSubmit.bind(this);\r\n    }\r\n\r\n    \r\n    handleChange(event) {\r\n     const { formData } = this.state;\r\n     formData[event.target.name] = event.target.value;\r\n     this.setState({ formData });\r\n    }\r\n\r\n    handleSubmit() {\r\n     this.setState({ submitted: true }, () =&gt; {\r\n        setTimeout(() =&gt; this.setState({ submitted: false }), 5000);\r\n     });\r\n    }\r\n    render(){\r\n      const { formData, submitted, alignItems, direction, justify} = \r\n      this.state;\r\n      const validations = {\r\n        ID: [&quot;required&quot;]\r\n      }\r\n\r\n    const OurMaskedInput = (props) =&gt; {\r\n     const classes = props.classes;\r\n\r\n     return (\r\n     &lt;div&gt;\r\n      &lt;MaskedInput\r\n        mask={[&#39;(&#39;, /[1-9]/, /\\d/, /\\d/, &#39;)&#39;, &#39; &#39;, /\\d/, /\\d/, /\\d/, &#39;-&#39;, \r\n        /\\d/, /\\d/, /\\d/, /\\d/]}\r\n        placeholderChar={&#39;\\u2000&#39;}\r\n        showMask\r\n        className={classes.maskedInput}\r\n        /&gt;\r\n      &lt;/div&gt;\r\n     );\r\n    };\r\n\r\n\r\n    return (\r\n      &lt;ValidatorForm\r\n          ref=&quot;form&quot;\r\n          onSubmit={this.handleSubmit}&gt;\r\n     &lt;ItemGrid xs={12} sm={12} md={12}&gt;\r\n       &lt;TextValidator                                                    \r\n         className=&quot;CustomInput&quot;\r\n         onChange={this.handleChange}\r\n         name=&quot;ID&quot;\r\n         type=&quot;number&quot;\r\n         label=&quot;ID&quot;\r\n         value={formData.ID}\r\n         validators={[&#39;required&#39;]}\r\n         errorMessages={[&#39;Is required&#39;]}\r\n         InputProps={{ inputComponent: OurMaskedInput }}\r\n        /&gt;\r\n     &lt;/ItemGrid&gt;\r\n    &lt;/ValidatorForm&gt;\r\n    )\r\n    }\r\n\r\n    export default FormMaskVal;\r\n",
+            "link": "https://stackoverflow.com/questions/49796914/who-to-use-a-input-with-mask-and-validation-in-react-in-same-time",
+            "title": "Who to use a input with mask and validation in react in same time?",
+            "body": "<p>I try to use components but none help me. I used the react-input-mask and react-material-ui-form-validator because my components are from MUI. Does anyone know how to do it or how they can work together?</p>\n\n<p>I want to make a form with phone, zip code and ID. Where the data has a mask and are validated when sending the request.</p>\n\n<p><a href=\"https://material-ui-next.com/demos/text-fields/\" rel=\"nofollow noreferrer\">https://material-ui-next.com/demos/text-fields/</a></p>\n\n<p><a href=\"https://github.com/sanniassin/react-input-mask\" rel=\"nofollow noreferrer\">https://github.com/sanniassin/react-input-mask</a></p>\n\n<p><a href=\"https://github.com/NewOldMax/react-material-ui-form-validator\" rel=\"nofollow noreferrer\">https://github.com/NewOldMax/react-material-ui-form-validator</a></p>\n\n<pre><code>import React from 'react';\nimport {\nGrid, withStyles\n} from 'material-ui';\nimport { TextValidator, ValidatorForm } from 'react-material-ui-form- \nvalidator';\nimport { ValidatorComponent } from 'react-form-validator-core';\nimport InputMask from 'react-input-mask';\n\n\nclass FormMaskVal extends React.Component {\n\nconstructor(props) {\nsuper(props);\n\nthis.state = {\n    formData: {\n       name:''\n    }\nthis.handleChange = this.handleChange.bind(this);\nthis.handleSubmit = this.handleSubmit.bind(this);\n}\n\n\nhandleChange(event) {\n const { formData } = this.state;\n formData[event.target.name] = event.target.value;\n this.setState({ formData });\n}\n\nhandleSubmit() {\n this.setState({ submitted: true }, () =&gt; {\n    setTimeout(() =&gt; this.setState({ submitted: false }), 5000);\n });\n}\nrender(){\n  const { formData, submitted, alignItems, direction, justify} = \n  this.state;\n  const validations = {\n    ID: [\"required\"]\n  }\n\nconst OurMaskedInput = (props) =&gt; {\n const classes = props.classes;\n\n return (\n &lt;div&gt;\n  &lt;MaskedInput\n    mask={['(', /[1-9]/, /\\d/, /\\d/, ')', ' ', /\\d/, /\\d/, /\\d/, '-', \n    /\\d/, /\\d/, /\\d/, /\\d/]}\n    placeholderChar={'\\u2000'}\n    showMask\n    className={classes.maskedInput}\n    /&gt;\n  &lt;/div&gt;\n );\n};\n\n\nreturn (\n  &lt;ValidatorForm\n      ref=\"form\"\n      onSubmit={this.handleSubmit}&gt;\n &lt;ItemGrid xs={12} sm={12} md={12}&gt;\n   &lt;TextValidator                                                    \n     className=\"CustomInput\"\n     onChange={this.handleChange}\n     name=\"ID\"\n     type=\"number\"\n     label=\"ID\"\n     value={formData.ID}\n     validators={['required']}\n     errorMessages={['Is required']}\n     InputProps={{ inputComponent: OurMaskedInput }}\n    /&gt;\n &lt;/ItemGrid&gt;\n&lt;/ValidatorForm&gt;\n)\n}\n\nexport default FormMaskVal;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "corda"
+            ],
+            "owner": {
+                "reputation": 9,
+                "user_id": 3419954,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9449c09532b966621682695281e45695?s=128&d=identicon&r=PG",
+                "display_name": "Pe4eN",
+                "link": "https://stackoverflow.com/users/3419954/pe4en"
+            },
+            "is_answered": false,
+            "view_count": 4,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523540823,
+            "creation_date": 1523540823,
+            "question_id": 49798273,
+            "body_markdown": "I try to use attachment in my CordApp (on Java). But when I try to create transaction I have this error `net.corda.core.contracts.AttachmentResolutionException: Attachment resolution failure for`.\r\n\r\nMy code looks like this \r\n\r\n\r\n\r\n\r\n` final TransactionBuilder txBuilder = new TransactionBuilder(notary)\r\n                    .addInputState(oldState)\r\n                    .addOutputState(dealState, IDEAL_CONTRACT_ID)\r\n                    .addCommand(txCommand)\r\n                    .addAttachment(fileHash);\r\n    `\r\n   \r\nAs I understand, I should download attached file to other node, but I can&#39;t find any exampls on java\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49798273/attachment-resolution-failure",
+            "title": "Attachment resolution failure",
+            "body": "<p>I try to use attachment in my CordApp (on Java). But when I try to create transaction I have this error <code>net.corda.core.contracts.AttachmentResolutionException: Attachment resolution failure for</code>.</p>\n\n<p>My code looks like this </p>\n\n<p><code>final TransactionBuilder txBuilder = new TransactionBuilder(notary)\n                    .addInputState(oldState)\n                    .addOutputState(dealState, IDEAL_CONTRACT_ID)\n                    .addCommand(txCommand)\n                    .addAttachment(fileHash);\n</code></p>\n\n<p>As I understand, I should download attached file to other node, but I can't find any exampls on java</p>\n"
+        },
+        {
+            "tags": [
+                "css",
+                "header",
+                "opencart",
+                "frontend",
+                "full-width"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9484282,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Fu Francis",
+                "link": "https://stackoverflow.com/users/9484282/fu-francis"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 1,
+            "score": -2,
+            "last_activity_date": 1523540822,
+            "creation_date": 1520932546,
+            "question_id": 49252275,
+            "body_markdown": "I use Journal2 theme for opencart3, I use the second one to customize for my website.However I found it cannot change header into full width, how to modify that to make it full-width?",
+            "link": "https://stackoverflow.com/questions/49252275/opencart-journal2-theme-header-full-width",
+            "title": "Opencart Journal2 Theme header full width",
+            "body": "<p>I use Journal2 theme for opencart3, I use the second one to customize for my website.However I found it cannot change header into full width, how to modify that to make it full-width?</p>\n"
+        },
+        {
+            "tags": [
+                "git",
+                "npm",
+                "openssl",
+                "homebrew"
+            ],
+            "owner": {
+                "reputation": 403,
+                "user_id": 6018581,
+                "user_type": "registered",
+                "accept_rate": 82,
+                "profile_image": "https://i.stack.imgur.com/1m8M6.jpg?s=128&g=1",
+                "display_name": "Emile Cantero",
+                "link": "https://stackoverflow.com/users/6018581/emile-cantero"
+            },
+            "is_answered": false,
+            "view_count": 540,
+            "answer_count": 3,
+            "score": 2,
+            "last_activity_date": 1523540819,
+            "creation_date": 1519644705,
+            "last_edit_date": 1520519329,
+            "question_id": 48987512,
+            "body_markdown": "Since a few days I got an issue with Mac OS High Sierra 10.13.3 :\r\nWhen I run a `git clone` like `git clone github.com/xxx.git failed`\r\nIt print `LibreSSL SSL_connect: SSL_ERROR_SYSCALL in connection to github.com:443`\r\nSame issue with `npm i` command\r\nEven when I try install brew like so `/usr/bin/ruby -e &quot;$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)&quot;`.\r\nI also tried the [alternative setup][1]: same.\r\n\r\n  [1]: https://docs.brew.sh/Installation",
+            "link": "https://stackoverflow.com/questions/48987512/libressl-ssl-connect-ssl-error-syscall-in-connection-to-github-com443",
+            "title": "LibreSSL SSL_connect: SSL_ERROR_SYSCALL in connection to github.com:443",
+            "body": "<p>Since a few days I got an issue with Mac OS High Sierra 10.13.3 :\nWhen I run a <code>git clone</code> like <code>git clone github.com/xxx.git failed</code>\nIt print <code>LibreSSL SSL_connect: SSL_ERROR_SYSCALL in connection to github.com:443</code>\nSame issue with <code>npm i</code> command\nEven when I try install brew like so <code>/usr/bin/ruby -e \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)\"</code>.\nI also tried the <a href=\"https://docs.brew.sh/Installation\" rel=\"nofollow noreferrer\">alternative setup</a>: same.</p>\n"
+        },
+        {
+            "tags": [
+                "kibana"
+            ],
+            "owner": {
+                "reputation": 5091,
+                "user_id": 160245,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://www.gravatar.com/avatar/ad3772721158c9ed78c4fccbc1d1b9f9?s=128&d=identicon&r=PG",
+                "display_name": "NealWalters",
+                "link": "https://stackoverflow.com/users/160245/nealwalters"
+            },
+            "is_answered": true,
+            "view_count": 13,
+            "accepted_answer_id": 49798270,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523540814,
+            "creation_date": 1522772213,
+            "question_id": 49634743,
+            "body_markdown": "Kibana is a tool that exposes data stored in Elastic Search. Is there way to sort the data on the discover tab by descending date/time, kind of like an EventLog. I have various messages with different index/types being emitted from my programs.",
+            "link": "https://stackoverflow.com/questions/49634743/how-can-you-sort-by-descending-date-time-on-the-kibana-discover-tab",
+            "title": "How can you sort by descending date/time on the Kibana “Discover” tab",
+            "body": "<p>Kibana is a tool that exposes data stored in Elastic Search. Is there way to sort the data on the discover tab by descending date/time, kind of like an EventLog. I have various messages with different index/types being emitted from my programs.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript"
+            ],
+            "owner": {
+                "reputation": 97,
+                "user_id": 7882685,
+                "user_type": "registered",
+                "accept_rate": 35,
+                "profile_image": "https://www.gravatar.com/avatar/94b65eaecdd85aebae0bcbca18d4b651?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Jakub",
+                "link": "https://stackoverflow.com/users/7882685/jakub"
+            },
+            "is_answered": true,
+            "view_count": 19,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1523540808,
+            "creation_date": 1523536705,
+            "last_edit_date": 1523540808,
+            "question_id": 49796799,
+            "body_markdown": "I built a Javascript function to make the first letter uppercase. My issue is that I have some words which are like &quot;name_something&quot; and what I want is &quot;Name Something&quot;. \r\n\r\nI did this:\r\n\r\n    function toCamelCase(text) {\r\n      return text.replace(/\\b(\\w)/g, function (match, capture) {\r\n        return capture.toUpperCase();\r\n      }).split(/[^a-zA-Z]/);\r\n    }  ",
+            "link": "https://stackoverflow.com/questions/49796799/how-do-i-use-a-regex-to-replace-non-alphanumeric-characters-with-white-space",
+            "title": "How do I use a Regex to replace non-alphanumeric characters with white space?",
+            "body": "<p>I built a Javascript function to make the first letter uppercase. My issue is that I have some words which are like \"name_something\" and what I want is \"Name Something\". </p>\n\n<p>I did this:</p>\n\n<pre><code>function toCamelCase(text) {\n  return text.replace(/\\b(\\w)/g, function (match, capture) {\n    return capture.toUpperCase();\n  }).split(/[^a-zA-Z]/);\n}  \n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "stata"
+            ],
+            "owner": {
+                "reputation": 180,
+                "user_id": 1179111,
+                "user_type": "registered",
+                "accept_rate": 56,
+                "profile_image": "https://www.gravatar.com/avatar/ec93f2a26b5f8d6b3c40d81d171d6546?s=128&d=identicon&r=PG",
+                "display_name": "Olga",
+                "link": "https://stackoverflow.com/users/1179111/olga"
+            },
+            "is_answered": false,
+            "view_count": 22,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1523540808,
+            "creation_date": 1523248287,
+            "question_id": 49725576,
+            "body_markdown": "Does Stata provide an option of drawing a pseudo random sample from a data set given an existing set of parameters like means and standard distributions of variables?",
+            "link": "https://stackoverflow.com/questions/49725576/draw-a-pseudo-sample-given-specific-parameters",
+            "title": "Draw a pseudo sample given specific parameters",
+            "body": "<p>Does Stata provide an option of drawing a pseudo random sample from a data set given an existing set of parameters like means and standard distributions of variables?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "android",
+                "cordova",
+                "phonegap-build",
+                "filesaver.js"
+            ],
+            "owner": {
+                "reputation": 2814,
+                "user_id": 710887,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://i.stack.imgur.com/RrWlA.jpg?s=128&g=1",
+                "display_name": "Michael Schwartz",
+                "link": "https://stackoverflow.com/users/710887/michael-schwartz"
+            },
+            "is_answered": true,
+            "view_count": 1248,
+            "accepted_answer_id": 36234482,
+            "answer_count": 1,
+            "score": 14,
+            "last_activity_date": 1523540805,
+            "creation_date": 1456295709,
+            "last_edit_date": 1522789385,
+            "question_id": 35594945,
+            "body_markdown": "I&#39;m working with a small three-man team with my app and we&#39;re stuck.\r\n\r\nWe&#39;re using [JSZip][1] and [FileSaver][2] to save files for our code editor application. It works fine in the browser, but when I use it with PhoneGap as a native Android application it doesn&#39;t write.\r\n\r\nThis problem still occurs with the [zip.js](https://gildas-lormeau.github.io/zip.js/) library and even saving single files with the [FileSaver.js][2] library.\r\n\r\n    $(&#39;.savemd&#39;).click -&gt;\r\n      blob = new Blob([ mdEditor.getValue() ], type: &#39;text/x-markdown&#39;)\r\n      saveAs blob, &#39;source.md&#39;\r\n\r\nI tried using PhoneGap&#39;s [FileWriter](http://docs.phonegap.com/en/1.3.0/phonegap_file_file.md.html#FileWriter)  object, but later I found that it&#39;s currently impossible to write binary data with Phonegap&#39;s FileWriter - [source](https://groups.google.com/forum/#!topic/phonegap/p-9nCyn7vDI) - [source](https://stackoverflow.com/questions/8743593/zipping-files-with-javascript-corrupt-archive)\r\n\r\nHowever that post is a few years old. \r\n\r\nI&#39;ve also tried getting this to work with native WebView and using the [Crosswalk Project](https://crosswalk-project.org/) and still no luck.\r\n\r\nWe&#39;ve also tried...\r\n\r\n    function saveFile(fileName, fileData) {\r\n      // Get access to the file system\r\n      window.requestFileSystem(LocalFileSystem.PERSISTENT, 0, function (fileSystem) {\r\n        // Create the file.\r\n        fileSystem.root.getFile(fileName, { create: true, exclusive: false }, function (entry) {\r\n          // After you save the file, you can access it with this URL\r\n          myFileUrl = entry.toURL()\r\n          entry.createWriter(function(writer) {\r\n            writer.onwriteend = function(evt) {\r\n              alert(&quot;Successfully saved file to &quot; + myFileUrl)\r\n            }\r\n            // Write to the file\r\n            writer.write(fileData)\r\n          }, function(error) {\r\n            alert(&quot;Error: Could not create file writer, &quot; + error.code)\r\n          })\r\n        }, function(error) {\r\n          alert(&quot;Error: Could not create file, &quot; + error.code)\r\n        })\r\n      }, function(evt) {\r\n        alert(&quot;Error: Could not access file system, &quot; + evt.target.error.code)\r\n      })\r\n    }\r\n\r\nThe problem with this is it only saves to the users memory (sd card in or not, we&#39;ve tested on all our android devices and still doesn&#39;t work, but note that we are not using any rooted devices), and will not work with JSZip.\r\n\r\nOur team develops on many different operating systems (Mac, Android, Chromebook&#39;s) so PhoneGap Build is currently a requirement.\r\n\r\nDoes anyone know of any way to do this? This being referred to Saving a file using a Binary String on Android via HTML5? (PhoneGap or PhoneGap builds answer is preferred).\r\n\r\nHere&#39;s our current XML for PhoneGap Build:\r\n\r\n    &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;\r\n    &lt;widget xmlns = &quot;http://www.w3.org/ns/widgets&quot;\r\n      xmlns:gap   = &quot;http://phonegap.com/ns/1.0&quot;\r\n      id          = &quot;com.save.test&quot;\r\n      version     = &quot;1.0.0&quot;\r\n      versionCode = &quot;1&quot;&gt;\r\n      &lt;name&gt;SaveTest&lt;/name&gt;\r\n      &lt;description&gt;\r\n          Save file using a Binary string test on Android\r\n      &lt;/description&gt;\r\n      &lt;author email=&quot;mikethedj4@yahoo.com&quot; href=&quot;http://mikethedj4.github.io/&quot;&gt;\r\n          Michael Schwartz\r\n      &lt;/author&gt;\r\n    \r\n      &lt;content src=&quot;index.html&quot; /&gt;\r\n    \r\n      &lt;icon src=&quot;icon.png&quot; gap:role=&quot;default&quot; /&gt;\r\n      &lt;icon gap:platform=&quot;android&quot; gap:qualifier=&quot;ldpi&quot; src=&quot;res/icon/android/icon-36-ldpi.png&quot; /&gt;\r\n      &lt;icon gap:platform=&quot;android&quot; gap:qualifier=&quot;mdpi&quot; src=&quot;res/icon/android/icon-48-mdpi.png&quot; /&gt;\r\n      &lt;icon gap:platform=&quot;android&quot; gap:qualifier=&quot;hdpi&quot; src=&quot;res/icon/android/icon-72-hdpi.png&quot; /&gt;\r\n      &lt;icon gap:platform=&quot;android&quot; gap:qualifier=&quot;xhdpi&quot; src=&quot;res/icon/android/icon-96-xhdpi.png&quot; /&gt;\r\n      &lt;icon gap:platform=&quot;android&quot; src=&quot;res/icon/android/icon-96-xhdpi.png&quot; /&gt;\r\n      &lt;icon gap:platform=&quot;ios&quot; height=&quot;57&quot; src=&quot;res/icon/ios/icon-57.png&quot; width=&quot;57&quot; /&gt;\r\n      &lt;icon gap:platform=&quot;ios&quot; height=&quot;72&quot; src=&quot;res/icon/ios/icon-72.png&quot; width=&quot;72&quot; /&gt;\r\n      &lt;icon gap:platform=&quot;ios&quot; height=&quot;114&quot; src=&quot;res/icon/ios/icon-57-2x.png&quot; width=&quot;114&quot; /&gt;\r\n      &lt;icon gap:platform=&quot;ios&quot; height=&quot;144&quot; src=&quot;res/icon/ios/icon-72-2x.png&quot; width=&quot;144&quot; /&gt;\r\n      &lt;icon gap:platform=&quot;winphone&quot; src=&quot;res/icon/windows-phone/icon-48.png&quot; /&gt;\r\n      &lt;icon gap:platform=&quot;winphone&quot; gap:role=&quot;background&quot; src=&quot;res/icon/windows-phone/icon-173-tile.png&quot; /&gt;\r\n    \r\n      &lt;preference name=&quot;permissions&quot; value=&quot;none&quot;/&gt;\r\n      &lt;!-- &lt;plugin name=&quot;org.crosswalk.engine&quot; spec=&quot;1.3.0&quot; source=&quot;pgb&quot; /&gt; --&gt;\r\n      &lt;!-- &lt;plugin name=&quot;cordova-plugin-crosswalk-webview&quot; source=&quot;npm&quot; /&gt; --&gt;\r\n      &lt;plugin name=&quot;cordova-plugin-whitelist&quot; source=&quot;npm&quot; /&gt;\r\n      &lt;plugin name=&quot;cordova-plugin-device&quot; source=&quot;npm&quot; /&gt;\r\n      &lt;plugin name=&quot;cordova-plugin-file&quot; source=&quot;npm&quot; /&gt;\r\n      &lt;plugin name=&quot;cordova-plugin-file-transfer&quot; source=&quot;npm&quot; /&gt;\r\n      &lt;plugin name=&quot;cordova-plugin-chrome-apps-filesystem&quot; source=&quot;npm&quot; /&gt;\r\n      &lt;!-- &lt;plugin name=&quot;cordova-connectivity-monitor&quot; source=&quot;npm&quot; /&gt; --&gt;\r\n      &lt;preference name=&quot;phonegap-version&quot; value=&quot;cli-5.2.0&quot; /&gt;\r\n    \r\n      &lt;allow-intent href=&quot;http://*/*&quot; /&gt;\r\n      &lt;allow-intent href=&quot;https://*/*&quot; /&gt;\r\n    &lt;/widget&gt;\r\n\r\n&lt;!-- begin snippet: js hide: false --&gt;\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    $(&#39;.download&#39;).click(function () {\r\n      eval($(&#39;#jszipdemo&#39;).val())\r\n    })\r\n\r\n&lt;!-- language: lang-css --&gt;\r\n\r\n    .fill {\r\n      width: 100%;\r\n      display: block;\r\n    }\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;link rel=&#39;stylesheet prefetch&#39; href=&#39;http://treehouse-code-samples.s3.amazonaws.com/poly/css/application.css&#39;&gt;\r\n\r\n    &lt;div class=&#39;grid&#39;&gt;\r\n      &lt;div class=&#39;grid__col--12&#39;&gt;\r\n        &lt;p&gt;&lt;/p&gt;\r\n        &lt;button class=&#39;btn--default download fill&#39;&gt;Run&lt;/button&gt;\r\n        &lt;textarea class=&#39;form__input&#39; id=&#39;jszipdemo&#39; placeholder=&#39;Demo code here...&#39; rows=&#39;7&#39;&gt;var zip = new JSZip();&amp;#x000A;zip.file(&quot;Hello.txt&quot;, &quot;Hello World&quot;);&amp;#x000A;var folder = zip.folder(&quot;images&quot;);&amp;#x000A;folder.file(&quot;folder.txt&quot;, &quot;I&#39;m a file in a new folder&quot;);&amp;#x000A;var content = zip.generate({type:&quot;blob&quot;});&amp;#x000A;// see FileSaver.js&amp;#x000A;saveAs(content, &quot;example.zip&quot;);&lt;/textarea&gt;\r\n      &lt;/div&gt;\r\n    &lt;/div&gt;\r\n\r\n    &lt;script src=&#39;https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js&#39;&gt;&lt;/script&gt;\r\n    &lt;script src=&#39;https://stuk.github.io/jszip/dist/jszip.js&#39;&gt;&lt;/script&gt;\r\n    &lt;script src=&#39;https://stuk.github.io/jszip-utils/dist/jszip-utils.js&#39;&gt;&lt;/script&gt;\r\n    &lt;script src=&#39;https://stuk.github.io/jszip/vendor/FileSaver.js&#39;&gt;&lt;/script&gt;\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\n\r\n  [1]: https://stuk.github.io/jszip/\r\n  [2]: https://github.com/eligrey/FileSaver.js/",
+            "link": "https://stackoverflow.com/questions/35594945/save-file-using-binary-string-on-android-via-html5",
+            "title": "Save file using binary string on Android via HTML5",
+            "body": "<p>I'm working with a small three-man team with my app and we're stuck.</p>\n\n<p>We're using <a href=\"https://stuk.github.io/jszip/\" rel=\"nofollow noreferrer\">JSZip</a> and <a href=\"https://github.com/eligrey/FileSaver.js/\" rel=\"nofollow noreferrer\">FileSaver</a> to save files for our code editor application. It works fine in the browser, but when I use it with PhoneGap as a native Android application it doesn't write.</p>\n\n<p>This problem still occurs with the <a href=\"https://gildas-lormeau.github.io/zip.js/\" rel=\"nofollow noreferrer\">zip.js</a> library and even saving single files with the <a href=\"https://github.com/eligrey/FileSaver.js/\" rel=\"nofollow noreferrer\">FileSaver.js</a> library.</p>\n\n<pre><code>$('.savemd').click -&gt;\n  blob = new Blob([ mdEditor.getValue() ], type: 'text/x-markdown')\n  saveAs blob, 'source.md'\n</code></pre>\n\n<p>I tried using PhoneGap's <a href=\"http://docs.phonegap.com/en/1.3.0/phonegap_file_file.md.html#FileWriter\" rel=\"nofollow noreferrer\">FileWriter</a>  object, but later I found that it's currently impossible to write binary data with Phonegap's FileWriter - <a href=\"https://groups.google.com/forum/#!topic/phonegap/p-9nCyn7vDI\" rel=\"nofollow noreferrer\">source</a> - <a href=\"https://stackoverflow.com/questions/8743593/zipping-files-with-javascript-corrupt-archive\">source</a></p>\n\n<p>However that post is a few years old. </p>\n\n<p>I've also tried getting this to work with native WebView and using the <a href=\"https://crosswalk-project.org/\" rel=\"nofollow noreferrer\">Crosswalk Project</a> and still no luck.</p>\n\n<p>We've also tried...</p>\n\n<pre><code>function saveFile(fileName, fileData) {\n  // Get access to the file system\n  window.requestFileSystem(LocalFileSystem.PERSISTENT, 0, function (fileSystem) {\n    // Create the file.\n    fileSystem.root.getFile(fileName, { create: true, exclusive: false }, function (entry) {\n      // After you save the file, you can access it with this URL\n      myFileUrl = entry.toURL()\n      entry.createWriter(function(writer) {\n        writer.onwriteend = function(evt) {\n          alert(\"Successfully saved file to \" + myFileUrl)\n        }\n        // Write to the file\n        writer.write(fileData)\n      }, function(error) {\n        alert(\"Error: Could not create file writer, \" + error.code)\n      })\n    }, function(error) {\n      alert(\"Error: Could not create file, \" + error.code)\n    })\n  }, function(evt) {\n    alert(\"Error: Could not access file system, \" + evt.target.error.code)\n  })\n}\n</code></pre>\n\n<p>The problem with this is it only saves to the users memory (sd card in or not, we've tested on all our android devices and still doesn't work, but note that we are not using any rooted devices), and will not work with JSZip.</p>\n\n<p>Our team develops on many different operating systems (Mac, Android, Chromebook's) so PhoneGap Build is currently a requirement.</p>\n\n<p>Does anyone know of any way to do this? This being referred to Saving a file using a Binary String on Android via HTML5? (PhoneGap or PhoneGap builds answer is preferred).</p>\n\n<p>Here's our current XML for PhoneGap Build:</p>\n\n<pre><code>&lt;?xml version=\"1.0\" encoding=\"utf-8\"?&gt;\n&lt;widget xmlns = \"http://www.w3.org/ns/widgets\"\n  xmlns:gap   = \"http://phonegap.com/ns/1.0\"\n  id          = \"com.save.test\"\n  version     = \"1.0.0\"\n  versionCode = \"1\"&gt;\n  &lt;name&gt;SaveTest&lt;/name&gt;\n  &lt;description&gt;\n      Save file using a Binary string test on Android\n  &lt;/description&gt;\n  &lt;author email=\"mikethedj4@yahoo.com\" href=\"http://mikethedj4.github.io/\"&gt;\n      Michael Schwartz\n  &lt;/author&gt;\n\n  &lt;content src=\"index.html\" /&gt;\n\n  &lt;icon src=\"icon.png\" gap:role=\"default\" /&gt;\n  &lt;icon gap:platform=\"android\" gap:qualifier=\"ldpi\" src=\"res/icon/android/icon-36-ldpi.png\" /&gt;\n  &lt;icon gap:platform=\"android\" gap:qualifier=\"mdpi\" src=\"res/icon/android/icon-48-mdpi.png\" /&gt;\n  &lt;icon gap:platform=\"android\" gap:qualifier=\"hdpi\" src=\"res/icon/android/icon-72-hdpi.png\" /&gt;\n  &lt;icon gap:platform=\"android\" gap:qualifier=\"xhdpi\" src=\"res/icon/android/icon-96-xhdpi.png\" /&gt;\n  &lt;icon gap:platform=\"android\" src=\"res/icon/android/icon-96-xhdpi.png\" /&gt;\n  &lt;icon gap:platform=\"ios\" height=\"57\" src=\"res/icon/ios/icon-57.png\" width=\"57\" /&gt;\n  &lt;icon gap:platform=\"ios\" height=\"72\" src=\"res/icon/ios/icon-72.png\" width=\"72\" /&gt;\n  &lt;icon gap:platform=\"ios\" height=\"114\" src=\"res/icon/ios/icon-57-2x.png\" width=\"114\" /&gt;\n  &lt;icon gap:platform=\"ios\" height=\"144\" src=\"res/icon/ios/icon-72-2x.png\" width=\"144\" /&gt;\n  &lt;icon gap:platform=\"winphone\" src=\"res/icon/windows-phone/icon-48.png\" /&gt;\n  &lt;icon gap:platform=\"winphone\" gap:role=\"background\" src=\"res/icon/windows-phone/icon-173-tile.png\" /&gt;\n\n  &lt;preference name=\"permissions\" value=\"none\"/&gt;\n  &lt;!-- &lt;plugin name=\"org.crosswalk.engine\" spec=\"1.3.0\" source=\"pgb\" /&gt; --&gt;\n  &lt;!-- &lt;plugin name=\"cordova-plugin-crosswalk-webview\" source=\"npm\" /&gt; --&gt;\n  &lt;plugin name=\"cordova-plugin-whitelist\" source=\"npm\" /&gt;\n  &lt;plugin name=\"cordova-plugin-device\" source=\"npm\" /&gt;\n  &lt;plugin name=\"cordova-plugin-file\" source=\"npm\" /&gt;\n  &lt;plugin name=\"cordova-plugin-file-transfer\" source=\"npm\" /&gt;\n  &lt;plugin name=\"cordova-plugin-chrome-apps-filesystem\" source=\"npm\" /&gt;\n  &lt;!-- &lt;plugin name=\"cordova-connectivity-monitor\" source=\"npm\" /&gt; --&gt;\n  &lt;preference name=\"phonegap-version\" value=\"cli-5.2.0\" /&gt;\n\n  &lt;allow-intent href=\"http://*/*\" /&gt;\n  &lt;allow-intent href=\"https://*/*\" /&gt;\n&lt;/widget&gt;\n</code></pre>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"false\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-js lang-js prettyprint-override\"><code>$('.download').click(function () {\r\n  eval($('#jszipdemo').val())\r\n})</code></pre>\r\n<pre class=\"snippet-code-css lang-css prettyprint-override\"><code>.fill {\r\n  width: 100%;\r\n  display: block;\r\n}</code></pre>\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>&lt;link rel='stylesheet prefetch' href='http://treehouse-code-samples.s3.amazonaws.com/poly/css/application.css'&gt;\r\n\r\n&lt;div class='grid'&gt;\r\n  &lt;div class='grid__col--12'&gt;\r\n    &lt;p&gt;&lt;/p&gt;\r\n    &lt;button class='btn--default download fill'&gt;Run&lt;/button&gt;\r\n    &lt;textarea class='form__input' id='jszipdemo' placeholder='Demo code here...' rows='7'&gt;var zip = new JSZip();&amp;#x000A;zip.file(\"Hello.txt\", \"Hello World\");&amp;#x000A;var folder = zip.folder(\"images\");&amp;#x000A;folder.file(\"folder.txt\", \"I'm a file in a new folder\");&amp;#x000A;var content = zip.generate({type:\"blob\"});&amp;#x000A;// see FileSaver.js&amp;#x000A;saveAs(content, \"example.zip\");&lt;/textarea&gt;\r\n  &lt;/div&gt;\r\n&lt;/div&gt;\r\n\r\n&lt;script src='https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js'&gt;&lt;/script&gt;\r\n&lt;script src='https://stuk.github.io/jszip/dist/jszip.js'&gt;&lt;/script&gt;\r\n&lt;script src='https://stuk.github.io/jszip-utils/dist/jszip-utils.js'&gt;&lt;/script&gt;\r\n&lt;script src='https://stuk.github.io/jszip/vendor/FileSaver.js'&gt;&lt;/script&gt;</code></pre>\r\n</div>\r\n</div>\r\n</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift",
+                "xcode",
+                "uinavigationbar",
+                "ios11"
+            ],
+            "owner": {
+                "reputation": 2166,
+                "user_id": 3809894,
+                "user_type": "registered",
+                "accept_rate": 61,
+                "profile_image": "https://i.stack.imgur.com/SAFzv.jpg?s=128&g=1",
+                "display_name": "Jonathan Solorzano",
+                "link": "https://stackoverflow.com/users/3809894/jonathan-solorzano"
+            },
+            "is_answered": false,
+            "view_count": 305,
+            "answer_count": 1,
+            "score": 7,
+            "last_activity_date": 1523540795,
+            "creation_date": 1507965438,
+            "last_edit_date": 1507997091,
+            "question_id": 46741945,
+            "body_markdown": "## Summary ##\r\n\r\nI&#39;d like to add a button to a large title navigation bar like App Store&#39;s account button.\r\n\r\n[![appstore][1]][1]\r\n\r\nFlow Desired:\r\n\r\n 1. Button is visible only when `large titles` is enabled\r\n 2. Allow transition from large titles to normal when user scrolls inside the view.\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/OaZdY.gif\r\n\r\n**Note:** I use storyboard.",
+            "link": "https://stackoverflow.com/questions/46741945/add-a-button-to-large-title-navigation-bar",
+            "title": "Add a button to large title navigation bar",
+            "body": "<h2>Summary</h2>\n\n<p>I'd like to add a button to a large title navigation bar like App Store's account button.</p>\n\n<p><a href=\"https://i.stack.imgur.com/OaZdY.gif\" rel=\"noreferrer\"><img src=\"https://i.stack.imgur.com/OaZdY.gif\" alt=\"appstore\"></a></p>\n\n<p>Flow Desired:</p>\n\n<ol>\n<li>Button is visible only when <code>large titles</code> is enabled</li>\n<li>Allow transition from large titles to normal when user scrolls inside the view.</li>\n</ol>\n\n<p><strong>Note:</strong> I use storyboard.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "google-app-engine",
+                "utf-8",
+                "internationalization",
+                "resourcebundle"
+            ],
+            "owner": {
+                "reputation": 1041,
+                "user_id": 571538,
+                "user_type": "unregistered",
+                "profile_image": "https://www.gravatar.com/avatar/4c076d9e022db0b8c5e67d202cfe87b2?s=128&d=identicon&r=PG",
+                "display_name": "nacho",
+                "link": "https://stackoverflow.com/users/571538/nacho"
+            },
+            "is_answered": true,
+            "view_count": 185229,
+            "answer_count": 15,
+            "score": 208,
+            "last_activity_date": 1523540795,
+            "creation_date": 1294763278,
+            "last_edit_date": 1359142445,
+            "question_id": 4659929,
+            "body_markdown": "I need to use UTF-8 in my resource properties using Java&#39;s `ResourceBundle`. When I enter the text directly into the properties file, it displays as mojibake.\r\n\r\nMy app runs on Google App Engine.\r\n\r\nCan anyone give me an example? I can&#39;t get this work.",
+            "link": "https://stackoverflow.com/questions/4659929/how-to-use-utf-8-in-resource-properties-with-resourcebundle",
+            "title": "How to use UTF-8 in resource properties with ResourceBundle",
+            "body": "<p>I need to use UTF-8 in my resource properties using Java's <code>ResourceBundle</code>. When I enter the text directly into the properties file, it displays as mojibake.</p>\n\n<p>My app runs on Google App Engine.</p>\n\n<p>Can anyone give me an example? I can't get this work.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "jquery",
+                "asp.net-mvc-4",
+                "kendo-ui",
+                "kendo-asp.net-mvc"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 4478102,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://graph.facebook.com/100001480206184/picture?type=large",
+                "display_name": "Maheboob Subhani",
+                "link": "https://stackoverflow.com/users/4478102/maheboob-subhani"
+            },
+            "is_answered": false,
+            "view_count": 51,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523540794,
+            "creation_date": 1491825594,
+            "question_id": 43322594,
+            "body_markdown": "I need to send the contentType as &quot;application/json&quot; to webApi controller. below is the code which i used and it is not working.\r\n     \r\n     @(Html.Kendo().DropDownList()\r\n                                      .Name(&quot;ddlPatientClass&quot;).AutoBind(true)\r\n                                      .HtmlAttributes(new { style = &quot;width: 67px!important;&quot; })\r\n                                      .DataTextField(&quot;ModuleName&quot;)\r\n                                      .DataValueField(&quot;RoleId&quot;)   \r\n                                      .ContentType(&quot;application/json&quot;)        \r\n                                      .DataSource(source =&gt;\r\n                                      {\r\n                                          source.Read(read =&gt; read.Url(Url.HttpRouteUrl(&quot;DefaultApi&quot;, new { controller = &quot;MedicalVisit&quot;, Action = &quot;GetPatientClass&quot; })).Type(HttpVerbs.Get));//.Type(HttpVerbs.Get).Data(&quot;ModuleParamCP&quot;));\r\n                                      })\r\n                                    )",
+            "link": "https://stackoverflow.com/questions/43322594/send-the-content-type-to-webapi-from-kenod-dropdown-list",
+            "title": "Send the content-type to webapi from kenod dropdown list",
+            "body": "<p>I need to send the contentType as \"application/json\" to webApi controller. below is the code which i used and it is not working.</p>\n\n<pre><code> @(Html.Kendo().DropDownList()\n                                  .Name(\"ddlPatientClass\").AutoBind(true)\n                                  .HtmlAttributes(new { style = \"width: 67px!important;\" })\n                                  .DataTextField(\"ModuleName\")\n                                  .DataValueField(\"RoleId\")   \n                                  .ContentType(\"application/json\")        \n                                  .DataSource(source =&gt;\n                                  {\n                                      source.Read(read =&gt; read.Url(Url.HttpRouteUrl(\"DefaultApi\", new { controller = \"MedicalVisit\", Action = \"GetPatientClass\" })).Type(HttpVerbs.Get));//.Type(HttpVerbs.Get).Data(\"ModuleParamCP\"));\n                                  })\n                                )\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "internal-server-error",
+                "tomcat9"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 6696707,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2bd27a004821884a215a15213c898338?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Patrick Wong",
+                "link": "https://stackoverflow.com/users/6696707/patrick-wong"
+            },
+            "is_answered": false,
+            "view_count": 5,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523540794,
+            "creation_date": 1523529397,
+            "last_edit_date": 1523540794,
+            "question_id": 49794365,
+            "body_markdown": "I was running a war file in tomcat9 and when I was searching through the front end screen, &quot;An internal server error has occured. Please try again later&quot; message has pop up after waiting for the search result to come up.\r\n\r\nThen when I was looking at the catalina.log, localhost.log and localhost_access.log, there is no relevant error to be found. Below is the screen. Can someone let me know some clues to know where to find the error logging so I can proceed?\r\n\r\nsupposingly the result screen will come up but after waiting for a while, the error message like this pop up\r\n\r\n![supposingly the result screen will come up but after waiting for a while, the error message like this pop up][1]\r\n\r\nRegards,\r\nPatrick\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/hP9cw.png",
+            "link": "https://stackoverflow.com/questions/49794365/an-internal-server-error-has-occured-please-try-again-later-in-tomcat9",
+            "title": "&quot;An internal server error has occured. Please try again later&quot; in tomcat9",
+            "body": "<p>I was running a war file in tomcat9 and when I was searching through the front end screen, \"An internal server error has occured. Please try again later\" message has pop up after waiting for the search result to come up.</p>\n\n<p>Then when I was looking at the catalina.log, localhost.log and localhost_access.log, there is no relevant error to be found. Below is the screen. Can someone let me know some clues to know where to find the error logging so I can proceed?</p>\n\n<p>supposingly the result screen will come up but after waiting for a while, the error message like this pop up</p>\n\n<p><img src=\"https://i.stack.imgur.com/hP9cw.png\" alt=\"supposingly the result screen will come up but after waiting for a while, the error message like this pop up\"></p>\n\n<p>Regards,\nPatrick</p>\n"
+        },
+        {
+            "tags": [
+                "ember.js",
+                "ember-cli"
+            ],
+            "owner": {
+                "reputation": 104,
+                "user_id": 6114401,
+                "user_type": "registered",
+                "accept_rate": 61,
+                "profile_image": "https://www.gravatar.com/avatar/95358dfea7fa0c136721bc3a87f5ad0c?s=128&d=identicon&r=PG&f=1",
+                "display_name": "spacerobot",
+                "link": "https://stackoverflow.com/users/6114401/spacerobot"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1523540793,
+            "creation_date": 1523475778,
+            "last_edit_date": 1523540793,
+            "question_id": 49783283,
+            "body_markdown": "I have an ember route that gets the following data:\r\n\r\n    return this.store.findAll(&#39;servicerequest&#39;);\r\n\r\nOne of the fields is a date field called created_at that I am trying to sort by.\r\n\r\nHere is my servicerequest controller:\r\n\r\n        import Controller from &#39;@ember/controller&#39;;\r\n        import { sort } from &#39;@ember/object/computed&#39;;\r\n\r\n        export default Controller.extend({\r\n           appName: &#39;Service Requests&#39;,\r\n           sortAscending: false,\r\n           sortDefinition: [&#39;created_at:desc&#39;],\r\n           sortedRequests: sort(&#39;servicerequest&#39;, &#39;sortDefinition&#39;)\r\n        });\r\n\r\n\r\nHere is the hbs section where I am outputting the data:\r\n\r\n          {{#each sortedRequests as |servicerequest|}}\r\n            {{servicerequest-list status=servicerequest.status srdescription=servicerequest.srdescription priority=servicerequest.priority created_at=servicerequest.created_at\r\n              current_user_id=servicerequest.current_user_id servicerequestId=servicerequest.id}}\r\n          {{/each}}\r\n\r\nI have not been able to get anything to sort by the created_at field desc. What am I doing wrong?\r\n\r\nUPDATE: \r\n\r\nHere is my model:\r\n\r\n        import DS from &#39;ember-data&#39;;\r\n\r\n        export default DS.Model.extend({\r\n          requester_name: DS.attr(&#39;string&#39;),\r\n          srdescription: DS.attr(&#39;string&#39;),\r\n          priority: DS.attr(&#39;string&#39;),\r\n          status: DS.attr(&#39;string&#39;),\r\n          created_at: DS.attr(&#39;date&#39;),\r\n          current_user_id: DS.attr()\r\n        });\r\n\r\nThe data is coming from a rails api. The created_at field is what the systems defaults to on records that is why there is an underscore. \r\n\r\nI am using ember-cli: 3.0.2",
+            "link": "https://stackoverflow.com/questions/49783283/struggling-with-sorting-data-in-ember",
+            "title": "Struggling with sorting data in ember",
+            "body": "<p>I have an ember route that gets the following data:</p>\n\n<pre><code>return this.store.findAll('servicerequest');\n</code></pre>\n\n<p>One of the fields is a date field called created_at that I am trying to sort by.</p>\n\n<p>Here is my servicerequest controller:</p>\n\n<pre><code>    import Controller from '@ember/controller';\n    import { sort } from '@ember/object/computed';\n\n    export default Controller.extend({\n       appName: 'Service Requests',\n       sortAscending: false,\n       sortDefinition: ['created_at:desc'],\n       sortedRequests: sort('servicerequest', 'sortDefinition')\n    });\n</code></pre>\n\n<p>Here is the hbs section where I am outputting the data:</p>\n\n<pre><code>      {{#each sortedRequests as |servicerequest|}}\n        {{servicerequest-list status=servicerequest.status srdescription=servicerequest.srdescription priority=servicerequest.priority created_at=servicerequest.created_at\n          current_user_id=servicerequest.current_user_id servicerequestId=servicerequest.id}}\n      {{/each}}\n</code></pre>\n\n<p>I have not been able to get anything to sort by the created_at field desc. What am I doing wrong?</p>\n\n<p>UPDATE: </p>\n\n<p>Here is my model:</p>\n\n<pre><code>    import DS from 'ember-data';\n\n    export default DS.Model.extend({\n      requester_name: DS.attr('string'),\n      srdescription: DS.attr('string'),\n      priority: DS.attr('string'),\n      status: DS.attr('string'),\n      created_at: DS.attr('date'),\n      current_user_id: DS.attr()\n    });\n</code></pre>\n\n<p>The data is coming from a rails api. The created_at field is what the systems defaults to on records that is why there is an underscore. </p>\n\n<p>I am using ember-cli: 3.0.2</p>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "proxy",
+                "angular-cli",
+                "karma-jasmine"
+            ],
+            "owner": {
+                "reputation": 33,
+                "user_id": 7116039,
+                "user_type": "registered",
+                "accept_rate": 94,
+                "profile_image": "https://lh6.googleusercontent.com/-W1XRU2i8SxQ/AAAAAAAAAAI/AAAAAAAAAHs/ceXJf5aD9w4/photo.jpg?sz=128",
+                "display_name": "olegario",
+                "link": "https://stackoverflow.com/users/7116039/olegario"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1523540790,
+            "creation_date": 1523539889,
+            "question_id": 49797918,
+            "body_markdown": "In my AngularCli project, I&#39;m using a `proxy.conf.js` file to set `CORS` of the application, since I have been using external API&#39;s calls. This is the content of the file:\r\n\r\n    const proxy = [\r\n      {\r\n        context: &#39;/rpc/v1&#39;,\r\n        target: &#39;http://api.infra.test&#39;,\r\n        changeOrigin: true,\r\n        secure: false\r\n      }\r\n    ];\r\n\r\n    module.exports = proxy;\r\n\r\nBut I need this same configuration in my `Karma.conf.js` file to be able to tests the services of my application. How I can do this?",
+            "link": "https://stackoverflow.com/questions/49797918/angularcli-how-to-use-proxy-conf-js-in-karma-config-file",
+            "title": "AngularCli - How to use proxy.conf.js in Karma config file?",
+            "body": "<p>In my AngularCli project, I'm using a <code>proxy.conf.js</code> file to set <code>CORS</code> of the application, since I have been using external API's calls. This is the content of the file:</p>\n\n<pre><code>const proxy = [\n  {\n    context: '/rpc/v1',\n    target: 'http://api.infra.test',\n    changeOrigin: true,\n    secure: false\n  }\n];\n\nmodule.exports = proxy;\n</code></pre>\n\n<p>But I need this same configuration in my <code>Karma.conf.js</code> file to be able to tests the services of my application. How I can do this?</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 203
+}
