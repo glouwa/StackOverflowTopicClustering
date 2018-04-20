@@ -6,6 +6,11 @@ from nltk.tag import pos_tag
 #nltk.download() to download further packages/modules for nltk
 '''Extract words from each sentence, tokenize and pos_tag it. Afterwards stemming and lemmatization happens'''
 
+#TODO remove stopwords?
+#TODO slit up into stemming.py and lemmatizing.py
+#TODO use right format:
+#input: {"8800": ["Cats are paid much money","The quick brown fox jumped quickly over the lazy dog"]}
+#output: {"8800:" ["Cats", "are", "paid", "much", "money", "The", "quick",...]}
 def convert_tagset(tag):
     '''Convert Universal tagset to wordnet tagset, default is 'NOUN' '''
     if tag == "ADJ":
@@ -19,7 +24,8 @@ def convert_tagset(tag):
 
 sentences = ["Cats are paid much money","The quick brown fox jumped quickly over the lazy dog","He studies a lot of different technologies","The boys' room is dirty", "The boy's dirty"]
 
-snow_stemmer = SnowballStemmer("english", ignore_stopwords=False)
+'''ignore_stopwords: If set to True, stopwords are not stemmed and returned unchanged. Set to False by default.'''
+snow_stemmer = SnowballStemmer("english", ignore_stopwords=True)
 lemmatizer = WordNetLemmatizer()
 
 words = []
