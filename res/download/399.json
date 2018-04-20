@@ -1,0 +1,843 @@
+{
+    "items": [
+        {
+            "tags": [
+                "mysql",
+                "charts",
+                "powershell-v5.0",
+                "invalid-characters"
+            ],
+            "owner": {
+                "reputation": 22,
+                "user_id": 7087357,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/8b70aad885192e5ed238075e75a10e35?s=128&d=identicon&r=PG",
+                "display_name": "Steve",
+                "link": "https://stackoverflow.com/users/7087357/steve"
+            },
+            "is_answered": true,
+            "view_count": 10,
+            "accepted_answer_id": 49930600,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524173799,
+            "creation_date": 1524166624,
+            "question_id": 49928961,
+            "body_markdown": "I&#39;m sure there are numerous things wrong with this script - but right now the only thing that&#39;s throwing any kind of error is the SaveImage part.  So, script will pull results from MySql Queries, and use that information to make charts.  Except it won&#39;t save the charts.\r\n\r\n    [void][Reflection.Assembly]::LoadWithPartialName(&quot;System.Windows.Forms.DataVisualization&quot;)\r\n    $scriptPath = &quot;C:\\Users\\Public\\reports\\img&quot;\r\n    \r\n    Connect-MySqlServer -ComputerName [SERVER] -Port 3306 -Database [DB] -Credential (Get-Credential)\r\n    \r\n    $locations = Invoke-MySqlQuery &quot;[...]&quot;\r\n    \r\n    ForEach ($location in $locations) {\r\n        $loc = $location.locationID\r\n        $dataSource = Invoke-MySqlQuery &quot;[...]&quot;\r\n        $c = (Invoke-MySqlQuery &quot;[...]&quot;).name | Out-String\r\n        $s = (Invoke-MySqlQuery &quot;[...]&quot;).name | Out-String\r\n\r\n        $chart1 = New-Object System.Windows.Forms.DataVisualization.Charting.Chart\r\n        $chart1.Width = 600\r\n        $chart1.Height = 400\r\n        $chart1.BackColor = [System.Drawing.Color]::White\r\n\r\n        [void]$chart1.Titles.Add(&quot;Test Chart&quot;)\r\n        $chart1.Titles[0].Font = &quot;Segoe UI,13pt&quot;\r\n        $chart1.Titles[0].Alignment = &quot;topLeft&quot;\r\n    \r\n        $chartArea = New-Object System.Windows.Forms.DataVisualization.Charting.ChartArea\r\n        $chartArea.Name = &quot;ChartArea1&quot;\r\n        $chartArea.AxisY.Title = &quot;Y Axis&quot;\r\n        $chartArea.AxisX.Title = &quot;X Axis&quot;\r\n        $chartArea.AxisY.Interval = 5\r\n        $chartArea.AxisX.Interval = 1\r\n        $chartArea.AxisY.MaximumAutoSize = $false\r\n        $chartArea.AxisX.MaximumAutoSize = $false\r\n        $chartArea.AxisY.Maximum = 80\r\n        $chartArea.AxisX.Maximum = 30\r\n        $chart1.ChartAreas.Add($chartArea)\r\n    \r\n        $legend = New-Object System.Windows.Forms.DataVisualization.Charting.Legend\r\n        $legend.Name = &quot;Legend1&quot;\r\n        $chart1.Legends.Add($legend)\r\n    \r\n        [void]$chart1.Series.Add(&quot;U&quot;)\r\n        $chart1.Series[&quot;U&quot;].ChartType = &quot;Line&quot;\r\n        $chart1.Series[&quot;U&quot;].BorderWidth = 3\r\n        $chart1.Series[&quot;U&quot;].IsVisibleInLegend = $True\r\n        $chart1.Series[&quot;U&quot;].ChartArea = &quot;ChartArea1&quot;\r\n        $chart1.Series[&quot;U&quot;].Legend = &quot;Legend1&quot;\r\n        $chart1.Series[&quot;U&quot;].Color = &quot;#7CB5EC&quot;\r\n        ForEach ($point in $dataSource) {$chart1.Series[&quot;U&quot;].Points.addxy($($point.t),[math]::Round(($point.u) / 1024),2))}\r\n    \r\n        [void]$chart1.Series.Add(&quot;D&quot;)\r\n        $chart1.Series[&quot;D&quot;].ChartType = &quot;Line&quot;\r\n        $chart1.Series[&quot;D&quot;].BorderWidth = 3\r\n        $chart1.Series[&quot;D&quot;].IsVisibleInLegend = $True\r\n        $chart1.Series[&quot;D&quot;].ChartArea = &quot;ChartArea1&quot;\r\n        $chart1.Series[&quot;D&quot;].Legend = &quot;Legend1&quot;\r\n        $chart1.Series[&quot;D&quot;].Color = &quot;#FFA500&quot;\r\n        ForEach ($point in $dataSource) {$chart1.Series[&quot;D&quot;].Points.addxy($($point.t),[math]::Round(($($point.d) / 1024),2))}\r\n    \r\n        $filename = $scriptPath + &quot;\\&quot; + ($c).replace(&quot; &quot;,&quot;&quot;) + &quot;_&quot; + ($s).replace(&quot; &quot;,&quot;&quot;) + &quot;.png&quot;\r\n    \r\n        $filename = ($filename).replace(&quot;`n&quot;,&quot;&quot;)\r\n    \r\n        $chart1.SaveImage(&quot;$filename&quot;,&quot;png&quot;)\r\n    }\r\n\r\nThis returns:\r\n\r\n    Exception calling &quot;SaveImage&quot; with &quot;2&quot; argument(s): &quot;Illegal characters in path.&quot;\r\n    At line:62 char:1\r\n    + $chart1.SaveImage(&quot;$filename&quot;,&quot;png&quot;)\r\n    + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n        + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException\r\n        + FullyQualifiedErrorId : ArgumentException\r\n\r\nI&#39;m assuming it has something to do with the `Out-String` used with the `$c` and `$s` Queries, but when I don&#39;t do that, I get other issues.  And `$filename` without the `.replace` returns:\r\n\r\n    C:\\Users\\Public\\reports\\img\\$c\r\n    _$s\r\n    .png\r\n\r\nSo, I used the following to check `$filename` for Invalid Characters:\r\n\r\n    $pattern = &quot;[{0}]&quot; -f ([Regex]::Escape([String][System.IO.Path]::GetInvalidFileNameChars() -join &#39;&#39; ))\r\n    $filename -match $pattern\r\n    $matches\r\n\r\nWhich returns:\r\n\r\n    True\r\n    Name                           Value\r\n    ----                           -----\r\n    0                              :\r\n\r\nWhen i `cd` to the directory, and attempt to save the file as `$filename` without `$scriptPath`, to get rid of the &#39;:&#39; after the Drive Letter, I get the following `$matches`:\r\n\r\n    Name                           Value\r\n    ----                           -----\r\n    0                              ...\r\n\r\nSo, I&#39;m completely at a loss.  If anyone has any insight, I&#39;d greatly appreciate it.",
+            "link": "https://stackoverflow.com/questions/49928961/powershell-invalid-characters-in-save-path",
+            "title": "PowerShell - Invalid Characters in Save Path",
+            "body": "<p>I'm sure there are numerous things wrong with this script - but right now the only thing that's throwing any kind of error is the SaveImage part.  So, script will pull results from MySql Queries, and use that information to make charts.  Except it won't save the charts.</p>\n\n<pre><code>[void][Reflection.Assembly]::LoadWithPartialName(\"System.Windows.Forms.DataVisualization\")\n$scriptPath = \"C:\\Users\\Public\\reports\\img\"\n\nConnect-MySqlServer -ComputerName [SERVER] -Port 3306 -Database [DB] -Credential (Get-Credential)\n\n$locations = Invoke-MySqlQuery \"[...]\"\n\nForEach ($location in $locations) {\n    $loc = $location.locationID\n    $dataSource = Invoke-MySqlQuery \"[...]\"\n    $c = (Invoke-MySqlQuery \"[...]\").name | Out-String\n    $s = (Invoke-MySqlQuery \"[...]\").name | Out-String\n\n    $chart1 = New-Object System.Windows.Forms.DataVisualization.Charting.Chart\n    $chart1.Width = 600\n    $chart1.Height = 400\n    $chart1.BackColor = [System.Drawing.Color]::White\n\n    [void]$chart1.Titles.Add(\"Test Chart\")\n    $chart1.Titles[0].Font = \"Segoe UI,13pt\"\n    $chart1.Titles[0].Alignment = \"topLeft\"\n\n    $chartArea = New-Object System.Windows.Forms.DataVisualization.Charting.ChartArea\n    $chartArea.Name = \"ChartArea1\"\n    $chartArea.AxisY.Title = \"Y Axis\"\n    $chartArea.AxisX.Title = \"X Axis\"\n    $chartArea.AxisY.Interval = 5\n    $chartArea.AxisX.Interval = 1\n    $chartArea.AxisY.MaximumAutoSize = $false\n    $chartArea.AxisX.MaximumAutoSize = $false\n    $chartArea.AxisY.Maximum = 80\n    $chartArea.AxisX.Maximum = 30\n    $chart1.ChartAreas.Add($chartArea)\n\n    $legend = New-Object System.Windows.Forms.DataVisualization.Charting.Legend\n    $legend.Name = \"Legend1\"\n    $chart1.Legends.Add($legend)\n\n    [void]$chart1.Series.Add(\"U\")\n    $chart1.Series[\"U\"].ChartType = \"Line\"\n    $chart1.Series[\"U\"].BorderWidth = 3\n    $chart1.Series[\"U\"].IsVisibleInLegend = $True\n    $chart1.Series[\"U\"].ChartArea = \"ChartArea1\"\n    $chart1.Series[\"U\"].Legend = \"Legend1\"\n    $chart1.Series[\"U\"].Color = \"#7CB5EC\"\n    ForEach ($point in $dataSource) {$chart1.Series[\"U\"].Points.addxy($($point.t),[math]::Round(($point.u) / 1024),2))}\n\n    [void]$chart1.Series.Add(\"D\")\n    $chart1.Series[\"D\"].ChartType = \"Line\"\n    $chart1.Series[\"D\"].BorderWidth = 3\n    $chart1.Series[\"D\"].IsVisibleInLegend = $True\n    $chart1.Series[\"D\"].ChartArea = \"ChartArea1\"\n    $chart1.Series[\"D\"].Legend = \"Legend1\"\n    $chart1.Series[\"D\"].Color = \"#FFA500\"\n    ForEach ($point in $dataSource) {$chart1.Series[\"D\"].Points.addxy($($point.t),[math]::Round(($($point.d) / 1024),2))}\n\n    $filename = $scriptPath + \"\\\" + ($c).replace(\" \",\"\") + \"_\" + ($s).replace(\" \",\"\") + \".png\"\n\n    $filename = ($filename).replace(\"`n\",\"\")\n\n    $chart1.SaveImage(\"$filename\",\"png\")\n}\n</code></pre>\n\n<p>This returns:</p>\n\n<pre><code>Exception calling \"SaveImage\" with \"2\" argument(s): \"Illegal characters in path.\"\nAt line:62 char:1\n+ $chart1.SaveImage(\"$filename\",\"png\")\n+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException\n    + FullyQualifiedErrorId : ArgumentException\n</code></pre>\n\n<p>I'm assuming it has something to do with the <code>Out-String</code> used with the <code>$c</code> and <code>$s</code> Queries, but when I don't do that, I get other issues.  And <code>$filename</code> without the <code>.replace</code> returns:</p>\n\n<pre><code>C:\\Users\\Public\\reports\\img\\$c\n_$s\n.png\n</code></pre>\n\n<p>So, I used the following to check <code>$filename</code> for Invalid Characters:</p>\n\n<pre><code>$pattern = \"[{0}]\" -f ([Regex]::Escape([String][System.IO.Path]::GetInvalidFileNameChars() -join '' ))\n$filename -match $pattern\n$matches\n</code></pre>\n\n<p>Which returns:</p>\n\n<pre><code>True\nName                           Value\n----                           -----\n0                              :\n</code></pre>\n\n<p>When i <code>cd</code> to the directory, and attempt to save the file as <code>$filename</code> without <code>$scriptPath</code>, to get rid of the ':' after the Drive Letter, I get the following <code>$matches</code>:</p>\n\n<pre><code>Name                           Value\n----                           -----\n0                              ...\n</code></pre>\n\n<p>So, I'm completely at a loss.  If anyone has any insight, I'd greatly appreciate it.</p>\n"
+        },
+        {
+            "tags": [
+                "node.js",
+                "express",
+                "pug"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9618005,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/f77073204be89d1069c6ba74b66b2dd7?s=128&d=identicon&r=PG",
+                "display_name": "user9618005",
+                "link": "https://stackoverflow.com/users/9618005/user9618005"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 2,
+            "score": -1,
+            "last_activity_date": 1524173792,
+            "creation_date": 1524172958,
+            "question_id": 49930446,
+            "body_markdown": "I have this code in express and i what to break a line in middle of text or put an image etc..\r\n\r\n    app.get(&#39;/&#39;, (req, res) =&gt; {\r\n      obj = { \r\n        text: `some text &lt;br/&gt; more text`\r\n      };\r\n      res.render(&#39;index&#39;, obj);\r\n    });\r\n\r\nImagine I fetch the info from a database and inside the information i have some html tags\r\n\r\nwhat is the best approach in this case to perform the desire result (break a line). \r\n\r\nOn the .pug side i have this code:\r\n\r\n    p\r\n      | #{obj.text}\r\n\r\nThe output is &#39;br&#39; printed like text and not perform a break.\r\n\r\nThanks for your time :)\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49930446/how-can-i-pass-a-br-inside-a-string-from-expressjs-to-pug-template",
+            "title": "how can i pass a &lt;br/&gt; inside a string from expressjs to pug template",
+            "body": "<p>I have this code in express and i what to break a line in middle of text or put an image etc..</p>\n\n<pre><code>app.get('/', (req, res) =&gt; {\n  obj = { \n    text: `some text &lt;br/&gt; more text`\n  };\n  res.render('index', obj);\n});\n</code></pre>\n\n<p>Imagine I fetch the info from a database and inside the information i have some html tags</p>\n\n<p>what is the best approach in this case to perform the desire result (break a line). </p>\n\n<p>On the .pug side i have this code:</p>\n\n<pre><code>p\n  | #{obj.text}\n</code></pre>\n\n<p>The output is 'br' printed like text and not perform a break.</p>\n\n<p>Thanks for your time :)</p>\n"
+        },
+        {
+            "tags": [
+                "mocha",
+                "chai"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 7423962,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/d4816bf48591e548f635b77016a1a4eb?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Bhuvana",
+                "link": "https://stackoverflow.com/users/7423962/bhuvana"
+            },
+            "is_answered": false,
+            "view_count": 5,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524173790,
+            "creation_date": 1523522460,
+            "question_id": 49791836,
+            "body_markdown": "When I give this statement as below, an &quot;Uncaught AssertionError: .empty was passed non-string primitive 1&quot; is thrown\r\nexpect(res.body.invoiceDetails.lineItems[0].invLineId).to.be.a(&#39;Number&#39;).and.not.to.be.empty;",
+            "link": "https://stackoverflow.com/questions/49791836/uncaught-assertionerror-empty-was-passed-non-string-primitive-1",
+            "title": "Uncaught AssertionError: .empty was passed non-string primitive 1",
+            "body": "<p>When I give this statement as below, an \"Uncaught AssertionError: .empty was passed non-string primitive 1\" is thrown\nexpect(res.body.invoiceDetails.lineItems[0].invLineId).to.be.a('Number').and.not.to.be.empty;</p>\n"
+        },
+        {
+            "tags": [
+                "spring",
+                "rest"
+            ],
+            "owner": {
+                "reputation": 487,
+                "user_id": 5834387,
+                "user_type": "registered",
+                "accept_rate": 90,
+                "profile_image": "https://i.stack.imgur.com/CCe3E.png?s=128&g=1",
+                "display_name": "Imran",
+                "link": "https://stackoverflow.com/users/5834387/imran"
+            },
+            "is_answered": true,
+            "view_count": 22,
+            "accepted_answer_id": 49930512,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524173784,
+            "creation_date": 1524160448,
+            "last_edit_date": 1524161064,
+            "question_id": 49927307,
+            "body_markdown": "In spring boot application, I have two services: GroupService and UserService.There is also respective models classes, Group and User as well as the repositories. I am exposing two Rest endpoints, one for user and one for group. Now, I have an endpoint which adds the given user to a given group something like below, forget about the possible null checks and other issues at the moment. \r\n\r\n    @PostMapping(path=&quot;groups/{group-id}/add/{user-id}&quot;)\r\n    public ResponseEntity&lt;Group&gt; setUserGroup(@PathVariable(value=&quot;group-id&quot;)Long groupId, @PathVariable(value=&quot;user-id&quot;)Long userId)\r\n    \t{   Group group=groupService.findById(groupId);\r\n    \t\tgroup.addUser(userService.findById(userId));\r\n    \t\treturn new ResponseEntity&lt;Group&gt;(groupService.save(group),HttpStatus.OK);\r\n    \t}\r\n\r\nNow, the question is, what is the best practice to handle a scenario like that. Is not it good to handle the logic in Group service by injecting user service on it, rather than handling it in rest endpoint? In that case, the group service will be dependent on user service, but at least the logic can be reused if (lets imagine such a case) multiple rest endpoints require it. \r\n\r\nThe current implementation has an advantage as the services does not become dependent on each other. But, if we have complex logic, and lets say we have complex transactions, then definitely rest endpoint is not the right place for handling it. Please help me to understand which approach I should use, and what is the industry best practice. ",
+            "link": "https://stackoverflow.com/questions/49927307/spring-rest-endpoints-and-service-layer-separation",
+            "title": "Spring rest endpoints and service layer separation",
+            "body": "<p>In spring boot application, I have two services: GroupService and UserService.There is also respective models classes, Group and User as well as the repositories. I am exposing two Rest endpoints, one for user and one for group. Now, I have an endpoint which adds the given user to a given group something like below, forget about the possible null checks and other issues at the moment. </p>\n\n<pre><code>@PostMapping(path=\"groups/{group-id}/add/{user-id}\")\npublic ResponseEntity&lt;Group&gt; setUserGroup(@PathVariable(value=\"group-id\")Long groupId, @PathVariable(value=\"user-id\")Long userId)\n    {   Group group=groupService.findById(groupId);\n        group.addUser(userService.findById(userId));\n        return new ResponseEntity&lt;Group&gt;(groupService.save(group),HttpStatus.OK);\n    }\n</code></pre>\n\n<p>Now, the question is, what is the best practice to handle a scenario like that. Is not it good to handle the logic in Group service by injecting user service on it, rather than handling it in rest endpoint? In that case, the group service will be dependent on user service, but at least the logic can be reused if (lets imagine such a case) multiple rest endpoints require it. </p>\n\n<p>The current implementation has an advantage as the services does not become dependent on each other. But, if we have complex logic, and lets say we have complex transactions, then definitely rest endpoint is not the right place for handling it. Please help me to understand which approach I should use, and what is the industry best practice. </p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "objective-c",
+                "swift",
+                "memory-leaks"
+            ],
+            "owner": {
+                "reputation": 786,
+                "user_id": 3042608,
+                "user_type": "registered",
+                "accept_rate": 68,
+                "profile_image": "https://graph.facebook.com/1581072275/picture?type=large",
+                "display_name": "Adela",
+                "link": "https://stackoverflow.com/users/3042608/adela"
+            },
+            "is_answered": true,
+            "view_count": 26,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524173779,
+            "creation_date": 1524171987,
+            "question_id": 49930262,
+            "body_markdown": "I use [iovation][1] framework in my current swift project and I created a bridging header to be able to use it.\r\n\r\nI have a `struct` instantiated in view controller and inside of the struct, I have a `String` which receives an iovation `String!` called `ioBegin()`\r\n[![enter image description here][2]][2]\r\nThe `ioBegin()` is a class method and looks like this in framework:\r\n\r\n[![enter image description here][3]][3]\r\n\r\nWhen I started using Debug Memory Graph to find Leaks of memory I had this result (I had the same result using Instruments):\r\n\r\n[![enter image description here][4]][4]\r\n\r\nI tried to use `class` instead of `struct` just because I found some explanation [here][5].\r\nI tried to use NSString (reference type) instead of String (value type) for `deviceSig` and I changed the LoginData from `struct` to `class` and my class looked like:\r\n\r\n    class LoginData: NSObject { ... }\r\nWhatever I tried it didn&#39;t work. The `iovation.ioBegin()` is always seen as `String!`. I don&#39;t know what else I should try.\r\n\r\nA similar question with the current one should be: https://stackoverflow.com/questions/42994146/creat-a-memory-leak-with-objective-c-and-swift but it doesn&#39;t help me at all.\r\n\r\n\r\n\r\n\r\n  [1]: https://github.com/iovation\r\n  [2]: https://i.stack.imgur.com/iQZOj.png\r\n  [3]: https://i.stack.imgur.com/czdTW.png\r\n  [4]: https://i.stack.imgur.com/aONEn.png\r\n  [5]: https://stackoverflow.com/questions/34406196/swift-struct-memory-leak",
+            "link": "https://stackoverflow.com/questions/49930262/memory-leak-using-objective-c-framework-in-swift-ios",
+            "title": "Memory Leak using Objective C Framework in Swift iOS",
+            "body": "<p>I use <a href=\"https://github.com/iovation\" rel=\"nofollow noreferrer\">iovation</a> framework in my current swift project and I created a bridging header to be able to use it.</p>\n\n<p>I have a <code>struct</code> instantiated in view controller and inside of the struct, I have a <code>String</code> which receives an iovation <code>String!</code> called <code>ioBegin()</code>\n<a href=\"https://i.stack.imgur.com/iQZOj.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/iQZOj.png\" alt=\"enter image description here\"></a>\nThe <code>ioBegin()</code> is a class method and looks like this in framework:</p>\n\n<p><a href=\"https://i.stack.imgur.com/czdTW.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/czdTW.png\" alt=\"enter image description here\"></a></p>\n\n<p>When I started using Debug Memory Graph to find Leaks of memory I had this result (I had the same result using Instruments):</p>\n\n<p><a href=\"https://i.stack.imgur.com/aONEn.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/aONEn.png\" alt=\"enter image description here\"></a></p>\n\n<p>I tried to use <code>class</code> instead of <code>struct</code> just because I found some explanation <a href=\"https://stackoverflow.com/questions/34406196/swift-struct-memory-leak\">here</a>.\nI tried to use NSString (reference type) instead of String (value type) for <code>deviceSig</code> and I changed the LoginData from <code>struct</code> to <code>class</code> and my class looked like:</p>\n\n<pre><code>class LoginData: NSObject { ... }\n</code></pre>\n\n<p>Whatever I tried it didn't work. The <code>iovation.ioBegin()</code> is always seen as <code>String!</code>. I don't know what else I should try.</p>\n\n<p>A similar question with the current one should be: <a href=\"https://stackoverflow.com/questions/42994146/creat-a-memory-leak-with-objective-c-and-swift\">Creat a memory leak with Objective-C and Swift</a> but it doesn't help me at all.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net-mvc",
+                "iis",
+                "asp.net-mvc-4"
+            ],
+            "owner": {
+                "reputation": 3356,
+                "user_id": 973485,
+                "user_type": "registered",
+                "accept_rate": 78,
+                "profile_image": "https://i.stack.imgur.com/EZ8Vm.jpg?s=128&g=1",
+                "display_name": "BjarkeCK",
+                "link": "https://stackoverflow.com/users/973485/bjarkeck"
+            },
+            "is_answered": true,
+            "view_count": 50614,
+            "accepted_answer_id": 12731611,
+            "answer_count": 19,
+            "score": 102,
+            "last_activity_date": 1524173777,
+            "creation_date": 1341341913,
+            "last_edit_date": 1343658607,
+            "question_id": 11317384,
+            "body_markdown": "i just published my project to my host on Arvixe and get this error (Works fine local):\r\n\r\n\r\n    Server Error in &#39;/&#39; Application.\r\n    \r\n    Directory does not exist.\r\n    Parameter name: directoryVirtualPath\r\n    \r\n    Description: An unhandled exception occurred during the execution of the current web request. Please review the stack trace for more information about the error and where it originated in the code. \r\n    \r\n    Exception Details: System.ArgumentException: Directory does not exist.\r\n    Parameter name: directoryVirtualPath\r\n    \r\n    Source Error: \r\n    \r\n    An unhandled exception was generated during the execution of the current web request. Information regarding the origin and location of the exception can be identified using the exception stack trace below.\r\n\r\n    Stack Trace: \r\n    \r\n    \r\n    [ArgumentException: Directory does not exist.\r\n    Parameter name: directoryVirtualPath]\r\n       System.Web.Optimization.Bundle.IncludeDirectory(String directoryVirtualPath, String searchPattern, Boolean searchSubdirectories) +357\r\n       System.Web.Optimization.Bundle.Include(String[] virtualPaths) +287\r\n       IconBench.BundleConfig.RegisterBundles(BundleCollection bundles) +75\r\n       IconBench.MvcApplication.Application_Start() +128\r\n    \r\n    [HttpException (0x80004005): Directory does not exist.\r\n    Parameter name: directoryVirtualPath]\r\n       System.Web.HttpApplicationFactory.EnsureAppStartCalledForIntegratedMode(HttpContext context, HttpApplication app) +9160125\r\n       System.Web.HttpApplication.RegisterEventSubscriptionsWithIIS(IntPtr appContext, HttpContext context, MethodInfo[] handlers) +131\r\n       System.Web.HttpApplication.InitSpecial(HttpApplicationState state, MethodInfo[] handlers, IntPtr appContext, HttpContext context) +194\r\n       System.Web.HttpApplicationFactory.GetSpecialApplicationInstance(IntPtr appContext, HttpContext context) +339\r\n       System.Web.Hosting.PipelineRuntime.InitializeApplication(IntPtr appContext) +253\r\n    \r\n    [HttpException (0x80004005): Directory does not exist.\r\n    Parameter name: directoryVirtualPath]\r\n       System.Web.HttpRuntime.FirstRequestInit(HttpContext context) +9079228\r\n       System.Web.HttpRuntime.EnsureFirstRequestInit(HttpContext context) +97\r\n       System.Web.HttpRuntime.ProcessRequestNotificationPrivate(IIS7WorkerRequest wr, HttpContext context) +256\r\n    \r\n    Version Information: Microsoft .NET Framework Version:4.0.30319; ASP.NET Version:4.0.30319.237\r\n\r\n\r\nWhat does it mean ?",
+            "link": "https://stackoverflow.com/questions/11317384/directory-does-not-exist-parameter-name-directoryvirtualpath",
+            "title": "Directory does not exist. Parameter name: directoryVirtualPath",
+            "body": "<p>i just published my project to my host on Arvixe and get this error (Works fine local):</p>\n\n<pre><code>Server Error in '/' Application.\n\nDirectory does not exist.\nParameter name: directoryVirtualPath\n\nDescription: An unhandled exception occurred during the execution of the current web request. Please review the stack trace for more information about the error and where it originated in the code. \n\nException Details: System.ArgumentException: Directory does not exist.\nParameter name: directoryVirtualPath\n\nSource Error: \n\nAn unhandled exception was generated during the execution of the current web request. Information regarding the origin and location of the exception can be identified using the exception stack trace below.\n\nStack Trace: \n\n\n[ArgumentException: Directory does not exist.\nParameter name: directoryVirtualPath]\n   System.Web.Optimization.Bundle.IncludeDirectory(String directoryVirtualPath, String searchPattern, Boolean searchSubdirectories) +357\n   System.Web.Optimization.Bundle.Include(String[] virtualPaths) +287\n   IconBench.BundleConfig.RegisterBundles(BundleCollection bundles) +75\n   IconBench.MvcApplication.Application_Start() +128\n\n[HttpException (0x80004005): Directory does not exist.\nParameter name: directoryVirtualPath]\n   System.Web.HttpApplicationFactory.EnsureAppStartCalledForIntegratedMode(HttpContext context, HttpApplication app) +9160125\n   System.Web.HttpApplication.RegisterEventSubscriptionsWithIIS(IntPtr appContext, HttpContext context, MethodInfo[] handlers) +131\n   System.Web.HttpApplication.InitSpecial(HttpApplicationState state, MethodInfo[] handlers, IntPtr appContext, HttpContext context) +194\n   System.Web.HttpApplicationFactory.GetSpecialApplicationInstance(IntPtr appContext, HttpContext context) +339\n   System.Web.Hosting.PipelineRuntime.InitializeApplication(IntPtr appContext) +253\n\n[HttpException (0x80004005): Directory does not exist.\nParameter name: directoryVirtualPath]\n   System.Web.HttpRuntime.FirstRequestInit(HttpContext context) +9079228\n   System.Web.HttpRuntime.EnsureFirstRequestInit(HttpContext context) +97\n   System.Web.HttpRuntime.ProcessRequestNotificationPrivate(IIS7WorkerRequest wr, HttpContext context) +256\n\nVersion Information: Microsoft .NET Framework Version:4.0.30319; ASP.NET Version:4.0.30319.237\n</code></pre>\n\n<p>What does it mean ?</p>\n"
+        },
+        {
+            "tags": [
+                "aws-lambda",
+                "aws-step-functions"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8671799,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e0147dd091e820955332c2d728dee6e3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "suvi",
+                "link": "https://stackoverflow.com/users/8671799/suvi"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524173775,
+            "creation_date": 1506363849,
+            "last_edit_date": 1524173775,
+            "question_id": 46411812,
+            "body_markdown": "I have a use case that I need to implement using aws lambda functions. I have two or more functions that make calls to web service to get data with a criteria. I need to use results from all the process, compare it against other input criteria and produce a final result.\r\n\r\nMy question is:\r\nIs it a good idea to implement the web service function as a lambda step up function executing in parallel? \r\nIf so, do I need a another lambda function to process results. And will the final lambda wait for the completion of execution of parallel lambda functions to complete.\r\nAnd how will the final lambda get the outputs from all the parallel lambda functions as input?\r\n",
+            "link": "https://stackoverflow.com/questions/46411812/suitability-of-app-for-aws-step-functions",
+            "title": "Suitability of app for AWS Step Functions",
+            "body": "<p>I have a use case that I need to implement using aws lambda functions. I have two or more functions that make calls to web service to get data with a criteria. I need to use results from all the process, compare it against other input criteria and produce a final result.</p>\n\n<p>My question is:\nIs it a good idea to implement the web service function as a lambda step up function executing in parallel? \nIf so, do I need a another lambda function to process results. And will the final lambda wait for the completion of execution of parallel lambda functions to complete.\nAnd how will the final lambda get the outputs from all the parallel lambda functions as input?</p>\n"
+        },
+        {
+            "tags": [
+                "iphone",
+                "css",
+                "ipad",
+                "mobile-safari",
+                "mobile-webkit"
+            ],
+            "owner": {
+                "reputation": 10705,
+                "user_id": 282772,
+                "user_type": "registered",
+                "accept_rate": 54,
+                "profile_image": "https://www.gravatar.com/avatar/8b6f2ee2c4710816c4f5f1697b7add06?s=128&d=identicon&r=PG",
+                "display_name": "Francesco",
+                "link": "https://stackoverflow.com/users/282772/francesco"
+            },
+            "is_answered": true,
+            "view_count": 81551,
+            "protected_date": 1352357506,
+            "accepted_answer_id": 5438653,
+            "answer_count": 2,
+            "score": 169,
+            "last_activity_date": 1524173772,
+            "creation_date": 1301090306,
+            "last_edit_date": 1301090672,
+            "question_id": 5438567,
+            "body_markdown": "I noticed that if I style my buttons with CSS using radius, colors and borders, they look good but in the iphone/ipad/ipod they look terrible...shouldn&#39;t be the same rendering as in Safari Desktop??\r\n\r\n![enter image description here][1]\r\n\r\n\r\n  [1]: http://i.stack.imgur.com/PsQOV.jpg",
+            "link": "https://stackoverflow.com/questions/5438567/css-submit-button-weird-rendering-on-ipad-iphone",
+            "title": "CSS submit button weird rendering on iPad/iPhone",
+            "body": "<p>I noticed that if I style my buttons with CSS using radius, colors and borders, they look good but in the iphone/ipad/ipod they look terrible...shouldn't be the same rendering as in Safari Desktop??</p>\n\n<p><img src=\"https://i.stack.imgur.com/PsQOV.jpg\" alt=\"enter image description here\"></p>\n"
+        },
+        {
+            "tags": [
+                "proxy",
+                "telegram",
+                "socks",
+                "dante"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 9652606,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Steve Stifler",
+                "link": "https://stackoverflow.com/users/9652606/steve-stifler"
+            },
+            "is_answered": true,
+            "view_count": 1169,
+            "answer_count": 3,
+            "score": 3,
+            "last_activity_date": 1524173761,
+            "creation_date": 1523875899,
+            "last_edit_date": 1523876216,
+            "question_id": 49855516,
+            "body_markdown": "I&#39;ve confugured Dante 1.4on Ubuntu 16.04 as a socks5 proxy for Telegram.\r\n\r\nChats are working, but voice calls are not, failing at &quot;Connecting&quot;.\r\n\r\nIs there something special I need to configure in order to proxy Telegram voice traffic?\r\n\r\nI&#39;m using a single non priveleged (&gt;1024) TCP/UDP port + login + password for connection.\r\n\r\nThanks!\r\n\r\nUPD: Thats piece of log while i am trying to call somebody:\r\n\r\n    Apr 15 23:05:38 (1523736338.510915) danted[22977]: info: pass(1): udp/udpassociate [: username%USER@0.0.0.0.0 192.168.1.30.36562\r\n    \r\n    Apr 15 23:08:33 (1523736513.020190) danted[22989]: info: pass(1): udp/udpassociate [: username%USER@0.0.0.0.0 192.168.1.30.49065\r\n\r\nI can answer the call at destination device but connection is looping and getting error after 30 seconds.",
+            "link": "https://stackoverflow.com/questions/49855516/telegram-calls-via-dante-socks5-proxy-server-not-working",
+            "title": "Telegram calls via Dante socks5 proxy server not working",
+            "body": "<p>I've confugured Dante 1.4on Ubuntu 16.04 as a socks5 proxy for Telegram.</p>\n\n<p>Chats are working, but voice calls are not, failing at \"Connecting\".</p>\n\n<p>Is there something special I need to configure in order to proxy Telegram voice traffic?</p>\n\n<p>I'm using a single non priveleged (>1024) TCP/UDP port + login + password for connection.</p>\n\n<p>Thanks!</p>\n\n<p>UPD: Thats piece of log while i am trying to call somebody:</p>\n\n<pre><code>Apr 15 23:05:38 (1523736338.510915) danted[22977]: info: pass(1): udp/udpassociate [: username%USER@0.0.0.0.0 192.168.1.30.36562\n\nApr 15 23:08:33 (1523736513.020190) danted[22989]: info: pass(1): udp/udpassociate [: username%USER@0.0.0.0.0 192.168.1.30.49065\n</code></pre>\n\n<p>I can answer the call at destination device but connection is looping and getting error after 30 seconds.</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "jquery",
+                "ajax",
+                "serialization"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9671896,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/aa042bdf4842837a8e4d9568b5dafd22?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Jhonny",
+                "link": "https://stackoverflow.com/users/9671896/jhonny"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 1,
+            "score": -3,
+            "last_activity_date": 1524173759,
+            "creation_date": 1524172463,
+            "last_edit_date": 1524172586,
+            "question_id": 49930348,
+            "body_markdown": "I have to use jquery serialize for this var... how to?\r\n\r\n        var type = { op:&quot;add&quot; , id_user : &lt;?=$u-&gt;id?&gt; , tipo : tipo , description : $(&quot;#desc_new_param&quot;).val() }\r\n                        $.ajax({type: &quot;POST&quot;,cache: false,url: &quot;&lt;?=SYSTEM_WEB_ADMIN?&gt;second.php&quot;,data: type,success: function(data) {\r\n                            $(&quot;#tab-&quot;+tipo).html(data);\r\n       }});",
+            "link": "https://stackoverflow.com/questions/49930348/serialize-a-var-jquery",
+            "title": "Serialize a var (jquery)?",
+            "body": "<p>I have to use jquery serialize for this var... how to?</p>\n\n<pre><code>    var type = { op:\"add\" , id_user : &lt;?=$u-&gt;id?&gt; , tipo : tipo , description : $(\"#desc_new_param\").val() }\n                    $.ajax({type: \"POST\",cache: false,url: \"&lt;?=SYSTEM_WEB_ADMIN?&gt;second.php\",data: type,success: function(data) {\n                        $(\"#tab-\"+tipo).html(data);\n   }});\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "amazon-web-services",
+                "aws-lambda",
+                "aws-step-functions"
+            ],
+            "owner": {
+                "reputation": 145,
+                "user_id": 5823016,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://i.stack.imgur.com/Ojp5f.jpg?s=128&g=1",
+                "display_name": "Bronanaza",
+                "link": "https://stackoverflow.com/users/5823016/bronanaza"
+            },
+            "is_answered": true,
+            "view_count": 107,
+            "accepted_answer_id": 46332408,
+            "answer_count": 2,
+            "score": 3,
+            "last_activity_date": 1524173748,
+            "creation_date": 1505933568,
+            "last_edit_date": 1524173748,
+            "question_id": 46329742,
+            "body_markdown": "Using AWS Step Functions to string together Lambdas is interesting, but is there a way to disable/hide logging on the execution details screen? [![secret information being displayed in plaintext][1]][1] Private information being handed from one lambda to another needs to be able to be done in secret, and adding a KMS encrypt/decrypt to each step is a ton of overhead, and impossible for lambdas that live in a VPC without internet access.\r\n  [1]: https://i.stack.imgur.com/iH20V.png",
+            "link": "https://stackoverflow.com/questions/46329742/how-to-pass-sensitive-information-securely-in-aws-step-functions",
+            "title": "How to pass sensitive information securely in AWS Step Functions",
+            "body": "<p>Using AWS Step Functions to string together Lambdas is interesting, but is there a way to disable/hide logging on the execution details screen? <a href=\"https://i.stack.imgur.com/iH20V.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/iH20V.png\" alt=\"secret information being displayed in plaintext\"></a> Private information being handed from one lambda to another needs to be able to be done in secret, and adding a KMS encrypt/decrypt to each step is a ton of overhead, and impossible for lambdas that live in a VPC without internet access.</p>\n"
+        },
+        {
+            "tags": [
+                "java"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9671656,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/98c857043937ec783968bbd49f713d44?s=128&d=identicon&r=PG&f=1",
+                "display_name": "tryingsohard",
+                "link": "https://stackoverflow.com/users/9671656/tryingsohard"
+            },
+            "is_answered": true,
+            "view_count": 18,
+            "accepted_answer_id": 49929733,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524173745,
+            "creation_date": 1524167091,
+            "last_edit_date": 1524173745,
+            "question_id": 49929069,
+            "body_markdown": "I am making a Yahtzee type program. It is for my final project in my Java class. I have a it broken up into multiple classes. The part I am having trouble with is between my ScoreSheet class and ScoreControl class.\r\n\r\nScoreSheet uses a method with a loop that adds an array of JButtons and adds action listeners to them. I then add the action listener to the ScoreControl class. However when I reference the array in the ActionPerformed, I don&#39;t get any output. Here is my relevant code: \r\n\r\nFrom ScoreSheet: (the (sc) is the name of my ScoreControl)\r\n\r\n\r\n    public void setupUpperButtons(){\r\n        for(int i = 0; i&lt;NUM_UPPER_CATEGORIES; i++){\r\n            upperCategories[i] = new JButton(upperNames[i]);\r\n            upperCategories[i].addActionListener(sc);\r\n            upperCategories[i].setFocusPainted(false);\r\n        }\r\n\r\nWhen I try to reference a button from the array, (in the ScoreControl class) like so:\r\n\r\n     @Override\r\n        public void actionPerformed(ActionEvent e) {\r\n            if (e.getSource() == sheet.upperCategories[0]) {\r\n                System.out.println(&quot;You have pressed a button&quot;);\r\n            }\r\n\r\nI don&#39;t get any output. The print is just to test if it&#39;s working, obviously different stuff will go there once I get it to work.\r\n\r\nI just noticed that in my ScoreSheet, I have \r\n\r\n    ScoreControl=sc;\r\n\r\nBut in the constructor I do not have \r\n\r\n    sc = new ScoreControl;\r\nBut when I add that line in, I get a huge stack of StackOverflow error.\r\n\r\n    java.lang.StackOverflowError\r\n\tat sun.applet.AppletSecurity.checkPackageAccess(AppletSecurity.java:281)\r\n\tat sun.reflect.misc.ReflectUtil.checkPackageAccess(ReflectUtil.java:188)\r\n\tat javax.swing.UIDefaults.getUIClass(UIDefaults.java:680)\r\n\tat javax.swing.UIDefaults.getUI(UIDefaults.java:757)\r\n\tat javax.swing.UIManager.getUI(UIManager.java:1016)\r\n\tat javax.swing.JPanel.updateUI(JPanel.java:126)\r\n\tat javax.swing.JPanel.&lt;init&gt;(JPanel.java:86)\r\n\tat javax.swing.JPanel.&lt;init&gt;(JPanel.java:109)\r\n\tat javax.swing.JPanel.&lt;init&gt;(JPanel.java:117)\r\n\tat ScoreSheet.&lt;init&gt;(ScoreSheet.java:33)\r\n\tat ScoreControl.&lt;init&gt;(ScoreControl.java:16)\r\n\tat ScoreSheet.&lt;init&gt;(ScoreSheet.java:34)\r\n\tat ScoreControl.&lt;init&gt;(ScoreControl.java:16)\r\n\tat ScoreSheet.&lt;init&gt;(ScoreSheet.java:34) (these last two lines repeat many many times)\r\n\r\nHere is each constructor:\r\n\r\nfrom ScoreSheet:\r\n\r\n    public ScoreSheet(){\r\n        sc = new ScoreControl();\r\n        grid = new GridLayout(0, 1, 10, 3);\r\n        setupUpperSection();\r\n        setupLowerSection();\r\n        setupFields();\r\n        setupScorePanel();\r\n        setupScoreSheet();\r\n    }\r\nFrom ScoreControl:\r\n\r\n     public ScoreControl() {\r\n        sheet = new ScoreSheet();\r\n    }\r\nI am just starting work on my ScoreControl, so other stuff will go in there later but that&#39;s how they are currently.",
+            "link": "https://stackoverflow.com/questions/49929069/using-action-listeners-on-jbutton-array-from-another-class-stackoverflowerror",
+            "title": "Using action listeners on Jbutton array from another class / StackOverflowError",
+            "body": "<p>I am making a Yahtzee type program. It is for my final project in my Java class. I have a it broken up into multiple classes. The part I am having trouble with is between my ScoreSheet class and ScoreControl class.</p>\n\n<p>ScoreSheet uses a method with a loop that adds an array of JButtons and adds action listeners to them. I then add the action listener to the ScoreControl class. However when I reference the array in the ActionPerformed, I don't get any output. Here is my relevant code: </p>\n\n<p>From ScoreSheet: (the (sc) is the name of my ScoreControl)</p>\n\n<pre><code>public void setupUpperButtons(){\n    for(int i = 0; i&lt;NUM_UPPER_CATEGORIES; i++){\n        upperCategories[i] = new JButton(upperNames[i]);\n        upperCategories[i].addActionListener(sc);\n        upperCategories[i].setFocusPainted(false);\n    }\n</code></pre>\n\n<p>When I try to reference a button from the array, (in the ScoreControl class) like so:</p>\n\n<pre><code> @Override\n    public void actionPerformed(ActionEvent e) {\n        if (e.getSource() == sheet.upperCategories[0]) {\n            System.out.println(\"You have pressed a button\");\n        }\n</code></pre>\n\n<p>I don't get any output. The print is just to test if it's working, obviously different stuff will go there once I get it to work.</p>\n\n<p>I just noticed that in my ScoreSheet, I have </p>\n\n<pre><code>ScoreControl=sc;\n</code></pre>\n\n<p>But in the constructor I do not have </p>\n\n<pre><code>sc = new ScoreControl;\n</code></pre>\n\n<p>But when I add that line in, I get a huge stack of StackOverflow error.</p>\n\n<pre><code>java.lang.StackOverflowError\nat sun.applet.AppletSecurity.checkPackageAccess(AppletSecurity.java:281)\nat sun.reflect.misc.ReflectUtil.checkPackageAccess(ReflectUtil.java:188)\nat javax.swing.UIDefaults.getUIClass(UIDefaults.java:680)\nat javax.swing.UIDefaults.getUI(UIDefaults.java:757)\nat javax.swing.UIManager.getUI(UIManager.java:1016)\nat javax.swing.JPanel.updateUI(JPanel.java:126)\nat javax.swing.JPanel.&lt;init&gt;(JPanel.java:86)\nat javax.swing.JPanel.&lt;init&gt;(JPanel.java:109)\nat javax.swing.JPanel.&lt;init&gt;(JPanel.java:117)\nat ScoreSheet.&lt;init&gt;(ScoreSheet.java:33)\nat ScoreControl.&lt;init&gt;(ScoreControl.java:16)\nat ScoreSheet.&lt;init&gt;(ScoreSheet.java:34)\nat ScoreControl.&lt;init&gt;(ScoreControl.java:16)\nat ScoreSheet.&lt;init&gt;(ScoreSheet.java:34) (these last two lines repeat many many times)\n</code></pre>\n\n<p>Here is each constructor:</p>\n\n<p>from ScoreSheet:</p>\n\n<pre><code>public ScoreSheet(){\n    sc = new ScoreControl();\n    grid = new GridLayout(0, 1, 10, 3);\n    setupUpperSection();\n    setupLowerSection();\n    setupFields();\n    setupScorePanel();\n    setupScoreSheet();\n}\n</code></pre>\n\n<p>From ScoreControl:</p>\n\n<pre><code> public ScoreControl() {\n    sheet = new ScoreSheet();\n}\n</code></pre>\n\n<p>I am just starting work on my ScoreControl, so other stuff will go in there later but that's how they are currently.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "csv",
+                "type-conversion",
+                "csvhelper"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9020429,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/iHGhl.png?s=128&g=1",
+                "display_name": "Dylanerd",
+                "link": "https://stackoverflow.com/users/9020429/dylanerd"
+            },
+            "is_answered": false,
+            "view_count": 32,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524173739,
+            "creation_date": 1524150395,
+            "last_edit_date": 1524150862,
+            "question_id": 49924396,
+            "body_markdown": "I&#39;m using [CSVHelper][1], though this seems to occur with the manual methods I know. \r\n\r\nI&#39;m trying to create some form of &quot;save data&quot; system using csv files, which will store all important variables that need to be loaded on the program running. Here&#39;s my code with generalized variable names:\r\n\r\n            \r\n            StringReader csv = new StringReader(SaveData);\r\n            var load = new CsvReader(csv);\r\n            string convertableString = &quot;&quot;;\r\n            load.Read();\r\n            \r\n            convertableString = load.GetField(0);\r\n            day = Convert.ToInt32(convertableString);\r\n            numberOfObjects = load.GetField&lt;int&gt;(1);\r\n\r\n            for (int i = 0; i &lt; numberOfObjects; i++)\r\n            {\r\n                load.Read();\r\n\r\n                myObject[i].objName = load.GetField(0);\r\n                myObject[i].objBool = load.GetField&lt;bool&gt;(1);\r\n                myObject[i].objInt = load.GetField&lt;int&gt;(2);\r\n            }\r\n\r\nThe lines that convert the strings to other variable types trigger the following error:\r\n\r\n    System.FormatException: &#39;Input string was not in a correct format.&#39;\r\n\r\n\r\nSpecifically, the first line to throw this is:\r\n\r\n    day = Convert.ToInt32(convertableString);\r\n\r\nThis also applies to CSV Helper&#39;s conversion method however, this making the line (note that this requires deletion of the line above it):\r\n\r\n    day = load.GetField&lt;int&gt;(0);\r\n\r\nFor the sake of simplicity I&#39;m showing both conversion methods and both return this (upon trying to convert anything, and yes &quot;day&quot; is an int)\r\n\r\nMy CSV file looks like *this*:\r\n\r\n    2,1,\r\n    Name, True, 45\r\n\r\nI don&#39;t claim to have the best knowledge of coding but I&#39;m getting there, though I can&#39;t really see what exactly is getting wrong, this isn&#39;t even my first time reading csv files and I&#39;ve never experienced anything like this before.\r\n\r\n\r\n  [1]: http://joshclose.github.io/CsvHelper/",
+            "link": "https://stackoverflow.com/questions/49924396/c-reading-from-csv-type-conversion-error",
+            "title": "c# - Reading From CSV, Type Conversion Error",
+            "body": "<p>I'm using <a href=\"http://joshclose.github.io/CsvHelper/\" rel=\"nofollow noreferrer\">CSVHelper</a>, though this seems to occur with the manual methods I know. </p>\n\n<p>I'm trying to create some form of \"save data\" system using csv files, which will store all important variables that need to be loaded on the program running. Here's my code with generalized variable names:</p>\n\n<pre><code>        StringReader csv = new StringReader(SaveData);\n        var load = new CsvReader(csv);\n        string convertableString = \"\";\n        load.Read();\n\n        convertableString = load.GetField(0);\n        day = Convert.ToInt32(convertableString);\n        numberOfObjects = load.GetField&lt;int&gt;(1);\n\n        for (int i = 0; i &lt; numberOfObjects; i++)\n        {\n            load.Read();\n\n            myObject[i].objName = load.GetField(0);\n            myObject[i].objBool = load.GetField&lt;bool&gt;(1);\n            myObject[i].objInt = load.GetField&lt;int&gt;(2);\n        }\n</code></pre>\n\n<p>The lines that convert the strings to other variable types trigger the following error:</p>\n\n<pre><code>System.FormatException: 'Input string was not in a correct format.'\n</code></pre>\n\n<p>Specifically, the first line to throw this is:</p>\n\n<pre><code>day = Convert.ToInt32(convertableString);\n</code></pre>\n\n<p>This also applies to CSV Helper's conversion method however, this making the line (note that this requires deletion of the line above it):</p>\n\n<pre><code>day = load.GetField&lt;int&gt;(0);\n</code></pre>\n\n<p>For the sake of simplicity I'm showing both conversion methods and both return this (upon trying to convert anything, and yes \"day\" is an int)</p>\n\n<p>My CSV file looks like <em>this</em>:</p>\n\n<pre><code>2,1,\nName, True, 45\n</code></pre>\n\n<p>I don't claim to have the best knowledge of coding but I'm getting there, though I can't really see what exactly is getting wrong, this isn't even my first time reading csv files and I've never experienced anything like this before.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "bluej"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 7715555,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/1d4a9f42c7310049f126fab9774e30eb?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Daniel.S",
+                "link": "https://stackoverflow.com/users/7715555/daniel-s"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524173730,
+            "creation_date": 1524173110,
+            "last_edit_date": 1524173730,
+            "question_id": 49930473,
+            "body_markdown": "I&#39;m having issues importing data from my database as I get a NullPointer Exception when I don&#39;t see a problem with my coding. The column names in my table also don&#39;t show up when I use a 2 dimensional array which also causes problem when displaying data from the database. Is there a problem? Thank you in advance\r\n\r\n    //Says &#39;Connection class doesn&#39;t exist&#39; yet works in another class I made called Queries\r\n    final String URL=&quot;jdbc:mysql://localhost:3306/aerogames&quot;;\r\n    final String DRIVER=&quot;com.mysql.jdbc.Driver&quot;;\r\n    final String USERNAME=&quot;root&quot;;\r\n    final String PASSWORD=&quot;&quot;;\r\n\r\n    Connection conn=null;\r\n    Statement st=null;\r\n    String query;\r\n/\r\n\r\n\r\n    public void GameMenu(){\r\n        {\r\n            GameCard=new JPanel();\r\n            GameCard.setLayout(gridBag);\r\n\r\n            tableLabel=new JLabel(&quot;MANAGE AUTHOR&quot;);\r\n\r\n            insertTable=new JButton(&quot;Insert Game&quot;);\r\n            updateTable=new JButton(&quot;Update Game&quot;);\r\n            deleteTable=new JButton(&quot;Delete Game&quot;);\r\n            backTable=new JButton(&quot;Go to Main Menu&quot;);\r\n            backTable.addActionListener(this);\r\n            Object[] col={&quot;Author ID&quot;,&quot;First Name&quot;,&quot;Last Name&quot;};\r\n\r\n            DefaultTableModel model = new DefaultTableModel(data,col);\r\n            table=new JTable(model)\r\n            {\r\n                boolean[] cellEditables={false,true,true, true}; \r\n\r\n                public boolean isCellEditable(int row,int col)\r\n                {\r\n                    return cellEditables[col];\r\n                }\r\n            };\r\n\r\n            table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);        \r\n            scroll=new JScrollPane(table);\r\n            scroll.setPreferredSize(new Dimension(350,200));\r\n\r\n            model=new DefaultTableModel(data,col);\r\n            table.setModel(model);\r\n\r\n            //             insertBtn.addActionListener(new ActionListener()\r\n            //                 {\r\n            //                     public void actionPerformed(ActionEvent evt)\r\n            //                     {\r\n            //                         insertAuthor();\r\n            //                     }\r\n            //                 });\r\n            //             updateBtn.addActionListener(new ActionListener()\r\n            //                 {\r\n            //                     public void actionPerformed(ActionEvent evt)\r\n            //                     {\r\n            //                         updateAuthor();\r\n            //                     }        \r\n            //                 });\r\n            //             deleteBtn.addActionListener(new ActionListener()\r\n            //                 {\r\n            //                     public void actionPerformed(ActionEvent evt)\r\n            //                     {\r\n            //                         deleteAuthor();\r\n            //                     }            \r\n            //                 });        \r\n\r\n            createTable();\r\n            updateTable();\r\n\r\n            addComponent(tableLabel,GameCard,0,0,0,0,0,0);\r\n            addComponent(scroll,GameCard,0,1,0,0,0,0);\r\n            c.gridwidth=1;\r\n            addComponent(insertTable,GameCard,0,2,0,0,0,0);\r\n            addComponent(updateTable,GameCard,0,3,0,0,0,0);\r\n            addComponent(deleteTable,GameCard,0,4,0,0,0,0);\r\n            addComponent(backTable,GameCard,0,5,0,0,0,0);\r\n\r\n        }\r\n    }\r\n\r\n/\r\n\r\n\r\n     public void createTable()\r\n    {\r\n        model=new DefaultTableModel();\r\n        table=new JTable(model)\r\n        {\r\n            boolean[] cellEditables={false,true,true, true}; \r\n\r\n            public boolean isCellEditable(int row,int col)\r\n            {\r\n                return cellEditables[col];\r\n            }\r\n        };\r\n\r\n        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);        \r\n        scroll=new JScrollPane(table);\r\n        scroll.setPreferredSize(new Dimension(350,200));\r\n    }\r\n\r\n    public void updateTable()\r\n    {        \r\n        Object[][] data=q.getAllGamesByID_OA();\r\n        Object[] colNames={&quot;Game ID&quot;,&quot;Game Name&quot;,&quot;Game Price&quot;, &quot;Game Stock&quot;};\r\n        model=new DefaultTableModel(data,colNames);\r\n        table.setModel(model);\r\n    }  \r\n\r\n/ Null Pointer Exception error here\r\n\r\n    public Object[][] getAllGamesByID_OA()\r\n    {\r\n        query=&quot;select * from product_details order by product_ID&quot;;\r\n        Object[][] data=null;\r\n        ResultSet rs;\r\n        try\r\n        {\r\n            rs=st.executeQuery(query);\r\n            rs.last();\r\n            int rowCount=rs.getRow();\r\n            rs.beforeFirst();\r\n            data=new Object[rowCount][4];\r\n            int i=0;\r\n            while(rs.next())\r\n            {\r\n                data[i][0]=rs.getInt(&quot;product_ID&quot;);\r\n                data[i][1]=rs.getString(&quot;product_name&quot;);\r\n                data[i][2]=rs.getInt(&quot;unit_price&quot;);\r\n                data[i][3]=rs.getInt(&quot;quantity_in_stock&quot;);\r\n                i++;\r\n            }\r\n        }\r\n        catch(SQLException e)\r\n        {\r\n            JOptionPane.showMessageDialog(null,e.getMessage(),\r\n                &quot;SQL Error&quot;,JOptionPane.INFORMATION_MESSAGE);\r\n        }\r\n        return data;\r\n    }   ",
+            "link": "https://stackoverflow.com/questions/49930473/table-wont-show-column-names-and-getting-information-from-my-database-wont-wor",
+            "title": "Table won&#39;t show column names and getting information from my database won&#39;t work",
+            "body": "<p>I'm having issues importing data from my database as I get a NullPointer Exception when I don't see a problem with my coding. The column names in my table also don't show up when I use a 2 dimensional array which also causes problem when displaying data from the database. Is there a problem? Thank you in advance</p>\n\n<pre><code>//Says 'Connection class doesn't exist' yet works in another class I made called Queries\nfinal String URL=\"jdbc:mysql://localhost:3306/aerogames\";\nfinal String DRIVER=\"com.mysql.jdbc.Driver\";\nfinal String USERNAME=\"root\";\nfinal String PASSWORD=\"\";\n\nConnection conn=null;\nStatement st=null;\nString query;\n</code></pre>\n\n<p>/</p>\n\n<pre><code>public void GameMenu(){\n    {\n        GameCard=new JPanel();\n        GameCard.setLayout(gridBag);\n\n        tableLabel=new JLabel(\"MANAGE AUTHOR\");\n\n        insertTable=new JButton(\"Insert Game\");\n        updateTable=new JButton(\"Update Game\");\n        deleteTable=new JButton(\"Delete Game\");\n        backTable=new JButton(\"Go to Main Menu\");\n        backTable.addActionListener(this);\n        Object[] col={\"Author ID\",\"First Name\",\"Last Name\"};\n\n        DefaultTableModel model = new DefaultTableModel(data,col);\n        table=new JTable(model)\n        {\n            boolean[] cellEditables={false,true,true, true}; \n\n            public boolean isCellEditable(int row,int col)\n            {\n                return cellEditables[col];\n            }\n        };\n\n        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);        \n        scroll=new JScrollPane(table);\n        scroll.setPreferredSize(new Dimension(350,200));\n\n        model=new DefaultTableModel(data,col);\n        table.setModel(model);\n\n        //             insertBtn.addActionListener(new ActionListener()\n        //                 {\n        //                     public void actionPerformed(ActionEvent evt)\n        //                     {\n        //                         insertAuthor();\n        //                     }\n        //                 });\n        //             updateBtn.addActionListener(new ActionListener()\n        //                 {\n        //                     public void actionPerformed(ActionEvent evt)\n        //                     {\n        //                         updateAuthor();\n        //                     }        \n        //                 });\n        //             deleteBtn.addActionListener(new ActionListener()\n        //                 {\n        //                     public void actionPerformed(ActionEvent evt)\n        //                     {\n        //                         deleteAuthor();\n        //                     }            \n        //                 });        \n\n        createTable();\n        updateTable();\n\n        addComponent(tableLabel,GameCard,0,0,0,0,0,0);\n        addComponent(scroll,GameCard,0,1,0,0,0,0);\n        c.gridwidth=1;\n        addComponent(insertTable,GameCard,0,2,0,0,0,0);\n        addComponent(updateTable,GameCard,0,3,0,0,0,0);\n        addComponent(deleteTable,GameCard,0,4,0,0,0,0);\n        addComponent(backTable,GameCard,0,5,0,0,0,0);\n\n    }\n}\n</code></pre>\n\n<p>/</p>\n\n<pre><code> public void createTable()\n{\n    model=new DefaultTableModel();\n    table=new JTable(model)\n    {\n        boolean[] cellEditables={false,true,true, true}; \n\n        public boolean isCellEditable(int row,int col)\n        {\n            return cellEditables[col];\n        }\n    };\n\n    table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);        \n    scroll=new JScrollPane(table);\n    scroll.setPreferredSize(new Dimension(350,200));\n}\n\npublic void updateTable()\n{        \n    Object[][] data=q.getAllGamesByID_OA();\n    Object[] colNames={\"Game ID\",\"Game Name\",\"Game Price\", \"Game Stock\"};\n    model=new DefaultTableModel(data,colNames);\n    table.setModel(model);\n}  \n</code></pre>\n\n<p>/ Null Pointer Exception error here</p>\n\n<pre><code>public Object[][] getAllGamesByID_OA()\n{\n    query=\"select * from product_details order by product_ID\";\n    Object[][] data=null;\n    ResultSet rs;\n    try\n    {\n        rs=st.executeQuery(query);\n        rs.last();\n        int rowCount=rs.getRow();\n        rs.beforeFirst();\n        data=new Object[rowCount][4];\n        int i=0;\n        while(rs.next())\n        {\n            data[i][0]=rs.getInt(\"product_ID\");\n            data[i][1]=rs.getString(\"product_name\");\n            data[i][2]=rs.getInt(\"unit_price\");\n            data[i][3]=rs.getInt(\"quantity_in_stock\");\n            i++;\n        }\n    }\n    catch(SQLException e)\n    {\n        JOptionPane.showMessageDialog(null,e.getMessage(),\n            \"SQL Error\",JOptionPane.INFORMATION_MESSAGE);\n    }\n    return data;\n}   \n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "mysql",
+                "sql",
+                "database",
+                "web"
+            ],
+            "owner": {
+                "reputation": 28,
+                "user_id": 9033999,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://lh6.googleusercontent.com/-rPJ7S6CuV-0/AAAAAAAAAAI/AAAAAAAAAA4/K2_FGLr79l0/photo.jpg?sz=128",
+                "display_name": "Mariana Leites",
+                "link": "https://stackoverflow.com/users/9033999/mariana-leites"
+            },
+            "is_answered": false,
+            "view_count": 31,
+            "closed_date": 1524172667,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1524173728,
+            "creation_date": 1524171423,
+            "last_edit_date": 1524173728,
+            "question_id": 49930125,
+            "body_markdown": "I&#39;m new at PHP, so if there&#39;s some kind of advice, it will be well received.\r\n\r\nI want to concat all the results I get from a sql query to my database.\r\n\r\nI got the code:\r\n\r\n    $sql = $_POST[&#39;sql&#39;]; /*sql query*/\r\n    $result = &quot;&quot;;\r\n    \r\n    $query = mysqli_query($conn, $sql);\r\n    while ($row = mysqli_fetch_array($query, MYSQLI_NUM)) {\r\n      $result = $result . &#39; &#39; . $row;\r\n    }\r\n\r\n    echo $result;\r\n\r\n\r\n\r\nWhat I want is not a sql query that concats, but a way to concat rows with PHP.\r\n",
+            "link": "https://stackoverflow.com/questions/49930125/concat-database-results-with-php",
+            "closed_reason": "duplicate",
+            "title": "Concat database results with PHP",
+            "body": "<p>I'm new at PHP, so if there's some kind of advice, it will be well received.</p>\n\n<p>I want to concat all the results I get from a sql query to my database.</p>\n\n<p>I got the code:</p>\n\n<pre><code>$sql = $_POST['sql']; /*sql query*/\n$result = \"\";\n\n$query = mysqli_query($conn, $sql);\nwhile ($row = mysqli_fetch_array($query, MYSQLI_NUM)) {\n  $result = $result . ' ' . $row;\n}\n\necho $result;\n</code></pre>\n\n<p>What I want is not a sql query that concats, but a way to concat rows with PHP.</p>\n"
+        },
+        {
+            "tags": [
+                "amazon-web-services",
+                "aws-lambda",
+                "aws-sdk",
+                "aws-step-functions"
+            ],
+            "owner": {
+                "reputation": 614,
+                "user_id": 545086,
+                "user_type": "registered",
+                "accept_rate": 53,
+                "profile_image": "https://www.gravatar.com/avatar/7f899f0264901211540f62dc3f28c9df?s=128&d=identicon&r=PG",
+                "display_name": "DilTeam",
+                "link": "https://stackoverflow.com/users/545086/dilteam"
+            },
+            "is_answered": false,
+            "view_count": 59,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524173715,
+            "creation_date": 1517277339,
+            "last_edit_date": 1524173715,
+            "question_id": 48512745,
+            "body_markdown": "I need to develop a &#39;State Machine&#39; using &#39;AWS Step Functions&#39; that accomplishes the following:\r\n\r\n 1. Call a Lambda function that will connect to DynamoDb &amp; retrieve a list of rows. (I know how to do this.)\r\n 2. For each row from previous step, I need to call another Lambda function until all rows are read.\r\n\r\nHow do I do step #2 above in AWS Step Functions? In other words, how do I iterate over the results from the previous step.",
+            "link": "https://stackoverflow.com/questions/48512745/iterating-over-results-from-previous-state-in-aws-step-functions",
+            "title": "Iterating over results from previous state in AWS Step Functions",
+            "body": "<p>I need to develop a 'State Machine' using 'AWS Step Functions' that accomplishes the following:</p>\n\n<ol>\n<li>Call a Lambda function that will connect to DynamoDb &amp; retrieve a list of rows. (I know how to do this.)</li>\n<li>For each row from previous step, I need to call another Lambda function until all rows are read.</li>\n</ol>\n\n<p>How do I do step #2 above in AWS Step Functions? In other words, how do I iterate over the results from the previous step.</p>\n"
+        },
+        {
+            "tags": [
+                "jquery",
+                "spring-boot",
+                "es6-promise",
+                "babel"
+            ],
+            "owner": {
+                "reputation": 58,
+                "user_id": 5270932,
+                "user_type": "registered",
+                "accept_rate": 22,
+                "profile_image": "https://www.gravatar.com/avatar/f3b677f9cde11d43e65d663fa01c64bf?s=128&d=identicon&r=PG&f=1",
+                "display_name": "neel",
+                "link": "https://stackoverflow.com/users/5270932/neel"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524173710,
+            "creation_date": 1524166563,
+            "question_id": 49928945,
+            "body_markdown": "I have a spring boot application to modify and deploy in an existing Tomcat Server. App uses 1.5.4 version and thymeleaf, Jquery (4) and bootstrap for the front end. Front end accessing the controllers directly in some cases and rest apis. \r\n\r\nI do have a resource constraint for production deployment, no separate servers available, app needs to run in tomcat. Don&#39;t have an option of separating front end &amp; backend and use a frontend node server. \r\n\r\nI want to include webpack or babel / es6 to the front end scripting (to take advantage of the features and use the features like Promises) - to address some of the complex AJAX calls callback async issues.  I googled and read, so many options. Appreciate any guidance and steps on how to do this\r\n",
+            "link": "https://stackoverflow.com/questions/49928945/including-es6-and-webpack-with-spring-boot",
+            "title": "Including ES6 and Webpack with spring boot",
+            "body": "<p>I have a spring boot application to modify and deploy in an existing Tomcat Server. App uses 1.5.4 version and thymeleaf, Jquery (4) and bootstrap for the front end. Front end accessing the controllers directly in some cases and rest apis. </p>\n\n<p>I do have a resource constraint for production deployment, no separate servers available, app needs to run in tomcat. Don't have an option of separating front end &amp; backend and use a frontend node server. </p>\n\n<p>I want to include webpack or babel / es6 to the front end scripting (to take advantage of the features and use the features like Promises) - to address some of the complex AJAX calls callback async issues.  I googled and read, so many options. Appreciate any guidance and steps on how to do this</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pandas",
+                "rolling",
+                "mse"
+            ],
+            "owner": {
+                "reputation": 42,
+                "user_id": 9434545,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a1343c4dde02638efa5fb07ab23aa953?s=128&d=identicon&r=PG&f=1",
+                "display_name": "&#201;variste Galois",
+                "link": "https://stackoverflow.com/users/9434545/%c3%89variste-galois"
+            },
+            "is_answered": false,
+            "view_count": 41,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524173705,
+            "creation_date": 1524103901,
+            "last_edit_date": 1524173705,
+            "question_id": 49911653,
+            "body_markdown": "Given the following DF of y_pred&#39;s and y_actuals:\r\n\r\n                 y_actual y_actual_5yearavg   y_pred\r\n    date                                               \r\n    2005-05-16   0.048151 -0.011127           0.099755\r\n    2005-05-17   0.036488 -0.010992           0.100449\r\n    2005-05-18   0.027951 -0.010871           0.099168\r\n    2005-05-19   0.032872 -0.010750           0.062109\r\n    2005-05-20   0.039250 -0.010628           0.062287\r\n    2005-05-23   0.040898 -0.010513           0.063231\r\n\r\nI want to use  the following formula to compute an Out-Of-Sample RSquared on my predictions.\r\n\r\n    R2 = 1 - (MSE_pred/MSE_avg)\r\n\r\nThis is how I compute MSE on my entire DF:\r\n\r\n    MSE = mean_squared_error(df[&#39;SPXR_130D&#39;], df[&#39;forecast&#39;])\r\n\r\nHow would I do  this on a rolling 5-year basis?",
+            "link": "https://stackoverflow.com/questions/49911653/computing-rolling-mse-in-pandas",
+            "title": "Computing rolling MSE in pandas",
+            "body": "<p>Given the following DF of y_pred's and y_actuals:</p>\n\n<pre><code>             y_actual y_actual_5yearavg   y_pred\ndate                                               \n2005-05-16   0.048151 -0.011127           0.099755\n2005-05-17   0.036488 -0.010992           0.100449\n2005-05-18   0.027951 -0.010871           0.099168\n2005-05-19   0.032872 -0.010750           0.062109\n2005-05-20   0.039250 -0.010628           0.062287\n2005-05-23   0.040898 -0.010513           0.063231\n</code></pre>\n\n<p>I want to use  the following formula to compute an Out-Of-Sample RSquared on my predictions.</p>\n\n<pre><code>R2 = 1 - (MSE_pred/MSE_avg)\n</code></pre>\n\n<p>This is how I compute MSE on my entire DF:</p>\n\n<pre><code>MSE = mean_squared_error(df['SPXR_130D'], df['forecast'])\n</code></pre>\n\n<p>How would I do  this on a rolling 5-year basis?</p>\n"
+        },
+        {
+            "tags": [
+                "rust"
+            ],
+            "owner": {
+                "reputation": 1623,
+                "user_id": 1559666,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://www.gravatar.com/avatar/056d49ed81998b09cfe70aebec986cc2?s=128&d=identicon&r=PG",
+                "display_name": "tower120",
+                "link": "https://stackoverflow.com/users/1559666/tower120"
+            },
+            "is_answered": true,
+            "view_count": 3016,
+            "accepted_answer_id": 31284065,
+            "answer_count": 2,
+            "score": 8,
+            "last_activity_date": 1524173705,
+            "creation_date": 1436311973,
+            "last_edit_date": 1524173563,
+            "question_id": 31281155,
+            "body_markdown": "In the following code ([playground](https://play.rust-lang.org/?gist=19b3b350e48268057a11e0ce934049e9&amp;version=stable&amp;backtrace=0)):\r\n\r\n    struct Node {\r\n        datum: &amp;&#39;static str,\r\n        edges: Vec&lt;Node&gt;,\r\n    }\r\n    \r\n    fn add&lt;&#39;a&gt;(node: &amp;&#39;a mut Node, data: &amp;&#39;static str) -&gt; &amp;&#39;a Node {\r\n        node.edges.push(Node {\r\n            datum: data,\r\n            edges: Vec::new(),\r\n        });\r\n        &amp;node.edges[node.edges.len() - 1] // return just added one\r\n    }\r\n    \r\n    fn traverse&lt;F&gt;(root: &amp;Node, callback: &amp;F)\r\n    where\r\n        F: Fn(&amp;&#39;static str),\r\n    {\r\n        callback(root.datum);\r\n        for node in &amp;root.edges {\r\n            traverse(node, callback);\r\n        }\r\n    }\r\n    \r\n    fn main() {\r\n        let mut tree = Node {\r\n            datum: &quot;start&quot;,\r\n            edges: Vec::new(),\r\n        };\r\n    \r\n        let lvl1 = add(&amp;mut tree, &quot;level1&quot;);\r\n    \r\n        traverse(&amp;mut tree, &amp;|x| println!(&quot;{:}&quot;, x)); //I actually don&#39;t need mutability here\r\n    }\r\n\r\nI have this error:\r\n\r\n&lt;!-- language: none --&gt;\r\n\r\n    error[E0499]: cannot borrow `tree` as mutable more than once at a time\r\n      --&gt; src/main.rs:32:19\r\n       |\r\n    30 |     let lvl1 = add(&amp;mut tree, &quot;level1&quot;);\r\n       |                         ---- first mutable borrow occurs here\r\n    31 | \r\n    32 |     traverse(&amp;mut tree, &amp;|x| println!(&quot;{:}&quot;, x)); //I actually don&#39;t need mutability here\r\n       |                   ^^^^ second mutable borrow occurs here\r\n    33 | }\r\n       | - first borrow ends here\r\n\r\nMy question seems to be very similar to  https://stackoverflow.com/questions/24618233/why-does-rust-want-to-borrow-a-variable-as-mutable-more-than-once-at-a-time, but I&#39;m not sure. If so, is there a workaround for this case?",
+            "link": "https://stackoverflow.com/questions/31281155/cannot-borrow-x-as-mutable-more-than-once-at-a-time",
+            "title": "Cannot borrow `x` as mutable more than once at a time",
+            "body": "<p>In the following code (<a href=\"https://play.rust-lang.org/?gist=19b3b350e48268057a11e0ce934049e9&amp;version=stable&amp;backtrace=0\" rel=\"nofollow noreferrer\">playground</a>):</p>\n\n<pre><code>struct Node {\n    datum: &amp;'static str,\n    edges: Vec&lt;Node&gt;,\n}\n\nfn add&lt;'a&gt;(node: &amp;'a mut Node, data: &amp;'static str) -&gt; &amp;'a Node {\n    node.edges.push(Node {\n        datum: data,\n        edges: Vec::new(),\n    });\n    &amp;node.edges[node.edges.len() - 1] // return just added one\n}\n\nfn traverse&lt;F&gt;(root: &amp;Node, callback: &amp;F)\nwhere\n    F: Fn(&amp;'static str),\n{\n    callback(root.datum);\n    for node in &amp;root.edges {\n        traverse(node, callback);\n    }\n}\n\nfn main() {\n    let mut tree = Node {\n        datum: \"start\",\n        edges: Vec::new(),\n    };\n\n    let lvl1 = add(&amp;mut tree, \"level1\");\n\n    traverse(&amp;mut tree, &amp;|x| println!(\"{:}\", x)); //I actually don't need mutability here\n}\n</code></pre>\n\n<p>I have this error:</p>\n\n<pre class=\"lang-none prettyprint-override\"><code>error[E0499]: cannot borrow `tree` as mutable more than once at a time\n  --&gt; src/main.rs:32:19\n   |\n30 |     let lvl1 = add(&amp;mut tree, \"level1\");\n   |                         ---- first mutable borrow occurs here\n31 | \n32 |     traverse(&amp;mut tree, &amp;|x| println!(\"{:}\", x)); //I actually don't need mutability here\n   |                   ^^^^ second mutable borrow occurs here\n33 | }\n   | - first borrow ends here\n</code></pre>\n\n<p>My question seems to be very similar to  <a href=\"https://stackoverflow.com/questions/24618233/why-does-rust-want-to-borrow-a-variable-as-mutable-more-than-once-at-a-time\">Why does Rust want to borrow a variable as mutable more than once at a time?</a>, but I'm not sure. If so, is there a workaround for this case?</p>\n"
+        },
+        {
+            "tags": [
+                "unit-testing",
+                "arm",
+                "qemu",
+                "bare-metal"
+            ],
+            "owner": {
+                "reputation": 33,
+                "user_id": 5223734,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/bd782bfe9b76b408fd2e3588fcf4e7be?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Michael Karlesky",
+                "link": "https://stackoverflow.com/users/5223734/michael-karlesky"
+            },
+            "is_answered": true,
+            "view_count": 1279,
+            "accepted_answer_id": 32063279,
+            "answer_count": 4,
+            "score": 4,
+            "last_activity_date": 1524173702,
+            "creation_date": 1439474690,
+            "question_id": 31990487,
+            "body_markdown": "I am assembling a cross compiling unit testing rig for an ARM system and running the tests on a host machine with `qemu-system-arm`. Specifically, I&#39;m using qemu to emulate the Stellaris LM3S6965 eval board as it contains a Cortex M3 processor like my target environment. The binary run in qemu is built with GNU Tools for ARM.\r\n\r\nThere is no OS involved. The test suite is run as a bare metal application with qemu in `-nographic` mode. The toolchain and the test rig itself are working fine. And the tests successfully run to completion and produce test results within qemu just fine as well.\r\n\r\nThe problem is in wrapping up qemu in an automated build tool (Rake in this case). Other than keyboard commands I have not yet found a good way to cause qemu to exit after the test suite runs and spits out its results. This causes the build environment to hang / rely on user intervention.\r\n\r\nI have looked high and low and have found no good sources on how to accomplish a simple exit after program termination. I did find a couple suggestions of running qemu with the `-no-reboot` option and then triggering a system reset from the program running in the emulator. I have tried this. It works… kinda. I write the appropriate values to the emulated processor&#39;s reset vector after `main()` executes, and this does trigger a reset. After running the test suite qemu reports catching a system reset. However, it reports this as a hardware error, dumps register contents, and then exits angry (error message below). While this does accomplish exiting after the test suite runs, it then breaks the automated build script due to qemu exiting with an error condition.\r\n\r\n    qemu: hardware error: System reset\r\n\r\nI&#39;d like to avoid hacking the insertion of keyboard commands into the build to simulate user intervention. I&#39;d also like to avoid relying on qemu exiting in an error state.\r\n\r\nIt seems I&#39;m close to a clean exit but not quite there. Searching for the qemu error message (above) has produced no relevant documentation other than tangentially related bug reports.\r\n\r\nIs there a mechanism for causing qemu to exit after `main()` returns in a bare metal program that I&#39;m missing? Will this `-no-reboot` + system reset strategy work? If so, what else is necessary to allow qemu to exit cleanly?",
+            "link": "https://stackoverflow.com/questions/31990487/how-to-cleanly-exit-qemu-after-executing-bare-metal-program-without-user-interve",
+            "title": "How to cleanly exit QEMU after executing bare metal program without user intervention?",
+            "body": "<p>I am assembling a cross compiling unit testing rig for an ARM system and running the tests on a host machine with <code>qemu-system-arm</code>. Specifically, I'm using qemu to emulate the Stellaris LM3S6965 eval board as it contains a Cortex M3 processor like my target environment. The binary run in qemu is built with GNU Tools for ARM.</p>\n\n<p>There is no OS involved. The test suite is run as a bare metal application with qemu in <code>-nographic</code> mode. The toolchain and the test rig itself are working fine. And the tests successfully run to completion and produce test results within qemu just fine as well.</p>\n\n<p>The problem is in wrapping up qemu in an automated build tool (Rake in this case). Other than keyboard commands I have not yet found a good way to cause qemu to exit after the test suite runs and spits out its results. This causes the build environment to hang / rely on user intervention.</p>\n\n<p>I have looked high and low and have found no good sources on how to accomplish a simple exit after program termination. I did find a couple suggestions of running qemu with the <code>-no-reboot</code> option and then triggering a system reset from the program running in the emulator. I have tried this. It works… kinda. I write the appropriate values to the emulated processor's reset vector after <code>main()</code> executes, and this does trigger a reset. After running the test suite qemu reports catching a system reset. However, it reports this as a hardware error, dumps register contents, and then exits angry (error message below). While this does accomplish exiting after the test suite runs, it then breaks the automated build script due to qemu exiting with an error condition.</p>\n\n<pre><code>qemu: hardware error: System reset\n</code></pre>\n\n<p>I'd like to avoid hacking the insertion of keyboard commands into the build to simulate user intervention. I'd also like to avoid relying on qemu exiting in an error state.</p>\n\n<p>It seems I'm close to a clean exit but not quite there. Searching for the qemu error message (above) has produced no relevant documentation other than tangentially related bug reports.</p>\n\n<p>Is there a mechanism for causing qemu to exit after <code>main()</code> returns in a bare metal program that I'm missing? Will this <code>-no-reboot</code> + system reset strategy work? If so, what else is necessary to allow qemu to exit cleanly?</p>\n"
+        },
+        {
+            "tags": [
+                "bash",
+                "git",
+                "git-submodules"
+            ],
+            "owner": {
+                "reputation": 723,
+                "user_id": 2748513,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/a57ccf0bf2588656bdef02373a0aaa71?s=128&d=identicon&r=PG&f=1",
+                "display_name": "rodee",
+                "link": "https://stackoverflow.com/users/2748513/rodee"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524173697,
+            "creation_date": 1524170657,
+            "last_edit_date": 1524173697,
+            "question_id": 49929938,
+            "body_markdown": "I have 2 questions, (1) How to inject a variable into this `foreach` loop? in below example, `$user_branch` is not accessible in line 2.\r\n\r\n    USER_BRANCH=&quot;foo&quot;\r\n    git submodule foreach -q --recursive &#39;branch=&quot;$(git config -f $toplevel/.gitmodules submodule.$name.branch)&quot;; [ &quot;$branch&quot; = &quot;&quot; ] &amp;&amp; git checkout $USER_BRANCH || git checkout $branch&#39; –\r\n\r\n(2) Is there a way to make this `foreach` into a regular loop?, something like:\r\n\r\n    foreach $(git submodules --recursive); do\r\n      #do something\r\n      #more\r\n      #and more\r\n    done",
+            "link": "https://stackoverflow.com/questions/49929938/how-to-inject-variables-to-git-submodule-foreach",
+            "title": "How to inject variables to git submodule foreach?",
+            "body": "<p>I have 2 questions, (1) How to inject a variable into this <code>foreach</code> loop? in below example, <code>$user_branch</code> is not accessible in line 2.</p>\n\n<pre><code>USER_BRANCH=\"foo\"\ngit submodule foreach -q --recursive 'branch=\"$(git config -f $toplevel/.gitmodules submodule.$name.branch)\"; [ \"$branch\" = \"\" ] &amp;&amp; git checkout $USER_BRANCH || git checkout $branch' –\n</code></pre>\n\n<p>(2) Is there a way to make this <code>foreach</code> into a regular loop?, something like:</p>\n\n<pre><code>foreach $(git submodules --recursive); do\n  #do something\n  #more\n  #and more\ndone\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "php",
+                "json",
+                "graph",
+                "devexpress"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 8999793,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/df312354c77a650875d0278fa59b77d6?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Finduson",
+                "link": "https://stackoverflow.com/users/8999793/finduson"
+            },
+            "is_answered": false,
+            "view_count": 47,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524173697,
+            "creation_date": 1524173454,
+            "question_id": 49930532,
+            "body_markdown": "I want to get some values from a sql database for a graph via php. I want to give the javascript graph the values via JSON but the weird thing is, the valuesneed to look like this: \r\n\r\n    {\r\n    \tPlayer: 3,\r\n    \tGame: &#39;Diablo 3&#39;\r\n    }, {\r\n    \tPlayer: 1,\r\n    \tGame: &#39;Overwatch&#39;\r\n    }\r\n\r\nI am not sure...but is this some sort of JSON? because when I echo a json_encoded array with php it looks like this: \r\n\r\n    [&quot;3&quot;,&quot;1&quot;]\r\n\r\nwhen the first is no JSON is it something own and how could I format the values in the best way that they fit for the graphs?",
+            "link": "https://stackoverflow.com/questions/49930532/is-this-json-or-something-else",
+            "title": "Is this JSON or something else?",
+            "body": "<p>I want to get some values from a sql database for a graph via php. I want to give the javascript graph the values via JSON but the weird thing is, the valuesneed to look like this: </p>\n\n<pre><code>{\n    Player: 3,\n    Game: 'Diablo 3'\n}, {\n    Player: 1,\n    Game: 'Overwatch'\n}\n</code></pre>\n\n<p>I am not sure...but is this some sort of JSON? because when I echo a json_encoded array with php it looks like this: </p>\n\n<pre><code>[\"3\",\"1\"]\n</code></pre>\n\n<p>when the first is no JSON is it something own and how could I format the values in the best way that they fit for the graphs?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "matplotlib"
+            ],
+            "owner": {
+                "reputation": 6057,
+                "user_id": 171546,
+                "user_type": "registered",
+                "accept_rate": 82,
+                "profile_image": "https://www.gravatar.com/avatar/9f2e998d95f915e9e934899487e8deed?s=128&d=identicon&r=PG",
+                "display_name": "flow",
+                "link": "https://stackoverflow.com/users/171546/flow"
+            },
+            "is_answered": true,
+            "view_count": 274671,
+            "accepted_answer_id": 6390584,
+            "answer_count": 9,
+            "score": 179,
+            "last_activity_date": 1524173695,
+            "creation_date": 1308336568,
+            "last_edit_date": 1431010209,
+            "question_id": 6390393,
+            "body_markdown": "In a matplotlib figure, how can I make the font size for the tick labels using `ax1.set_xticklabels()` smaller?\r\n\r\nFurther, how can one rotate it from horizontal to vertical?",
+            "link": "https://stackoverflow.com/questions/6390393/matplotlib-make-tick-labels-font-size-smaller",
+            "title": "Matplotlib make tick labels font size smaller",
+            "body": "<p>In a matplotlib figure, how can I make the font size for the tick labels using <code>ax1.set_xticklabels()</code> smaller?</p>\n\n<p>Further, how can one rotate it from horizontal to vertical?</p>\n"
+        },
+        {
+            "tags": [
+                "opencl"
+            ],
+            "owner": {
+                "reputation": 334,
+                "user_id": 5121373,
+                "user_type": "registered",
+                "accept_rate": 61,
+                "profile_image": "https://www.gravatar.com/avatar/682a61eacb08098831bb8a0e1bdbd9b0?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Tuấn Phạm",
+                "link": "https://stackoverflow.com/users/5121373/tu%e1%ba%a5n-ph%e1%ba%a1m"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524173694,
+            "creation_date": 1524173339,
+            "last_edit_date": 1524173694,
+            "question_id": 49930510,
+            "body_markdown": "I got a kernel method, simplified looks like this.\r\n\r\n    __kernel void calculate (__global float *a, __global float *b, __global int *res) {\r\n        int workItem = get_global_id(0); // Syntax may not right, but you get the idea\r\n        int found = 0;\r\n        for (int i = 0; i&lt;100000000; i++) {\r\n            float c = a[i]*3;\r\n            float d = b[i]*2;\r\n            \r\n            if (c&lt;d) {\r\n                found++;\r\n            }\r\n        }\r\n        res[workItem]= found;\r\n    }\r\n\r\nSo, nothing much but simple calculation and a very big loop, the problem is the programm freezes all the time when i run this code. **I have to force reset the computer everytime this happens.**\r\nBut if i make some changes, like this \r\n\r\n    if (true) {\r\n        found++;\r\n    }\r\n\r\nOr \r\n\r\n    if (1&lt;2) {\r\n        found++\r\n    }\r\n\r\nThen the programm works like a charm, and very fast! So i wonder if is there any thing wrong with variables c and d ? I tried to use things like \r\n\r\n    __private float c= ..;\r\n    __private float d= ..;\r\n\r\nIt didnt work either.\r\n\r\nI read the return code of every step while creating programm and kernel, so its not the problem.\r\n\r\nWhat did I do wrong here ?\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49930510/opencl-programm-freezes-everytime-private-variables-used",
+            "title": "OpenCL Programm freezes everytime private variables used",
+            "body": "<p>I got a kernel method, simplified looks like this.</p>\n\n<pre><code>__kernel void calculate (__global float *a, __global float *b, __global int *res) {\n    int workItem = get_global_id(0); // Syntax may not right, but you get the idea\n    int found = 0;\n    for (int i = 0; i&lt;100000000; i++) {\n        float c = a[i]*3;\n        float d = b[i]*2;\n\n        if (c&lt;d) {\n            found++;\n        }\n    }\n    res[workItem]= found;\n}\n</code></pre>\n\n<p>So, nothing much but simple calculation and a very big loop, the problem is the programm freezes all the time when i run this code. <strong>I have to force reset the computer everytime this happens.</strong>\nBut if i make some changes, like this </p>\n\n<pre><code>if (true) {\n    found++;\n}\n</code></pre>\n\n<p>Or </p>\n\n<pre><code>if (1&lt;2) {\n    found++\n}\n</code></pre>\n\n<p>Then the programm works like a charm, and very fast! So i wonder if is there any thing wrong with variables c and d ? I tried to use things like </p>\n\n<pre><code>__private float c= ..;\n__private float d= ..;\n</code></pre>\n\n<p>It didnt work either.</p>\n\n<p>I read the return code of every step while creating programm and kernel, so its not the problem.</p>\n\n<p>What did I do wrong here ?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "android",
+                "scroll",
+                "android-recyclerview"
+            ],
+            "owner": {
+                "reputation": 466,
+                "user_id": 2327567,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/8c6ced7d88d68d33afd59b4a6b59567f?s=128&d=identicon&r=PG",
+                "display_name": "waylaidwanderer",
+                "link": "https://stackoverflow.com/users/2327567/waylaidwanderer"
+            },
+            "is_answered": true,
+            "view_count": 96171,
+            "accepted_answer_id": 27069845,
+            "answer_count": 14,
+            "score": 91,
+            "last_activity_date": 1524173683,
+            "creation_date": 1414379829,
+            "question_id": 26580723,
+            "body_markdown": "I&#39;d like to scroll to the bottom of the RecyclerView list after loading the activity.\r\n\r\n    GENERIC_MESSAGE_LIST = (ArrayList) intent.getExtras().getParcelableArrayList(ConversationsAdapter.EXTRA_MESSAGE);\r\n    conversationView = (RecyclerView) findViewById(R.id.list_messages);\r\n    conversationView.setHasFixedSize(true);\r\n    conversationViewLayoutManager = new LinearLayoutManager(this);\r\n    conversationView.setLayoutManager(conversationViewLayoutManager);\r\n    conversationViewAdapter = new ConversationAdapter(GENERIC_MESSAGE_LIST, this);\r\n    conversationView.setAdapter(conversationViewAdapter);\r\n\r\n`conversationView.scrollTo(...)` throws an exception about being not supported in RecyclerView, and `conversationView.scrollToPosition(...)` doesn&#39;t seem to do anything.\r\n\r\nAfter the above block of code, I added\r\n\r\n    conversationView.scrollToPosition(GENERIC_MESSAGE_LIST.size() + 1)\r\n\r\nwhich doesn&#39;t work. There are 30 elements in `GENERIC_MESSAGE_LIST`.",
+            "link": "https://stackoverflow.com/questions/26580723/how-to-scroll-to-the-bottom-of-a-recyclerview-scrolltoposition-doesnt-work",
+            "title": "How to scroll to the bottom of a RecyclerView? scrollToPosition doesn&#39;t work",
+            "body": "<p>I'd like to scroll to the bottom of the RecyclerView list after loading the activity.</p>\n\n<pre><code>GENERIC_MESSAGE_LIST = (ArrayList) intent.getExtras().getParcelableArrayList(ConversationsAdapter.EXTRA_MESSAGE);\nconversationView = (RecyclerView) findViewById(R.id.list_messages);\nconversationView.setHasFixedSize(true);\nconversationViewLayoutManager = new LinearLayoutManager(this);\nconversationView.setLayoutManager(conversationViewLayoutManager);\nconversationViewAdapter = new ConversationAdapter(GENERIC_MESSAGE_LIST, this);\nconversationView.setAdapter(conversationViewAdapter);\n</code></pre>\n\n<p><code>conversationView.scrollTo(...)</code> throws an exception about being not supported in RecyclerView, and <code>conversationView.scrollToPosition(...)</code> doesn't seem to do anything.</p>\n\n<p>After the above block of code, I added</p>\n\n<pre><code>conversationView.scrollToPosition(GENERIC_MESSAGE_LIST.size() + 1)\n</code></pre>\n\n<p>which doesn't work. There are 30 elements in <code>GENERIC_MESSAGE_LIST</code>.</p>\n"
+        },
+        {
+            "tags": [
+                "f#"
+            ],
+            "owner": {
+                "reputation": 81,
+                "user_id": 6846371,
+                "user_type": "registered",
+                "accept_rate": 17,
+                "profile_image": "https://www.gravatar.com/avatar/58e9fd64d3486f770a806209cce050ee?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Skatedude",
+                "link": "https://stackoverflow.com/users/6846371/skatedude"
+            },
+            "is_answered": true,
+            "view_count": 26,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524173682,
+            "creation_date": 1524138202,
+            "last_edit_date": 1524173682,
+            "question_id": 49920272,
+            "body_markdown": "I want to create a console application that makes use of [FSharp.Plotly](https://github.com/muehlhaus/FSharp.Plotly) (charts) to show statistics. However, FSharp.Plotly seems only able to run in a .fsx file (documentation didn&#39;t mentioned .fs) I tried it in a .fsx file and it was a success, i was able to load a chart. \r\n\r\nHowever, I want to be able to call the graphs (so a pop up appears) with a console application, how to achieve this?\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49920272/how-to-run-fsharp-plotly-charts-non-interactive",
+            "title": "How to run FSharp.Plotly (charts) non interactive?",
+            "body": "<p>I want to create a console application that makes use of <a href=\"https://github.com/muehlhaus/FSharp.Plotly\" rel=\"nofollow noreferrer\">FSharp.Plotly</a> (charts) to show statistics. However, FSharp.Plotly seems only able to run in a .fsx file (documentation didn't mentioned .fs) I tried it in a .fsx file and it was a success, i was able to load a chart. </p>\n\n<p>However, I want to be able to call the graphs (so a pop up appears) with a console application, how to achieve this?</p>\n"
+        },
+        {
+            "tags": [
+                "spring",
+                "mongodb",
+                "spring-data",
+                "spring-data-mongodb"
+            ],
+            "owner": {
+                "reputation": 39,
+                "user_id": 7717933,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-GFecNRal-A0/AAAAAAAAAAI/AAAAAAAAABY/GWqhvha_E08/photo.jpg?sz=128",
+                "display_name": "Вадим Парафенюк",
+                "link": "https://stackoverflow.com/users/7717933/%d0%92%d0%b0%d0%b4%d0%b8%d0%bc-%d0%9f%d0%b0%d1%80%d0%b0%d1%84%d0%b5%d0%bd%d1%8e%d0%ba"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524173673,
+            "creation_date": 1524173673,
+            "question_id": 49930576,
+            "body_markdown": "For example, there are 2 classes:\r\n\r\n    @Document\r\n    public class WordSet {\r\n       @Id\r\n       private ObjectId id;\r\n    \r\n       private Language language;\r\n       private ObjectId languageId;\r\n    } \r\n    \r\n    @Document\r\n    public class Language {\r\n       @Id\r\n       private ObjectId id;\r\n    \r\n       @Index(unique = true)\r\n       private String languageName;\r\n    }\r\n\r\nLanguages are stored in separate collection and WordSets are stored in another collection. BUT WordSet is stored only with languageId (language is always null when I save WordSet). language field in WordSet is needed, but it retrieved using aggregation\r\n\r\n    public Flux&lt;WordSet&gt; getAll() {\r\n            AggregationOperation[] joinLanguages = new AggregationOperation[] {\r\n                    lookup(mongoTemplate.getCollectionName(Language.class), &quot;languageId&quot;, &quot;_id&quot;, &quot;language&quot;),\r\n                    unwind(&quot;language&quot;)\r\n            };\r\n    \r\n            Aggregation agg = newAggregation(joinLanguages);\r\n    \r\n            return mongoTemplate.aggregate(agg, WordSet.class, WordSet.class);\r\n        }\r\n\r\nSo, WordSet in mongodb contains only languageId and language field is filled using aggregation (join from Language collection).\r\n\r\nBut if I want to add more than one WordSet to collection I have an error \r\ncom.mongodb.MongoWriteException: E11000 duplicate key error collection: langdope.wordSet index: language.language_name_index dup key: { : null }\r\n\r\nHow can I handle it? I need languageName to be unique, but also I want to save objects which contains Languages without this problems. I can&#39;t just mark language as @Transient (aggregation will not work).",
+            "link": "https://stackoverflow.com/questions/49930576/spring-data-mongodb-indexedunique-true-in-inner-field",
+            "title": "Spring Data MongoDB @Indexed(unique = true) in inner field",
+            "body": "<p>For example, there are 2 classes:</p>\n\n<pre><code>@Document\npublic class WordSet {\n   @Id\n   private ObjectId id;\n\n   private Language language;\n   private ObjectId languageId;\n} \n\n@Document\npublic class Language {\n   @Id\n   private ObjectId id;\n\n   @Index(unique = true)\n   private String languageName;\n}\n</code></pre>\n\n<p>Languages are stored in separate collection and WordSets are stored in another collection. BUT WordSet is stored only with languageId (language is always null when I save WordSet). language field in WordSet is needed, but it retrieved using aggregation</p>\n\n<pre><code>public Flux&lt;WordSet&gt; getAll() {\n        AggregationOperation[] joinLanguages = new AggregationOperation[] {\n                lookup(mongoTemplate.getCollectionName(Language.class), \"languageId\", \"_id\", \"language\"),\n                unwind(\"language\")\n        };\n\n        Aggregation agg = newAggregation(joinLanguages);\n\n        return mongoTemplate.aggregate(agg, WordSet.class, WordSet.class);\n    }\n</code></pre>\n\n<p>So, WordSet in mongodb contains only languageId and language field is filled using aggregation (join from Language collection).</p>\n\n<p>But if I want to add more than one WordSet to collection I have an error \ncom.mongodb.MongoWriteException: E11000 duplicate key error collection: langdope.wordSet index: language.language_name_index dup key: { : null }</p>\n\n<p>How can I handle it? I need languageName to be unique, but also I want to save objects which contains Languages without this problems. I can't just mark language as @Transient (aggregation will not work).</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "string",
+                "int",
+                "app-inventor"
+            ],
+            "owner": {
+                "reputation": 1055,
+                "user_id": 5483868,
+                "user_type": "registered",
+                "accept_rate": 86,
+                "profile_image": "https://www.gravatar.com/avatar/0f76bd9307456d09d400057084e997aa?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Jason",
+                "link": "https://stackoverflow.com/users/5483868/jason"
+            },
+            "is_answered": true,
+            "view_count": 3971,
+            "accepted_answer_id": 33597264,
+            "answer_count": 2,
+            "score": -1,
+            "last_activity_date": 1524173671,
+            "creation_date": 1446986844,
+            "last_edit_date": 1446994311,
+            "question_id": 33594134,
+            "body_markdown": "I would like to know whether the App Inventor have any &quot;proper&quot; way to convert the integer to string?\r\n\r\n**For e.g:** toString() in C++\r\n\r\nCurrently i am using an indirect way,using &quot;trim&quot; function in the string to convert the integer to string.",
+            "link": "https://stackoverflow.com/questions/33594134/integer-to-string-in-app-inventor",
+            "title": "Integer to string in App Inventor",
+            "body": "<p>I would like to know whether the App Inventor have any \"proper\" way to convert the integer to string?</p>\n\n<p><strong>e.g.:</strong> toString() in C++</p>\n\n<p>Currently i am using an indirect way,using \"trim\" function in the string to convert the integer to string.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "dictionary"
+            ],
+            "owner": {
+                "reputation": 20,
+                "user_id": 8308461,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/763852f669762b0e24cd362b539171f7?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Crash Bandicoot",
+                "link": "https://stackoverflow.com/users/8308461/crash-bandicoot"
+            },
+            "is_answered": true,
+            "view_count": 18,
+            "accepted_answer_id": 49930574,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1524173667,
+            "creation_date": 1524169386,
+            "question_id": 49929634,
+            "body_markdown": "I&#39;m learning to use dictionaries and am trying to use them to do this specific thing:\r\n\r\nI want a user prompt to ask user to select which one of four items is a fruit and then they would see a list of something like &#39;bird, chair, apple, grass&#39; and they input whichever number the apple is. I want the apple to be in a dictionary with many other fruit where the key of them all is &#39;fruit&#39;. I also want other dictionaries for different types of furniture where chair would be a part of and something similar for bird. Is this something I could use dictionaries for or am I going the wrong direction?\r\nThanks",
+            "link": "https://stackoverflow.com/questions/49929634/how-to-use-dictionary-to-create-directory-of-different-objects",
+            "title": "How to use dictionary to create directory of different objects",
+            "body": "<p>I'm learning to use dictionaries and am trying to use them to do this specific thing:</p>\n\n<p>I want a user prompt to ask user to select which one of four items is a fruit and then they would see a list of something like 'bird, chair, apple, grass' and they input whichever number the apple is. I want the apple to be in a dictionary with many other fruit where the key of them all is 'fruit'. I also want other dictionaries for different types of furniture where chair would be a part of and something similar for bird. Is this something I could use dictionaries for or am I going the wrong direction?\nThanks</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "jquery"
+            ],
+            "owner": {
+                "reputation": 113,
+                "user_id": 6263953,
+                "user_type": "registered",
+                "accept_rate": 73,
+                "profile_image": "https://www.gravatar.com/avatar/6ced839d93325b5cfc3ca9dc162c3815?s=128&d=identicon&r=PG",
+                "display_name": "Kyle Underhill",
+                "link": "https://stackoverflow.com/users/6263953/kyle-underhill"
+            },
+            "is_answered": true,
+            "view_count": 26,
+            "accepted_answer_id": 49930111,
+            "answer_count": 5,
+            "score": 0,
+            "last_activity_date": 1524173660,
+            "creation_date": 1524170853,
+            "last_edit_date": 1524173660,
+            "question_id": 49930009,
+            "body_markdown": "I found this snippet from another question but I am wondering how we can tweak it to display a message after the limit is reached. Is the best way to add a `slideToggle` to the `.checkboxmsg` in the function?\r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    limit = 0; //set limit\r\n\r\n    checkboxes = document.querySelectorAll(&#39;.checkboxdiv input[type=&quot;checkbox&quot;]&#39;); //select all checkboxes\r\n\r\n    function checker(elem) {\r\n      if (elem.checked) { //if checked, increment counter\r\n        limit++;\r\n      } else {\r\n        limit--; //else, decrement counter\r\n      }\r\n\r\n      for (i = 0; i &lt; checkboxes.length; i++) { // loop through all \r\n        if (limit == 2) {\r\n          if (!checkboxes[i].checked) {\r\n            checkboxes[i].disabled = true; // and disable unchecked checkboxes\r\n          }\r\n        } else { //if limit is less than two\r\n          if (!checkboxes[i].checked) {\r\n            checkboxes[i].disabled = false; // enable unchecked checkboxes\r\n          }\r\n        }\r\n      }\r\n    }\r\n\r\n    for (i = 0; i &lt; checkboxes.length; i++) {\r\n      checkboxes[i].onclick = function() { //call function on click and send current element as param\r\n        checker(this);\r\n      }\r\n    }\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;div class=&quot;checkboxdiv&quot;&gt;\r\n      &lt;input type=&quot;hidden&quot; name=&quot;check&quot; value=&quot;&quot;&gt;\r\n      &lt;input type=&quot;checkbox&quot; name=&quot;check&quot; value=&quot;One&quot;&gt;&lt;label&gt;One&lt;/label&gt; &lt;br/&gt;\r\n      &lt;input type=&quot;checkbox&quot; name=&quot;check&quot; value=&quot;Two&quot;&gt;&lt;label&gt;Two&lt;/label&gt; &lt;br/&gt;\r\n      &lt;input type=&quot;checkbox&quot; name=&quot;check&quot; value=&quot;Three&quot;&gt;&lt;label&gt;Three&lt;/label&gt;\r\n    &lt;/div&gt;\r\n    &lt;div class=&quot;checkboxmsg&quot;&gt;Only two options are allowed&lt;/div&gt;\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49930009/display-message-after-checkbox-limit",
+            "title": "display message after checkbox limit",
+            "body": "<p>I found this snippet from another question but I am wondering how we can tweak it to display a message after the limit is reached. Is the best way to add a <code>slideToggle</code> to the <code>.checkboxmsg</code> in the function?</p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-js lang-js prettyprint-override\"><code>limit = 0; //set limit\r\n\r\ncheckboxes = document.querySelectorAll('.checkboxdiv input[type=\"checkbox\"]'); //select all checkboxes\r\n\r\nfunction checker(elem) {\r\n  if (elem.checked) { //if checked, increment counter\r\n    limit++;\r\n  } else {\r\n    limit--; //else, decrement counter\r\n  }\r\n\r\n  for (i = 0; i &lt; checkboxes.length; i++) { // loop through all \r\n    if (limit == 2) {\r\n      if (!checkboxes[i].checked) {\r\n        checkboxes[i].disabled = true; // and disable unchecked checkboxes\r\n      }\r\n    } else { //if limit is less than two\r\n      if (!checkboxes[i].checked) {\r\n        checkboxes[i].disabled = false; // enable unchecked checkboxes\r\n      }\r\n    }\r\n  }\r\n}\r\n\r\nfor (i = 0; i &lt; checkboxes.length; i++) {\r\n  checkboxes[i].onclick = function() { //call function on click and send current element as param\r\n    checker(this);\r\n  }\r\n}</code></pre>\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>&lt;div class=\"checkboxdiv\"&gt;\r\n  &lt;input type=\"hidden\" name=\"check\" value=\"\"&gt;\r\n  &lt;input type=\"checkbox\" name=\"check\" value=\"One\"&gt;&lt;label&gt;One&lt;/label&gt; &lt;br/&gt;\r\n  &lt;input type=\"checkbox\" name=\"check\" value=\"Two\"&gt;&lt;label&gt;Two&lt;/label&gt; &lt;br/&gt;\r\n  &lt;input type=\"checkbox\" name=\"check\" value=\"Three\"&gt;&lt;label&gt;Three&lt;/label&gt;\r\n&lt;/div&gt;\r\n&lt;div class=\"checkboxmsg\"&gt;Only two options are allowed&lt;/div&gt;</code></pre>\r\n</div>\r\n</div>\r\n</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 220
+}

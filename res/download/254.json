@@ -1,0 +1,842 @@
+{
+    "items": [
+        {
+            "tags": [
+                "javascript",
+                "redux",
+                "redux-form"
+            ],
+            "owner": {
+                "reputation": 1360,
+                "user_id": 1664315,
+                "user_type": "registered",
+                "accept_rate": 59,
+                "profile_image": "https://i.stack.imgur.com/S5cYO.jpg?s=128&g=1",
+                "display_name": "Arian Hosseinzadeh",
+                "link": "https://stackoverflow.com/users/1664315/arian-hosseinzadeh"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524210277,
+            "creation_date": 1524208877,
+            "last_edit_date": 1524210277,
+            "question_id": 49936192,
+            "body_markdown": "I have the following redux form:\r\n\r\n    import React, { Component } from &#39;react&#39;;\r\n    import { connect } from &#39;react-redux&#39;;\r\n    import { Field, reduxForm, getFormSyncErrors } from &#39;redux-form&#39;;\r\n    \r\n    import { createExpense } from &#39;../../actions&#39;;\r\n    import { validateName, validateImage } from &#39;../../helpers/expense_utils&#39;;\r\n    import { renderInputField, validate, renderTextAreaField, renderDropzoneField } from &#39;../../helpers/form_utils&#39;;\r\n    \r\n    const validators = [\r\n      {\r\n        field: &#39;title&#39;,\r\n        validator: validateName\r\n      },\r\n      {\r\n        field: &#39;description&#39;,\r\n        validator: validateDescription\r\n      },\r\n      {\r\n        field: &#39;amount&#39;,\r\n        validator: validateAmount\r\n      },\r\n      {\r\n        field: &#39;image&#39;,\r\n        validator: validateImage\r\n      }\r\n    ];\r\n    \r\n    class NewExpense extends Component {\r\n    \r\n      constructor(props) {\r\n        super(props);\r\n        this.state = {\r\n          error: undefined,\r\n          imagePreviewUrl: undefined\r\n        };\r\n      }\r\n    \r\n      _onSubmit = values =&gt; {\r\n        let formData = new FormData();\r\n        formData.append(&#39;title&#39;, values.title);\r\n        formData.append(&#39;description&#39;, values.description);\r\n        formData.append(&#39;amount&#39;, values.amount);\r\n        formData.append(&#39;file&#39;, values.image[0]);\r\n        this.props.createExpense(formData, this.props.groupId, () =&gt; this.props.onClose(), error =&gt; this.setState({error: error}));\r\n      }\r\n    \r\n      _onImagePreviewChange = files =&gt; {\r\n        //this.props.inputErrors.image is one step behind \r\n        this.setState({\r\n          imagePreviewUrl: files[0].preview\r\n        });\r\n      }\r\n    \r\n      render() {\r\n        const { handleSubmit } = this.props;\r\n        const { imagePreviewUrl } = this.state;\r\n        return (\r\n          &lt;div&gt;\r\n            &lt;form onSubmit={ handleSubmit(this._onSubmit.bind(this)) }&gt;\r\n              &lt;Field name=&quot;title&quot; label=&quot;Name&quot; type=&quot;text&quot; component={ renderInputField }/&gt;\r\n              &lt;Field onChange={this._onImagePreviewChange.bind(this)} previewUrl={ imagePreviewUrl } name=&quot;image&quot; label=&quot;Image&quot; component={ renderDropzoneField } /&gt;\r\n              &lt;button type=&quot;submit&quot; className=&quot;btn btn-primary&quot;&gt;Create&lt;/button&gt;\r\n              &lt;button type=&quot;button&quot; className=&quot;btn btn-primary&quot; onClick={this.props.onClose}&gt;Cancel&lt;/button&gt;\r\n            &lt;/form&gt;\r\n            { this.state.error ? &lt;span&gt;{this.state.error}&lt;/span&gt; : &lt;noscript/&gt; }\r\n          &lt;/div&gt;\r\n        );\r\n      }\r\n    }\r\n    \r\n    export default connect(state =&gt; ({\r\n      inputErrors: getFormSyncErrors(&#39;NewExpense&#39;)(state)\r\n    }), { createExpense })(reduxForm({\r\n      validate,\r\n      form:&#39;NewExpense&#39;,\r\n      validators\r\n    })(NewExpense));\r\n\r\nI want to have access to the field-level errors of the form inside  `_onImagePreviewChange`, with `inputErrors` I set inside `mapStateToProps`.\r\n\r\nThe problem is that the validation functions runs after `onChange` handler function. Therefore the error message is always stale. For example, if user select a file of disallowed type, the message would be `undefined`, the next time if user selects an file of allowed type, this time it wouldn&#39;t be `undefined` as an error was assigned to it in the previous step. \r\n\r\nWhy does this happen and how should I fix it?",
+            "link": "https://stackoverflow.com/questions/49936192/redux-form-validation-runs-after-onchange-handler-function",
+            "title": "Redux form validation runs after onChange handler function",
+            "body": "<p>I have the following redux form:</p>\n\n<pre><code>import React, { Component } from 'react';\nimport { connect } from 'react-redux';\nimport { Field, reduxForm, getFormSyncErrors } from 'redux-form';\n\nimport { createExpense } from '../../actions';\nimport { validateName, validateImage } from '../../helpers/expense_utils';\nimport { renderInputField, validate, renderTextAreaField, renderDropzoneField } from '../../helpers/form_utils';\n\nconst validators = [\n  {\n    field: 'title',\n    validator: validateName\n  },\n  {\n    field: 'description',\n    validator: validateDescription\n  },\n  {\n    field: 'amount',\n    validator: validateAmount\n  },\n  {\n    field: 'image',\n    validator: validateImage\n  }\n];\n\nclass NewExpense extends Component {\n\n  constructor(props) {\n    super(props);\n    this.state = {\n      error: undefined,\n      imagePreviewUrl: undefined\n    };\n  }\n\n  _onSubmit = values =&gt; {\n    let formData = new FormData();\n    formData.append('title', values.title);\n    formData.append('description', values.description);\n    formData.append('amount', values.amount);\n    formData.append('file', values.image[0]);\n    this.props.createExpense(formData, this.props.groupId, () =&gt; this.props.onClose(), error =&gt; this.setState({error: error}));\n  }\n\n  _onImagePreviewChange = files =&gt; {\n    //this.props.inputErrors.image is one step behind \n    this.setState({\n      imagePreviewUrl: files[0].preview\n    });\n  }\n\n  render() {\n    const { handleSubmit } = this.props;\n    const { imagePreviewUrl } = this.state;\n    return (\n      &lt;div&gt;\n        &lt;form onSubmit={ handleSubmit(this._onSubmit.bind(this)) }&gt;\n          &lt;Field name=\"title\" label=\"Name\" type=\"text\" component={ renderInputField }/&gt;\n          &lt;Field onChange={this._onImagePreviewChange.bind(this)} previewUrl={ imagePreviewUrl } name=\"image\" label=\"Image\" component={ renderDropzoneField } /&gt;\n          &lt;button type=\"submit\" className=\"btn btn-primary\"&gt;Create&lt;/button&gt;\n          &lt;button type=\"button\" className=\"btn btn-primary\" onClick={this.props.onClose}&gt;Cancel&lt;/button&gt;\n        &lt;/form&gt;\n        { this.state.error ? &lt;span&gt;{this.state.error}&lt;/span&gt; : &lt;noscript/&gt; }\n      &lt;/div&gt;\n    );\n  }\n}\n\nexport default connect(state =&gt; ({\n  inputErrors: getFormSyncErrors('NewExpense')(state)\n}), { createExpense })(reduxForm({\n  validate,\n  form:'NewExpense',\n  validators\n})(NewExpense));\n</code></pre>\n\n<p>I want to have access to the field-level errors of the form inside  <code>_onImagePreviewChange</code>, with <code>inputErrors</code> I set inside <code>mapStateToProps</code>.</p>\n\n<p>The problem is that the validation functions runs after <code>onChange</code> handler function. Therefore the error message is always stale. For example, if user select a file of disallowed type, the message would be <code>undefined</code>, the next time if user selects an file of allowed type, this time it wouldn't be <code>undefined</code> as an error was assigned to it in the previous step. </p>\n\n<p>Why does this happen and how should I fix it?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "gradle"
+            ],
+            "owner": {
+                "reputation": 91,
+                "user_id": 8891397,
+                "user_type": "registered",
+                "accept_rate": 44,
+                "profile_image": "https://www.gravatar.com/avatar/ec037a1845f233a5d8f80c901110b175?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Ryan Hack",
+                "link": "https://stackoverflow.com/users/8891397/ryan-hack"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524210275,
+            "creation_date": 1524195733,
+            "last_edit_date": 1524196383,
+            "question_id": 49933616,
+            "body_markdown": "I&#39;m new to Gradle, but really having difficulty switching from Maven. \r\n\r\nI try to follow [this guide][1] to add the Google formatter to my build.\r\n\r\nIdeally, I want to check to see if the code is formatted correctly every time someone runs gradle build. I&#39;ve tried the following strategy. It&#39;s not working out too well. Does this look like a well designed gradle file and how can I get this google formatter to work with it? \r\n\r\n    buildscript {\r\n    \text {\r\n    \t\tspringBootVersion = &#39;2.0.1.RELEASE&#39;\r\n    \t}\r\n    \r\n    \trepositories {\r\n    \t\tmavenCentral()\r\n    \t\tjcenter()\r\n    \t\tmaven {\r\n    \t\t\turl &quot;https://plugins.gradle.org/m2/&quot;\r\n    \t\t}\r\n    \t}\r\n    \tdependencies {\r\n    \t\tclasspath &quot;org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}&quot;\r\n    \t\tclasspath &quot;gradle.plugin.com.github.sherter.google-java-format:google-java-format-gradle-plugin:0.6&quot;\r\n    \t}\r\n    }\r\n    \r\n    apply plugin: &#39;java&#39;\r\n    apply plugin: &#39;org.springframework.boot&#39;\r\n    apply plugin: &#39;io.spring.dependency-management&#39;\r\n    apply plugin: &#39;maven&#39;\r\n    apply plugin: &#39;com.github.sherter.google-java-format&#39;\r\n    \r\n    group = &#39;com.remindful&#39;\r\n    version = &#39;1.0.0-SNAPSHOT&#39;\r\n    sourceCompatibility = 1.8\r\n    \r\n    repositories {\r\n    \tmavenCentral()\r\n    }\r\n    \r\n    dependencies {\r\n    \tcompile(&#39;org.springframework.boot:spring-boot-starter-jersey&#39;)\r\n    \tcompile(&#39;org.springframework.boot:spring-boot-starter-web&#39;)\r\n    \tcompile(&#39;org.springframework.boot:spring-boot-starter-web-services&#39;)\r\n    \tcompile(&#39;org.springframework.boot:spring-boot-starter-websocket&#39;)\r\n    \tcompile(&#39;org.springframework.session:spring-session-core&#39;)\r\n    \tcompile(&quot;org.springframework.boot:spring-boot-starter-data-jpa:1.3.5.RELEASE&quot;)\r\n    \tcompile(&quot;com.h2database:h2:1.4.191&quot;)\r\n    \r\n    \tcompile group: &#39;com.h2database&#39;, name: &#39;h2&#39;, version: &#39;1.4.197&#39;\r\n    \r\n    \ttestCompile &#39;junit:junit:4.12&#39;\r\n    \ttestCompile group: &#39;org.springframework.boot&#39;, name: &#39;spring-boot-starter-test&#39;, version: &#39;2.0.1.RELEASE&#39;\r\n    }\r\n    \r\n    task format(type: GoogleJavaFormat) {\r\n    \tsource &#39;src/main&#39;\r\n    \tsource &#39;src/test&#39;\r\n    \tinclude &#39;**/*.java&#39;\r\n    \texclude &#39;**/*Template.java&#39;\r\n    }\r\n    \r\n    task verifyFormatting(type: VerifyGoogleJavaFormat) {\r\n    \tsource &#39;src/main&#39;\r\n    \tinclude &#39;**/*.java&#39;\r\n    \tignoreFailures true\r\n    }\r\n    \r\n    // To force debug on application boot, switch suspend to y\r\n    bootRun {\r\n    \tsystemProperties System.properties\r\n    \tjvmArgs=[&quot;-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005&quot;]\r\n    }\r\n\r\n\r\n  [1]: https://github.com/sherter/google-java-format-gradle-plugin",
+            "link": "https://stackoverflow.com/questions/49933616/cannot-add-plugin-to-gradle-build-file",
+            "title": "Cannot add plugin to gradle build file?",
+            "body": "<p>I'm new to Gradle, but really having difficulty switching from Maven. </p>\n\n<p>I try to follow <a href=\"https://github.com/sherter/google-java-format-gradle-plugin\" rel=\"nofollow noreferrer\">this guide</a> to add the Google formatter to my build.</p>\n\n<p>Ideally, I want to check to see if the code is formatted correctly every time someone runs gradle build. I've tried the following strategy. It's not working out too well. Does this look like a well designed gradle file and how can I get this google formatter to work with it? </p>\n\n<pre><code>buildscript {\n    ext {\n        springBootVersion = '2.0.1.RELEASE'\n    }\n\n    repositories {\n        mavenCentral()\n        jcenter()\n        maven {\n            url \"https://plugins.gradle.org/m2/\"\n        }\n    }\n    dependencies {\n        classpath \"org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}\"\n        classpath \"gradle.plugin.com.github.sherter.google-java-format:google-java-format-gradle-plugin:0.6\"\n    }\n}\n\napply plugin: 'java'\napply plugin: 'org.springframework.boot'\napply plugin: 'io.spring.dependency-management'\napply plugin: 'maven'\napply plugin: 'com.github.sherter.google-java-format'\n\ngroup = 'com.remindful'\nversion = '1.0.0-SNAPSHOT'\nsourceCompatibility = 1.8\n\nrepositories {\n    mavenCentral()\n}\n\ndependencies {\n    compile('org.springframework.boot:spring-boot-starter-jersey')\n    compile('org.springframework.boot:spring-boot-starter-web')\n    compile('org.springframework.boot:spring-boot-starter-web-services')\n    compile('org.springframework.boot:spring-boot-starter-websocket')\n    compile('org.springframework.session:spring-session-core')\n    compile(\"org.springframework.boot:spring-boot-starter-data-jpa:1.3.5.RELEASE\")\n    compile(\"com.h2database:h2:1.4.191\")\n\n    compile group: 'com.h2database', name: 'h2', version: '1.4.197'\n\n    testCompile 'junit:junit:4.12'\n    testCompile group: 'org.springframework.boot', name: 'spring-boot-starter-test', version: '2.0.1.RELEASE'\n}\n\ntask format(type: GoogleJavaFormat) {\n    source 'src/main'\n    source 'src/test'\n    include '**/*.java'\n    exclude '**/*Template.java'\n}\n\ntask verifyFormatting(type: VerifyGoogleJavaFormat) {\n    source 'src/main'\n    include '**/*.java'\n    ignoreFailures true\n}\n\n// To force debug on application boot, switch suspend to y\nbootRun {\n    systemProperties System.properties\n    jvmArgs=[\"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005\"]\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "watchkit"
+            ],
+            "owner": {
+                "reputation": 22,
+                "user_id": 4803429,
+                "user_type": "registered",
+                "accept_rate": 20,
+                "profile_image": "https://www.gravatar.com/avatar/bd01c6de36611f3aa0a360682fda20f2?s=128&d=identicon&r=PG&f=1",
+                "display_name": "thaotruong58",
+                "link": "https://stackoverflow.com/users/4803429/thaotruong58"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "closed_date": 1524227089,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524210271,
+            "creation_date": 1524210271,
+            "question_id": 49936580,
+            "body_markdown": "How can i have this animation in my watchkit app. When the circle reaches to 100%, app&#39;ll show the firework ring.\r\n\r\n[Video watchOs activity][1]\r\n\r\n\r\n  [1]: https://youtu.be/nNDJL6Ju2Qc?t=28s",
+            "link": "https://stackoverflow.com/questions/49936580/make-the-firework-ring-like-activity-app",
+            "closed_reason": "too broad",
+            "title": "Make the firework ring like Activity App",
+            "body": "<p>How can i have this animation in my watchkit app. When the circle reaches to 100%, app'll show the firework ring.</p>\n\n<p><a href=\"https://youtu.be/nNDJL6Ju2Qc?t=28s\" rel=\"nofollow noreferrer\">Video watchOs activity</a></p>\n"
+        },
+        {
+            "tags": [
+                "mysql",
+                "mariadb"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9665914,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/PPHLn.jpg?s=128&g=1",
+                "display_name": "Fathur_Shaon47",
+                "link": "https://stackoverflow.com/users/9665914/fathur-shaon47"
+            },
+            "is_answered": true,
+            "view_count": 21,
+            "answer_count": 1,
+            "score": -2,
+            "last_activity_date": 1524210265,
+            "creation_date": 1524147027,
+            "last_edit_date": 1524147797,
+            "question_id": 49923251,
+            "body_markdown": "This the QUERY I have done using normal WHERE condition\r\n\r\n    SELECT\r\n    FIXTURE.Fixture_ID,\r\n    FIXTURE.Game_Date,\r\n    TEAM.Team_Name,\r\n    OPPONENT.Opponent_Team_Name,\r\n    FIXTURE.Results,\r\n    FIXTURE.Score,\r\n    FIXTURE.Location\r\n    FROM\r\n    FIXTURE,TEAM,OPPONENT\r\n    WHERE\r\n    FIXTURE.Location=&#39;Home&#39;\r\n    AND\r\n    FIXTURE.TM_ID = TEAM.Team_ID\r\n    AND\r\n    FIXTURE.OPP_ID = OPPONENT.Opponent_ID\r\n    GROUP BY \r\n    Game_Date\r\n    ORDER BY \r\n    Game_Date DESC;\r\n\r\n\r\nThis the Same process done with JOIN, but yields error\r\n\r\n    SELECT \r\n    FIXTURE.Fixture_ID,\r\n    FIXTURE.Game_Date,\r\n    TEAM.Team_Name,\r\n    OPPONENT.Opponent_Team_Name,\r\n    FIXTURE.Results,\r\n    FIXTURE.Score,\r\n    FIXTURE.Location\r\n    FROM\r\n    FIXTURE\r\n    WHERE\r\n    FIXTURE.Location=&#39;Home&#39;\r\n    JOIN TEAM ON FIXTURE.TM_ID = TEAM.Team_ID\r\n    JOIN OPPONENT ON FIXTURE.OPP_ID = OPPONENT.Opponent_ID\r\n    GROUP BY \r\n    Game_Date\r\n    ORDER BY \r\n    Game_Date DESC;\r\n\r\nWhat am I doing wrong here ?. Please suggest the correct solution.\r\n\r\nThank you.",
+            "link": "https://stackoverflow.com/questions/49923251/query-that-selects-all-home-fixtures-by-date-in-descending-order",
+            "title": "Query that selects all home fixtures by date in descending order",
+            "body": "<p>This the QUERY I have done using normal WHERE condition</p>\n\n<pre><code>SELECT\nFIXTURE.Fixture_ID,\nFIXTURE.Game_Date,\nTEAM.Team_Name,\nOPPONENT.Opponent_Team_Name,\nFIXTURE.Results,\nFIXTURE.Score,\nFIXTURE.Location\nFROM\nFIXTURE,TEAM,OPPONENT\nWHERE\nFIXTURE.Location='Home'\nAND\nFIXTURE.TM_ID = TEAM.Team_ID\nAND\nFIXTURE.OPP_ID = OPPONENT.Opponent_ID\nGROUP BY \nGame_Date\nORDER BY \nGame_Date DESC;\n</code></pre>\n\n<p>This the Same process done with JOIN, but yields error</p>\n\n<pre><code>SELECT \nFIXTURE.Fixture_ID,\nFIXTURE.Game_Date,\nTEAM.Team_Name,\nOPPONENT.Opponent_Team_Name,\nFIXTURE.Results,\nFIXTURE.Score,\nFIXTURE.Location\nFROM\nFIXTURE\nWHERE\nFIXTURE.Location='Home'\nJOIN TEAM ON FIXTURE.TM_ID = TEAM.Team_ID\nJOIN OPPONENT ON FIXTURE.OPP_ID = OPPONENT.Opponent_ID\nGROUP BY \nGame_Date\nORDER BY \nGame_Date DESC;\n</code></pre>\n\n<p>What am I doing wrong here ?. Please suggest the correct solution.</p>\n\n<p>Thank you.</p>\n"
+        },
+        {
+            "tags": [
+                "unit-testing",
+                "go",
+                "delve"
+            ],
+            "owner": {
+                "reputation": 107,
+                "user_id": 7420188,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/5ce236431bd3e1e5b193e18650faff31?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Flynn Handley",
+                "link": "https://stackoverflow.com/users/7420188/flynn-handley"
+            },
+            "is_answered": true,
+            "view_count": 31,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524210263,
+            "creation_date": 1524208402,
+            "question_id": 49936061,
+            "body_markdown": "I have two tests in my project, I would like to build a single test, place the resulting binary in a container, run it, and then attach a debugger.\r\n\r\nIs this possible?\r\n\r\n    package dataplatform\r\n    \r\n    import &quot;testing&quot;\r\n    \r\n    func TestA(t *testing.T) {\r\n    \r\n    \t// test A\r\n    }\r\n    \r\n    func TestRunCommand(t *testing.T) {\r\n    \r\n    \t// Test B\r\n    }\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49936061/build-single-test-in-go",
+            "title": "Build single test in go",
+            "body": "<p>I have two tests in my project, I would like to build a single test, place the resulting binary in a container, run it, and then attach a debugger.</p>\n\n<p>Is this possible?</p>\n\n<pre><code>package dataplatform\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {\n\n    // test A\n}\n\nfunc TestRunCommand(t *testing.T) {\n\n    // Test B\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "string",
+                "api"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 9402726,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-2p6yvI4FiLI/AAAAAAAAAAI/AAAAAAAAACo/8UJd-cbK1YI/photo.jpg?sz=128",
+                "display_name": "Jason Roldan",
+                "link": "https://stackoverflow.com/users/9402726/jason-roldan"
+            },
+            "is_answered": true,
+            "view_count": 52,
+            "accepted_answer_id": 49023650,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524210258,
+            "creation_date": 1519782123,
+            "last_edit_date": 1519788032,
+            "question_id": 49020711,
+            "body_markdown": "I have an interesting behavior happening with my program.\r\n\r\ni have the following methods:\r\n\r\n    def getMarket(self, Currency):\r\n        return self.public_api(&#39;GetMarket/&#39; + Currency + &#39;_BTC&#39;)\r\n\r\n    def getBalance(self, Currency):\r\n        self.api_params.clear()\r\n        self.api_params[&#39;Currency&#39;] = Currency\r\n        return self.private_api(&#39;GetBalance&#39;)\r\n\r\n-----------------------------------------------------\r\n\r\n    my_api = buyBot(API_KEY, API_SECRET)\r\n\r\n    \r\n    pumpCoin = my_api.getMarket(&#39;OSC&#39;)\r\n    pumpRawRate = pumpCoin[&#39;Data&#39;][&#39;High&#39;]\r\n    pumpRawQty = .02\r\n    pumpBuyRate = my_api.calculateBuy(pumpRawRate)\r\n    pumpQty = float(pumpRawQty)/float(pumpBuyRate)\r\n    pumpSellRate = pumpCoin[&#39;Data&#39;][&#39;Low&#39;]\r\n\r\n    pumpSellCoin = my_api.getBalance(&#39;OSC&#39;)\r\n\r\n\r\n    pumpSellAmount = pumpSellCoin[&quot;Data&quot;][&quot;Total&quot;]\r\n\r\n    print str(pumpRawRate) + &#39;\\n&#39; + str(pumpBuyRate) + &#39;\\n&#39; + str(pumpSellRate) + &#39;\\n&#39; + str(pumpQty) + &#39;\\n&#39; + str(pumpSellAmount)`\r\n\r\nFrom section: `pumpCoin = my_api.getMarket(&#39;OSC&#39;)` to `pumpSellRate = pumpCoin[&#39;Data&#39;][&#39;Low&#39;]`, i have no problems getting the information and working with it.\r\n\r\nProblem seems to be starting with line: `pumpSellCoin = my_api.getBalance(&#39;OSC&#39;)` \r\n\r\nI get the following Error message:\r\n\r\n      Traceback (most recent call last):\r\n      File &quot;C:\\XXXXXX.py&quot;, line 92, in &lt;module&gt;\r\n        pumpSellAmount = pumpSellCoin[&quot;Data&quot;][&quot;Total&quot;]\r\n    TypeError: string indices must be integers, not str\r\n\r\nif i run: `print (my_api.getBalance(&#39;OSC&#39;)`, i am able to see all the private API information that is retrieved by that call, however i am not sure why it is giving me a problem when i try to call 1 specific item in the stack.\r\n\r\nLet me know if you need any more information on this.\r\n\r\nAny help will be greatly appreciated.\r\n\r\nI have looked at the other posts and so far i can&#39;t seem to figure out the exact cause.\r\n\r\nThis is the private_api code\r\n\r\n    def private_api(self, meth):\r\n        time.sleep(1)\r\n        params = self.api_params\r\n        url = self.apisite + meth\r\n        nonce = str(int(time.time()))\r\n        post_data = json.dumps(params)\r\n        hash = hashlib.md5()\r\n        hash.update(post_data)\r\n        base64hash = base64.b64encode(hash.digest())\r\n        sig = self.apikey + &quot;POST&quot; + urllib.quote_plus(url).lower() + nonce + base64hash\r\n        hmacsig = base64.b64encode(hmac.new(base64.b64decode(self.apisecret), sig, hashlib.sha256).digest())\r\n        hdr = &quot;amx &quot; + self.apikey + &quot;:&quot; + hmacsig + &quot;:&quot; + nonce\r\n        headers = { &#39;Authorization&#39;: hdr, &#39;Content-Type&#39;:&#39;application/json; charset=utf-8&#39; }\r\n        request = urllib2.Request(url, data=post_data, headers=headers)\r\n        return urllib2.urlopen(request).read()\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49020711/string-indices-must-be-integers-not-str-api",
+            "title": "String Indices must be integers, not str - API",
+            "body": "<p>I have an interesting behavior happening with my program.</p>\n\n<p>i have the following methods:</p>\n\n<pre><code>def getMarket(self, Currency):\n    return self.public_api('GetMarket/' + Currency + '_BTC')\n\ndef getBalance(self, Currency):\n    self.api_params.clear()\n    self.api_params['Currency'] = Currency\n    return self.private_api('GetBalance')\n</code></pre>\n\n<hr>\n\n<pre><code>my_api = buyBot(API_KEY, API_SECRET)\n\n\npumpCoin = my_api.getMarket('OSC')\npumpRawRate = pumpCoin['Data']['High']\npumpRawQty = .02\npumpBuyRate = my_api.calculateBuy(pumpRawRate)\npumpQty = float(pumpRawQty)/float(pumpBuyRate)\npumpSellRate = pumpCoin['Data']['Low']\n\npumpSellCoin = my_api.getBalance('OSC')\n\n\npumpSellAmount = pumpSellCoin[\"Data\"][\"Total\"]\n\nprint str(pumpRawRate) + '\\n' + str(pumpBuyRate) + '\\n' + str(pumpSellRate) + '\\n' + str(pumpQty) + '\\n' + str(pumpSellAmount)`\n</code></pre>\n\n<p>From section: <code>pumpCoin = my_api.getMarket('OSC')</code> to <code>pumpSellRate = pumpCoin['Data']['Low']</code>, i have no problems getting the information and working with it.</p>\n\n<p>Problem seems to be starting with line: <code>pumpSellCoin = my_api.getBalance('OSC')</code> </p>\n\n<p>I get the following Error message:</p>\n\n<pre><code>  Traceback (most recent call last):\n  File \"C:\\XXXXXX.py\", line 92, in &lt;module&gt;\n    pumpSellAmount = pumpSellCoin[\"Data\"][\"Total\"]\nTypeError: string indices must be integers, not str\n</code></pre>\n\n<p>if i run: <code>print (my_api.getBalance('OSC')</code>, i am able to see all the private API information that is retrieved by that call, however i am not sure why it is giving me a problem when i try to call 1 specific item in the stack.</p>\n\n<p>Let me know if you need any more information on this.</p>\n\n<p>Any help will be greatly appreciated.</p>\n\n<p>I have looked at the other posts and so far i can't seem to figure out the exact cause.</p>\n\n<p>This is the private_api code</p>\n\n<pre><code>def private_api(self, meth):\n    time.sleep(1)\n    params = self.api_params\n    url = self.apisite + meth\n    nonce = str(int(time.time()))\n    post_data = json.dumps(params)\n    hash = hashlib.md5()\n    hash.update(post_data)\n    base64hash = base64.b64encode(hash.digest())\n    sig = self.apikey + \"POST\" + urllib.quote_plus(url).lower() + nonce + base64hash\n    hmacsig = base64.b64encode(hmac.new(base64.b64decode(self.apisecret), sig, hashlib.sha256).digest())\n    hdr = \"amx \" + self.apikey + \":\" + hmacsig + \":\" + nonce\n    headers = { 'Authorization': hdr, 'Content-Type':'application/json; charset=utf-8' }\n    request = urllib2.Request(url, data=post_data, headers=headers)\n    return urllib2.urlopen(request).read()\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "xml",
+                "qwebview",
+                "qweb"
+            ],
+            "owner": {
+                "reputation": 166,
+                "user_id": 9037298,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://lh5.googleusercontent.com/-FucSzNTfGds/AAAAAAAAAAI/AAAAAAAAA2Y/ewecP6TtXlY/photo.jpg?sz=128",
+                "display_name": "vbt",
+                "link": "https://stackoverflow.com/users/9037298/vbt"
+            },
+            "is_answered": false,
+            "view_count": 25,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524210254,
+            "creation_date": 1520150813,
+            "question_id": 49093317,
+            "body_markdown": "Hi I need to print the value 10.50785 as 10.50 instead of 10.51.\r\nI tried like this `&lt;t t-esc=&quot;&#39;{0:,.2f}&#39;.format(float(10.50785))&quot;/&gt;` ,but its returning the value as 10.51.",
+            "link": "https://stackoverflow.com/questions/49093317/how-to-print-only-first-two-digits-of-the-floating-value-without-rounding",
+            "title": "How to print only first two digits of the floating value (Without rounding)",
+            "body": "<p>Hi I need to print the value 10.50785 as 10.50 instead of 10.51.\nI tried like this <code>&lt;t t-esc=\"'{0:,.2f}'.format(float(10.50785))\"/&gt;</code> ,but its returning the value as 10.51.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "web-scraping",
+                "urllib"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 9424757,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-YqGEXpqhNKs/AAAAAAAAAAI/AAAAAAAAAcw/Johywg5mYug/photo.jpg?sz=128",
+                "display_name": "Tolly Boy101",
+                "link": "https://stackoverflow.com/users/9424757/tolly-boy101"
+            },
+            "is_answered": true,
+            "view_count": 60,
+            "accepted_answer_id": 49035423,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1524210244,
+            "creation_date": 1519838603,
+            "last_edit_date": 1524210244,
+            "question_id": 49035274,
+            "body_markdown": "My code is this:\r\n\r\n    import urllib.request\r\n    import re\r\n    http://www.weather-forecast.com/locations/Paris/forcasts/latest\r\n\r\n    city = input(&#39;Please enter a place: &#39;)\r\n    url = &#39;http://www.weather-forecast.com/locations/&#39;+city+&#39;forcasts/latest&#39;\r\n\r\n    data = urllib.request.urlopen(url).read()\r\n    data1 = data.decode(&#39;utf-8&#39;)\r\n\r\nI&#39;m having trouble with the url this is my output:\r\n\r\n&gt;Traceback (most recent call last):\r\n  File &quot;C:/Users/alext/AppData/Local/Programs/Python/Python36/Weather forecast.py&quot;, line 9, in &lt;module&gt;\r\n    data = urllib.request.urlopen(url).read()\r\n  File &quot;C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py&quot;, line 223, in urlopen\r\n    return opener.open(url, data, timeout)\r\n  File &quot;C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py&quot;, line 532, in open\r\n    response = meth(req, response)\r\n  File &quot;C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py&quot;, line 642, in http_response\r\n    &#39;http&#39;, request, response, code, msg, hdrs)\r\n  File &quot;C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py&quot;, line 564, in error\r\n    result = self._call_chain(*args)\r\n  File &quot;C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py&quot;, line 504, in _call_chain\r\n    result = func(*args)\r\n  File &quot;C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py&quot;, line 756, in http_error_302\r\n    return self.parent.open(new, timeout=req.timeout)\r\n  File &quot;C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py&quot;, line 532, in open\r\n    response = meth(req, response)\r\n  File &quot;C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py&quot;, line 642, in http_response\r\n    &#39;http&#39;, request, response, code, msg, hdrs)\r\n  File &quot;C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py&quot;, line 570, in error\r\n    return self._call_chain(*args)\r\n  File &quot;C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py&quot;, line 504, in _call_chain\r\n    result = func(*args)\r\n  File &quot;C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib          \\request.py&quot;, line 650, in http_error_default\r\n    raise HTTPError(req.full_url, code, msg, hdrs, fp)\r\n    urllib.error.HTTPError: HTTP Error 404: Not Found\r\n\r\nI have checked the url and it is definitely correct. I have seen others with problems like this but am still unsure as to the solution. \r\n",
+            "link": "https://stackoverflow.com/questions/49035274/http-error-404-not-found-python-urllib",
+            "title": "HTTP Error 404: Not Found python urllib",
+            "body": "<p>My code is this:</p>\n\n<pre><code>import urllib.request\nimport re\nhttp://www.weather-forecast.com/locations/Paris/forcasts/latest\n\ncity = input('Please enter a place: ')\nurl = 'http://www.weather-forecast.com/locations/'+city+'forcasts/latest'\n\ndata = urllib.request.urlopen(url).read()\ndata1 = data.decode('utf-8')\n</code></pre>\n\n<p>I'm having trouble with the url this is my output:</p>\n\n<blockquote>\n  <p>Traceback (most recent call last):\n    File \"C:/Users/alext/AppData/Local/Programs/Python/Python36/Weather forecast.py\", line 9, in \n      data = urllib.request.urlopen(url).read()\n    File \"C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py\", line 223, in urlopen\n      return opener.open(url, data, timeout)\n    File \"C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py\", line 532, in open\n      response = meth(req, response)\n    File \"C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py\", line 642, in http_response\n      'http', request, response, code, msg, hdrs)\n    File \"C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py\", line 564, in error\n      result = self._call_chain(*args)\n    File \"C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py\", line 504, in _call_chain\n      result = func(*args)\n    File \"C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py\", line 756, in http_error_302\n      return self.parent.open(new, timeout=req.timeout)\n    File \"C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py\", line 532, in open\n      response = meth(req, response)\n    File \"C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py\", line 642, in http_response\n      'http', request, response, code, msg, hdrs)\n    File \"C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py\", line 570, in error\n      return self._call_chain(*args)\n    File \"C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib\\request.py\", line 504, in _call_chain\n      result = func(*args)\n    File \"C:\\Users\\alext\\AppData\\Local\\Programs\\Python\\Python36\\lib\\urllib          \\request.py\", line 650, in http_error_default\n      raise HTTPError(req.full_url, code, msg, hdrs, fp)\n      urllib.error.HTTPError: HTTP Error 404: Not Found</p>\n</blockquote>\n\n<p>I have checked the url and it is definitely correct. I have seen others with problems like this but am still unsure as to the solution. </p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "model-view-controller",
+                "asp.net-mvc-5",
+                "entity-framework-6"
+            ],
+            "owner": {
+                "reputation": 546,
+                "user_id": 1409147,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/81523947e72662d01d7e4148549a965c?s=128&d=identicon&r=PG",
+                "display_name": "Rhys Stephens",
+                "link": "https://stackoverflow.com/users/1409147/rhys-stephens"
+            },
+            "is_answered": false,
+            "view_count": 44,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1524210242,
+            "creation_date": 1524207446,
+            "last_edit_date": 1524210242,
+            "question_id": 49935801,
+            "body_markdown": "I&#39;m getting System.NullReferenceException\r\nObject reference not set to an instance of an object on instantiation of a model but only sometimes. My users are experiencing the error sometimes, but once they resubmit the exception does not occur. I can&#39;t figure out why the error is happening. \r\n\r\nHere is my error log from ELMAH:\r\n\r\n    System.NullReferenceException: Object reference not set to an instance of an object.\r\n   \r\n\r\n    at Plus.Controllers.Review.ReviewNoteController.Save(ReviewNoteViewModel viewModel) in C:\\Users\\Rhys\\Documents\\Development\\witplus-master\\Plus\\Controllers\\Review\\ReviewNoteController.cs:line 139\r\n       at lambda_method(Closure , ControllerBase , Object[] )\r\n       at System.Web.Mvc.ActionMethodDispatcher.Execute(ControllerBase controller, Object[] parameters)\r\n       at System.Web.Mvc.ReflectedActionDescriptor.Execute(ControllerContext controllerContext, IDictionary`2 parameters)\r\n       at System.Web.Mvc.ControllerActionInvoker.InvokeActionMethod(ControllerContext controllerContext, ActionDescriptor actionDescriptor, IDictionary`2 parameters)\r\n       at System.Web.Mvc.Async.AsyncControllerActionInvoker.&lt;BeginInvokeSynchronousActionMethod&gt;b__39(IAsyncResult asyncResult, ActionInvocation innerInvokeState)\r\n       at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`2.CallEndDelegate(IAsyncResult asyncResult)\r\n       at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResultBase`1.End()\r\n       at System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethod(IAsyncResult asyncResult)\r\n       at System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.&lt;InvokeActionMethodFilterAsynchronouslyRecursive&gt;b__3d()\r\n       at System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.&lt;&gt;c__DisplayClass46.&lt;InvokeActionMethodFilterAsynchronouslyRecursive&gt;b__3f()\r\n       at System.Web.Mvc.Async.AsyncControllerActionInvoker.&lt;&gt;c__DisplayClass33.&lt;BeginInvokeActionMethodWithFilters&gt;b__32(IAsyncResult asyncResult)\r\n       at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`1.CallEndDelegate(IAsyncResult asyncResult)\r\n       at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResultBase`1.End()\r\n       at System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethodWithFilters(IAsyncResult asyncResult)\r\n       at System.Web.Mvc.Async.AsyncControllerActionInvoker.&lt;&gt;c__DisplayClass21.&lt;&gt;c__DisplayClass2b.&lt;BeginInvokeAction&gt;b__1c()\r\n       at System.Web.Mvc.Async.AsyncControllerActionInvoker.&lt;&gt;c__DisplayClass21.&lt;BeginInvokeAction&gt;b__1e(IAsyncResult asyncResult)\r\n       at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`1.CallEndDelegate(IAsyncResult asyncResult)\r\n       at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResultBase`1.End()\r\n       at System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeAction(IAsyncResult asyncResult)\r\n       at System.Web.Mvc.Controller.&lt;BeginExecuteCore&gt;b__1d(IAsyncResult asyncResult, ExecuteCoreState innerState)\r\n       at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncVoid`1.CallEndDelegate(IAsyncResult asyncResult)\r\n       at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResultBase`1.End()\r\n       at System.Web.Mvc.Controller.EndExecuteCore(IAsyncResult asyncResult)\r\n       at System.Web.Mvc.Controller.&lt;BeginExecute&gt;b__15(IAsyncResult asyncResult, Controller controller)\r\n       at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncVoid`1.CallEndDelegate(IAsyncResult asyncResult)\r\n       at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResultBase`1.End()\r\n       at System.Web.Mvc.Controller.EndExecute(IAsyncResult asyncResult)\r\n       at System.Web.Mvc.Controller.System.Web.Mvc.Async.IAsyncController.EndExecute(IAsyncResult asyncResult)\r\n       at System.Web.Mvc.MvcHandler.&lt;BeginProcessRequest&gt;b__5(IAsyncResult asyncResult, ProcessRequestState innerState)\r\n       at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncVoid`1.CallEndDelegate(IAsyncResult asyncResult)\r\n       at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResultBase`1.End()\r\n       at System.Web.Mvc.MvcHandler.EndProcessRequest(IAsyncResult asyncResult)\r\n       at System.Web.Mvc.MvcHandler.System.Web.IHttpAsyncHandler.EndProcessRequest(IAsyncResult result)\r\n       at System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()\r\n       at System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean&amp; completedSynchronously)\r\n\r\nHere is my code:\r\n\r\n    // Update Note\r\n                    if (viewModel.ID != 0)\r\n                    {\r\n                        ReviewNote rn = _repository.Get&lt;ReviewNote&gt;(viewModel.ID);\r\n                        MapViewModelToModel(rn, viewModel);\r\n                        _repository.Update&lt;ReviewNote&gt;(rn);\r\n                    }\r\n                    // Create Note\r\n                    else\r\n                    {\r\n                        ReviewAnswer ra = _repository.Get&lt;ReviewAnswer&gt;(viewModel.AnswerId);\r\n                        bool newAnswer = false;\r\n                        // Check if practice or checklists\r\n                        if (viewModel.Referrer == Referrer.ReviewPractice)\r\n                        {\r\n                            // Create a new answer if it hasn&#39;t been answered yet. Could have made a bool in the GET method, but it&#39;s best to recheck to make sure no-one has answered in the mean time.\r\n                            if (hasNoAnswer_PracticeLevel(viewModel.QuestionId))\r\n                            {\r\n                                ra = new ReviewAnswer();\r\n                                ra.entityLevelAudit = true;\r\n                                ra.entityId = this.LoggedInEntity.EntityId;\r\n                                ra.questionId = viewModel.QuestionId;\r\n                                ra.lastUpdateDate = DateTime.Now;\r\n                                _repository.Save&lt;ReviewAnswer&gt;(ra);\r\n                                newAnswer = true;\r\n                                viewModel.AnswerId = ra.Id;\r\n                            }\r\n                        }\r\n                        else\r\n                        {\r\n                            // Create a new answer if it hasn&#39;t been answered yet.\r\n                            if (hasNoAnswer_Checklist(viewModel.QuestionId))\r\n                            {\r\n                                ra = new ReviewAnswer();\r\n                                ra.entityLevelAudit = false;\r\n                                ra.entityId = this.LoggedInEntity.EntityId;\r\n                                ra.questionId = viewModel.QuestionId;\r\n                                ra.userId = this.SelectedUser.UserId;\r\n                                ra.lastUpdateDate = DateTime.Now;\r\n                                _repository.Save&lt;ReviewAnswer&gt;(ra);\r\n                                newAnswer = true;\r\n                                viewModel.AnswerId = ra.Id;\r\n                            }\r\n                        }\r\n    \r\n                        ReviewNote rn = new ReviewNote();\r\n                        rn.auditID = ra.Id;\r\n                        rn.Type = (int)this.LoggedInUser.ReviewTypeId; //Audit Note type is the user audit type\r\n                        MapViewModelToModel(rn, viewModel);\r\n                        _repository.Save&lt;ReviewNote&gt;(rn);\r\n                    }\r\n\r\nThe error is occuring at line 139 which is:\r\n\r\n    ReviewNote rn = new ReviewNote(); // 6th last line.\r\n\r\nThe ReviewNote Model code is:\r\n\r\n    using Plus.Models.UserModel;\r\n    using System;\r\n    using System.ComponentModel;\r\n    using System.ComponentModel.DataAnnotations;\r\n    using System.ComponentModel.DataAnnotations.Schema;\r\n    using System.Data.Entity;\r\n    using System.Web;\r\n    using System.Web.Mvc;\r\n    \r\n    namespace Plus.Models.Review\r\n    {\r\n        public class ReviewNote : BaseModel\r\n        {\r\n            [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity), Column(&quot;AuditNoteId&quot;)]\r\n            public int ID { get; set; } // AuditNoteId\r\n    \r\n            public int auditID { get; set; }\r\n            [ForeignKey(&quot;auditID&quot;)]\r\n            public virtual ReviewAnswer Answer { get; set; }\r\n    \r\n            [StringLength(10000), AllowHtml, Column(&quot;noteText&quot;)]\r\n            public string Text { get; set; } //noteText\r\n    \r\n            [StringLength(200), Column(&quot;noteFile&quot;)]\r\n            public string URL { get; set; } //noteFile\r\n    \r\n            [DataType(DataType.DateTime), Column(&quot;lastUpdateDate&quot;)]\r\n            public DateTime LastUpdated { get; set; }//lastUpdateDate\r\n    \r\n            [Column(&quot;showNoteToAll&quot;)]\r\n            public bool VisibleToAll { get; set; } //ShowNoteToAll\r\n    \r\n            [Required]\r\n            public int NoteBy { get; set; } //NoteBy\r\n            [ForeignKey(&quot;NoteBy&quot;)]\r\n            public virtual User By { get; set; }\r\n    \r\n            [Column(&quot;noteType&quot;)]\r\n            public int Type { get; set; } //NoteType\r\n        }\r\n    }\r\n\r\nHere is the BaseModel code:\r\n\r\n    public abstract class BaseModel\r\n        {\r\n            [NotMapped, JsonIgnore]\r\n            public Alias Alias { get; set; }\r\n    \r\n            [NotMapped, JsonIgnore]\r\n            public IDictionary&lt;string, object&gt; AliasDictionary { get; set; }\r\n    \r\n            [NotMapped, JsonIgnore]\r\n            public AppUserDTO LoggedInAppUser { get; set; }\r\n    \r\n            [NotMapped, JsonIgnore]\r\n            public UserDTO LoggedInUser { get; set; }\r\n    \r\n            [NotMapped, JsonIgnore]\r\n            public EntityDTO LoggedInEntity { get; set; }\r\n    \r\n            [NotMapped, JsonIgnore]\r\n            public ResourceDTO LoggedInUsersResource { get; set; }\r\n    \r\n            [NotMapped, JsonIgnore]\r\n            public virtual ICollection&lt;MenuItemClaim&gt; MenuSystemTreeClaims { get; set; }\r\n    \r\n            [NotMapped, JsonIgnore]\r\n            public IStateProvider UserSession { get; set; }\r\n    \r\n            [NotMapped, JsonIgnore]\r\n            public UserDTO SelectedUser { get; set; }\r\n    \r\n            [NotMapped, JsonIgnore]\r\n            public TermsAndConditions TAC { get; set; }\r\n    \r\n            [NotMapped, JsonIgnore]\r\n            public string PageClaimValue { get; set; }\r\n        }\r\n\r\nI can&#39;t see why there would be an NullReferenceException on the instantiation of ReviewNote at all.\r\nIf anyone could offer a suggestion it would be most helpful because it&#39;s becoming more and more of an issue for my users.\r\n\r\nMy project is ASP.NET MVC5 with Identity 2 and Entity Framework 6.2. I&#39;m thinking the error only started after I upgraded Entity Framework 6.1 to 6.2, but it&#39;s just a guess.\r\n\r\nThanks.",
+            "link": "https://stackoverflow.com/questions/49935801/system-nullreferenceexception-object-reference-not-set-to-an-instance-of-an-obje",
+            "title": "System.NullReferenceException Object reference not set to an instance of an object. on Model instantiation - SOMETIMES",
+            "body": "<p>I'm getting System.NullReferenceException\nObject reference not set to an instance of an object on instantiation of a model but only sometimes. My users are experiencing the error sometimes, but once they resubmit the exception does not occur. I can't figure out why the error is happening. </p>\n\n<p>Here is my error log from ELMAH:</p>\n\n<pre><code>System.NullReferenceException: Object reference not set to an instance of an object.\n\n\nat Plus.Controllers.Review.ReviewNoteController.Save(ReviewNoteViewModel viewModel) in C:\\Users\\Rhys\\Documents\\Development\\witplus-master\\Plus\\Controllers\\Review\\ReviewNoteController.cs:line 139\n   at lambda_method(Closure , ControllerBase , Object[] )\n   at System.Web.Mvc.ActionMethodDispatcher.Execute(ControllerBase controller, Object[] parameters)\n   at System.Web.Mvc.ReflectedActionDescriptor.Execute(ControllerContext controllerContext, IDictionary`2 parameters)\n   at System.Web.Mvc.ControllerActionInvoker.InvokeActionMethod(ControllerContext controllerContext, ActionDescriptor actionDescriptor, IDictionary`2 parameters)\n   at System.Web.Mvc.Async.AsyncControllerActionInvoker.&lt;BeginInvokeSynchronousActionMethod&gt;b__39(IAsyncResult asyncResult, ActionInvocation innerInvokeState)\n   at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`2.CallEndDelegate(IAsyncResult asyncResult)\n   at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResultBase`1.End()\n   at System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethod(IAsyncResult asyncResult)\n   at System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.&lt;InvokeActionMethodFilterAsynchronouslyRecursive&gt;b__3d()\n   at System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.&lt;&gt;c__DisplayClass46.&lt;InvokeActionMethodFilterAsynchronouslyRecursive&gt;b__3f()\n   at System.Web.Mvc.Async.AsyncControllerActionInvoker.&lt;&gt;c__DisplayClass33.&lt;BeginInvokeActionMethodWithFilters&gt;b__32(IAsyncResult asyncResult)\n   at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`1.CallEndDelegate(IAsyncResult asyncResult)\n   at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResultBase`1.End()\n   at System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethodWithFilters(IAsyncResult asyncResult)\n   at System.Web.Mvc.Async.AsyncControllerActionInvoker.&lt;&gt;c__DisplayClass21.&lt;&gt;c__DisplayClass2b.&lt;BeginInvokeAction&gt;b__1c()\n   at System.Web.Mvc.Async.AsyncControllerActionInvoker.&lt;&gt;c__DisplayClass21.&lt;BeginInvokeAction&gt;b__1e(IAsyncResult asyncResult)\n   at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`1.CallEndDelegate(IAsyncResult asyncResult)\n   at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResultBase`1.End()\n   at System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeAction(IAsyncResult asyncResult)\n   at System.Web.Mvc.Controller.&lt;BeginExecuteCore&gt;b__1d(IAsyncResult asyncResult, ExecuteCoreState innerState)\n   at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncVoid`1.CallEndDelegate(IAsyncResult asyncResult)\n   at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResultBase`1.End()\n   at System.Web.Mvc.Controller.EndExecuteCore(IAsyncResult asyncResult)\n   at System.Web.Mvc.Controller.&lt;BeginExecute&gt;b__15(IAsyncResult asyncResult, Controller controller)\n   at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncVoid`1.CallEndDelegate(IAsyncResult asyncResult)\n   at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResultBase`1.End()\n   at System.Web.Mvc.Controller.EndExecute(IAsyncResult asyncResult)\n   at System.Web.Mvc.Controller.System.Web.Mvc.Async.IAsyncController.EndExecute(IAsyncResult asyncResult)\n   at System.Web.Mvc.MvcHandler.&lt;BeginProcessRequest&gt;b__5(IAsyncResult asyncResult, ProcessRequestState innerState)\n   at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncVoid`1.CallEndDelegate(IAsyncResult asyncResult)\n   at System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResultBase`1.End()\n   at System.Web.Mvc.MvcHandler.EndProcessRequest(IAsyncResult asyncResult)\n   at System.Web.Mvc.MvcHandler.System.Web.IHttpAsyncHandler.EndProcessRequest(IAsyncResult result)\n   at System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()\n   at System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean&amp; completedSynchronously)\n</code></pre>\n\n<p>Here is my code:</p>\n\n<pre><code>// Update Note\n                if (viewModel.ID != 0)\n                {\n                    ReviewNote rn = _repository.Get&lt;ReviewNote&gt;(viewModel.ID);\n                    MapViewModelToModel(rn, viewModel);\n                    _repository.Update&lt;ReviewNote&gt;(rn);\n                }\n                // Create Note\n                else\n                {\n                    ReviewAnswer ra = _repository.Get&lt;ReviewAnswer&gt;(viewModel.AnswerId);\n                    bool newAnswer = false;\n                    // Check if practice or checklists\n                    if (viewModel.Referrer == Referrer.ReviewPractice)\n                    {\n                        // Create a new answer if it hasn't been answered yet. Could have made a bool in the GET method, but it's best to recheck to make sure no-one has answered in the mean time.\n                        if (hasNoAnswer_PracticeLevel(viewModel.QuestionId))\n                        {\n                            ra = new ReviewAnswer();\n                            ra.entityLevelAudit = true;\n                            ra.entityId = this.LoggedInEntity.EntityId;\n                            ra.questionId = viewModel.QuestionId;\n                            ra.lastUpdateDate = DateTime.Now;\n                            _repository.Save&lt;ReviewAnswer&gt;(ra);\n                            newAnswer = true;\n                            viewModel.AnswerId = ra.Id;\n                        }\n                    }\n                    else\n                    {\n                        // Create a new answer if it hasn't been answered yet.\n                        if (hasNoAnswer_Checklist(viewModel.QuestionId))\n                        {\n                            ra = new ReviewAnswer();\n                            ra.entityLevelAudit = false;\n                            ra.entityId = this.LoggedInEntity.EntityId;\n                            ra.questionId = viewModel.QuestionId;\n                            ra.userId = this.SelectedUser.UserId;\n                            ra.lastUpdateDate = DateTime.Now;\n                            _repository.Save&lt;ReviewAnswer&gt;(ra);\n                            newAnswer = true;\n                            viewModel.AnswerId = ra.Id;\n                        }\n                    }\n\n                    ReviewNote rn = new ReviewNote();\n                    rn.auditID = ra.Id;\n                    rn.Type = (int)this.LoggedInUser.ReviewTypeId; //Audit Note type is the user audit type\n                    MapViewModelToModel(rn, viewModel);\n                    _repository.Save&lt;ReviewNote&gt;(rn);\n                }\n</code></pre>\n\n<p>The error is occuring at line 139 which is:</p>\n\n<pre><code>ReviewNote rn = new ReviewNote(); // 6th last line.\n</code></pre>\n\n<p>The ReviewNote Model code is:</p>\n\n<pre><code>using Plus.Models.UserModel;\nusing System;\nusing System.ComponentModel;\nusing System.ComponentModel.DataAnnotations;\nusing System.ComponentModel.DataAnnotations.Schema;\nusing System.Data.Entity;\nusing System.Web;\nusing System.Web.Mvc;\n\nnamespace Plus.Models.Review\n{\n    public class ReviewNote : BaseModel\n    {\n        [Key, DatabaseGenerated(DatabaseGeneratedOption.Identity), Column(\"AuditNoteId\")]\n        public int ID { get; set; } // AuditNoteId\n\n        public int auditID { get; set; }\n        [ForeignKey(\"auditID\")]\n        public virtual ReviewAnswer Answer { get; set; }\n\n        [StringLength(10000), AllowHtml, Column(\"noteText\")]\n        public string Text { get; set; } //noteText\n\n        [StringLength(200), Column(\"noteFile\")]\n        public string URL { get; set; } //noteFile\n\n        [DataType(DataType.DateTime), Column(\"lastUpdateDate\")]\n        public DateTime LastUpdated { get; set; }//lastUpdateDate\n\n        [Column(\"showNoteToAll\")]\n        public bool VisibleToAll { get; set; } //ShowNoteToAll\n\n        [Required]\n        public int NoteBy { get; set; } //NoteBy\n        [ForeignKey(\"NoteBy\")]\n        public virtual User By { get; set; }\n\n        [Column(\"noteType\")]\n        public int Type { get; set; } //NoteType\n    }\n}\n</code></pre>\n\n<p>Here is the BaseModel code:</p>\n\n<pre><code>public abstract class BaseModel\n    {\n        [NotMapped, JsonIgnore]\n        public Alias Alias { get; set; }\n\n        [NotMapped, JsonIgnore]\n        public IDictionary&lt;string, object&gt; AliasDictionary { get; set; }\n\n        [NotMapped, JsonIgnore]\n        public AppUserDTO LoggedInAppUser { get; set; }\n\n        [NotMapped, JsonIgnore]\n        public UserDTO LoggedInUser { get; set; }\n\n        [NotMapped, JsonIgnore]\n        public EntityDTO LoggedInEntity { get; set; }\n\n        [NotMapped, JsonIgnore]\n        public ResourceDTO LoggedInUsersResource { get; set; }\n\n        [NotMapped, JsonIgnore]\n        public virtual ICollection&lt;MenuItemClaim&gt; MenuSystemTreeClaims { get; set; }\n\n        [NotMapped, JsonIgnore]\n        public IStateProvider UserSession { get; set; }\n\n        [NotMapped, JsonIgnore]\n        public UserDTO SelectedUser { get; set; }\n\n        [NotMapped, JsonIgnore]\n        public TermsAndConditions TAC { get; set; }\n\n        [NotMapped, JsonIgnore]\n        public string PageClaimValue { get; set; }\n    }\n</code></pre>\n\n<p>I can't see why there would be an NullReferenceException on the instantiation of ReviewNote at all.\nIf anyone could offer a suggestion it would be most helpful because it's becoming more and more of an issue for my users.</p>\n\n<p>My project is ASP.NET MVC5 with Identity 2 and Entity Framework 6.2. I'm thinking the error only started after I upgraded Entity Framework 6.1 to 6.2, but it's just a guess.</p>\n\n<p>Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "selenium",
+                "selenium-webdriver",
+                "web-scraping"
+            ],
+            "owner": {
+                "reputation": 70,
+                "user_id": 9573605,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Pabasara Ranathunga",
+                "link": "https://stackoverflow.com/users/9573605/pabasara-ranathunga"
+            },
+            "is_answered": true,
+            "view_count": 39,
+            "accepted_answer_id": 49936573,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1524210242,
+            "creation_date": 1524207276,
+            "last_edit_date": 1524209944,
+            "question_id": 49935754,
+            "body_markdown": "I am trying to scrape a website and get all the `div` elements in the HTML. \r\nThe webpage I am trying to access is a page containing job opportunities where each job is inside a separate `div`.\r\nI am trying to get them all so that I can run them through a `for` loop and extract their data for each separately.\r\n\r\nI haven&#39;t coded it yet.\r\n\r\nIs there a specific method or way to get them? **And also I only want to extract the `div`s that contain jobs**.\r\n\r\nOuter HTML\r\n\r\n        &lt;div class=&quot;row result clickcard&quot; id=&quot;p_1d1829a543b1f3a7&quot; data-jk=&quot;1d1829a543b1f3a7&quot; data-tn-component=&quot;organicJob&quot; data-tu=&quot;&quot;&gt;\r\n    &lt;h2 id=&quot;jl_1d1829a543b1f3a7&quot; class=&quot;jobtitle&quot;&gt;\r\n        &lt;a href=&quot;/rc/clk?jk=1d1829a543b1f3a7&amp;amp;fccid=95ea1992d038e9af&amp;amp;vjs=3&quot; target=&quot;_blank&quot; rel=&quot;noopener nofollow&quot; onmousedown=&quot;return rclk(this,jobmap[1],0);&quot; onclick=&quot;setRefineByCookie([]); return rclk(this,jobmap[1],true,0);&quot; title=&quot;Planner II&quot; class=&quot;turnstileLink&quot; data-tn-element=&quot;jobTitle&quot;&gt;Planner II&lt;/a&gt;\r\n        - &lt;span class=&quot;new&quot;&gt;new&lt;/span&gt;&lt;/h2&gt;\r\n    &lt;span class=&quot;company&quot;&gt;\r\n        Vantage Utility Services&lt;/span&gt;\r\n    \r\n     - &lt;span class=&quot;location&quot;&gt;Upland, CA&lt;/span&gt;\r\n        &lt;table cellspacing=&quot;0&quot; cellpadding=&quot;0&quot; border=&quot;0&quot;&gt;\r\n    &lt;tbody&gt;&lt;tr&gt;\r\n    &lt;td class=&quot;snip&quot;&gt;\r\n    &lt;div class=&quot;&quot;&gt;\r\n        &lt;span class=&quot;summary&quot;&gt;\r\n                Transportation or giving away of up to 28.5 grams of marijuana, other than concentrated &lt;b&gt;cannabis&lt;/b&gt;, or the offering to transport or give away up to 28.5 grams of...&lt;/span&gt;\r\n        &lt;/div&gt;\r\n    \r\n    \r\n    &lt;div class=&quot;result-link-bar-container&quot;&gt;\r\n        &lt;div class=&quot;result-link-bar&quot;&gt;&lt;span class=&quot;date&quot;&gt;4 hours ago&lt;/span&gt; &lt;span id=&quot;tt_set_1&quot; class=&quot;tt_set&quot;&gt;  -  &lt;a id=&quot;sj_1d1829a543b1f3a7&quot; href=&quot;#&quot; class=&quot;sl resultLink save-job-link &quot; onclick=&quot;changeJobState(&#39;1d1829a543b1f3a7&#39;, &#39;save&#39;, &#39;linkbar&#39;, false, &#39;&#39;); return false;&quot; title=&quot;Save this job to my.indeed&quot;&gt;save job&lt;/a&gt; - &lt;a href=&quot;#&quot; id=&quot;tog_1&quot; class=&quot;sl resultLink more-link &quot; onclick=&quot;toggleMoreLinks(&#39;1d1829a543b1f3a7&#39;); return false;&quot;&gt;more...&lt;/a&gt;&lt;/span&gt;&lt;div id=&quot;editsaved2_1d1829a543b1f3a7&quot; class=&quot;edit_note_content&quot; style=&quot;display:none;&quot;&gt;&lt;/div&gt;&lt;script&gt;if (!window[&#39;result_1d1829a543b1f3a7&#39;]) {window[&#39;result_1d1829a543b1f3a7&#39;] = {};}window[&#39;result_1d1829a543b1f3a7&#39;][&#39;showSource&#39;] = false; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;source&#39;] = &quot;Vantage Utility Services&quot;; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;loggedIn&#39;] = false; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;showMyJobsLinks&#39;] = false;window[&#39;result_1d1829a543b1f3a7&#39;][&#39;undoAction&#39;] = &quot;unsave&quot;;window[&#39;result_1d1829a543b1f3a7&#39;][&#39;relativeJobAge&#39;] = &quot;4 hours ago&quot;;window[&#39;result_1d1829a543b1f3a7&#39;][&#39;jobKey&#39;] = &quot;1d1829a543b1f3a7&quot;; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;myIndeedAvailable&#39;] = true; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;showMoreActionsLink&#39;] = window[&#39;result_1d1829a543b1f3a7&#39;][&#39;showMoreActionsLink&#39;] || true; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;resultNumber&#39;] = 1; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;jobStateChangedToSaved&#39;] = false; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;searchState&#39;] = &quot;q=Cannabis&amp;amp;fromage=last&quot;; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;basicPermaLink&#39;] = &quot;https://www.indeed.com&quot;; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;saveJobFailed&#39;] = false; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;removeJobFailed&#39;] = false; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;requestPending&#39;] = false; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;notesEnabled&#39;] = true; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;currentPage&#39;] = &quot;serp&quot;; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;sponsored&#39;] = false;window[&#39;result_1d1829a543b1f3a7&#39;][&#39;reportJobButtonEnabled&#39;] = false; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;showMyJobsHired&#39;] = false; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;showSaveForSponsored&#39;] = false; window[&#39;result_1d1829a543b1f3a7&#39;][&#39;showJobAge&#39;] = true;&lt;/script&gt;&lt;/div&gt;&lt;/div&gt;\r\n    \r\n    &lt;div class=&quot;tab-container&quot;&gt;\r\n        &lt;div id=&quot;tt_display_1&quot; class=&quot;more-links-container result-tab&quot; style=&quot;display:none;&quot;&gt;&lt;a class=&quot;close-link closeLink&quot; title=&quot;Close&quot; href=&quot;#&quot; onclick=&quot;toggleMoreLinks(&#39;1d1829a543b1f3a7&#39;); return false;&quot;&gt;&lt;/a&gt;&lt;div id=&quot;more_1&quot; class=&quot;more_actions&quot;&gt;&lt;ul&gt;&lt;li&gt;&lt;span class=&quot;mat&quot;&gt;View all &lt;a href=&quot;/q-Vantage-Utility-Services-l-Upland,-CA-jobs.html&quot; rel=&quot;nofollow&quot;&gt;Vantage Utility Services jobs in Upland, CA&lt;/a&gt; - &lt;a href=&quot;/l-Upland,-CA-jobs.html&quot;&gt;Upland jobs&lt;/a&gt;&lt;/span&gt;&lt;/li&gt;&lt;li&gt;&lt;span class=&quot;mat&quot;&gt;Salary Search: &lt;a href=&quot;/salaries/Planner-Salaries,-Upland-CA&quot; onmousedown=&quot;this.href = appendParamsOnce(this.href, &#39;?campaignid=serp-more&amp;amp;fromjk=1d1829a543b1f3a7&amp;amp;from=serp-more-nofollow&#39;);&quot; rel=&quot;&amp;quot;nofollow&amp;quot;&quot;&gt;Planner salaries in Upland, CA&lt;/a&gt;&lt;/span&gt;&lt;/li&gt;&lt;li&gt;&lt;span class=&quot;mat&quot;&gt;Learn more about working at &lt;a href=&quot;/cmp/Vantage-Utility-Services&quot; onmousedown=&quot;this.href = appendParamsOnce(this.href, &#39;?fromjk=1d1829a543b1f3a7&amp;amp;from=serp-more&amp;amp;campaignid=serp-more&amp;amp;jcid=424bbfe9ea0cfaab&#39;);&quot;&gt;Vantage Utility Services&lt;/a&gt;&lt;/span&gt;&lt;/li&gt;&lt;li&gt;&lt;span class=&quot;mat&quot;&gt;Related forums: &lt;a href=&quot;/forum/loc/Upland-California.html&quot;&gt;Upland, California&lt;/a&gt; - &lt;a href=&quot;/forum/job/Planner.html&quot;&gt;Planner&lt;/a&gt; - &lt;a href=&quot;/forum/cmp/Vantage-Utility-Services.html&quot;&gt;VANTAGE UTILITY SERVICES&lt;/a&gt;&lt;/span&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;dya-container result-tab&quot;&gt;&lt;/div&gt;\r\n        &lt;div class=&quot;tellafriend-container result-tab email_job_content&quot;&gt;&lt;/div&gt;\r\n        &lt;div class=&quot;sign-in-container result-tab&quot;&gt;&lt;/div&gt;\r\n        &lt;div class=&quot;notes-container result-tab&quot;&gt;&lt;/div&gt;\r\n    &lt;/div&gt;\r\n    \r\n    &lt;/td&gt;\r\n    &lt;/tr&gt;\r\n    &lt;/tbody&gt;&lt;/table&gt;\r\n    &lt;/div&gt;",
+            "link": "https://stackoverflow.com/questions/49935754/python-selenium-get-all-the-divs",
+            "title": "python selenium get all the divs",
+            "body": "<p>I am trying to scrape a website and get all the <code>div</code> elements in the HTML. \nThe webpage I am trying to access is a page containing job opportunities where each job is inside a separate <code>div</code>.\nI am trying to get them all so that I can run them through a <code>for</code> loop and extract their data for each separately.</p>\n\n<p>I haven't coded it yet.</p>\n\n<p>Is there a specific method or way to get them? <strong>And also I only want to extract the <code>div</code>s that contain jobs</strong>.</p>\n\n<p>Outer HTML</p>\n\n<pre><code>    &lt;div class=\"row result clickcard\" id=\"p_1d1829a543b1f3a7\" data-jk=\"1d1829a543b1f3a7\" data-tn-component=\"organicJob\" data-tu=\"\"&gt;\n&lt;h2 id=\"jl_1d1829a543b1f3a7\" class=\"jobtitle\"&gt;\n    &lt;a href=\"/rc/clk?jk=1d1829a543b1f3a7&amp;amp;fccid=95ea1992d038e9af&amp;amp;vjs=3\" target=\"_blank\" rel=\"noopener nofollow\" onmousedown=\"return rclk(this,jobmap[1],0);\" onclick=\"setRefineByCookie([]); return rclk(this,jobmap[1],true,0);\" title=\"Planner II\" class=\"turnstileLink\" data-tn-element=\"jobTitle\"&gt;Planner II&lt;/a&gt;\n    - &lt;span class=\"new\"&gt;new&lt;/span&gt;&lt;/h2&gt;\n&lt;span class=\"company\"&gt;\n    Vantage Utility Services&lt;/span&gt;\n\n - &lt;span class=\"location\"&gt;Upland, CA&lt;/span&gt;\n    &lt;table cellspacing=\"0\" cellpadding=\"0\" border=\"0\"&gt;\n&lt;tbody&gt;&lt;tr&gt;\n&lt;td class=\"snip\"&gt;\n&lt;div class=\"\"&gt;\n    &lt;span class=\"summary\"&gt;\n            Transportation or giving away of up to 28.5 grams of marijuana, other than concentrated &lt;b&gt;cannabis&lt;/b&gt;, or the offering to transport or give away up to 28.5 grams of...&lt;/span&gt;\n    &lt;/div&gt;\n\n\n&lt;div class=\"result-link-bar-container\"&gt;\n    &lt;div class=\"result-link-bar\"&gt;&lt;span class=\"date\"&gt;4 hours ago&lt;/span&gt; &lt;span id=\"tt_set_1\" class=\"tt_set\"&gt;  -  &lt;a id=\"sj_1d1829a543b1f3a7\" href=\"#\" class=\"sl resultLink save-job-link \" onclick=\"changeJobState('1d1829a543b1f3a7', 'save', 'linkbar', false, ''); return false;\" title=\"Save this job to my.indeed\"&gt;save job&lt;/a&gt; - &lt;a href=\"#\" id=\"tog_1\" class=\"sl resultLink more-link \" onclick=\"toggleMoreLinks('1d1829a543b1f3a7'); return false;\"&gt;more...&lt;/a&gt;&lt;/span&gt;&lt;div id=\"editsaved2_1d1829a543b1f3a7\" class=\"edit_note_content\" style=\"display:none;\"&gt;&lt;/div&gt;&lt;script&gt;if (!window['result_1d1829a543b1f3a7']) {window['result_1d1829a543b1f3a7'] = {};}window['result_1d1829a543b1f3a7']['showSource'] = false; window['result_1d1829a543b1f3a7']['source'] = \"Vantage Utility Services\"; window['result_1d1829a543b1f3a7']['loggedIn'] = false; window['result_1d1829a543b1f3a7']['showMyJobsLinks'] = false;window['result_1d1829a543b1f3a7']['undoAction'] = \"unsave\";window['result_1d1829a543b1f3a7']['relativeJobAge'] = \"4 hours ago\";window['result_1d1829a543b1f3a7']['jobKey'] = \"1d1829a543b1f3a7\"; window['result_1d1829a543b1f3a7']['myIndeedAvailable'] = true; window['result_1d1829a543b1f3a7']['showMoreActionsLink'] = window['result_1d1829a543b1f3a7']['showMoreActionsLink'] || true; window['result_1d1829a543b1f3a7']['resultNumber'] = 1; window['result_1d1829a543b1f3a7']['jobStateChangedToSaved'] = false; window['result_1d1829a543b1f3a7']['searchState'] = \"q=Cannabis&amp;amp;fromage=last\"; window['result_1d1829a543b1f3a7']['basicPermaLink'] = \"https://www.indeed.com\"; window['result_1d1829a543b1f3a7']['saveJobFailed'] = false; window['result_1d1829a543b1f3a7']['removeJobFailed'] = false; window['result_1d1829a543b1f3a7']['requestPending'] = false; window['result_1d1829a543b1f3a7']['notesEnabled'] = true; window['result_1d1829a543b1f3a7']['currentPage'] = \"serp\"; window['result_1d1829a543b1f3a7']['sponsored'] = false;window['result_1d1829a543b1f3a7']['reportJobButtonEnabled'] = false; window['result_1d1829a543b1f3a7']['showMyJobsHired'] = false; window['result_1d1829a543b1f3a7']['showSaveForSponsored'] = false; window['result_1d1829a543b1f3a7']['showJobAge'] = true;&lt;/script&gt;&lt;/div&gt;&lt;/div&gt;\n\n&lt;div class=\"tab-container\"&gt;\n    &lt;div id=\"tt_display_1\" class=\"more-links-container result-tab\" style=\"display:none;\"&gt;&lt;a class=\"close-link closeLink\" title=\"Close\" href=\"#\" onclick=\"toggleMoreLinks('1d1829a543b1f3a7'); return false;\"&gt;&lt;/a&gt;&lt;div id=\"more_1\" class=\"more_actions\"&gt;&lt;ul&gt;&lt;li&gt;&lt;span class=\"mat\"&gt;View all &lt;a href=\"/q-Vantage-Utility-Services-l-Upland,-CA-jobs.html\" rel=\"nofollow\"&gt;Vantage Utility Services jobs in Upland, CA&lt;/a&gt; - &lt;a href=\"/l-Upland,-CA-jobs.html\"&gt;Upland jobs&lt;/a&gt;&lt;/span&gt;&lt;/li&gt;&lt;li&gt;&lt;span class=\"mat\"&gt;Salary Search: &lt;a href=\"/salaries/Planner-Salaries,-Upland-CA\" onmousedown=\"this.href = appendParamsOnce(this.href, '?campaignid=serp-more&amp;amp;fromjk=1d1829a543b1f3a7&amp;amp;from=serp-more-nofollow');\" rel=\"&amp;quot;nofollow&amp;quot;\"&gt;Planner salaries in Upland, CA&lt;/a&gt;&lt;/span&gt;&lt;/li&gt;&lt;li&gt;&lt;span class=\"mat\"&gt;Learn more about working at &lt;a href=\"/cmp/Vantage-Utility-Services\" onmousedown=\"this.href = appendParamsOnce(this.href, '?fromjk=1d1829a543b1f3a7&amp;amp;from=serp-more&amp;amp;campaignid=serp-more&amp;amp;jcid=424bbfe9ea0cfaab');\"&gt;Vantage Utility Services&lt;/a&gt;&lt;/span&gt;&lt;/li&gt;&lt;li&gt;&lt;span class=\"mat\"&gt;Related forums: &lt;a href=\"/forum/loc/Upland-California.html\"&gt;Upland, California&lt;/a&gt; - &lt;a href=\"/forum/job/Planner.html\"&gt;Planner&lt;/a&gt; - &lt;a href=\"/forum/cmp/Vantage-Utility-Services.html\"&gt;VANTAGE UTILITY SERVICES&lt;/a&gt;&lt;/span&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=\"dya-container result-tab\"&gt;&lt;/div&gt;\n    &lt;div class=\"tellafriend-container result-tab email_job_content\"&gt;&lt;/div&gt;\n    &lt;div class=\"sign-in-container result-tab\"&gt;&lt;/div&gt;\n    &lt;div class=\"notes-container result-tab\"&gt;&lt;/div&gt;\n&lt;/div&gt;\n\n&lt;/td&gt;\n&lt;/tr&gt;\n&lt;/tbody&gt;&lt;/table&gt;\n&lt;/div&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "excel",
+                "vba",
+                "excel-vba"
+            ],
+            "owner": {
+                "reputation": 31,
+                "user_id": 4088081,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://www.gravatar.com/avatar/d3d37ba26ebcd072d5ce0e85ffbfa42e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "BND",
+                "link": "https://stackoverflow.com/users/4088081/bnd"
+            },
+            "is_answered": true,
+            "view_count": 52,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524210239,
+            "creation_date": 1524140893,
+            "last_edit_date": 1524147303,
+            "question_id": 49921139,
+            "body_markdown": "I&#39;m trying to make an autosave function in excel as the current microsoft one does not word for local file.\r\nHere is the VB I have come up with. But still only macro is running, not giving windows any control. The DoEvents seems not to work.\r\n\r\n    Sub Auto_save()   \r\n        Do While 1 &lt; 2    \r\n            ActiveWorkbook.Save\r\n            Application.Wait (Now + TimeValue(&quot;0:00:05&quot;))\r\n            DoEvents\r\n        Loop\r\n\r\n    End Sub\r\n\r\nI&#39;m using Exel 365 Pro Plus\r\nIt would really nice if someone can help me out. \r\nThanks a lot!",
+            "link": "https://stackoverflow.com/questions/49921139/doevents-not-working-in-excel",
+            "title": "DoEvents not working in Excel",
+            "body": "<p>I'm trying to make an autosave function in excel as the current microsoft one does not word for local file.\nHere is the VB I have come up with. But still only macro is running, not giving windows any control. The DoEvents seems not to work.</p>\n\n<pre><code>Sub Auto_save()   \n    Do While 1 &lt; 2    \n        ActiveWorkbook.Save\n        Application.Wait (Now + TimeValue(\"0:00:05\"))\n        DoEvents\n    Loop\n\nEnd Sub\n</code></pre>\n\n<p>I'm using Exel 365 Pro Plus\nIt would really nice if someone can help me out. \nThanks a lot!</p>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "floating-point",
+                "nan"
+            ],
+            "owner": {
+                "reputation": 38,
+                "user_id": 7781195,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/3d55b33a7112a96c18d9de7c47a4e05d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "pajczur",
+                "link": "https://stackoverflow.com/users/7781195/pajczur"
+            },
+            "is_answered": true,
+            "view_count": 43,
+            "closed_date": 1524210160,
+            "accepted_answer_id": 49936572,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524210239,
+            "creation_date": 1524210010,
+            "question_id": 49936520,
+            "body_markdown": "of course I know I should write better code which just not create NaN values.\r\nBut is there any casual method to avoid it. I mean something like:\r\n\r\n    if (!(floatNumber == NaN))\r\n       // do some stupid function\r\n    else\r\n    return;\r\n\r\nBut it doesn&#39;t work for me. I also tried `floatNumber==null`, but also no result.\r\nCould you please help me?",
+            "link": "https://stackoverflow.com/questions/49936520/how-to-avoid-nan-in-c",
+            "closed_reason": "duplicate",
+            "title": "How to avoid NaN in C++",
+            "body": "<p>of course I know I should write better code which just not create NaN values.\nBut is there any casual method to avoid it. I mean something like:</p>\n\n<pre><code>if (!(floatNumber == NaN))\n   // do some stupid function\nelse\nreturn;\n</code></pre>\n\n<p>But it doesn't work for me. I also tried <code>floatNumber==null</code>, but also no result.\nCould you please help me?</p>\n"
+        },
+        {
+            "tags": [
+                "robotframework",
+                "suds"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 5231477,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/4cda7779dc83453717bf3fead516f739?s=128&d=identicon&r=PG&f=1",
+                "display_name": "mac",
+                "link": "https://stackoverflow.com/users/5231477/mac"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524210236,
+            "creation_date": 1524193996,
+            "last_edit_date": 1524210236,
+            "question_id": 49933356,
+            "body_markdown": "I am trying to use \r\nRobotframework-Sudslibrary for my soap requests. After a lot of issues was able to successfully install Robotframework-sudslibrary  &amp; suds-jurko . I am using Python36 . When I try to run this following code ,\r\n\r\n    *** Settings ***\r\n    Library           XML\r\n    Library           Collections\r\n    Library           SudsLibrary\r\n    \r\n    *** Test Cases ***\r\n\r\n    Secured WSDL\r\n\r\n    create soap client         https://testorg.com/test.asmx?wsdl\r\n\r\n\r\nI am getting the following error ,\r\n\r\n&gt; [ ERROR ] Error in file &#39;robot-scripts\\Tests\\soaptest.robot&#39;:   \r\nInitializing test library &#39;SudsLibrary&#39; with no arguments failed:   \r\nNameError: name &#39;urllib2&#39; is not defined  \r\nTraceback (most recent call last):  \r\n  File &quot;C:\\ProgramData\\Anaconda3\\Lib\\site-packages\\robotframework_sudslibrary-0.9.dev0-py3.6.egg\\SudsLibrary\\__init__.py&quot;, line 184, in __init__\r\n    raise e  \r\n  File &quot;C:\\ProgramData\\Anaconda3\\Lib\\site-packages\\robotframework_sudslibrary-0.9.dev0-py3.6.egg\\SudsLibrary\\__init__.py&quot;, line 179, in __init__  \r\n    part = urllib2.__version__.split(&#39;.&#39;, 1)\r\n\r\n\r\n &gt; No keyword with name &#39;create soap client&#39; found.\r\n\r\n\r\n\r\nAny help/Suggestions will be really helpful.\r\n",
+            "link": "https://stackoverflow.com/questions/49933356/robotframework-sudslibrbary-no-keyword-with-the-name-create-soap-client-fou",
+            "title": "Robotframework-SudsLibrbary : No keyword with the name &quot;Create Soap Client &quot; found",
+            "body": "<p>I am trying to use \nRobotframework-Sudslibrary for my soap requests. After a lot of issues was able to successfully install Robotframework-sudslibrary  &amp; suds-jurko . I am using Python36 . When I try to run this following code ,</p>\n\n<pre><code>*** Settings ***\nLibrary           XML\nLibrary           Collections\nLibrary           SudsLibrary\n\n*** Test Cases ***\n\nSecured WSDL\n\ncreate soap client         https://testorg.com/test.asmx?wsdl\n</code></pre>\n\n<p>I am getting the following error ,</p>\n\n<blockquote>\n  <p>[ ERROR ] Error in file 'robot-scripts\\Tests\\soaptest.robot':<br>\n  Initializing test library 'SudsLibrary' with no arguments failed:<br>\n  NameError: name 'urllib2' is not defined<br>\n  Traceback (most recent call last):<br>\n    File \"C:\\ProgramData\\Anaconda3\\Lib\\site-packages\\robotframework_sudslibrary-0.9.dev0-py3.6.egg\\SudsLibrary__init__.py\", line 184, in <strong>init</strong>\n      raise e<br>\n    File \"C:\\ProgramData\\Anaconda3\\Lib\\site-packages\\robotframework_sudslibrary-0.9.dev0-py3.6.egg\\SudsLibrary__init__.py\", line 179, in <strong>init</strong><br>\n      part = urllib2.<strong>version</strong>.split('.', 1)</p>\n  \n  <p>No keyword with name 'create soap client' found.</p>\n</blockquote>\n\n<p>Any help/Suggestions will be really helpful.</p>\n"
+        },
+        {
+            "tags": [
+                "r"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 4387257,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2c753f4c0fd41d18ec6e29fcd5893365?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Jasher",
+                "link": "https://stackoverflow.com/users/4387257/jasher"
+            },
+            "is_answered": false,
+            "view_count": 31,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524210231,
+            "creation_date": 1524163953,
+            "last_edit_date": 1524164394,
+            "question_id": 49928250,
+            "body_markdown": "I have a dataframe but can&#39;t figure out how to group the duplicate columns based on their values.  How do I summarize these data so that I can identify the duplicate columns as 3 distinct groups as follows:\r\nA &amp; C,\r\nB &amp; D,\r\nE,\r\n \r\n    A=c(1,0,1)\r\n    B=c(1,0,0)\r\n    C=c(1,0,1)\r\n    D=c(1,0,0)\r\n    E=c(0,0,0)\r\n     \r\n    testframe = data.frame(A=A,B=B,C=C,D=D,E=E)\r\n    \r\n    dupsremoved&lt;-testframe[!duplicated(lapply(testframe, summary))]",
+            "link": "https://stackoverflow.com/questions/49928250/r-identify-duplicate-columns-as-groups",
+            "title": "R Identify Duplicate Columns as Groups",
+            "body": "<p>I have a dataframe but can't figure out how to group the duplicate columns based on their values.  How do I summarize these data so that I can identify the duplicate columns as 3 distinct groups as follows:\nA &amp; C,\nB &amp; D,\nE,</p>\n\n<pre><code>A=c(1,0,1)\nB=c(1,0,0)\nC=c(1,0,1)\nD=c(1,0,0)\nE=c(0,0,0)\n\ntestframe = data.frame(A=A,B=B,C=C,D=D,E=E)\n\ndupsremoved&lt;-testframe[!duplicated(lapply(testframe, summary))]\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net",
+                "iot",
+                "modem"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8147851,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/7ffe0a441955b8ebf98a8d1e4c410f5b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Vijay Rathod",
+                "link": "https://stackoverflow.com/users/8147851/vijay-rathod"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "closed_date": 1524212261,
+            "answer_count": 0,
+            "score": -4,
+            "last_activity_date": 1524210230,
+            "creation_date": 1524210230,
+            "question_id": 49936571,
+            "body_markdown": "we are developing an application which needs a Telit g24 modem.\r\n I am unable to connect to Telit g24 modem using C#. If possible please provide me the C# code to connect to Telit g24 modem.",
+            "link": "https://stackoverflow.com/questions/49936571/how-to-connect-to-telit-g24-modem-using-c",
+            "closed_reason": "too broad",
+            "title": "How to connect to Telit g24 modem using C#?",
+            "body": "<p>we are developing an application which needs a Telit g24 modem.\n I am unable to connect to Telit g24 modem using C#. If possible please provide me the C# code to connect to Telit g24 modem.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "reactjs",
+                "design-patterns",
+                "react-proptypes"
+            ],
+            "owner": {
+                "reputation": 1914,
+                "user_id": 2646226,
+                "user_type": "registered",
+                "accept_rate": 62,
+                "profile_image": "https://i.stack.imgur.com/Uhh7L.png?s=128&g=1",
+                "display_name": "Ezeewei",
+                "link": "https://stackoverflow.com/users/2646226/ezeewei"
+            },
+            "is_answered": false,
+            "view_count": 42,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524210229,
+            "creation_date": 1520350328,
+            "last_edit_date": 1524210229,
+            "question_id": 49134504,
+            "body_markdown": "I constantly struggle to understand, when exactly should I be using `.isRequred` vs `.defaultProps={...}`\r\nMy thought is that, I think I should never ever really need to use isRequired, because it seems manually creating a bug that can break in the application because create isRequired automatically remove the need to add a corresponding default prop, that makes me feel uncomfortable just because it means I won&#39;t be able to expect a fail-safe value.\r\n\r\nIt definitely sounds an opinion based question, but I look for a better opinion that makes more sense if there is one.",
+            "link": "https://stackoverflow.com/questions/49134504/what-are-the-scenarios-one-should-use-isrequired-for-proptype-vs-defaultprops-in",
+            "title": "What are the scenarios one should use isRequired for PropType vs defaultProps in React Application",
+            "body": "<p>I constantly struggle to understand, when exactly should I be using <code>.isRequred</code> vs <code>.defaultProps={...}</code>\nMy thought is that, I think I should never ever really need to use isRequired, because it seems manually creating a bug that can break in the application because create isRequired automatically remove the need to add a corresponding default prop, that makes me feel uncomfortable just because it means I won't be able to expect a fail-safe value.</p>\n\n<p>It definitely sounds an opinion based question, but I look for a better opinion that makes more sense if there is one.</p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "ggplot2"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 7183254,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/7beed2c372a8c4a954962e9fe75727fb?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Kamu",
+                "link": "https://stackoverflow.com/users/7183254/kamu"
+            },
+            "is_answered": true,
+            "view_count": 175,
+            "accepted_answer_id": 46895576,
+            "answer_count": 1,
+            "score": -3,
+            "last_activity_date": 1524210227,
+            "creation_date": 1508777492,
+            "last_edit_date": 1524210227,
+            "question_id": 46894576,
+            "body_markdown": "Given a 2x2 contingency table with the counted numbers in cells, how can I get a grouped bar plot with stacked percentages?\r\n\r\nHere is some example code:\r\n\r\n    species=c(rep(&quot;sorgho&quot; , 1) , rep(&quot;poacee&quot; , 1)  )\r\n    condition=rep(c(&quot;normal&quot; , &quot;stress&quot;) ,1)\r\n    value=abs(rnorm(4 , 0 , 4))\r\n    data2=data.frame(species,condition,value)\r\n    \r\n    library(ggplot2)\r\n\r\n    # Stacked Percent\r\n    ggplot(data2, aes(fill=condition, y=value, x=species)) + \r\n      geom_bar( stat=&quot;identity&quot;, position=&quot;fill&quot;)\r\n\r\nBut my data looks like:\r\n\r\n      \r\n            A B\r\n    Group C 4 5\r\n          D 1 2\r\n\r\nThe plot should tell me: What percentage of A is in Group C, and what percentage of B is in Group D?\r\n\r\nThanks.",
+            "link": "https://stackoverflow.com/questions/46894576/ggplot-grouped-barplot-for-2x2-table",
+            "title": "ggplot - grouped barplot for 2x2 table",
+            "body": "<p>Given a 2x2 contingency table with the counted numbers in cells, how can I get a grouped bar plot with stacked percentages?</p>\n\n<p>Here is some example code:</p>\n\n<pre><code>species=c(rep(\"sorgho\" , 1) , rep(\"poacee\" , 1)  )\ncondition=rep(c(\"normal\" , \"stress\") ,1)\nvalue=abs(rnorm(4 , 0 , 4))\ndata2=data.frame(species,condition,value)\n\nlibrary(ggplot2)\n\n# Stacked Percent\nggplot(data2, aes(fill=condition, y=value, x=species)) + \n  geom_bar( stat=\"identity\", position=\"fill\")\n</code></pre>\n\n<p>But my data looks like:</p>\n\n<pre><code>        A B\nGroup C 4 5\n      D 1 2\n</code></pre>\n\n<p>The plot should tell me: What percentage of A is in Group C, and what percentage of B is in Group D?</p>\n\n<p>Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "postgresql",
+                "knex.js"
+            ],
+            "owner": {
+                "reputation": 409,
+                "user_id": 3833246,
+                "user_type": "registered",
+                "accept_rate": 59,
+                "profile_image": "https://www.gravatar.com/avatar/b82e855984c7e4fb67b134ec5426e5b4?s=128&d=identicon&r=PG",
+                "display_name": "plmok61",
+                "link": "https://stackoverflow.com/users/3833246/plmok61"
+            },
+            "is_answered": true,
+            "view_count": 222,
+            "accepted_answer_id": 42260467,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1524210218,
+            "creation_date": 1487108835,
+            "last_edit_date": 1487115250,
+            "question_id": 42236852,
+            "body_markdown": "I am trying to alter my Postgres database using Knex migrations but they are not working.\r\n\r\nMy knexfile.js looks like this:\r\n\r\n    module.exports = {\r\n      development: {\r\n        client: &#39;pg&#39;,\r\n        connection: {\r\n          database: &#39;cms_dev&#39;,\r\n        },\r\n      },\r\n    };\r\n\r\nThen I have a `db.js` that looks like this:\r\n\r\n    const config = require(&#39;../knexfile.js&#39;);\r\n    \r\n    const env = &#39;development&#39;;\r\n    const knex = require(&#39;knex&#39;)(config[env]);\r\n    \r\n    module.exports = knex;\r\n    \r\n    knex.migrate.latest([config]);\r\n\r\nIf I am starting with a fresh database my first migration works but if I try to update the database with a new (2nd) migration it does nothing.\r\n\r\nWhen I try running `knex migrate:latest --env development` it says:\r\n\r\n    Using environment: development\r\n    Already up to date\r\n\r\n*****EDIT*****\r\n\r\nI ended up generating another new (3rd) migration and pasted in the exact same code from the previous one that was being ignored and it worked. No clue why the 2nd migration silently failed and the 3rd one worked.",
+            "link": "https://stackoverflow.com/questions/42236852/knex-migrations-with-postgres-always-say-already-up-to-date",
+            "title": "Knex migrations with Postgres always say &#39;Already up to date&#39;",
+            "body": "<p>I am trying to alter my Postgres database using Knex migrations but they are not working.</p>\n\n<p>My knexfile.js looks like this:</p>\n\n<pre><code>module.exports = {\n  development: {\n    client: 'pg',\n    connection: {\n      database: 'cms_dev',\n    },\n  },\n};\n</code></pre>\n\n<p>Then I have a <code>db.js</code> that looks like this:</p>\n\n<pre><code>const config = require('../knexfile.js');\n\nconst env = 'development';\nconst knex = require('knex')(config[env]);\n\nmodule.exports = knex;\n\nknex.migrate.latest([config]);\n</code></pre>\n\n<p>If I am starting with a fresh database my first migration works but if I try to update the database with a new (2nd) migration it does nothing.</p>\n\n<p>When I try running <code>knex migrate:latest --env development</code> it says:</p>\n\n<pre><code>Using environment: development\nAlready up to date\n</code></pre>\n\n<p>*****EDIT*****</p>\n\n<p>I ended up generating another new (3rd) migration and pasted in the exact same code from the previous one that was being ignored and it worked. No clue why the 2nd migration silently failed and the 3rd one worked.</p>\n"
+        },
+        {
+            "tags": [
+                "jquery",
+                "forms",
+                "woocommerce"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 2158611,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ad56789279bebc8fc98dccd9be921e7b?s=128&d=identicon&r=PG",
+                "display_name": "Per",
+                "link": "https://stackoverflow.com/users/2158611/per"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1524210216,
+            "creation_date": 1524209413,
+            "last_edit_date": 1524210128,
+            "question_id": 49936352,
+            "body_markdown": "I got help in these forums (thank you) to fix the jquery to move one value (select menu) into a text field. \r\n\r\n    jQuery(document).ready(function( $ ) {\r\n        function onchange() {\r\n            var box1 = $(&quot;select[name=addon-8-choose-player-0]&quot;);\r\n            var box2 = $(&quot;input[name*=addon-8-name-100-1]&quot;);\r\n            console.log(box1);\r\n            console.log(box2);\r\n            box2.val(box1.val());\r\n        }\r\n        $(&quot;select[name=addon-8-choose-player-0]&quot;).on(&#39;change&#39;, onchange);\r\n    });\r\n\r\nNow I have a new problem and that is that the plugin change the Select values into lowercase with -\r\nA Select option &quot;Playername, 3&quot; becomes &quot;playername-3-1&quot; where the last number is just a field id \r\nI want to use the above script but modify it so &quot;playername-3-1&quot; (each option value) gets split into name and number (anything left of the first - and the number after the first -) and Capitalize (first letter) into two separate fields. \r\n\r\nLeft of &quot;-&quot; into box2 (and Capitalized)\r\nRight of &quot;-&quot; and left of 2nd &quot;-&quot; into box3\r\n\r\nHow do I do that?\r\n\r\nI&#39;m a complete newbie (as you can tell) and trying learn as I go ahead. Sorry for my lack of knowledge, but I know so little about this I don&#39;t even know where to start to Google. \r\n\r\nWith the hope for mercy and help.\r\n\r\n\r\nReason for this entire approach is that I got a Woocommerce plugin for variable field input and I can&#39;t change the plugin...\r\n",
+            "link": "https://stackoverflow.com/questions/49936352/input-select-value-split-and-added-into-two-new-input-value-fields",
+            "title": "Input select value, split and added into two new input value fields",
+            "body": "<p>I got help in these forums (thank you) to fix the jquery to move one value (select menu) into a text field. </p>\n\n<pre><code>jQuery(document).ready(function( $ ) {\n    function onchange() {\n        var box1 = $(\"select[name=addon-8-choose-player-0]\");\n        var box2 = $(\"input[name*=addon-8-name-100-1]\");\n        console.log(box1);\n        console.log(box2);\n        box2.val(box1.val());\n    }\n    $(\"select[name=addon-8-choose-player-0]\").on('change', onchange);\n});\n</code></pre>\n\n<p>Now I have a new problem and that is that the plugin change the Select values into lowercase with -\nA Select option \"Playername, 3\" becomes \"playername-3-1\" where the last number is just a field id \nI want to use the above script but modify it so \"playername-3-1\" (each option value) gets split into name and number (anything left of the first - and the number after the first -) and Capitalize (first letter) into two separate fields. </p>\n\n<p>Left of \"-\" into box2 (and Capitalized)\nRight of \"-\" and left of 2nd \"-\" into box3</p>\n\n<p>How do I do that?</p>\n\n<p>I'm a complete newbie (as you can tell) and trying learn as I go ahead. Sorry for my lack of knowledge, but I know so little about this I don't even know where to start to Google. </p>\n\n<p>With the hope for mercy and help.</p>\n\n<p>Reason for this entire approach is that I got a Woocommerce plugin for variable field input and I can't change the plugin...</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "appbar"
+            ],
+            "owner": {
+                "reputation": 1036,
+                "user_id": 2897115,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/2624b65b6cff84369e57413b62c75e46?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Santhosh Yedidi",
+                "link": "https://stackoverflow.com/users/2897115/santhosh-yedidi"
+            },
+            "is_answered": false,
+            "view_count": 43,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524210215,
+            "creation_date": 1520429120,
+            "last_edit_date": 1520431111,
+            "question_id": 49153077,
+            "body_markdown": "I am having my app bar with three icons on it. The space between them looks quite high. How to get them closer\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/CiTRP.png\r\n\r\n\r\nthe following is my styles.xml\r\n\r\n    &lt;resources&gt;\r\n    \r\n        &lt;!-- Base application theme. --&gt;\r\n        &lt;style name=&quot;AppBaseTheme&quot; parent=&quot;Theme.AppCompat.Light.DarkActionBar&quot;&gt;\r\n            &lt;item name=&quot;android:windowDisablePreview&quot;&gt;true&lt;/item&gt;\r\n            &lt;!-- Customize your theme here. --&gt;\r\n            &lt;item name=&quot;colorPrimary&quot;&gt;@color/colorPrimary&lt;/item&gt;\r\n            &lt;item name=&quot;colorPrimaryDark&quot;&gt;@color/colorPrimaryDark&lt;/item&gt;\r\n            &lt;item name=&quot;colorAccent&quot;&gt;@color/colorAccent&lt;/item&gt;\r\n        &lt;/style&gt;\r\n    \r\n        &lt;style name=&quot;AppTheme&quot; parent=&quot;AppBaseTheme&quot;&gt;\r\n            &lt;item name=&quot;actionOverflowMenuStyle&quot;&gt;@style/OverflowMenu&lt;/item&gt;\r\n        &lt;/style&gt;\r\n    \r\n        &lt;style name=&quot;OverflowMenu&quot; parent=&quot;Widget.AppCompat.PopupMenu.Overflow&quot;&gt;\r\n            &lt;!-- Required for pre-Lollipop. --&gt;\r\n            &lt;item name=&quot;overlapAnchor&quot;&gt;false&lt;/item&gt;\r\n        &lt;/style&gt;\r\n    \r\n        &lt;style name=&quot;AppTheme.NoActionBar&quot;&gt;\r\n            &lt;item name=&quot;windowActionBar&quot;&gt;false&lt;/item&gt;\r\n            &lt;item name=&quot;windowNoTitle&quot;&gt;true&lt;/item&gt;\r\n        &lt;/style&gt;\r\n    \r\n        &lt;style name=&quot;AppTheme.AppBarOverlay&quot; parent=&quot;ThemeOverlay.AppCompat.Dark.ActionBar&quot; /&gt;\r\n    \r\n        &lt;style name=&quot;AppTheme.PopupOverlay&quot; parent=&quot;ThemeOverlay.AppCompat.Light&quot; /&gt;\r\n    \r\n    &lt;/resources&gt;",
+            "link": "https://stackoverflow.com/questions/49153077/how-to-bring-the-icons-closer",
+            "title": "how to bring the icons closer?",
+            "body": "<p>I am having my app bar with three icons on it. The space between them looks quite high. How to get them closer</p>\n\n<p><a href=\"https://i.stack.imgur.com/CiTRP.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/CiTRP.png\" alt=\"enter image description here\"></a></p>\n\n<p>the following is my styles.xml</p>\n\n<pre><code>&lt;resources&gt;\n\n    &lt;!-- Base application theme. --&gt;\n    &lt;style name=\"AppBaseTheme\" parent=\"Theme.AppCompat.Light.DarkActionBar\"&gt;\n        &lt;item name=\"android:windowDisablePreview\"&gt;true&lt;/item&gt;\n        &lt;!-- Customize your theme here. --&gt;\n        &lt;item name=\"colorPrimary\"&gt;@color/colorPrimary&lt;/item&gt;\n        &lt;item name=\"colorPrimaryDark\"&gt;@color/colorPrimaryDark&lt;/item&gt;\n        &lt;item name=\"colorAccent\"&gt;@color/colorAccent&lt;/item&gt;\n    &lt;/style&gt;\n\n    &lt;style name=\"AppTheme\" parent=\"AppBaseTheme\"&gt;\n        &lt;item name=\"actionOverflowMenuStyle\"&gt;@style/OverflowMenu&lt;/item&gt;\n    &lt;/style&gt;\n\n    &lt;style name=\"OverflowMenu\" parent=\"Widget.AppCompat.PopupMenu.Overflow\"&gt;\n        &lt;!-- Required for pre-Lollipop. --&gt;\n        &lt;item name=\"overlapAnchor\"&gt;false&lt;/item&gt;\n    &lt;/style&gt;\n\n    &lt;style name=\"AppTheme.NoActionBar\"&gt;\n        &lt;item name=\"windowActionBar\"&gt;false&lt;/item&gt;\n        &lt;item name=\"windowNoTitle\"&gt;true&lt;/item&gt;\n    &lt;/style&gt;\n\n    &lt;style name=\"AppTheme.AppBarOverlay\" parent=\"ThemeOverlay.AppCompat.Dark.ActionBar\" /&gt;\n\n    &lt;style name=\"AppTheme.PopupOverlay\" parent=\"ThemeOverlay.AppCompat.Light\" /&gt;\n\n&lt;/resources&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "jquery",
+                "promise",
+                "deferred"
+            ],
+            "owner": {
+                "reputation": 2065,
+                "user_id": 2876079,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://i.stack.imgur.com/6NZXD.png?s=128&g=1",
+                "display_name": "Stefan",
+                "link": "https://stackoverflow.com/users/2876079/stefan"
+            },
+            "is_answered": true,
+            "view_count": 448,
+            "accepted_answer_id": 48208513,
+            "answer_count": 2,
+            "score": 8,
+            "last_activity_date": 1524210214,
+            "creation_date": 1492076665,
+            "last_edit_date": 1492079917,
+            "question_id": 43388818,
+            "body_markdown": "The short doc about **.fail** says\r\n\r\n&quot;Add handlers to be called when the Deferred object is rejected.&quot;\r\n\r\nand the short doc about **.catch** says exactly the same:\r\n\r\n&quot;Add handlers to be called when the Deferred object is rejected.&quot;\r\n\r\nsource: http://api.jquery.com/category/deferred-object/\r\n\r\nThe function arguments of the two methods seem to be different and the doc of\r\n.catch states that .catch is an alias to **.then(null, fn)**\r\n\r\n=&gt; Are there cases where I should use .fail and others where I should use .catch?\r\n\r\nOr ... if I only have one function ... are following commands interchangeable  and they only exist for compatibility/historical reasons?\r\n\r\n\r\n    a) .fail(fn)\r\n\r\n    b) .catch(fn)\r\n    \r\n    c) .then(null, fn)\r\n\r\nI created a jsFiddle:\r\n\r\nhttps://jsfiddle.net/sq3mh9j5/\r\n\r\nIf there is a difference, could you please provide some examples since I am new to jquery and not yet familiar with all promise terms. \r\n\r\nWhy does the doc of .catch does not reference the doc of .fail and clarify the difference/similarity?\r\n\r\n**Edit**\r\nI found some notes in the 3.0 release notes that the behavior of .then changed.\r\nhttps://blog.jquery.com/2015/07/13/jquery-3-0-and-jquery-compat-3-0-alpha-versions-released/\r\nNevertheless I am still unsure when to use .fail and when to use .catch.",
+            "link": "https://stackoverflow.com/questions/43388818/what-is-the-difference-between-catch-and-fail-in-jquery-3-2-1",
+            "title": "What is the difference between .catch and .fail in jquery 3.2.1?",
+            "body": "<p>The short doc about <strong>.fail</strong> says</p>\n\n<p>\"Add handlers to be called when the Deferred object is rejected.\"</p>\n\n<p>and the short doc about <strong>.catch</strong> says exactly the same:</p>\n\n<p>\"Add handlers to be called when the Deferred object is rejected.\"</p>\n\n<p>source: <a href=\"http://api.jquery.com/category/deferred-object/\" rel=\"noreferrer\">http://api.jquery.com/category/deferred-object/</a></p>\n\n<p>The function arguments of the two methods seem to be different and the doc of\n.catch states that .catch is an alias to <strong>.then(null, fn)</strong></p>\n\n<p>=> Are there cases where I should use .fail and others where I should use .catch?</p>\n\n<p>Or ... if I only have one function ... are following commands interchangeable  and they only exist for compatibility/historical reasons?</p>\n\n<pre><code>a) .fail(fn)\n\nb) .catch(fn)\n\nc) .then(null, fn)\n</code></pre>\n\n<p>I created a jsFiddle:</p>\n\n<p><a href=\"https://jsfiddle.net/sq3mh9j5/\" rel=\"noreferrer\">https://jsfiddle.net/sq3mh9j5/</a></p>\n\n<p>If there is a difference, could you please provide some examples since I am new to jquery and not yet familiar with all promise terms. </p>\n\n<p>Why does the doc of .catch does not reference the doc of .fail and clarify the difference/similarity?</p>\n\n<p><strong>Edit</strong>\nI found some notes in the 3.0 release notes that the behavior of .then changed.\n<a href=\"https://blog.jquery.com/2015/07/13/jquery-3-0-and-jquery-compat-3-0-alpha-versions-released/\" rel=\"noreferrer\">https://blog.jquery.com/2015/07/13/jquery-3-0-and-jquery-compat-3-0-alpha-versions-released/</a>\nNevertheless I am still unsure when to use .fail and when to use .catch.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "api",
+                "for-loop",
+                "openweathermap"
+            ],
+            "owner": {
+                "reputation": 31,
+                "user_id": 5457388,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9a3886fad6471d75b7aa396bad612f1f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "James Miller",
+                "link": "https://stackoverflow.com/users/5457388/james-miller"
+            },
+            "is_answered": true,
+            "view_count": 31,
+            "answer_count": 3,
+            "score": 1,
+            "last_activity_date": 1524210208,
+            "creation_date": 1524206637,
+            "question_id": 49935602,
+            "body_markdown": "I want build a function that gets the forecast weather descriptions of four cities using the Open Weather Map API. The cities are placed in a list in a variable called &quot;cities&quot;. I think I must create a for loop to run all cities through the API?\r\n\r\nThe result should be a list where all cities show 8 weather descriptions of the next 8 days.\r\n\r\nThis is what I have so far. Any suggestions?\r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    function getDescriptions(){\r\n        \r\n        var cities = [Cannes, London, Amsterdam, Berlin];\r\n            \r\n        $.ajax({\r\n            url: &#39;http://api.openweathermap.org/data/2.5/forecast/daily?q=&#39; + city + &quot;&amp;units=metric&quot; + &quot;&amp;cnt=8&quot; + &quot;&amp;APPID=***&quot;,\r\n            type: &quot;GET&quot;,\r\n            dataType: &quot;jsonp&quot;,\r\n            success: function(data){         \r\n                \r\n                var descriptions = data.list[i].weather[0].description;            \r\n            \r\n            }                       \r\n        });        \r\n    }\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49935602/for-loop-api-get-weather-descriptions",
+            "title": "For loop api get weather descriptions",
+            "body": "<p>I want build a function that gets the forecast weather descriptions of four cities using the Open Weather Map API. The cities are placed in a list in a variable called \"cities\". I think I must create a for loop to run all cities through the API?</p>\n\n<p>The result should be a list where all cities show 8 weather descriptions of the next 8 days.</p>\n\n<p>This is what I have so far. Any suggestions?</p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-js lang-js prettyprint-override\"><code>function getDescriptions(){\r\n    \r\n    var cities = [Cannes, London, Amsterdam, Berlin];\r\n        \r\n    $.ajax({\r\n        url: 'http://api.openweathermap.org/data/2.5/forecast/daily?q=' + city + \"&amp;units=metric\" + \"&amp;cnt=8\" + \"&amp;APPID=***\",\r\n        type: \"GET\",\r\n        dataType: \"jsonp\",\r\n        success: function(data){         \r\n            \r\n            var descriptions = data.list[i].weather[0].description;            \r\n        \r\n        }                       \r\n    });        \r\n}</code></pre>\r\n</div>\r\n</div>\r\n</p>\n"
+        },
+        {
+            "tags": [
+                "session",
+                "authentication",
+                "servlets",
+                "java-ee"
+            ],
+            "owner": {
+                "reputation": 29,
+                "user_id": 9252645,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://lh5.googleusercontent.com/-Uu82Lz1ir20/AAAAAAAAAAI/AAAAAAAAABw/Jnbv8JX0rbc/photo.jpg?sz=128",
+                "display_name": "Nilashish C",
+                "link": "https://stackoverflow.com/users/9252645/nilashish-c"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524210206,
+            "creation_date": 1520495068,
+            "question_id": 49167892,
+            "body_markdown": "I wish to record the login and the logout timestamp for users. \r\n\r\nI understand that as soon as a user hits the login page a new browser specific session is created &amp; `sessionCreated(HttpSessionEvent se)` is executed. When the session is invalidated that session gets destroyed &amp; the `sessionDestroyed(HttpSessionEvent se)` is executed. In this scenario recording the login and logout timestamps will work perfectly.\r\n\r\nHowever, say, ***the user is logged in but closes the browser window.*** The next time when the browser is opened a new session id will be generated and the user needs to login again. Hence, the previous login-logout record for that user will be incomplete and a new record with the current session id will be inserted in the database. \r\n\r\nHow do I tackle this design issue? I read some answers where AJAX polling &amp; JS onunload were discussed but those did not seem to be a reliable solution.\r\n\r\nAlso, on the other hand, is there a way to keep the session alive even on browser close?\r\n\r\nThanks in advance.",
+            "link": "https://stackoverflow.com/questions/49167892/how-do-i-design-my-java-web-app-such-that-the-session-gets-terminated-when-brows",
+            "title": "How do I design my Java Web App such that the session gets terminated when browser is closed?",
+            "body": "<p>I wish to record the login and the logout timestamp for users. </p>\n\n<p>I understand that as soon as a user hits the login page a new browser specific session is created &amp; <code>sessionCreated(HttpSessionEvent se)</code> is executed. When the session is invalidated that session gets destroyed &amp; the <code>sessionDestroyed(HttpSessionEvent se)</code> is executed. In this scenario recording the login and logout timestamps will work perfectly.</p>\n\n<p>However, say, <strong><em>the user is logged in but closes the browser window.</em></strong> The next time when the browser is opened a new session id will be generated and the user needs to login again. Hence, the previous login-logout record for that user will be incomplete and a new record with the current session id will be inserted in the database. </p>\n\n<p>How do I tackle this design issue? I read some answers where AJAX polling &amp; JS onunload were discussed but those did not seem to be a reliable solution.</p>\n\n<p>Also, on the other hand, is there a way to keep the session alive even on browser close?</p>\n\n<p>Thanks in advance.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "eclipse",
+                "tomcat7"
+            ],
+            "owner": {
+                "reputation": 71,
+                "user_id": 3996008,
+                "user_type": "registered",
+                "accept_rate": 11,
+                "profile_image": "https://www.gravatar.com/avatar/598e3c8873cb1d9d17c9e9aac931f938?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Nitesh Kataria",
+                "link": "https://stackoverflow.com/users/3996008/nitesh-kataria"
+            },
+            "is_answered": true,
+            "view_count": 34187,
+            "answer_count": 4,
+            "score": 13,
+            "last_activity_date": 1524210198,
+            "creation_date": 1435157335,
+            "last_edit_date": 1447417693,
+            "question_id": 31029810,
+            "body_markdown": "When I run apache tomcat7.0.56 in Eclipse, I get an error\r\n&gt; **Error: Could not find or load main class org.apache.catalina.startup.Bootstrap**\r\n\r\nHow can I fix the problem?",
+            "link": "https://stackoverflow.com/questions/31029810/could-not-find-or-load-main-class-org-apache-catalina-startup-bootstrap",
+            "title": "Could not find or load main class org.apache.catalina.startup.Bootstrap",
+            "body": "<p>When I run apache tomcat7.0.56 in Eclipse, I get an error</p>\n\n<blockquote>\n  <p><strong>Error: Could not find or load main class org.apache.catalina.startup.Bootstrap</strong></p>\n</blockquote>\n\n<p>How can I fix the problem?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "jquery",
+                "extjs"
+            ],
+            "owner": {
+                "reputation": 453,
+                "user_id": 2573297,
+                "user_type": "registered",
+                "accept_rate": 64,
+                "profile_image": "https://i.stack.imgur.com/QEA2U.jpg?s=128&g=1",
+                "display_name": "PT_C",
+                "link": "https://stackoverflow.com/users/2573297/pt-c"
+            },
+            "is_answered": false,
+            "view_count": 29,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524210193,
+            "creation_date": 1524145892,
+            "last_edit_date": 1524210193,
+            "question_id": 49922829,
+            "body_markdown": "I&#39;m trying to add a message alert to an ext object but I can&#39;t seem to get it. If a user is logged in then an object is pushed with the URL and they can access it. If they&#39;re not logged in, a pop-up is supposed to appear and tell them to login.\r\n\r\nIs there an easy way to add a pop-up to an Ext pdf link?\r\n\r\n**Code**\r\n\r\n    var treeObj = [];\r\n    function loggedIn() {\r\n       if (typeof isLoggedIn != &#39;undefined&#39;) {\r\n          return isLoggedIn;\r\n       } else {\r\n          return false;\r\n       }\r\n     }\r\n        \r\n     if (loggedIn()) {\r\n        \r\n        treeObj.push({\r\n           text: &#39;Test File&#39;,\r\n           leaf: true,\r\n           href: &#39;/secure/test.pdf&#39;,\r\n           cls: &#39;tree-pdf&#39;,\r\n         });\r\n        \r\n      } else{\r\n                       \r\n         treeObj.push({\r\n            text: &#39;Test File&#39;,\r\n            leaf: true,\r\n            cls: &#39;tree-pdf&#39;,\r\n            listeners: {\r\n               render: function(c){\r\n                  c.getEl().on(&#39;click&#39;, function(){\r\n                     Ext.Msg.alert(&#39;Insufficient Rights&#39;, &#39;You have selected a secure resource.&#39;);\r\n                  }, c);\r\n               }\r\n            }\r\n         });\r\n      }",
+            "link": "https://stackoverflow.com/questions/49922829/adding-a-message-alert-to-an-ext-js-object",
+            "title": "Adding a Message Alert to an Ext JS object",
+            "body": "<p>I'm trying to add a message alert to an ext object but I can't seem to get it. If a user is logged in then an object is pushed with the URL and they can access it. If they're not logged in, a pop-up is supposed to appear and tell them to login.</p>\n\n<p>Is there an easy way to add a pop-up to an Ext pdf link?</p>\n\n<p><strong>Code</strong></p>\n\n<pre><code>var treeObj = [];\nfunction loggedIn() {\n   if (typeof isLoggedIn != 'undefined') {\n      return isLoggedIn;\n   } else {\n      return false;\n   }\n }\n\n if (loggedIn()) {\n\n    treeObj.push({\n       text: 'Test File',\n       leaf: true,\n       href: '/secure/test.pdf',\n       cls: 'tree-pdf',\n     });\n\n  } else{\n\n     treeObj.push({\n        text: 'Test File',\n        leaf: true,\n        cls: 'tree-pdf',\n        listeners: {\n           render: function(c){\n              c.getEl().on('click', function(){\n                 Ext.Msg.alert('Insufficient Rights', 'You have selected a secure resource.');\n              }, c);\n           }\n        }\n     });\n  }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "httpurlconnection"
+            ],
+            "owner": {
+                "reputation": 167,
+                "user_id": 6653706,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/292ba32575b28f91f1efe6e87471f6c1?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Max",
+                "link": "https://stackoverflow.com/users/6653706/max"
+            },
+            "is_answered": false,
+            "view_count": 46,
+            "closed_date": 1520509100,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1524210190,
+            "creation_date": 1520505592,
+            "last_edit_date": 1520508449,
+            "question_id": 49171085,
+            "body_markdown": "I have to implement a function that controls the presence of the internet connection, I need to know precisely if you can browse and not know if you are connected or not to the wifi or data.\r\n\r\n\r\nThere may be cases where you are connected to a network but you can not browse, for example when you connect to an open wifi network (eg Mc Donalds) but to navigate you need to login, the connection available but you are not able to browse.\r\n\r\nIn that case I would be enough to take advantage of the set timeout (but it is never considered).\r\n\r\nI tried to implement different functions but I can not get the desired result, for example: \r\n\r\n    public boolean checkConnection() {\r\n        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();\r\n        StrictMode.setThreadPolicy(policy);\r\n\r\n        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);\r\n        NetworkInfo netInfo = cm.getActiveNetworkInfo();\r\n\r\n        boolean response;\r\n        if (netInfo != null &amp;&amp; netInfo.isConnected()) {\r\n            try {\r\n                URL url = new URL(&quot;http://www.google.it&quot;);\r\n                HttpURLConnection conn = (HttpURLConnection) url.openConnection();\r\n                conn.setConnectTimeout(1000);\r\n                conn.connect();\r\n                response = conn.getResponseCode() == 200;\r\n                conn.disconnect();\r\n            } catch (Exception e) {\r\n                response = false;\r\n            }\r\n        } else {\r\n            response = false;\r\n        }\r\n        return response;\r\n    }\r\n\r\nAnother function: \r\n\r\n    public boolean isInternetAvailable(String address, int port, int timeoutMs) {\r\n        try {\r\n            Socket sock = new Socket();\r\n            SocketAddress sockaddr = new InetSocketAddress(address, port);\r\n    \r\n            sock.connect(sockaddr, timeoutMs); \r\n            sock.close();\r\n    \r\n            return true;\r\n    \r\n        } catch (IOException e) { return false; } }\r\n\r\nThis functions never takes the timeout into consideration.\r\n\r\nHow i can solve my problem ??\r\n\r\n\r\n\r\n**************** EDIT 1 **************** \r\n\r\nI&#39;m testing the code on a tablet connected to a network via wifi, through the firewall I blocked all connections in order to simulate the situation described in the ever question. Using the codes suggested to me you notice that the timeout value is never respected, the application goes in exception: \r\n\r\n&gt; Exception: java.net.UnknownHostException: Unable to resolve host\r\n&gt; &quot;www.google.com&quot;: No address associated with hostname.\r\n\r\nThe real problem is that all these functions take too long to tell me that there is no connectivity, I would need a function that responds in 1/2 sec",
+            "link": "https://stackoverflow.com/questions/49171085/how-to-check-connection-in-android",
+            "closed_reason": "duplicate",
+            "title": "How to check connection in Android",
+            "body": "<p>I have to implement a function that controls the presence of the internet connection, I need to know precisely if you can browse and not know if you are connected or not to the wifi or data.</p>\n\n<p>There may be cases where you are connected to a network but you can not browse, for example when you connect to an open wifi network (eg Mc Donalds) but to navigate you need to login, the connection available but you are not able to browse.</p>\n\n<p>In that case I would be enough to take advantage of the set timeout (but it is never considered).</p>\n\n<p>I tried to implement different functions but I can not get the desired result, for example: </p>\n\n<pre><code>public boolean checkConnection() {\n    StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();\n    StrictMode.setThreadPolicy(policy);\n\n    ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);\n    NetworkInfo netInfo = cm.getActiveNetworkInfo();\n\n    boolean response;\n    if (netInfo != null &amp;&amp; netInfo.isConnected()) {\n        try {\n            URL url = new URL(\"http://www.google.it\");\n            HttpURLConnection conn = (HttpURLConnection) url.openConnection();\n            conn.setConnectTimeout(1000);\n            conn.connect();\n            response = conn.getResponseCode() == 200;\n            conn.disconnect();\n        } catch (Exception e) {\n            response = false;\n        }\n    } else {\n        response = false;\n    }\n    return response;\n}\n</code></pre>\n\n<p>Another function: </p>\n\n<pre><code>public boolean isInternetAvailable(String address, int port, int timeoutMs) {\n    try {\n        Socket sock = new Socket();\n        SocketAddress sockaddr = new InetSocketAddress(address, port);\n\n        sock.connect(sockaddr, timeoutMs); \n        sock.close();\n\n        return true;\n\n    } catch (IOException e) { return false; } }\n</code></pre>\n\n<p>This functions never takes the timeout into consideration.</p>\n\n<p>How i can solve my problem ??</p>\n\n<p>**************** EDIT 1 **************** </p>\n\n<p>I'm testing the code on a tablet connected to a network via wifi, through the firewall I blocked all connections in order to simulate the situation described in the ever question. Using the codes suggested to me you notice that the timeout value is never respected, the application goes in exception: </p>\n\n<blockquote>\n  <p>Exception: java.net.UnknownHostException: Unable to resolve host\n  \"www.google.com\": No address associated with hostname.</p>\n</blockquote>\n\n<p>The real problem is that all these functions take too long to tell me that there is no connectivity, I would need a function that responds in 1/2 sec</p>\n"
+        },
+        {
+            "tags": [
+                "linux",
+                "virtual-machine",
+                "vmware"
+            ],
+            "owner": {
+                "reputation": 149,
+                "user_id": 3139779,
+                "user_type": "registered",
+                "accept_rate": 62,
+                "profile_image": "https://www.gravatar.com/avatar/013daa9e4ada932d54020fdd05702df5?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Promod",
+                "link": "https://stackoverflow.com/users/3139779/promod"
+            },
+            "is_answered": true,
+            "view_count": 50,
+            "accepted_answer_id": 49936563,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1524210189,
+            "creation_date": 1495622344,
+            "last_edit_date": 1495707600,
+            "question_id": 44155963,
+            "body_markdown": "While installing a new RHEL on KVM host I am displaying a text file using `more` command. Problem is `more` is behaving like `cat` in virt-manager i.e. not displaying page-by-page and directly scrolling to the end of the page. I tried using `less` instead of `more` but it is displaying the same behavior. \r\n\r\nCan anyone suggest what could be the reason for this?\r\n\r\n**Edit** Based on comments I tried changing TERM to xterm during first boot. But that didn&#39;t have any effect. I tried this command `export TERM=xterm`\r\n\r\nI got the env variables printed. I am pasting it hoping this might be a clue.[![TERM-linux, PATH=xx,PWD=/,SHLVL=4,TEXTDOMAIN=vaos_init][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/S96qQ.png\r\n\r\n**Edit** I couldn&#39;t get it working. I noticed that before the script is executed, some other script is running and this might be setting some environment variable because of which `more` isn&#39;t working. I am now calling more command before this script start executing. And now it is working. ",
+            "link": "https://stackoverflow.com/questions/44155963/more-less-are-behaving-like-cat",
+            "title": "more, less are behaving like cat",
+            "body": "<p>While installing a new RHEL on KVM host I am displaying a text file using <code>more</code> command. Problem is <code>more</code> is behaving like <code>cat</code> in virt-manager i.e. not displaying page-by-page and directly scrolling to the end of the page. I tried using <code>less</code> instead of <code>more</code> but it is displaying the same behavior. </p>\n\n<p>Can anyone suggest what could be the reason for this?</p>\n\n<p><strong>Edit</strong> Based on comments I tried changing TERM to xterm during first boot. But that didn't have any effect. I tried this command <code>export TERM=xterm</code></p>\n\n<p>I got the env variables printed. I am pasting it hoping this might be a clue.<a href=\"https://i.stack.imgur.com/S96qQ.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/S96qQ.png\" alt=\"TERM-linux, PATH=xx,PWD=/,SHLVL=4,TEXTDOMAIN=vaos_init\"></a></p>\n\n<p><strong>Edit</strong> I couldn't get it working. I noticed that before the script is executed, some other script is running and this might be setting some environment variable because of which <code>more</code> isn't working. I am now calling more command before this script start executing. And now it is working. </p>\n"
+        },
+        {
+            "tags": [
+                "c",
+                "ubuntu",
+                "ubuntu-16.04"
+            ],
+            "owner": {
+                "reputation": 18,
+                "user_id": 5416792,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3171ac67eb808acb231d1dab989e6ca7?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Koderkid",
+                "link": "https://stackoverflow.com/users/5416792/koderkid"
+            },
+            "is_answered": false,
+            "view_count": 30,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524210186,
+            "creation_date": 1524208569,
+            "last_edit_date": 1524210186,
+            "question_id": 49936099,
+            "body_markdown": "I&#39;m working on a C application in which I need the name of the currently logged in user. I have tried using `getlogin()` and `getlogin_r()` with no success **(tested on multiple systems with Ubuntu 16.04 LTS)**. The application will run as root so I cannot use the environment variables.\r\n\r\nBoth `getlogin()` and `getlogin_r()` work just fine on other Ubuntu 17.04/17.10/18.04(beta) so I don&#39;t understand why it doesn&#39;t work in 16.04.\r\n\r\nHere is a code snippet that I used to test:\r\n\r\n    #include &lt;stdio.h&gt;\r\n    #include &lt;unistd.h&gt;\r\n    #include &lt;sys/types.h&gt;\r\n    #include &lt;pwd.h&gt;\r\n\r\n    int main(int argc, char *argv[])\r\n    {\r\n        char user[512] = {0};\r\n        int ret = getlogin_r(user, 512);\r\n        if ( ret != 0){\r\n            fprintf(stderr, &quot;Unable to get User name. Return: %d\\n&quot;, ret);\r\n        }\r\n        else{\r\n            fprintf(stdout, &quot;Username: %s\\n&quot;, user);\r\n        }\r\n\r\n        char *lgn;\r\n        struct passwd *pw;\r\n        if ((lgn = getlogin()) == NULL || (pw = getpwnam(lgn)) == NULL)\r\n        {\r\n            fprintf(stderr, &quot;Get of user information failed.\\n&quot;);\r\n        }\r\n\r\n        struct passwd *pwd = getpwuid(getuid());\r\n        if (pwd){\r\n           fprintf(stdout, &quot;Success! Username: %s\\n&quot;, pwd-&gt;pw_name);\r\n        }else\r\n            fprintf(stderr, &quot;Failed&quot;);\r\n\r\n        return 0;\r\n    }\r\n\r\nThis is the output generated when I execute the code as root:\r\n\r\n    Unable to get User name. Return : 2 \r\n    Get of user information failed.\r\n    Success! Username: root\r\n\r\n`getpwuid` returns the details of the user running the process so it is not helpful.\r\n\r\nI&#39;m kind of stuck now and any help is highly appreciated.  \r\n\r\nOutput using `strerror()`\r\n\r\n    getlogin_r() : No such process\r\n    getlogin() : No such file or directory\r\n    Success! Username: root",
+            "link": "https://stackoverflow.com/questions/49936099/get-logged-in-user-in-ubuntu-16-04-lts-desktop",
+            "title": "Get logged in user in Ubuntu 16.04 LTS Desktop",
+            "body": "<p>I'm working on a C application in which I need the name of the currently logged in user. I have tried using <code>getlogin()</code> and <code>getlogin_r()</code> with no success <strong>(tested on multiple systems with Ubuntu 16.04 LTS)</strong>. The application will run as root so I cannot use the environment variables.</p>\n\n<p>Both <code>getlogin()</code> and <code>getlogin_r()</code> work just fine on other Ubuntu 17.04/17.10/18.04(beta) so I don't understand why it doesn't work in 16.04.</p>\n\n<p>Here is a code snippet that I used to test:</p>\n\n<pre><code>#include &lt;stdio.h&gt;\n#include &lt;unistd.h&gt;\n#include &lt;sys/types.h&gt;\n#include &lt;pwd.h&gt;\n\nint main(int argc, char *argv[])\n{\n    char user[512] = {0};\n    int ret = getlogin_r(user, 512);\n    if ( ret != 0){\n        fprintf(stderr, \"Unable to get User name. Return: %d\\n\", ret);\n    }\n    else{\n        fprintf(stdout, \"Username: %s\\n\", user);\n    }\n\n    char *lgn;\n    struct passwd *pw;\n    if ((lgn = getlogin()) == NULL || (pw = getpwnam(lgn)) == NULL)\n    {\n        fprintf(stderr, \"Get of user information failed.\\n\");\n    }\n\n    struct passwd *pwd = getpwuid(getuid());\n    if (pwd){\n       fprintf(stdout, \"Success! Username: %s\\n\", pwd-&gt;pw_name);\n    }else\n        fprintf(stderr, \"Failed\");\n\n    return 0;\n}\n</code></pre>\n\n<p>This is the output generated when I execute the code as root:</p>\n\n<pre><code>Unable to get User name. Return : 2 \nGet of user information failed.\nSuccess! Username: root\n</code></pre>\n\n<p><code>getpwuid</code> returns the details of the user running the process so it is not helpful.</p>\n\n<p>I'm kind of stuck now and any help is highly appreciated.  </p>\n\n<p>Output using <code>strerror()</code></p>\n\n<pre><code>getlogin_r() : No such process\ngetlogin() : No such file or directory\nSuccess! Username: root\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "api",
+                "mule",
+                "esb"
+            ],
+            "owner": {
+                "reputation": 83,
+                "user_id": 3368410,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1444026314/picture?type=large",
+                "display_name": "tomwilding",
+                "link": "https://stackoverflow.com/users/3368410/tomwilding"
+            },
+            "is_answered": true,
+            "view_count": 219,
+            "accepted_answer_id": 30455992,
+            "answer_count": 1,
+            "score": 3,
+            "last_activity_date": 1524210180,
+            "creation_date": 1432390668,
+            "last_edit_date": 1524210180,
+            "question_id": 30413742,
+            "body_markdown": "Does anyone know where the web content of the API Console is located - I would expect the css, html and js to be bundled in the app, where does the api console get these files from?\r\n",
+            "link": "https://stackoverflow.com/questions/30413742/how-does-mule-api-console-work",
+            "title": "How does Mule API Console work?",
+            "body": "<p>Does anyone know where the web content of the API Console is located - I would expect the css, html and js to be bundled in the app, where does the api console get these files from?</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift",
+                "ios11",
+                "pdfkit"
+            ],
+            "owner": {
+                "reputation": 268,
+                "user_id": 1240450,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/Qfnlb.png?s=128&g=1",
+                "display_name": "Rafał Rębacz",
+                "link": "https://stackoverflow.com/users/1240450/rafa%c5%82-r%c4%99bacz"
+            },
+            "is_answered": false,
+            "view_count": 246,
+            "answer_count": 1,
+            "score": 8,
+            "last_activity_date": 1524210174,
+            "creation_date": 1508345604,
+            "last_edit_date": 1524041785,
+            "question_id": 46815383,
+            "body_markdown": "After adding annotation to PDFPage (and rendered on a screen), there is no way to update its appearance on `PDFPage`/`PDFView`.\r\n\r\nTo reproduce the problem:\r\n\r\n1. Create PDFAnnotation and add it to the `PDFPage`:\r\n\r\n        let bounds = CGRect(x: 20.0, y: 20.0, width: 200.0, height: 200.0)\r\n        let annotation = PDFAnnotation(bounds: b, forType: .widget, withProperties: nil)\r\n        annotation.widgetFieldType = .text\r\n        annotation.backgroundColor = .gray\r\n        annotation.font = .systemFont(ofSize: 18)\r\n        annotation.widgetStringValue = &quot;Test!&quot;\r\n        \r\n        page.addAnnotation(annotation)\r\n\r\n\r\n2. After it is presented on a PDFPage, try to edit its bounds/color/background color/string value etc.:\r\n\r\n\t\tannotation?.setValue(&quot;Help! SOS! Mayday!&quot;, forAnnotationKey: .widgetValue)\r\n        annotation?.color = .green\r\n        annotation?.bounds = CGRect(x: 0.0, y: 0.0, width: 100.0, height: 100.0)\r\n\r\nNothing happens.\r\n\r\nI am aware of a trick:\r\n\r\n\t\tpage.removeAnnotation(annotation)\r\n        page.addAnnotation(annotation)\r\n\r\nbut it is rather a workaround, not real solution.",
+            "link": "https://stackoverflow.com/questions/46815383/pdfannotation-with-pdfannotationsubtype-equal-to-widget-is-not-refreshing-its-a",
+            "title": "PDFAnnotation with PDFAnnotationSubtype equal to .widget is not refreshing its appearance after adding it to PDFPage",
+            "body": "<p>After adding annotation to PDFPage (and rendered on a screen), there is no way to update its appearance on <code>PDFPage</code>/<code>PDFView</code>.</p>\n\n<p>To reproduce the problem:</p>\n\n<ol>\n<li><p>Create PDFAnnotation and add it to the <code>PDFPage</code>:</p>\n\n<pre><code>let bounds = CGRect(x: 20.0, y: 20.0, width: 200.0, height: 200.0)\nlet annotation = PDFAnnotation(bounds: b, forType: .widget, withProperties: nil)\nannotation.widgetFieldType = .text\nannotation.backgroundColor = .gray\nannotation.font = .systemFont(ofSize: 18)\nannotation.widgetStringValue = \"Test!\"\n\npage.addAnnotation(annotation)\n</code></pre></li>\n<li><p>After it is presented on a PDFPage, try to edit its bounds/color/background color/string value etc.:</p>\n\n<pre><code>annotation?.setValue(\"Help! SOS! Mayday!\", forAnnotationKey: .widgetValue)\nannotation?.color = .green\nannotation?.bounds = CGRect(x: 0.0, y: 0.0, width: 100.0, height: 100.0)\n</code></pre></li>\n</ol>\n\n<p>Nothing happens.</p>\n\n<p>I am aware of a trick:</p>\n\n<pre><code>    page.removeAnnotation(annotation)\n    page.addAnnotation(annotation)\n</code></pre>\n\n<p>but it is rather a workaround, not real solution.</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 299
+}

@@ -1,0 +1,811 @@
+{
+    "items": [
+        {
+            "tags": [
+                "vb.net",
+                "dailymotion-api"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 4491881,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-9Y1KhbpMScY/AAAAAAAAAAI/AAAAAAAAAM0/BvMOAovgHFg/photo.jpg?sz=128",
+                "display_name": "Robinex Robin",
+                "link": "https://stackoverflow.com/users/4491881/robinex-robin"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1524184911,
+            "creation_date": 1524179786,
+            "last_edit_date": 1524184911,
+            "question_id": 49931606,
+            "body_markdown": "I am beginner .net \r\n\r\nI try https://github.com/cbenard/SODailyMotionUpload I convert Vb.net Work good on console. but I want convert this on windows form project. I want upload with click upload button etc. I delete console.writeline codes but give error when come this code\r\n\r\nclient.UploadFile(uploadUrl, fileToUpload)\r\n\r\ngive error = request canceled\r\n\r\n    Imports System\r\n    Imports System.Diagnostics\r\n    Imports System.IO\r\n    Imports System.Net\r\n    Imports System.Runtime.InteropServices\r\n    Imports System.Text\r\n    Imports System.Web\r\n    Imports Newtonsoft.Json\r\n    \r\n    Public Class Form1\r\n        Declare Function AttachConsole Lib &quot;kernel32.dll&quot; (ByVal dwProcessId As Int32) As Boolean\r\n        Declare Function FreeConsole Lib &quot;kernel32.dll&quot; () As Boolean\r\n    \r\n    \r\n        Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load\r\n    \r\n    \r\n        End Sub\r\n    \r\n    \r\n        Private Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click\r\n    \r\n    \r\n            Dim accessToken = GetAccessToken()\r\n            Authorize(accessToken)\r\n    \r\n    \r\n            Console.WriteLine(&quot;Access token is &quot; &amp; accessToken)\r\n    \r\n            Dim fileToUpload = &quot;C:\\example.mp4&quot;\r\n    \r\n    \r\n            Console.WriteLine(&quot;File to upload is &quot; &amp; fileToUpload)\r\n    \r\n    \r\n    \r\n    \r\n            Dim uploadUrl = GetFileUploadUrl(accessToken)\r\n    \r\n            Console.WriteLine(&quot;Posting to &quot; &amp; uploadUrl)\r\n    \r\n    \r\n            Dim response = GetFileUploadResponse(fileToUpload, accessToken, uploadUrl)\r\n    \r\n            Console.WriteLine(&quot;Response:&quot; &amp; vbLf)\r\n    \r\n            Console.WriteLine(response.ToString &amp; vbLf)\r\n    \r\n            Console.WriteLine(&quot;Publishing video.&quot; &amp; vbLf)\r\n    \r\n    \r\n    \r\n            Dim uploadedResponse = PublishVideo(response, accessToken)\r\n    \r\n            Console.WriteLine(uploadedResponse)\r\n    \r\n            Console.WriteLine(&quot;Done. Press enter to exit.&quot;)\r\n            Console.ReadLine()\r\n    \r\n    \r\n            Console.WriteLine(&quot;Done. Press enter to exit.&quot;)\r\n            Console.ReadLine()\r\n    \r\n        End Sub\r\n    \r\n        Private Shared Function GetAccessToken() As String\r\n            Dim request = WebRequest.Create(&quot;https://api.dailymotion.com/oauth/token&quot;)\r\n            request.Method = &quot;POST&quot;\r\n            request.ContentType = &quot;application/x-www-form-urlencoded&quot;\r\n    \r\n            Dim requestString = String.Format(&quot;grant_type=password&amp;client_id={0}&amp;client_secret={1}&amp;username={2}&amp;password={3}&quot;, HttpUtility.UrlEncode(&quot;apikeyy&quot;), HttpUtility.UrlEncode(&quot;secretkey&quot;), HttpUtility.UrlEncode(&quot;username&quot;), HttpUtility.UrlEncode(&quot;password&quot;))\r\n    \r\n            Dim requestBytes = Encoding.UTF8.GetBytes(requestString)\r\n    \r\n            Dim requestStream = request.GetRequestStream()\r\n    \r\n            requestStream.Write(requestBytes, 0, requestBytes.Length)\r\n    \r\n            Dim response = request.GetResponse()\r\n    \r\n            Dim responseStream = response.GetResponseStream()\r\n            Dim responseString As String\r\n            Using reader = New StreamReader(responseStream)\r\n                responseString = reader.ReadToEnd()\r\n            End Using\r\n    \r\n            Dim oauthResponse = JsonConvert.DeserializeObject(Of OAuthResponse)(responseString)\r\n    \r\n            Return oauthResponse.access_token\r\n        End Function\r\n        Public Class OAuthResponse\r\n            Public Property access_token() As String\r\n            Public Property expires_in() As Integer\r\n            Public Property refresh_token() As String\r\n        End Class\r\n    \r\n    \r\n        Private Shared Sub Authorize(ByVal accessToken As String)\r\n    \r\n    \r\n            Dim authorizeUrl = String.Format(&quot;https://api.dailymotion.com/oauth/authorize?response_type=code&amp;client_id={0}&amp;scope=read+write+manage_videos+delete&amp;redirect_uri={1}&quot;, HttpUtility.UrlEncode(&quot;apikey&quot;), HttpUtility.UrlEncode(&quot;callbackurl&quot;))\r\n    \r\n            Console.WriteLine(&quot;We need permissions to upload. Press enter to open web browser.&quot;)\r\n            Console.ReadLine()\r\n    \r\n            Process.Start(authorizeUrl)\r\n    \r\n            Dim client = New WebClient()\r\n            client.Headers.Add(&quot;Authorization&quot;, &quot;OAuth &quot; &amp; accessToken)\r\n    \r\n            Console.WriteLine(&quot;Press enter once you have authenticated and been redirected to your callback URL&quot;)\r\n            Console.ReadLine()\r\n        End Sub\r\n    \r\n    \r\n        Private Shared Function GetFileUploadUrl(ByVal accessToken As String) As String\r\n    \r\n    \r\n            Dim client = New WebClient()\r\n            client.Headers.Add(&quot;Authorization&quot;, &quot;OAuth &quot; &amp; accessToken)\r\n    \r\n            Dim urlResponse = client.DownloadString(&quot;https://api.dailymotion.com/file/upload&quot;)\r\n    \r\n            Dim response = JsonConvert.DeserializeObject(Of UploadRequestResponse)(urlResponse).upload_url\r\n    \r\n            Return response\r\n        End Function\r\n        Public Class UploadRequestResponse\r\n            Public Property upload_url() As String\r\n            Public Property progress_url() As String\r\n        End Class\r\n        Private Shared Function GetFileUploadResponse(ByVal fileToUpload As String, ByVal accessToken As String, ByVal uploadUrl As String) As UploadResponse\r\n            Dim client = New WebClient()\r\n            client.Headers.Add(&quot;Authorization&quot;, &quot;OAuth &quot; &amp; accessToken)\r\n    \r\n            Dim responseBytes = client.UploadFile(uploadUrl, fileToUpload)\r\n    \r\n            Dim responseString = Encoding.UTF8.GetString(responseBytes)\r\n    \r\n            Dim response = JsonConvert.DeserializeObject(Of UploadResponse)(responseString)\r\n    \r\n            Return response\r\n        End Function\r\n        Public Class UploadResponse\r\n            Public Property format() As String\r\n            Public Property acodec() As String\r\n            Public Property vcodec() As String\r\n            Public Property duration() As Integer\r\n            Public Property bitrate() As Integer\r\n            Public Property dimension() As String\r\n            Public Property name() As String\r\n            Public Property size() As Integer\r\n            Public Property url() As String\r\n            Public Property hash() As String\r\n            Public Property seal() As String\r\n    \r\n            Public Overrides Function ToString() As String\r\n                Dim flags = System.Reflection.BindingFlags.Instance Or System.Reflection.BindingFlags.Public Or System.Reflection.BindingFlags.FlattenHierarchy\r\n                Dim infos() As System.Reflection.PropertyInfo = Me.GetType().GetProperties(flags)\r\n    \r\n                Dim sb As New StringBuilder()\r\n    \r\n                Dim typeName As String = Me.GetType().Name\r\n                sb.AppendLine(typeName)\r\n                sb.AppendLine(String.Empty.PadRight(typeName.Length + 5, &quot;=&quot;c))\r\n    \r\n                For Each info In infos\r\n                    Dim value As Object = info.GetValue(Me, Nothing)\r\n                    sb.AppendFormat(&quot;{0}: {1}{2}&quot;, info.Name, If(value IsNot Nothing, value, &quot;null&quot;), Environment.NewLine)\r\n                Next info\r\n    \r\n                Return sb.ToString()\r\n            End Function\r\n        End Class\r\n        Private Shared Function PublishVideo(ByVal uploadResponse As UploadResponse, ByVal accessToken As String) As UploadedResponse\r\n    \r\n            Dim request = WebRequest.Create(&quot;https://api.dailymotion.com/me/videos?url=&quot; &amp; HttpUtility.UrlEncode(uploadResponse.url))\r\n            request.Method = &quot;POST&quot;\r\n            request.ContentType = &quot;application/x-www-form-urlencoded&quot;\r\n            request.Headers.Add(&quot;Authorization&quot;, &quot;OAuth &quot; &amp; accessToken)\r\n    \r\n            Dim requestString = String.Format(&quot;title={0}&amp;tags={1}&amp;channel={2}&amp;published={3}&quot;, HttpUtility.UrlEncode(&quot;some title1&quot;), HttpUtility.UrlEncode(&quot;tag1&quot;), HttpUtility.UrlEncode(&quot;tv&quot;), HttpUtility.UrlEncode(&quot;false&quot;))\r\n    \r\n            Dim requestBytes = Encoding.UTF8.GetBytes(requestString)\r\n    \r\n            Dim requestStream = request.GetRequestStream()\r\n    \r\n            requestStream.Write(requestBytes, 0, requestBytes.Length)\r\n    \r\n            Dim response = request.GetResponse()\r\n    \r\n            Dim responseStream = response.GetResponseStream()\r\n            Dim responseString As String\r\n            Using reader = New StreamReader(responseStream)\r\n                responseString = reader.ReadToEnd()\r\n            End Using\r\n    \r\n            Dim uploadedResponse = JsonConvert.DeserializeObject(Of UploadedResponse)(responseString)\r\n            Return uploadedResponse\r\n        End Function\r\n        Public Class UploadedResponse\r\n    \r\n            Public Property id() As String\r\n    \r\n            Public Overrides Function ToString() As String\r\n                Return &quot;Video available now at:&quot; &amp; vbLf &amp; vbLf &amp; &quot;http://www.dailymotion.com/video/&quot; &amp; id\r\n            End Function\r\n        End Class\r\n    \r\n    \r\n    \r\n    End Class",
+            "link": "https://stackoverflow.com/questions/49931606/dailymotion-upload-vb-net-on-windows-form-project",
+            "title": "dailymotion Upload Vb.Net on windows form project?",
+            "body": "<p>I am beginner .net </p>\n\n<p>I try <a href=\"https://github.com/cbenard/SODailyMotionUpload\" rel=\"nofollow noreferrer\">https://github.com/cbenard/SODailyMotionUpload</a> I convert Vb.net Work good on console. but I want convert this on windows form project. I want upload with click upload button etc. I delete console.writeline codes but give error when come this code</p>\n\n<p>client.UploadFile(uploadUrl, fileToUpload)</p>\n\n<p>give error = request canceled</p>\n\n<pre><code>Imports System\nImports System.Diagnostics\nImports System.IO\nImports System.Net\nImports System.Runtime.InteropServices\nImports System.Text\nImports System.Web\nImports Newtonsoft.Json\n\nPublic Class Form1\n    Declare Function AttachConsole Lib \"kernel32.dll\" (ByVal dwProcessId As Int32) As Boolean\n    Declare Function FreeConsole Lib \"kernel32.dll\" () As Boolean\n\n\n    Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load\n\n\n    End Sub\n\n\n    Private Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click\n\n\n        Dim accessToken = GetAccessToken()\n        Authorize(accessToken)\n\n\n        Console.WriteLine(\"Access token is \" &amp; accessToken)\n\n        Dim fileToUpload = \"C:\\example.mp4\"\n\n\n        Console.WriteLine(\"File to upload is \" &amp; fileToUpload)\n\n\n\n\n        Dim uploadUrl = GetFileUploadUrl(accessToken)\n\n        Console.WriteLine(\"Posting to \" &amp; uploadUrl)\n\n\n        Dim response = GetFileUploadResponse(fileToUpload, accessToken, uploadUrl)\n\n        Console.WriteLine(\"Response:\" &amp; vbLf)\n\n        Console.WriteLine(response.ToString &amp; vbLf)\n\n        Console.WriteLine(\"Publishing video.\" &amp; vbLf)\n\n\n\n        Dim uploadedResponse = PublishVideo(response, accessToken)\n\n        Console.WriteLine(uploadedResponse)\n\n        Console.WriteLine(\"Done. Press enter to exit.\")\n        Console.ReadLine()\n\n\n        Console.WriteLine(\"Done. Press enter to exit.\")\n        Console.ReadLine()\n\n    End Sub\n\n    Private Shared Function GetAccessToken() As String\n        Dim request = WebRequest.Create(\"https://api.dailymotion.com/oauth/token\")\n        request.Method = \"POST\"\n        request.ContentType = \"application/x-www-form-urlencoded\"\n\n        Dim requestString = String.Format(\"grant_type=password&amp;client_id={0}&amp;client_secret={1}&amp;username={2}&amp;password={3}\", HttpUtility.UrlEncode(\"apikeyy\"), HttpUtility.UrlEncode(\"secretkey\"), HttpUtility.UrlEncode(\"username\"), HttpUtility.UrlEncode(\"password\"))\n\n        Dim requestBytes = Encoding.UTF8.GetBytes(requestString)\n\n        Dim requestStream = request.GetRequestStream()\n\n        requestStream.Write(requestBytes, 0, requestBytes.Length)\n\n        Dim response = request.GetResponse()\n\n        Dim responseStream = response.GetResponseStream()\n        Dim responseString As String\n        Using reader = New StreamReader(responseStream)\n            responseString = reader.ReadToEnd()\n        End Using\n\n        Dim oauthResponse = JsonConvert.DeserializeObject(Of OAuthResponse)(responseString)\n\n        Return oauthResponse.access_token\n    End Function\n    Public Class OAuthResponse\n        Public Property access_token() As String\n        Public Property expires_in() As Integer\n        Public Property refresh_token() As String\n    End Class\n\n\n    Private Shared Sub Authorize(ByVal accessToken As String)\n\n\n        Dim authorizeUrl = String.Format(\"https://api.dailymotion.com/oauth/authorize?response_type=code&amp;client_id={0}&amp;scope=read+write+manage_videos+delete&amp;redirect_uri={1}\", HttpUtility.UrlEncode(\"apikey\"), HttpUtility.UrlEncode(\"callbackurl\"))\n\n        Console.WriteLine(\"We need permissions to upload. Press enter to open web browser.\")\n        Console.ReadLine()\n\n        Process.Start(authorizeUrl)\n\n        Dim client = New WebClient()\n        client.Headers.Add(\"Authorization\", \"OAuth \" &amp; accessToken)\n\n        Console.WriteLine(\"Press enter once you have authenticated and been redirected to your callback URL\")\n        Console.ReadLine()\n    End Sub\n\n\n    Private Shared Function GetFileUploadUrl(ByVal accessToken As String) As String\n\n\n        Dim client = New WebClient()\n        client.Headers.Add(\"Authorization\", \"OAuth \" &amp; accessToken)\n\n        Dim urlResponse = client.DownloadString(\"https://api.dailymotion.com/file/upload\")\n\n        Dim response = JsonConvert.DeserializeObject(Of UploadRequestResponse)(urlResponse).upload_url\n\n        Return response\n    End Function\n    Public Class UploadRequestResponse\n        Public Property upload_url() As String\n        Public Property progress_url() As String\n    End Class\n    Private Shared Function GetFileUploadResponse(ByVal fileToUpload As String, ByVal accessToken As String, ByVal uploadUrl As String) As UploadResponse\n        Dim client = New WebClient()\n        client.Headers.Add(\"Authorization\", \"OAuth \" &amp; accessToken)\n\n        Dim responseBytes = client.UploadFile(uploadUrl, fileToUpload)\n\n        Dim responseString = Encoding.UTF8.GetString(responseBytes)\n\n        Dim response = JsonConvert.DeserializeObject(Of UploadResponse)(responseString)\n\n        Return response\n    End Function\n    Public Class UploadResponse\n        Public Property format() As String\n        Public Property acodec() As String\n        Public Property vcodec() As String\n        Public Property duration() As Integer\n        Public Property bitrate() As Integer\n        Public Property dimension() As String\n        Public Property name() As String\n        Public Property size() As Integer\n        Public Property url() As String\n        Public Property hash() As String\n        Public Property seal() As String\n\n        Public Overrides Function ToString() As String\n            Dim flags = System.Reflection.BindingFlags.Instance Or System.Reflection.BindingFlags.Public Or System.Reflection.BindingFlags.FlattenHierarchy\n            Dim infos() As System.Reflection.PropertyInfo = Me.GetType().GetProperties(flags)\n\n            Dim sb As New StringBuilder()\n\n            Dim typeName As String = Me.GetType().Name\n            sb.AppendLine(typeName)\n            sb.AppendLine(String.Empty.PadRight(typeName.Length + 5, \"=\"c))\n\n            For Each info In infos\n                Dim value As Object = info.GetValue(Me, Nothing)\n                sb.AppendFormat(\"{0}: {1}{2}\", info.Name, If(value IsNot Nothing, value, \"null\"), Environment.NewLine)\n            Next info\n\n            Return sb.ToString()\n        End Function\n    End Class\n    Private Shared Function PublishVideo(ByVal uploadResponse As UploadResponse, ByVal accessToken As String) As UploadedResponse\n\n        Dim request = WebRequest.Create(\"https://api.dailymotion.com/me/videos?url=\" &amp; HttpUtility.UrlEncode(uploadResponse.url))\n        request.Method = \"POST\"\n        request.ContentType = \"application/x-www-form-urlencoded\"\n        request.Headers.Add(\"Authorization\", \"OAuth \" &amp; accessToken)\n\n        Dim requestString = String.Format(\"title={0}&amp;tags={1}&amp;channel={2}&amp;published={3}\", HttpUtility.UrlEncode(\"some title1\"), HttpUtility.UrlEncode(\"tag1\"), HttpUtility.UrlEncode(\"tv\"), HttpUtility.UrlEncode(\"false\"))\n\n        Dim requestBytes = Encoding.UTF8.GetBytes(requestString)\n\n        Dim requestStream = request.GetRequestStream()\n\n        requestStream.Write(requestBytes, 0, requestBytes.Length)\n\n        Dim response = request.GetResponse()\n\n        Dim responseStream = response.GetResponseStream()\n        Dim responseString As String\n        Using reader = New StreamReader(responseStream)\n            responseString = reader.ReadToEnd()\n        End Using\n\n        Dim uploadedResponse = JsonConvert.DeserializeObject(Of UploadedResponse)(responseString)\n        Return uploadedResponse\n    End Function\n    Public Class UploadedResponse\n\n        Public Property id() As String\n\n        Public Overrides Function ToString() As String\n            Return \"Video available now at:\" &amp; vbLf &amp; vbLf &amp; \"http://www.dailymotion.com/video/\" &amp; id\n        End Function\n    End Class\n\n\n\nEnd Class\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "android"
+            ],
+            "owner": {
+                "reputation": 969,
+                "user_id": 5927073,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://i.stack.imgur.com/Vcocz.png?s=128&g=1",
+                "display_name": "Aaron",
+                "link": "https://stackoverflow.com/users/5927073/aaron"
+            },
+            "is_answered": true,
+            "view_count": 21,
+            "accepted_answer_id": 49932217,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524184906,
+            "creation_date": 1524184351,
+            "question_id": 49932153,
+            "body_markdown": "So I am dealing with a conflict. I am trying to launch the google play store from within my app, I have that functionality implemented. But, I can only hardcode the package value in the URI for it to work. I need a way where I can use getPackageName() and it returns the correct one from google play store.\r\n\r\nThe Google Play Store package name that worked in the URI: `org.horaapps.leafpic` \r\n\r\nThe Package Name getPackageName() returns: `org.horaapps.leafpic.debug` \r\n\r\nHere is the code for launching google play: \r\n\r\n    //Launches to the app in google play, if the package name ever does change you can do this\r\n    //by changing the org section of the URI below. -beastlyCoder\r\n    Uri uri = Uri.parse(&quot;market://details?id=org.horaapps.leafpic&quot;); //dont want hardcoded value\r\n    Log.d(&quot;tag&quot;, getApplicationContext().getPackageName());\r\n\r\n\r\n    Intent myAppLinkToMarket = new Intent(Intent.ACTION_VIEW, uri);\r\n    try\r\n    {\r\n        startActivity(myAppLinkToMarket);\r\n\r\n    } catch (ActivityNotFoundException e)\r\n    {\r\n        Toast.makeText(this, &quot; unable to find market app&quot;, Toast.LENGTH_SHORT);\r\n    }\r\n\r\nHow I can I remove the debug at the end so the two packages can correspond, (NOTE: this is an open source project so I&#39;d prefer not making any drastic changes to the code like changing package structure and all of that.)\r\n",
+            "link": "https://stackoverflow.com/questions/49932153/removing-part-of-package-name-android",
+            "title": "Removing part of package name Android",
+            "body": "<p>So I am dealing with a conflict. I am trying to launch the google play store from within my app, I have that functionality implemented. But, I can only hardcode the package value in the URI for it to work. I need a way where I can use getPackageName() and it returns the correct one from google play store.</p>\n\n<p>The Google Play Store package name that worked in the URI: <code>org.horaapps.leafpic</code> </p>\n\n<p>The Package Name getPackageName() returns: <code>org.horaapps.leafpic.debug</code> </p>\n\n<p>Here is the code for launching google play: </p>\n\n<pre><code>//Launches to the app in google play, if the package name ever does change you can do this\n//by changing the org section of the URI below. -beastlyCoder\nUri uri = Uri.parse(\"market://details?id=org.horaapps.leafpic\"); //dont want hardcoded value\nLog.d(\"tag\", getApplicationContext().getPackageName());\n\n\nIntent myAppLinkToMarket = new Intent(Intent.ACTION_VIEW, uri);\ntry\n{\n    startActivity(myAppLinkToMarket);\n\n} catch (ActivityNotFoundException e)\n{\n    Toast.makeText(this, \" unable to find market app\", Toast.LENGTH_SHORT);\n}\n</code></pre>\n\n<p>How I can I remove the debug at the end so the two packages can correspond, (NOTE: this is an open source project so I'd prefer not making any drastic changes to the code like changing package structure and all of that.)</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "dictionary"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 7476625,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://www.gravatar.com/avatar/f6155c34b60f345589177fd0c7d710d3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Raj",
+                "link": "https://stackoverflow.com/users/7476625/raj"
+            },
+            "is_answered": true,
+            "view_count": 24,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1524184882,
+            "creation_date": 1524184187,
+            "question_id": 49932133,
+            "body_markdown": "I am trying to create a dictionary from below list, I need only 2 values and I want them as key and value. It is only printing the last dict value from list and missing &#39;key&#39;:&#39;earthquake&#39;\r\n\r\n    {&#39;locale&#39;: &#39;Raj&#39;, &#39;latlng&#39;: &#39;Sahu&#39;, &#39;include&#39;: &#39;website&#39;, &#39;agent&#39;: &#39;Pramod&#39;}\r\n\r\nI expect it to print \r\n\r\n    {&#39;locale&#39;: &#39;Raj&#39;, &#39;latlng&#39;: &#39;Sahu&#39;, &#39;include&#39;: &#39;website&#39;, &#39;agent&#39;: &#39;Pramod&#39;, &#39;key&#39;:&#39;earthquake&#39;}\r\n\r\nWhat am I missing here?\r\n   \r\n \r\n\r\n    parameters = [\r\n                        {\r\n                            &quot;type&quot;: &quot;0&quot;,\r\n                            &quot;name&quot;: &quot;key&quot;,\r\n                            &quot;value&quot;: &quot;earthquake&quot;\r\n                        },\r\n                        {\r\n                            &quot;type&quot;: &quot;0&quot;,\r\n                            &quot;name&quot;: &quot;include&quot;,\r\n                            &quot;value&quot;: &quot;website&quot;\r\n                        }\r\n                    ]\r\n        def create():\r\n            for parameter in parameters:\r\n                params = {parameter.get(&#39;name&#39;):parameter.get(&#39;value&#39;)}\r\n            params[&quot;locale&quot;] = &quot;Raj&quot;\r\n            params[&quot;agent&quot;] = &quot;Pramod&quot;\r\n            params[&quot;latlng&quot;] = &quot;Sahu&quot;\r\n            print params\r\n            return params\r\n        \r\n        if __name__ == &#39;__main__&#39;:\r\n            create()\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49932133/how-to-retain-python-dictionary-value",
+            "title": "How to Retain python dictionary value",
+            "body": "<p>I am trying to create a dictionary from below list, I need only 2 values and I want them as key and value. It is only printing the last dict value from list and missing 'key':'earthquake'</p>\n\n<pre><code>{'locale': 'Raj', 'latlng': 'Sahu', 'include': 'website', 'agent': 'Pramod'}\n</code></pre>\n\n<p>I expect it to print </p>\n\n<pre><code>{'locale': 'Raj', 'latlng': 'Sahu', 'include': 'website', 'agent': 'Pramod', 'key':'earthquake'}\n</code></pre>\n\n<p>What am I missing here?</p>\n\n<pre><code>parameters = [\n                    {\n                        \"type\": \"0\",\n                        \"name\": \"key\",\n                        \"value\": \"earthquake\"\n                    },\n                    {\n                        \"type\": \"0\",\n                        \"name\": \"include\",\n                        \"value\": \"website\"\n                    }\n                ]\n    def create():\n        for parameter in parameters:\n            params = {parameter.get('name'):parameter.get('value')}\n        params[\"locale\"] = \"Raj\"\n        params[\"agent\"] = \"Pramod\"\n        params[\"latlng\"] = \"Sahu\"\n        print params\n        return params\n\n    if __name__ == '__main__':\n        create()\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "shell"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 5803219,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2a6eff50e6732ef71076512a2459b833?s=128&d=identicon&r=PG&f=1",
+                "display_name": "a611155",
+                "link": "https://stackoverflow.com/users/5803219/a611155"
+            },
+            "is_answered": true,
+            "view_count": 11,
+            "accepted_answer_id": 49932215,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524184876,
+            "creation_date": 1524184541,
+            "question_id": 49932174,
+            "body_markdown": "i&#39;m new to shell script.\r\ni wrote a test script that encode/decode plain text to base64 string.\r\nbut it does not work what i thought. i want to decode base64 encoded string to plain text if ENCODING var is false.\r\n\r\nmy script:\r\n\r\n    #!/bin/bash\r\n    \r\n    ENCODING=false\r\n    INPUT_STRING=dGVzdF9zdHJpbmcK\r\n    \r\n    if [ $ENCODING ]; then\r\n        echo &quot;$INPUT_STRING&quot; | base64\r\n    else\r\n        echo &quot;$INPUT_STRING&quot; | base64 --decode\r\n    fi\r\n\r\noutput of script:\r\n\r\n    [ec2-user@ip-10-252-34-162 ~]$ ./test.sh\r\n    ZEdWemRGOXpkSEpwYm1jSwo=\r\n\r\nthe &#39;else&#39; statement not working. but follow command works fine\r\n\r\n    echo &quot;$INPUT_STRING&quot; | base64 --decode\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49932174/shell-command-not-working-in-if-else-statement",
+            "title": "shell command not working in if/else statement",
+            "body": "<p>i'm new to shell script.\ni wrote a test script that encode/decode plain text to base64 string.\nbut it does not work what i thought. i want to decode base64 encoded string to plain text if ENCODING var is false.</p>\n\n<p>my script:</p>\n\n<pre><code>#!/bin/bash\n\nENCODING=false\nINPUT_STRING=dGVzdF9zdHJpbmcK\n\nif [ $ENCODING ]; then\n    echo \"$INPUT_STRING\" | base64\nelse\n    echo \"$INPUT_STRING\" | base64 --decode\nfi\n</code></pre>\n\n<p>output of script:</p>\n\n<pre><code>[ec2-user@ip-10-252-34-162 ~]$ ./test.sh\nZEdWemRGOXpkSEpwYm1jSwo=\n</code></pre>\n\n<p>the 'else' statement not working. but follow command works fine</p>\n\n<pre><code>echo \"$INPUT_STRING\" | base64 --decode\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "oracle",
+                "group-by"
+            ],
+            "owner": {
+                "reputation": 7,
+                "user_id": 8366463,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/537109db900c374945169002c9c0001f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Niko",
+                "link": "https://stackoverflow.com/users/8366463/niko"
+            },
+            "is_answered": true,
+            "view_count": 31,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524184858,
+            "creation_date": 1524180583,
+            "question_id": 49931719,
+            "body_markdown": "I have rows in a query that return something like:\r\n\r\n    Date\t    User\tTime\tLocation\tService\t    Count\r\n    1/1/2018\tNick\t12:00\tLocation A\tX\t        1\r\n    1/1/2018\tNick\t12:01\tLocation A\tY\t        1\r\n    1/1/2018\tJohn\t12:02\tLocation B\tZ\t        1\r\n    1/1/2018\tHarry\t12:03\tLocation A\tX\t        1\r\n    1/1/2018\tHarry\t12:04\tLocation A\tX\t        1\r\n    1/1/2018\tHarry\t12:05\tLocation B\tY\t        1\r\n    1/1/2018\tHarry\t12:06\tLocation B\tX\t        1\r\n    1/1/2018\tNick\t12:07\tLocation A\tX\t        1\r\n    1/1/2018\tNick\t12:08\tLocation A\tY\t        1\r\n\r\nwhere the query returns locations visited by a user and a count of picks done from the location.  results are sorted by user and time ascending.  I need to group it to where CONSECUTIVE rows with same User and Location are grouped with a SUM of Count column and comma separated list of unique values in Service Column, final result returns something like this:\r\n\r\n    Date\t    User\tStart Time\tEnd Time\tLocation\tService\tCount\r\n    1/1/2018\tNick\t12:00\t    12:01\t    Location A\tX,Y\t    2\r\n    1/1/2018\tJohn\t12:02\t    12:02\t    Location B\tZ\t    1\r\n    1/1/2018\tHarry\t12:03\t    12:04\t    Location A\tX\t    2\r\n    1/1/2018\tHarry\t12:05\t    12:06\t    Location B\tX,Y\t    2\r\n    1/1/2018\tNick\t12:07\t    12:08\t    Location A\tX,Y\t    2\r\n\r\nI&#39;m not sure where to start.  Maybe lag or partition clauses?  hoping an SQL guru can help here...\r\n",
+            "link": "https://stackoverflow.com/questions/49931719/how-to-group-consecutive-rows-together-in-sql-by-multiple-columns",
+            "title": "How to group consecutive rows together in SQL by multiple columns",
+            "body": "<p>I have rows in a query that return something like:</p>\n\n<pre><code>Date        User    Time    Location    Service     Count\n1/1/2018    Nick    12:00   Location A  X           1\n1/1/2018    Nick    12:01   Location A  Y           1\n1/1/2018    John    12:02   Location B  Z           1\n1/1/2018    Harry   12:03   Location A  X           1\n1/1/2018    Harry   12:04   Location A  X           1\n1/1/2018    Harry   12:05   Location B  Y           1\n1/1/2018    Harry   12:06   Location B  X           1\n1/1/2018    Nick    12:07   Location A  X           1\n1/1/2018    Nick    12:08   Location A  Y           1\n</code></pre>\n\n<p>where the query returns locations visited by a user and a count of picks done from the location.  results are sorted by user and time ascending.  I need to group it to where CONSECUTIVE rows with same User and Location are grouped with a SUM of Count column and comma separated list of unique values in Service Column, final result returns something like this:</p>\n\n<pre><code>Date        User    Start Time  End Time    Location    Service Count\n1/1/2018    Nick    12:00       12:01       Location A  X,Y     2\n1/1/2018    John    12:02       12:02       Location B  Z       1\n1/1/2018    Harry   12:03       12:04       Location A  X       2\n1/1/2018    Harry   12:05       12:06       Location B  X,Y     2\n1/1/2018    Nick    12:07       12:08       Location A  X,Y     2\n</code></pre>\n\n<p>I'm not sure where to start.  Maybe lag or partition clauses?  hoping an SQL guru can help here...</p>\n"
+        },
+        {
+            "tags": [
+                "google-bigquery",
+                "bigdata",
+                "user-defined-functions",
+                "text-mining"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9266098,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/67ca87d762746abf16a4f7d01d498059?s=128&d=identicon&r=PG&f=1",
+                "display_name": "ASP YOK",
+                "link": "https://stackoverflow.com/users/9266098/asp-yok"
+            },
+            "is_answered": true,
+            "view_count": 26,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524184834,
+            "creation_date": 1524149021,
+            "question_id": 49923910,
+            "body_markdown": "what I want to do ist the following:\r\nI get data maybe in columns maybe just one string with a scheme like that:\r\n\r\n    &gt; 420-xyz-somefancytext-12.3.2018-etc...\r\n    &gt; 4-20-xyz-somefancytext-12.3.2018-etc...\r\n    &gt; 4-250-xyz-somefancyothertext-13.3.2018-etc...\r\n    &gt; 4-230-xyz-somefancyothertext-14.3.2018-etc...\r\n\r\nThe use case wants to detect the the first two rows. Because the first number is very similar and the text and of course the date. What comes to my mind is something like the edit or cosine distance to measure this similarity. \r\n\r\nI also implemented a very easy UDF in BigQuery:\r\n\r\n     CREATE TEMPORARY FUNCTION similariry(Name1 STRING, Name2 STRING)\r\n      RETURNS FLOAT64\r\n      LANGUAGE js AS &quot;&quot;&quot;\r\n        var _extend = function(dst) {\r\n          var sources = Array.prototype.slice.call(arguments, 1);\r\n          for (var i=0; i&lt;sources.length; ++i) {\r\n            var src = sources[i];\r\n            for (var p in src) {\r\n              if (src.hasOwnProperty(p)) dst[p] = src[p];\r\n            }\r\n          }\r\n          return dst;\r\n        };\r\n    \r\n        var Levenshtein = {\r\n          /**\r\n           * Calculate levenshtein distance of the two strings.\r\n           *\r\n           * @param str1 String the first string.\r\n           * @param str2 String the second string.\r\n           * @return Integer the levenshtein distance (0 and above).\r\n           */\r\n          get: function(str1, str2) {\r\n            // base cases\r\n            if (str1 === str2) return 0;\r\n            if (str1.length === 0) return str2.length;\r\n            if (str2.length === 0) return str1.length;\r\n    \r\n            // two rows\r\n            var prevRow  = new Array(str2.length + 1),\r\n                curCol, nextCol, i, j, tmp;\r\n    \r\n            // initialise previous row\r\n            for (i=0; i&lt;prevRow.length; ++i) {\r\n              prevRow[i] = i;\r\n            }\r\n    \r\n            // calculate current row distance from previous row\r\n            for (i=0; i&lt;str1.length; ++i) {\r\n              nextCol = i + 1;\r\n    \r\n              for (j=0; j&lt;str2.length; ++j) {\r\n                curCol = nextCol;\r\n    \r\n                // substution\r\n                nextCol = prevRow[j] + ( (str1.charAt(i) === str2.charAt(j)) ? 0 : 1 );\r\n                // insertion\r\n                tmp = curCol + 1;\r\n                if (nextCol &gt; tmp) {\r\n                  nextCol = tmp;\r\n                }\r\n                // deletion\r\n                tmp = prevRow[j + 1] + 1;\r\n                if (nextCol &gt; tmp) {\r\n                  nextCol = tmp;\r\n                }\r\n    \r\n                // copy current col value into previous (in preparation for next iteration)\r\n                prevRow[j] = curCol;\r\n              }\r\n    \r\n              // copy last col value into previous (in preparation for next iteration)\r\n              prevRow[j] = nextCol;\r\n            }\r\n    \r\n            return nextCol;\r\n          }\r\n    \r\n        };\r\n    \r\n        var the_Name1;\r\n    \r\n        try {\r\n          the_Name1 = decodeURI(Name1).toLowerCase();\r\n        } catch (ex) {\r\n          the_Name1 = Name1.toLowerCase();\r\n        }\r\n    \r\n        try {\r\n          the_Name2 = decodeURI(Name2).toLowerCase();\r\n        } catch (ex) {\r\n          the_Name2 = Name2.toLowerCase();\r\n        }\r\n    \r\n        return 1 - Levenshtein.get(the_Name1, the_Name2) / the_Name1.length;\r\n    \r\n      &quot;&quot;&quot;;\r\n    \r\n      WITH strings AS (\r\n      SELECT NULL          string1, NULL        string2 UNION ALL\r\n        SELECT &#39;test&#39;       string1, NULL        string2 UNION ALL\r\n        SELECT NULL          string1, &#39;test&#39;        string2 UNION ALL\r\n        SELECT &#39;CRATE&#39;      string1, &#39;TRACE&#39;        string2 UNION ALL\r\n        SELECT &#39;MARTHA&#39;     string1, &#39;MARHTA&#39;     string2 UNION ALL\r\n        SELECT &#39;DWAYNE&#39;     string1, &#39;DUANE&#39;        string2 UNION ALL\r\n        SELECT &#39;DIXON&#39;      string1, &#39;DICKSONX&#39;   string2 UNION ALL\r\n        SELECT &#39;Dunningham&#39; string1, &#39;Cunningham&#39; string2 UNION ALL\r\n        SELECT &#39;Abroms&#39;     string1, &#39;Abrams&#39;     string2 UNION ALL\r\n        SELECT &#39;Lampley&#39;    string1, &#39;Campley&#39;    string2 UNION ALL\r\n        SELECT &#39;Jonathon&#39;   string1, &#39;Jonathan&#39;   string2 UNION ALL\r\n        SELECT &#39;Jeraldine&#39;  string1, &#39;Gerladine&#39;  string2 UNION ALL\r\n        SELECT &#39;test&#39;       string1, &#39;blank&#39;        string2 UNION ALL\r\n        SELECT &#39;everybody&#39;  string1, &#39;every&#39;        string2 UNION ALL\r\n        SELECT &#39;a&#39;          string1, &#39;aaa&#39;        string2 UNION ALL\r\n        SELECT &#39;G&#233;raldine&#39;  string1, &#39;Gerladine&#39;  string2 UNION ALL\r\n        SELECT &#39;J&#233;r&#244;me&#39;     string1, &#39;Jerome&#39;     string2 UNION ALL\r\n        SELECT &#39;&#231;a&#39;          string1, &#39;ca&#39;        string2 UNION ALL\r\n        SELECT &#39;&#220;we&#39;          string1, &#39;Uwe&#39;        string2 \r\n      )\r\n      SELECT string1, string2, similariry(string1, string2) my_sim\r\n      FROM   strings\r\n      ORDER  BY my_sim DESC\r\n\r\nIt measures the similarity of the two columns. But what I need is a algorithm which measures the similarity of the rows. So this means I have to check every row with every other row. I not sure how to do it and how do it the most efficient way. In the end a table of the rows with a high similarity should be generated. \r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49923910/sql-big-query-text-similarity",
+            "title": "SQL (Big Query) Text Similarity",
+            "body": "<p>what I want to do ist the following:\nI get data maybe in columns maybe just one string with a scheme like that:</p>\n\n<pre><code>&gt; 420-xyz-somefancytext-12.3.2018-etc...\n&gt; 4-20-xyz-somefancytext-12.3.2018-etc...\n&gt; 4-250-xyz-somefancyothertext-13.3.2018-etc...\n&gt; 4-230-xyz-somefancyothertext-14.3.2018-etc...\n</code></pre>\n\n<p>The use case wants to detect the the first two rows. Because the first number is very similar and the text and of course the date. What comes to my mind is something like the edit or cosine distance to measure this similarity. </p>\n\n<p>I also implemented a very easy UDF in BigQuery:</p>\n\n<pre><code> CREATE TEMPORARY FUNCTION similariry(Name1 STRING, Name2 STRING)\n  RETURNS FLOAT64\n  LANGUAGE js AS \"\"\"\n    var _extend = function(dst) {\n      var sources = Array.prototype.slice.call(arguments, 1);\n      for (var i=0; i&lt;sources.length; ++i) {\n        var src = sources[i];\n        for (var p in src) {\n          if (src.hasOwnProperty(p)) dst[p] = src[p];\n        }\n      }\n      return dst;\n    };\n\n    var Levenshtein = {\n      /**\n       * Calculate levenshtein distance of the two strings.\n       *\n       * @param str1 String the first string.\n       * @param str2 String the second string.\n       * @return Integer the levenshtein distance (0 and above).\n       */\n      get: function(str1, str2) {\n        // base cases\n        if (str1 === str2) return 0;\n        if (str1.length === 0) return str2.length;\n        if (str2.length === 0) return str1.length;\n\n        // two rows\n        var prevRow  = new Array(str2.length + 1),\n            curCol, nextCol, i, j, tmp;\n\n        // initialise previous row\n        for (i=0; i&lt;prevRow.length; ++i) {\n          prevRow[i] = i;\n        }\n\n        // calculate current row distance from previous row\n        for (i=0; i&lt;str1.length; ++i) {\n          nextCol = i + 1;\n\n          for (j=0; j&lt;str2.length; ++j) {\n            curCol = nextCol;\n\n            // substution\n            nextCol = prevRow[j] + ( (str1.charAt(i) === str2.charAt(j)) ? 0 : 1 );\n            // insertion\n            tmp = curCol + 1;\n            if (nextCol &gt; tmp) {\n              nextCol = tmp;\n            }\n            // deletion\n            tmp = prevRow[j + 1] + 1;\n            if (nextCol &gt; tmp) {\n              nextCol = tmp;\n            }\n\n            // copy current col value into previous (in preparation for next iteration)\n            prevRow[j] = curCol;\n          }\n\n          // copy last col value into previous (in preparation for next iteration)\n          prevRow[j] = nextCol;\n        }\n\n        return nextCol;\n      }\n\n    };\n\n    var the_Name1;\n\n    try {\n      the_Name1 = decodeURI(Name1).toLowerCase();\n    } catch (ex) {\n      the_Name1 = Name1.toLowerCase();\n    }\n\n    try {\n      the_Name2 = decodeURI(Name2).toLowerCase();\n    } catch (ex) {\n      the_Name2 = Name2.toLowerCase();\n    }\n\n    return 1 - Levenshtein.get(the_Name1, the_Name2) / the_Name1.length;\n\n  \"\"\";\n\n  WITH strings AS (\n  SELECT NULL          string1, NULL        string2 UNION ALL\n    SELECT 'test'       string1, NULL        string2 UNION ALL\n    SELECT NULL          string1, 'test'        string2 UNION ALL\n    SELECT 'CRATE'      string1, 'TRACE'        string2 UNION ALL\n    SELECT 'MARTHA'     string1, 'MARHTA'     string2 UNION ALL\n    SELECT 'DWAYNE'     string1, 'DUANE'        string2 UNION ALL\n    SELECT 'DIXON'      string1, 'DICKSONX'   string2 UNION ALL\n    SELECT 'Dunningham' string1, 'Cunningham' string2 UNION ALL\n    SELECT 'Abroms'     string1, 'Abrams'     string2 UNION ALL\n    SELECT 'Lampley'    string1, 'Campley'    string2 UNION ALL\n    SELECT 'Jonathon'   string1, 'Jonathan'   string2 UNION ALL\n    SELECT 'Jeraldine'  string1, 'Gerladine'  string2 UNION ALL\n    SELECT 'test'       string1, 'blank'        string2 UNION ALL\n    SELECT 'everybody'  string1, 'every'        string2 UNION ALL\n    SELECT 'a'          string1, 'aaa'        string2 UNION ALL\n    SELECT 'Géraldine'  string1, 'Gerladine'  string2 UNION ALL\n    SELECT 'Jérôme'     string1, 'Jerome'     string2 UNION ALL\n    SELECT 'ça'          string1, 'ca'        string2 UNION ALL\n    SELECT 'Üwe'          string1, 'Uwe'        string2 \n  )\n  SELECT string1, string2, similariry(string1, string2) my_sim\n  FROM   strings\n  ORDER  BY my_sim DESC\n</code></pre>\n\n<p>It measures the similarity of the two columns. But what I need is a algorithm which measures the similarity of the rows. So this means I have to check every row with every other row. I not sure how to do it and how do it the most efficient way. In the end a table of the rows with a high similarity should be generated. </p>\n"
+        },
+        {
+            "tags": [
+                "ftp"
+            ],
+            "owner": {
+                "reputation": 30,
+                "user_id": 2576798,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/f0449709f297939d398296e7b5ce7f55?s=128&d=identicon&r=PG",
+                "display_name": "Avinash",
+                "link": "https://stackoverflow.com/users/2576798/avinash"
+            },
+            "is_answered": false,
+            "view_count": 20736,
+            "answer_count": 2,
+            "score": 5,
+            "last_activity_date": 1524184834,
+            "creation_date": 1373996598,
+            "last_edit_date": 1402339995,
+            "question_id": 17683486,
+            "body_markdown": "I am trying to use FTP from command prompt.So when I enter \r\n\r\n    c:\\&gt; ftp www.test.com\r\n\r\nit waits for a while and changes to `ftp&gt;`.\r\n\r\nSo I thought that the connection was successful even though it did not ask me for a username and password.\r\n\r\nNow when I enter any command in this like `ls` or `dir` it gives a message saying &quot;Not Connected&quot;.\r\n\r\nI am not sure why it is saying that, is it that even if the connection fails the command prompt changes to `ftp&gt;`?",
+            "link": "https://stackoverflow.com/questions/17683486/not-connected-message-when-any-command-is-entered-after-ftp-login",
+            "title": "&quot;Not connected&quot; message when any command is entered after FTP login",
+            "body": "<p>I am trying to use FTP from command prompt.So when I enter </p>\n\n<pre><code>c:\\&gt; ftp www.test.com\n</code></pre>\n\n<p>it waits for a while and changes to <code>ftp&gt;</code>.</p>\n\n<p>So I thought that the connection was successful even though it did not ask me for a username and password.</p>\n\n<p>Now when I enter any command in this like <code>ls</code> or <code>dir</code> it gives a message saying \"Not Connected\".</p>\n\n<p>I am not sure why it is saying that, is it that even if the connection fails the command prompt changes to <code>ftp&gt;</code>?</p>\n"
+        },
+        {
+            "tags": [
+                "java"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 2817128,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/c0689ad61c58a5a07058315dbc5c85fb?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user2817128",
+                "link": "https://stackoverflow.com/users/2817128/user2817128"
+            },
+            "is_answered": false,
+            "view_count": 9945,
+            "answer_count": 5,
+            "score": 1,
+            "last_activity_date": 1524184834,
+            "creation_date": 1380147317,
+            "last_edit_date": 1380148264,
+            "question_id": 19016090,
+            "body_markdown": "So, the user has to choose a number between 1 and 3.  Otherwise, they&#39;re told to try again.  If the user tries a number less than 1 or greater than 3, whatever number they chose gets stored in the &quot;choice&quot; variable and causes the program to continue to run when it should just stop.  I assumed there would be an easy solution, but apparently it&#39;s beyond me as a beginner.  The obvious thing to me would be to somehow clear or empty the value that has been assigned to &quot;choice&quot; after the unsuccessful user input.  Is that possible?\r\n\r\n    import java.util.Scanner;\r\n    \r\n    public class Furniture2Test  {\r\n    \r\n    \tpublic static void main(String[] args) {\r\n    \r\n    \t\twood();\r\n    \r\n    \t} // end main\r\n    \r\n    \tpublic static void wood() {\r\n    \r\n    \t\tint choice;\r\n    \r\n    \t\tint pine = 1;\r\n    \t\tint oak = 2;\r\n    \t\tint mahogany = 3;\r\n    \r\n    \t\tint pineCost = 100;\r\n    \t\tint oakCost = 225;\r\n    \t\tint mahoganyCost = 310;\r\n    \r\n    \t\tScanner keyboard = new Scanner(System.in);\r\n    \r\n    \t\tSystem.out.println(&quot;What type of table would you like?&quot;);\r\n    \t\tSystem.out.println(&quot;1. pine&quot;);\r\n    \t\tSystem.out.println(&quot;2. oak&quot;);\r\n    \t\tSystem.out.println(&quot;3. mahogany&quot;);\r\n    \r\n    \t\tchoice = keyboard.nextInt();\r\n    \r\n    \t\tif (choice == 1) {\r\n    \t\t\tchoice = pineCost;\r\n    \t\t} else if (choice == 2) {\r\n    \t\t\tchoice = oakCost;\r\n    \t\t} else if (choice == 3) {\r\n    \t\t\tchoice = mahoganyCost;\r\n    \t\t} else if (choice &gt; 3 || choice &lt; 1) {\r\n    \t\t\tSystem.out.println(&quot;Try again.&quot;);\r\n    \t\t\tchoice = -1;\r\n    \t\t\twood();\r\n    \t\t}\r\n    \r\n    \t\tSystem.out.println(&quot;That will be $&quot; + choice + &quot;.&quot;);\r\n    \r\n    \t\tsize(choice);\r\n    \r\n    \t} // end wood\r\n    \r\n    \tpublic static void size(int choice) {\r\n    \r\n    \t\tint sizeChoice;\r\n    \t\tint large = 35;\r\n    \r\n    \t\tScanner keyboard = new Scanner(System.in);\r\n    \r\n    \t\tSystem.out.println(&quot;What size will that be?&quot;);\r\n    \t\tSystem.out.println(&quot;1. large&quot;);\r\n    \t\tSystem.out.println(&quot;2. small&quot;);\r\n    \r\n    \t\tsizeChoice = keyboard.nextInt();\r\n    \r\n    \t\tif (sizeChoice == 1)\r\n    \t\t\tSystem.out.println(&quot;That will be $&quot; + (choice + large) + &quot;.&quot;);\r\n    \t\telse if (sizeChoice == 2)\r\n    \t\t\tSystem.out.println(&quot;That will be $&quot; + choice);\r\n    \t\telse\r\n    \t\t\tSystem.out.println(&quot;Please, enter either a 1 or a 2.&quot;);\r\n    \r\n    \t} // end size\r\n    \r\n    }",
+            "link": "https://stackoverflow.com/questions/19016090/how-to-keep-requesting-user-to-select-a-valid-option",
+            "title": "How to keep requesting user to select a valid option?",
+            "body": "<p>So, the user has to choose a number between 1 and 3.  Otherwise, they're told to try again.  If the user tries a number less than 1 or greater than 3, whatever number they chose gets stored in the \"choice\" variable and causes the program to continue to run when it should just stop.  I assumed there would be an easy solution, but apparently it's beyond me as a beginner.  The obvious thing to me would be to somehow clear or empty the value that has been assigned to \"choice\" after the unsuccessful user input.  Is that possible?</p>\n\n<pre><code>import java.util.Scanner;\n\npublic class Furniture2Test  {\n\n    public static void main(String[] args) {\n\n        wood();\n\n    } // end main\n\n    public static void wood() {\n\n        int choice;\n\n        int pine = 1;\n        int oak = 2;\n        int mahogany = 3;\n\n        int pineCost = 100;\n        int oakCost = 225;\n        int mahoganyCost = 310;\n\n        Scanner keyboard = new Scanner(System.in);\n\n        System.out.println(\"What type of table would you like?\");\n        System.out.println(\"1. pine\");\n        System.out.println(\"2. oak\");\n        System.out.println(\"3. mahogany\");\n\n        choice = keyboard.nextInt();\n\n        if (choice == 1) {\n            choice = pineCost;\n        } else if (choice == 2) {\n            choice = oakCost;\n        } else if (choice == 3) {\n            choice = mahoganyCost;\n        } else if (choice &gt; 3 || choice &lt; 1) {\n            System.out.println(\"Try again.\");\n            choice = -1;\n            wood();\n        }\n\n        System.out.println(\"That will be $\" + choice + \".\");\n\n        size(choice);\n\n    } // end wood\n\n    public static void size(int choice) {\n\n        int sizeChoice;\n        int large = 35;\n\n        Scanner keyboard = new Scanner(System.in);\n\n        System.out.println(\"What size will that be?\");\n        System.out.println(\"1. large\");\n        System.out.println(\"2. small\");\n\n        sizeChoice = keyboard.nextInt();\n\n        if (sizeChoice == 1)\n            System.out.println(\"That will be $\" + (choice + large) + \".\");\n        else if (sizeChoice == 2)\n            System.out.println(\"That will be $\" + choice);\n        else\n            System.out.println(\"Please, enter either a 1 or a 2.\");\n\n    } // end size\n\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c",
+                "eclipse",
+                "eclipse-cdt"
+            ],
+            "owner": {
+                "reputation": 1564,
+                "user_id": 1580892,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://i.stack.imgur.com/1S39d.jpg?s=128&g=1",
+                "display_name": "Rickesh John",
+                "link": "https://stackoverflow.com/users/1580892/rickesh-john"
+            },
+            "is_answered": false,
+            "view_count": 14352,
+            "protected_date": 1455425528,
+            "answer_count": 4,
+            "score": 6,
+            "last_activity_date": 1524184834,
+            "creation_date": 1410808612,
+            "question_id": 25855293,
+            "body_markdown": "I am trying to install the C/C++ development tools for Eclipse Luna.\r\n\r\nTaking reference from this page [here][1], I navigated to Help&gt; Install New Software&gt; and placed `http://download.eclipse.org/tools/cdt/releases/8.4`\r\nin the &quot;Works with&quot; section. \r\n\r\nI got the options for C/C++ Development Tools and C/C++ Development Tools SDK which I downloaded and restarted Eclipse. However, on restarting eclipse I cannot find any place/interface to create C programs or files. The tools are showing up in the installed softwares list(screen attached). \r\n\r\nI have also installed MinGw as instructed [here][2]. \r\n\r\nHave I missed any step? How can I start C development in Luna. Please advice.![enter image description here][3]\r\n\r\n\r\n  [1]: http://www.eclipse.org/cdt/downloads.php\r\n  [2]: https://www3.ntu.edu.sg/home/ehchua/programming/howto/Cygwin_HowTo.html#mingw\r\n  [3]: http://i.stack.imgur.com/o7oep.png",
+            "link": "https://stackoverflow.com/questions/25855293/how-to-install-cdt-to-eclipse-luna",
+            "title": "How to install CDT to Eclipse Luna",
+            "body": "<p>I am trying to install the C/C++ development tools for Eclipse Luna.</p>\n\n<p>Taking reference from this page <a href=\"http://www.eclipse.org/cdt/downloads.php\" rel=\"nofollow noreferrer\">here</a>, I navigated to Help> Install New Software> and placed <code>http://download.eclipse.org/tools/cdt/releases/8.4</code>\nin the \"Works with\" section. </p>\n\n<p>I got the options for C/C++ Development Tools and C/C++ Development Tools SDK which I downloaded and restarted Eclipse. However, on restarting eclipse I cannot find any place/interface to create C programs or files. The tools are showing up in the installed softwares list(screen attached). </p>\n\n<p>I have also installed MinGw as instructed <a href=\"https://www3.ntu.edu.sg/home/ehchua/programming/howto/Cygwin_HowTo.html#mingw\" rel=\"nofollow noreferrer\">here</a>. </p>\n\n<p>Have I missed any step? How can I start C development in Luna. Please advice.<img src=\"https://i.stack.imgur.com/o7oep.png\" alt=\"enter image description here\"></p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "swing",
+                "datepicker",
+                "jpanel"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 3783190,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a8b6f48c0d09664346514c58c71c8e50?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Akshat",
+                "link": "https://stackoverflow.com/users/3783190/akshat"
+            },
+            "is_answered": false,
+            "view_count": 12423,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524184834,
+            "creation_date": 1411635053,
+            "last_edit_date": 1495542851,
+            "question_id": 26034298,
+            "body_markdown": "I am trying to add jdatepicker in jpanel, this jpanel is called inside jframe, the problem is that if I try to add jdatepicker directly into jpanel it is not displayed, until some event is performed.\r\n\r\nI have tried [this][1] solution, but this was of no help. When I use this it also open one more window with no data.\r\n\r\n  [1]: https://stackoverflow.com/questions/25933567/add-this-jdatepicker-in-jpanel-instead-jframe-in-java\r\n\r\nand other method I am using is - \r\n\r\nClass MainApp which is using frame\r\n\r\n    public class MainApp extends JFrame implements ActionListener {\r\n\r\n\tprivate JPanel panel;\r\n\r\n\tprivate JMenuBar m_menuBar;\r\n\tprivate JMenu m_menuSales;\r\n\r\n\tprivate JMenuItem m_itmSalesNewBuisness;\r\n\tprivate JMenuItem m_itmSalesAppointments;\r\n\r\n    private static MainApp instance = null;\r\n\r\n\tpublic static MainApp getInstance() {\r\n\t\tif(instance == null) {\r\n\t\t\tinstance = new MainApp();\r\n\t\t}\r\n\r\n\t\treturn instance;\r\n\t}\r\n\r\n\tprivate MainApp() {\r\n\t\tinitComponents();\r\n\t}\r\n\r\n\tprivate void initComponents() {\r\n\t\tthis.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);\r\n\r\n\t\tm_menuBar = new JMenuBar();\r\n\t\tm_menuSales = new JMenu(&quot;Sales&quot;);\r\n\t\tm_itmSalesAppointments = new JMenuItem(&quot;Appointments&quot;);\r\n\t\tm_itmSalesAppointments.addActionListener(this);\r\n\t\tm_itmSalesNewBuisness = new JMenuItem(&quot;New Business&quot;);\r\n\t\tm_itmSalesNewBuisness.addActionListener(this);\r\n\r\n\t\tm_menuBar.add(m_menuSales);\r\n\t\tsetJMenuBar(m_menuBar);\r\n\r\n\t\tsetSize(1300, 700);\r\n\t\tsetVisible(true);\r\n\t}\r\n\r\n\tpublic static void main(String[] args) {\r\n\t\ttry {\r\n\t\t\tUIManager.setLookAndFeel(&quot;javax.swing.plaf.metal.MetalLookAndFeel&quot;);\r\n\t\t} catch (UnsupportedLookAndFeelException ex) {\r\n\t\t\tex.printStackTrace();\r\n\t\t} catch (IllegalAccessException ex) {\r\n\t\t\tex.printStackTrace();\r\n\t\t} catch (InstantiationException ex) {\r\n\t\t\tex.printStackTrace();\r\n\t\t} catch (ClassNotFoundException ex) {\r\n\t\t\tex.printStackTrace();\r\n\t\t}\r\n\t\tUIManager.put(&quot;swing.boldMetal&quot;, Boolean.FALSE);\r\n\r\n\t\tSwingUtilities.invokeLater(new Runnable() {\r\n\t\t\t@Override\r\n\t\t\tpublic void run() {\r\n\t\t\t\tnew MainApp();\r\n\t\t\t}\r\n\t\t});\r\n\t}\r\n\r\n\t@Override\r\n\tpublic void actionPerformed(ActionEvent e) {\r\n\t\tif(m_itmSalesNewBuisness == e.getSource()){\r\n\t\t\tif(panel != null) {\r\n\t\t\t\tremove(panel);\r\n\t\t\t\tinvalidate();\r\n\t\t\t}\r\n\t\t\trevalidate();\r\n\t\t\trepaint();\r\n\t\t\tpanel = new CopyOfNewBusiness();\r\n\t\t\tpanel.setBounds(0, 0, getWidth(), getHeight());\r\n\t\t\tadd(panel);\r\n\t\t} else if(m_itmSalesAppointments == e.getSource()){\r\n\t\t\tif(panel != null) {\r\n\t\t\t\tremove(panel);\r\n\t\t\t\tinvalidate();\r\n\t\t\t}\r\n\t\t\trevalidate();\r\n\t\t\trepaint();\r\n\t\t\tpanel = new AppointmentTracker();\r\n\t\t\tpanel.setBounds(0, 0, getWidth(), getHeight());\r\n\t\t\tadd(panel);\r\n\t\t}\r\n\t}\r\n\r\n\tpublic JDatePickerImpl setDatePicker() {\r\n\t\tUtilDateModel model = new UtilDateModel();\r\n\t\tmodel.setSelected(true);\r\n\t\tJDatePanelImpl datePanel = new JDatePanelImpl(model);\r\n\t\tJDatePickerImpl datePicker = new JDatePickerImpl(datePanel, new DateLabelFormatter());\r\n\t\treturn datePicker;      \r\n\t}\r\n\r\n\r\n\r\nNewBusiness.java\r\n\r\n    public class CopyOfNewBusiness extends JPanel implements ActionListener, ItemListener {\r\n\r\n\tprivate JLabel m_lblDate;\r\n\tprivate JDatePickerImpl m_dtpDate;\r\n\r\n\tprivate JLabel m_lblFollowUpDate;\r\n\tprivate UtilDateModel followUpDateModel;\r\n\tprivate JDatePanelImpl followUpDatePanel;\r\n\tprivate JDatePickerImpl m_dtpFollowUp;\r\n\r\n\tpublic CopyOfNewBusiness() {\r\n\t\tinitComponents();\r\n\t}\r\n\r\n\tprivate void initComponents() {\r\n\t\tsetLayout(null);\r\n\r\n\t\tm_lblDate = new JLabel(&quot;Date&quot;);\r\n\t\tm_lblDate.setBounds(10, 10, 100, 30);\r\n\t\tadd(m_lblDate);\r\n\r\n\t\tm_dtpDate = MainApp.getInstance().setDatePicker();\r\n\t\tm_dtpDate.setBounds(120, 10, 120, 30);\r\n\t\tadd(m_dtpDate);\r\n\r\n\t\tm_lblFollowUpDate = new JLabel(&quot;Follow Up Date&quot;);\r\n\t\tm_lblFollowUpDate.setBounds(10, 370, 100, 30);\r\n\t\tadd(m_lblFollowUpDate);\r\n\r\n\t\tfollowUpDateModel = new UtilDateModel();\r\n\t\tfollowUpDatePanel = new JDatePanelImpl(followUpDateModel);\r\n\t\tm_dtpFollowUp = new JDatePickerImpl(followUpDatePanel);\r\n\t\tm_dtpFollowUp.setBounds(120, 370, 120, 30);\r\n\t\tadd(m_dtpFollowUp);\r\n\r\n\t\tsetPreferredSize(new Dimension(getWidth(), getHeight()));\r\n\t}\r\n\r\n}\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/26034298/add-jdatepicker-in-jpanel",
+            "title": "Add jdatepicker in jpanel",
+            "body": "<p>I am trying to add jdatepicker in jpanel, this jpanel is called inside jframe, the problem is that if I try to add jdatepicker directly into jpanel it is not displayed, until some event is performed.</p>\n\n<p>I have tried <a href=\"https://stackoverflow.com/questions/25933567/add-this-jdatepicker-in-jpanel-instead-jframe-in-java\">this</a> solution, but this was of no help. When I use this it also open one more window with no data.</p>\n\n<p>and other method I am using is - </p>\n\n<p>Class MainApp which is using frame</p>\n\n<pre><code>public class MainApp extends JFrame implements ActionListener {\n\nprivate JPanel panel;\n\nprivate JMenuBar m_menuBar;\nprivate JMenu m_menuSales;\n\nprivate JMenuItem m_itmSalesNewBuisness;\nprivate JMenuItem m_itmSalesAppointments;\n\nprivate static MainApp instance = null;\n\npublic static MainApp getInstance() {\n    if(instance == null) {\n        instance = new MainApp();\n    }\n\n    return instance;\n}\n\nprivate MainApp() {\n    initComponents();\n}\n\nprivate void initComponents() {\n    this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);\n\n    m_menuBar = new JMenuBar();\n    m_menuSales = new JMenu(\"Sales\");\n    m_itmSalesAppointments = new JMenuItem(\"Appointments\");\n    m_itmSalesAppointments.addActionListener(this);\n    m_itmSalesNewBuisness = new JMenuItem(\"New Business\");\n    m_itmSalesNewBuisness.addActionListener(this);\n\n    m_menuBar.add(m_menuSales);\n    setJMenuBar(m_menuBar);\n\n    setSize(1300, 700);\n    setVisible(true);\n}\n\npublic static void main(String[] args) {\n    try {\n        UIManager.setLookAndFeel(\"javax.swing.plaf.metal.MetalLookAndFeel\");\n    } catch (UnsupportedLookAndFeelException ex) {\n        ex.printStackTrace();\n    } catch (IllegalAccessException ex) {\n        ex.printStackTrace();\n    } catch (InstantiationException ex) {\n        ex.printStackTrace();\n    } catch (ClassNotFoundException ex) {\n        ex.printStackTrace();\n    }\n    UIManager.put(\"swing.boldMetal\", Boolean.FALSE);\n\n    SwingUtilities.invokeLater(new Runnable() {\n        @Override\n        public void run() {\n            new MainApp();\n        }\n    });\n}\n\n@Override\npublic void actionPerformed(ActionEvent e) {\n    if(m_itmSalesNewBuisness == e.getSource()){\n        if(panel != null) {\n            remove(panel);\n            invalidate();\n        }\n        revalidate();\n        repaint();\n        panel = new CopyOfNewBusiness();\n        panel.setBounds(0, 0, getWidth(), getHeight());\n        add(panel);\n    } else if(m_itmSalesAppointments == e.getSource()){\n        if(panel != null) {\n            remove(panel);\n            invalidate();\n        }\n        revalidate();\n        repaint();\n        panel = new AppointmentTracker();\n        panel.setBounds(0, 0, getWidth(), getHeight());\n        add(panel);\n    }\n}\n\npublic JDatePickerImpl setDatePicker() {\n    UtilDateModel model = new UtilDateModel();\n    model.setSelected(true);\n    JDatePanelImpl datePanel = new JDatePanelImpl(model);\n    JDatePickerImpl datePicker = new JDatePickerImpl(datePanel, new DateLabelFormatter());\n    return datePicker;      \n}\n</code></pre>\n\n<p>NewBusiness.java</p>\n\n<pre><code>public class CopyOfNewBusiness extends JPanel implements ActionListener, ItemListener {\n\nprivate JLabel m_lblDate;\nprivate JDatePickerImpl m_dtpDate;\n\nprivate JLabel m_lblFollowUpDate;\nprivate UtilDateModel followUpDateModel;\nprivate JDatePanelImpl followUpDatePanel;\nprivate JDatePickerImpl m_dtpFollowUp;\n\npublic CopyOfNewBusiness() {\n    initComponents();\n}\n\nprivate void initComponents() {\n    setLayout(null);\n\n    m_lblDate = new JLabel(\"Date\");\n    m_lblDate.setBounds(10, 10, 100, 30);\n    add(m_lblDate);\n\n    m_dtpDate = MainApp.getInstance().setDatePicker();\n    m_dtpDate.setBounds(120, 10, 120, 30);\n    add(m_dtpDate);\n\n    m_lblFollowUpDate = new JLabel(\"Follow Up Date\");\n    m_lblFollowUpDate.setBounds(10, 370, 100, 30);\n    add(m_lblFollowUpDate);\n\n    followUpDateModel = new UtilDateModel();\n    followUpDatePanel = new JDatePanelImpl(followUpDateModel);\n    m_dtpFollowUp = new JDatePickerImpl(followUpDatePanel);\n    m_dtpFollowUp.setBounds(120, 370, 120, 30);\n    add(m_dtpFollowUp);\n\n    setPreferredSize(new Dimension(getWidth(), getHeight()));\n}\n</code></pre>\n\n<p>}</p>\n"
+        },
+        {
+            "tags": [
+                "ruby-on-rails",
+                "devise"
+            ],
+            "owner": {
+                "reputation": 471,
+                "user_id": 1213904,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://i.stack.imgur.com/QKy0Q.jpg?s=128&g=1",
+                "display_name": "user1213904",
+                "link": "https://stackoverflow.com/users/1213904/user1213904"
+            },
+            "is_answered": true,
+            "view_count": 24,
+            "accepted_answer_id": 49932210,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524184824,
+            "creation_date": 1522280234,
+            "last_edit_date": 1522281104,
+            "question_id": 49545846,
+            "body_markdown": "I&#39;m trying to implement a signup form on the homepage of my app. The successful flow (registering) works perfectly. The problem lies in when a validation fails, namely triggering a rerender of the devise registration :new action. I would like this rerender to happen on the homepage instead of devises own view.\r\n\r\nI&#39;ve tried to rewrite the devise controller by adding the root_path location to the &quot;respond_with location&quot; as seen below, however for some reason this continues to trigger a render of the devise views.\r\n\r\n\r\n      # POST /resource\r\n      def create\r\n        build_resource(sign_up_params)\r\n    \r\n        resource.save\r\n        yield resource if block_given?\r\n        if resource.persisted?\r\n          if resource.active_for_authentication?\r\n            set_flash_message! :notice, :signed_up\r\n            sign_up(resource_name, resource)\r\n            respond_with resource, location: after_sign_up_path_for(resource)\r\n          else\r\n            set_flash_message! :notice, :&quot;signed_up_but_#{resource.inactive_message}&quot;\r\n            expire_data_after_sign_in!\r\n            respond_with resource, location: after_inactive_sign_up_path_for(resource)\r\n          end\r\n        else\r\n          clean_up_passwords resource\r\n          set_minimum_password_length\r\n\r\n          respond_with resource, location: root_path # HERE!!!\r\n        end\r\n      end\r\n\r\nI&#39;m wondering what a clean way would be to fix this problem\r\n\r\n**EDIT**\r\n\r\nIt just struck me that I could render the home layout with the preferred template, however this feels a bit improper. \r\n\r\n      # POST /resource\r\n      def create\r\n        build_resource(sign_up_params)\r\n\r\n        resource.save\r\n        yield resource if block_given?\r\n        if resource.persisted?\r\n          if resource.active_for_authentication?\r\n            set_flash_message! :notice, :signed_up\r\n            sign_up(resource_name, resource)\r\n            respond_with resource, location: after_sign_up_path_for(resource)\r\n          else\r\n            set_flash_message! :notice, :&quot;signed_up_but_#{resource.inactive_message}&quot;\r\n            expire_data_after_sign_in!\r\n            respond_with resource, location: after_inactive_sign_up_path_for(resource)\r\n          end\r\n        else\r\n          clean_up_passwords resource\r\n          set_minimum_password_length\r\n\r\n          render layout: &#39;frontend/home&#39;, template: &#39;frontend/home/index&#39;\r\n        end\r\n      end",
+            "link": "https://stackoverflow.com/questions/49545846/change-registrationcontroller-create-action-failure-redirect-path",
+            "title": "change registrationcontroller create action failure redirect path",
+            "body": "<p>I'm trying to implement a signup form on the homepage of my app. The successful flow (registering) works perfectly. The problem lies in when a validation fails, namely triggering a rerender of the devise registration :new action. I would like this rerender to happen on the homepage instead of devises own view.</p>\n\n<p>I've tried to rewrite the devise controller by adding the root_path location to the \"respond_with location\" as seen below, however for some reason this continues to trigger a render of the devise views.</p>\n\n<pre><code>  # POST /resource\n  def create\n    build_resource(sign_up_params)\n\n    resource.save\n    yield resource if block_given?\n    if resource.persisted?\n      if resource.active_for_authentication?\n        set_flash_message! :notice, :signed_up\n        sign_up(resource_name, resource)\n        respond_with resource, location: after_sign_up_path_for(resource)\n      else\n        set_flash_message! :notice, :\"signed_up_but_#{resource.inactive_message}\"\n        expire_data_after_sign_in!\n        respond_with resource, location: after_inactive_sign_up_path_for(resource)\n      end\n    else\n      clean_up_passwords resource\n      set_minimum_password_length\n\n      respond_with resource, location: root_path # HERE!!!\n    end\n  end\n</code></pre>\n\n<p>I'm wondering what a clean way would be to fix this problem</p>\n\n<p><strong>EDIT</strong></p>\n\n<p>It just struck me that I could render the home layout with the preferred template, however this feels a bit improper. </p>\n\n<pre><code>  # POST /resource\n  def create\n    build_resource(sign_up_params)\n\n    resource.save\n    yield resource if block_given?\n    if resource.persisted?\n      if resource.active_for_authentication?\n        set_flash_message! :notice, :signed_up\n        sign_up(resource_name, resource)\n        respond_with resource, location: after_sign_up_path_for(resource)\n      else\n        set_flash_message! :notice, :\"signed_up_but_#{resource.inactive_message}\"\n        expire_data_after_sign_in!\n        respond_with resource, location: after_inactive_sign_up_path_for(resource)\n      end\n    else\n      clean_up_passwords resource\n      set_minimum_password_length\n\n      render layout: 'frontend/home', template: 'frontend/home/index'\n    end\n  end\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "openfiledialog"
+            ],
+            "owner": {
+                "reputation": 33,
+                "user_id": 2292429,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/b7c265e4fabe37d2e4a92fbdff07d333?s=128&d=identicon&r=PG",
+                "display_name": "Kenji",
+                "link": "https://stackoverflow.com/users/2292429/kenji"
+            },
+            "is_answered": true,
+            "view_count": 21038,
+            "accepted_answer_id": 16078701,
+            "answer_count": 8,
+            "score": 6,
+            "last_activity_date": 1524184811,
+            "creation_date": 1366274764,
+            "last_edit_date": 1366275016,
+            "question_id": 16078362,
+            "body_markdown": "How do I make my application store the last path opened in `openFileDialog` and after new opening restore it?\r\n\r\n    OpenFileDialog openFileDialog1 = new OpenFileDialog();\r\n    openFileDialog1.Filter = &quot;txt files (*.txt)|*.txt|All files (*.*)|*.*&quot;;\r\n    if (openFileDialog1.ShowDialog() == DialogResult.OK)\r\n    {\r\n        acc_path = openFileDialog1.FileName;\r\n        Settings.Default.acc_path = acc_path;\r\n\r\n        foreach (string s in File.ReadAllLines(openFileDialog1.FileName))\r\n        {\r\n            accs.Enqueue(s);\r\n        }\r\n        label2.Text = accs.Count.ToString();\r\n    }",
+            "link": "https://stackoverflow.com/questions/16078362/how-to-save-last-folder-in-openfiledialog",
+            "title": "How to save last folder in openFileDialog?",
+            "body": "<p>How do I make my application store the last path opened in <code>openFileDialog</code> and after new opening restore it?</p>\n\n<pre><code>OpenFileDialog openFileDialog1 = new OpenFileDialog();\nopenFileDialog1.Filter = \"txt files (*.txt)|*.txt|All files (*.*)|*.*\";\nif (openFileDialog1.ShowDialog() == DialogResult.OK)\n{\n    acc_path = openFileDialog1.FileName;\n    Settings.Default.acc_path = acc_path;\n\n    foreach (string s in File.ReadAllLines(openFileDialog1.FileName))\n    {\n        accs.Enqueue(s);\n    }\n    label2.Text = accs.Count.ToString();\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "kubernetes",
+                "jhipster",
+                "consul"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9667031,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-lA6J1FEirWg/AAAAAAAAAAI/AAAAAAAAAAo/FXL8u8sEnxY/photo.jpg?sz=128",
+                "display_name": "Michael Buron Yuen",
+                "link": "https://stackoverflow.com/users/9667031/michael-buron-yuen"
+            },
+            "is_answered": false,
+            "view_count": 53,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524184803,
+            "creation_date": 1524097390,
+            "last_edit_date": 1524184803,
+            "question_id": 49910847,
+            "body_markdown": "So I have 2 microservices (one is gateway).\r\nEverything works well in dev mode locally. However, after using the jhipster kubernetes generator and applying all the commands in read.md in the correct order, I still get the following error:\r\n\r\n o.s.c.c.c.ConsulPropertySourceLocator    : Fail fast is set and there was an error reading configuration from consul.\r\n\r\nI have tried copying the files from src\\main\\resources\\config to src\\main\\docker\\central-server-config while renaming the files to the project name as following : appname-dev.yml and appname-prod.\r\n\r\nI am pretty sure it is all because consul and consul-config-loader and my gateway cannot talk to each other for some reason because i get the following in the consul console :\r\n\r\nping: bad address &#39;consul-1.consul.qbs.svc.cluster.local&#39;\r\nWaiting for consul-1.consul to come up\r\n\r\nany ideals :(. I have been on this problem forever and can&#39;t really figure it out\r\n",
+            "link": "https://stackoverflow.com/questions/49910847/kubernetes-deployement-error-with-jhipster-generator",
+            "title": "kubernetes deployement error with jhipster generator",
+            "body": "<p>So I have 2 microservices (one is gateway).\nEverything works well in dev mode locally. However, after using the jhipster kubernetes generator and applying all the commands in read.md in the correct order, I still get the following error:</p>\n\n<p>o.s.c.c.c.ConsulPropertySourceLocator    : Fail fast is set and there was an error reading configuration from consul.</p>\n\n<p>I have tried copying the files from src\\main\\resources\\config to src\\main\\docker\\central-server-config while renaming the files to the project name as following : appname-dev.yml and appname-prod.</p>\n\n<p>I am pretty sure it is all because consul and consul-config-loader and my gateway cannot talk to each other for some reason because i get the following in the consul console :</p>\n\n<p>ping: bad address 'consul-1.consul.qbs.svc.cluster.local'\nWaiting for consul-1.consul to come up</p>\n\n<p>any ideals :(. I have been on this problem forever and can't really figure it out</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "button",
+                "xcode4.5",
+                "toolbar"
+            ],
+            "owner": {
+                "reputation": 3306,
+                "user_id": 156011,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://www.gravatar.com/avatar/79feb99a03b95aa26dcb4e1ab078d1ff?s=128&d=identicon&r=PG",
+                "display_name": "Steve Ross",
+                "link": "https://stackoverflow.com/users/156011/steve-ross"
+            },
+            "is_answered": false,
+            "view_count": 251,
+            "answer_count": 1,
+            "score": 3,
+            "last_activity_date": 1524184791,
+            "creation_date": 1359421101,
+            "question_id": 14573945,
+            "body_markdown": "I know how to create a toolbar button programmatically using `UIButton:buttonWithType:` and `UIBarButtonItem:initWithCustomView:` and supplying `UIButton:buttonWithType` the argument `UIButtonTypeInfoLight`.\r\n\r\nWhat I&#39;d really like to do is drag a system button onto a generic barbuttonitem to get an info button. In Interface Builder. Is this something one can do or should I just man up and write the code?",
+            "link": "https://stackoverflow.com/questions/14573945/creating-a-toolbar-info-button-in-interface-builder",
+            "title": "Creating A Toolbar Info Button in Interface Builder",
+            "body": "<p>I know how to create a toolbar button programmatically using <code>UIButton:buttonWithType:</code> and <code>UIBarButtonItem:initWithCustomView:</code> and supplying <code>UIButton:buttonWithType</code> the argument <code>UIButtonTypeInfoLight</code>.</p>\n\n<p>What I'd really like to do is drag a system button onto a generic barbuttonitem to get an info button. In Interface Builder. Is this something one can do or should I just man up and write the code?</p>\n"
+        },
+        {
+            "tags": [
+                "swift",
+                "rx-swift",
+                "reactive"
+            ],
+            "owner": {
+                "reputation": 31,
+                "user_id": 3490834,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/6d769f92fe4f3100a833c1a44c03ed76?s=128&d=identicon&r=PG&f=1",
+                "display_name": "13thang08",
+                "link": "https://stackoverflow.com/users/3490834/13thang08"
+            },
+            "is_answered": true,
+            "view_count": 44,
+            "accepted_answer_id": 49920689,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1524184764,
+            "creation_date": 1524100770,
+            "last_edit_date": 1524184764,
+            "question_id": 49911250,
+            "body_markdown": "After some flatMap chain, I want use all previous result in the end, suppose I have the following code:\r\n\r\n\tfunc getObservable1() -&gt; Observable&lt;API1Response&gt; {\r\n\r\n\t\t...\r\n\t}\r\n\r\n\tfunc getObservable2(param: API1Response) -&gt; Observable&lt;API2Response&gt; {\r\n\r\n\t\t...\r\n\t}\r\n\r\n\tfunc getObservable3(param: API2Response) -&gt; Observable&lt;API3Response&gt; {\r\n\r\n\t\t...\r\n\t}\r\n\r\n\tgetObservable1()\r\n\t\t.flatMap { api1Response in\r\n\t\t\treturn getObservable2(api1Response) \r\n\t\t}\r\n\t\t.flatMap { api2Response in\r\n\t\t\treturn getObservable3(api2Response) \r\n\t\t}\r\n\t\t.subscribe(onNext: { api3Response  in\r\n\t\t\t// I want to use both of api1Response and api2Response here\r\n\t    })\r\n\r\nHow can I do that?\r\n\r\nShould I save the api response to out scope variable and then use its latter?\r\n\r\nSomething like:\r\n\r\n\tvar api1Response: API1Response?\r\n\tfunc getObservable1() -&gt; Observable&lt;API1Response&gt; {\r\n\t\t...\r\n\r\n\t\tself.api1Response = api1Response\r\n\t\t...\r\n\t}\r\n\t...\r\n\tgetObservable1()\r\n\t\t...\r\n\t\t.subscribe(onNext: { api3Response  in\r\n\t\t\t// use ap1Response here\r\n\t\t\tprint(self.api1Response)\r\n\t    })\r\n\r\nThanks!\r\n\r\n-----UPDATE-----\r\n\r\nBase on @Misternewb answer, I post runable code for test.\r\n\r\n    func getObservable1() -&gt; Observable&lt;Int&gt; {\r\n        return Observable.of(1)\r\n    }\r\n\r\n    func getObservable2(num: Int) -&gt; Observable&lt;Int&gt; {\r\n        return Observable.of(num + 1)\r\n    }\r\n\r\n    func getObservable3(num: Int) -&gt; Observable&lt;Int&gt; {\r\n        return Observable.of(num + 10)\r\n    }\r\n\r\n\r\n    getObservable1()\r\n        .flatMap { ret1 in\r\n            return getObservable2(num: ret1).map { (ret1, $0) }\r\n        }\r\n        .flatMap { ret1, ret2 in\r\n            return getObservable3(num: ret2).map { (ret1, ret2, $0) }\r\n        }\r\n        .subscribe(onNext: { ret1, ret2, ret3 in\r\n            print(ret1)\r\n            print(ret2)\r\n            print(ret3)\r\n        })\r\n    \r\nOutput\r\n\r\n\t1\r\n\t2\r\n\t12\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49911250/how-to-use-the-result-of-previous-observable-chain",
+            "title": "How to use the result of previous observable chain?",
+            "body": "<p>After some flatMap chain, I want use all previous result in the end, suppose I have the following code:</p>\n\n<pre><code>func getObservable1() -&gt; Observable&lt;API1Response&gt; {\n\n    ...\n}\n\nfunc getObservable2(param: API1Response) -&gt; Observable&lt;API2Response&gt; {\n\n    ...\n}\n\nfunc getObservable3(param: API2Response) -&gt; Observable&lt;API3Response&gt; {\n\n    ...\n}\n\ngetObservable1()\n    .flatMap { api1Response in\n        return getObservable2(api1Response) \n    }\n    .flatMap { api2Response in\n        return getObservable3(api2Response) \n    }\n    .subscribe(onNext: { api3Response  in\n        // I want to use both of api1Response and api2Response here\n    })\n</code></pre>\n\n<p>How can I do that?</p>\n\n<p>Should I save the api response to out scope variable and then use its latter?</p>\n\n<p>Something like:</p>\n\n<pre><code>var api1Response: API1Response?\nfunc getObservable1() -&gt; Observable&lt;API1Response&gt; {\n    ...\n\n    self.api1Response = api1Response\n    ...\n}\n...\ngetObservable1()\n    ...\n    .subscribe(onNext: { api3Response  in\n        // use ap1Response here\n        print(self.api1Response)\n    })\n</code></pre>\n\n<p>Thanks!</p>\n\n<p>-----UPDATE-----</p>\n\n<p>Base on @Misternewb answer, I post runable code for test.</p>\n\n<pre><code>func getObservable1() -&gt; Observable&lt;Int&gt; {\n    return Observable.of(1)\n}\n\nfunc getObservable2(num: Int) -&gt; Observable&lt;Int&gt; {\n    return Observable.of(num + 1)\n}\n\nfunc getObservable3(num: Int) -&gt; Observable&lt;Int&gt; {\n    return Observable.of(num + 10)\n}\n\n\ngetObservable1()\n    .flatMap { ret1 in\n        return getObservable2(num: ret1).map { (ret1, $0) }\n    }\n    .flatMap { ret1, ret2 in\n        return getObservable3(num: ret2).map { (ret1, ret2, $0) }\n    }\n    .subscribe(onNext: { ret1, ret2, ret3 in\n        print(ret1)\n        print(ret2)\n        print(ret3)\n    })\n</code></pre>\n\n<p>Output</p>\n\n<pre><code>1\n2\n12\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html",
+                "css",
+                "reactjs",
+                "infinite-scroll"
+            ],
+            "owner": {
+                "reputation": 133,
+                "user_id": 5092350,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/c421049dee5a57a8c7bc89ebd13e95a8?s=128&d=identicon&r=PG&f=1",
+                "display_name": "rishubk",
+                "link": "https://stackoverflow.com/users/5092350/rishubk"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524184762,
+            "creation_date": 1524183996,
+            "last_edit_date": 1524184762,
+            "question_id": 49932118,
+            "body_markdown": "I am attempting to create a sort of infinite scroll messaging component using react. I am essentially creating a div with many divs, or messages, inside it. I am mocking the data, and only loading 20 messages to start, and then attempting to load the rest of them as soon as the scrolltop of the outer div is 0, meaning the user wants to load older messages.\r\n\r\nHere is how I fetch new messages:\r\n\r\n    fetchNewMessages = lastMessageId =&gt; {\r\n        const newId = lastMessageId - 20 + 1;\r\n        const newMessages = [\r\n            ...this.state.selectedMessages,\r\n            ...messages[0].messages.slice(newId &lt; 0 ? 0 : newId, \r\n            lastMessageId).reverse(),\r\n        ];\r\n        this.setState({\r\n          selectedMessages: newMessages,\r\n          lastMessageId: newId &lt; 0 ? 0 : newId,\r\n        });\r\n    }\r\n\r\n    handleScroll = (e) =&gt; {\r\n        if (e.target.scrollTop === 0) {\r\n    \t    this.fetchNewMessages(this.state.lastMessageId)\r\n        }\r\n    }\r\n\r\n\r\nThe problem that I am facing is that when I load the new messages, it seems to move the divs and somehow overlap them. I researched, and other people who had similar problems said make the key unique so I gave my messages each a unique id, but this still did not fix the problem.\r\n\r\nHere is a jsfiddle showing the problem: https://jsfiddle.net/69z2wepo/180872/\r\n\r\n\r\nAnd here is the desired output along with the actual output:\r\n[![Desired Output][1]][1]\r\n\r\nThe above is the Desired Output\r\n\r\n[![Actual Output][2]][2]\r\n\r\nThis is what I am getting\r\n\r\n  [1]: https://i.stack.imgur.com/S6N5N.png\r\n  [2]: https://i.stack.imgur.com/MjVN6.png\r\n\r\n\r\n**Edit**: Weirdest thing that I noticed - if you highlight the messages that are overlapping/look weird, they somehow fix themselves. Additionally, if you scroll up to re-create the bad messages and then change tabs and then go back to the jsfiddle, it will show them properly. I am very confused...",
+            "link": "https://stackoverflow.com/questions/49932118/react-re-rendering-overlapping-divs",
+            "title": "React re-rendering overlapping divs",
+            "body": "<p>I am attempting to create a sort of infinite scroll messaging component using react. I am essentially creating a div with many divs, or messages, inside it. I am mocking the data, and only loading 20 messages to start, and then attempting to load the rest of them as soon as the scrolltop of the outer div is 0, meaning the user wants to load older messages.</p>\n\n<p>Here is how I fetch new messages:</p>\n\n<pre><code>fetchNewMessages = lastMessageId =&gt; {\n    const newId = lastMessageId - 20 + 1;\n    const newMessages = [\n        ...this.state.selectedMessages,\n        ...messages[0].messages.slice(newId &lt; 0 ? 0 : newId, \n        lastMessageId).reverse(),\n    ];\n    this.setState({\n      selectedMessages: newMessages,\n      lastMessageId: newId &lt; 0 ? 0 : newId,\n    });\n}\n\nhandleScroll = (e) =&gt; {\n    if (e.target.scrollTop === 0) {\n        this.fetchNewMessages(this.state.lastMessageId)\n    }\n}\n</code></pre>\n\n<p>The problem that I am facing is that when I load the new messages, it seems to move the divs and somehow overlap them. I researched, and other people who had similar problems said make the key unique so I gave my messages each a unique id, but this still did not fix the problem.</p>\n\n<p>Here is a jsfiddle showing the problem: <a href=\"https://jsfiddle.net/69z2wepo/180872/\" rel=\"nofollow noreferrer\">https://jsfiddle.net/69z2wepo/180872/</a></p>\n\n<p>And here is the desired output along with the actual output:\n<a href=\"https://i.stack.imgur.com/S6N5N.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/S6N5N.png\" alt=\"Desired Output\"></a></p>\n\n<p>The above is the Desired Output</p>\n\n<p><a href=\"https://i.stack.imgur.com/MjVN6.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/MjVN6.png\" alt=\"Actual Output\"></a></p>\n\n<p>This is what I am getting</p>\n\n<p><strong>Edit</strong>: Weirdest thing that I noticed - if you highlight the messages that are overlapping/look weird, they somehow fix themselves. Additionally, if you scroll up to re-create the bad messages and then change tabs and then go back to the jsfiddle, it will show them properly. I am very confused...</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "arrays",
+                "rest"
+            ],
+            "owner": {
+                "reputation": 556,
+                "user_id": 2580401,
+                "user_type": "registered",
+                "accept_rate": 69,
+                "profile_image": "https://i.stack.imgur.com/POmr7.jpg?s=128&g=1",
+                "display_name": "user2580401",
+                "link": "https://stackoverflow.com/users/2580401/user2580401"
+            },
+            "is_answered": false,
+            "view_count": 28,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524184760,
+            "creation_date": 1524184760,
+            "question_id": 49932206,
+            "body_markdown": "I&#39;m having an issue with an array, in my rest app I&#39;m trying to get user data but what I&#39;m getting is someting like this:\r\n\r\n        array(1) {\r\n      [&quot;------WebKitFormBoundaryluJdsCUm4081zfQj\r\n    Content-Disposition:_form-data;_name&quot;]=&gt;\r\n      string(1655) &quot;&quot;vacante&quot;\r\n    \r\n    Otros\r\n    ------WebKitFormBoundaryluJdsCUm4081zfQj\r\n    Content-Disposition: form-data; name=&quot;estado&quot;\r\n    \r\n    cdmx\r\n    ------WebKitFormBoundaryluJdsCUm4081zfQj\r\n    Content-Disposition: form-data; name=&quot;municipio&quot;\r\n    \r\n    benito\r\n    ------WebKitFormBoundaryluJdsCUm4081zfQj\r\n    Content-Disposition: form-data; name=&quot;requerimientos&quot;\r\n    \r\n    ffffdfdfdddffdfdffdfdfdfdfdfdfernando\r\n    ------WebKitFormBoundaryluJdsCUm4081zfQj\r\n    Content-Disposition: form-data; name=&quot;categoria&quot;\r\n    \r\n    [&quot;Ventas&quot;]\r\n    }\r\n\r\nIt looks like if is encoded but I&#39;m not sure, my question here how do I convert this array into this?:\r\n\r\n    array(15) {\r\n      [&quot;vacante&quot;]=&gt;\r\n      string(5) &quot;Otros&quot;\r\n      [&quot;estado&quot;]=&gt;\r\n      string(4) &quot;cdmx&quot;\r\n      [&quot;municipio&quot;]=&gt;\r\n      string(6) &quot;benito&quot;\r\n      [&quot;requerimientos&quot;]=&gt;\r\n      string(37) &quot;ffffdfdfdddffdfdffdfdfdfdfdfdfernando&quot;\r\n      [&quot;categoria&quot;]=&gt;\r\n      string(23) &quot;[&quot;Ventas&quot;]\r\n    }\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49932206/php-convert-encode-array-to-a-normal-array",
+            "title": "PHP - Convert encode array to a normal array",
+            "body": "<p>I'm having an issue with an array, in my rest app I'm trying to get user data but what I'm getting is someting like this:</p>\n\n<pre><code>    array(1) {\n  [\"------WebKitFormBoundaryluJdsCUm4081zfQj\nContent-Disposition:_form-data;_name\"]=&gt;\n  string(1655) \"\"vacante\"\n\nOtros\n------WebKitFormBoundaryluJdsCUm4081zfQj\nContent-Disposition: form-data; name=\"estado\"\n\ncdmx\n------WebKitFormBoundaryluJdsCUm4081zfQj\nContent-Disposition: form-data; name=\"municipio\"\n\nbenito\n------WebKitFormBoundaryluJdsCUm4081zfQj\nContent-Disposition: form-data; name=\"requerimientos\"\n\nffffdfdfdddffdfdffdfdfdfdfdfdfernando\n------WebKitFormBoundaryluJdsCUm4081zfQj\nContent-Disposition: form-data; name=\"categoria\"\n\n[\"Ventas\"]\n}\n</code></pre>\n\n<p>It looks like if is encoded but I'm not sure, my question here how do I convert this array into this?:</p>\n\n<pre><code>array(15) {\n  [\"vacante\"]=&gt;\n  string(5) \"Otros\"\n  [\"estado\"]=&gt;\n  string(4) \"cdmx\"\n  [\"municipio\"]=&gt;\n  string(6) \"benito\"\n  [\"requerimientos\"]=&gt;\n  string(37) \"ffffdfdfdddffdfdffdfdfdfdfdfdfernando\"\n  [\"categoria\"]=&gt;\n  string(23) \"[\"Ventas\"]\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "node.js",
+                "sass",
+                "webpack-3",
+                "webpack-file-loader"
+            ],
+            "owner": {
+                "reputation": 2,
+                "user_id": 5781011,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9d5f6bc06c5eb9f63f730174b856feee?s=128&d=identicon&r=PG&f=1",
+                "display_name": "harish511",
+                "link": "https://stackoverflow.com/users/5781011/harish511"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524184745,
+            "creation_date": 1524184745,
+            "question_id": 49932203,
+            "body_markdown": "Hi im using socket io in my application. Which is requiring fs. when i try to bundle my javascript using below webpack config. im getting error can not resolve &#39;fs&#39;.\r\n\r\n    Module not found: Error: Can&#39;t resolve &#39;fs&#39; in &#39;my application path/node_modules/socket.io/lib&#39;\r\n\r\ni found by adding `target:&#39;node&#39;` and `node:{fs:&#39;empty&#39;}`. this issue got resolved. \r\n\r\nBut there is an issue in sass-loader. Getting below error.\r\n\r\n\r\n    ERROR in javascript/bundle.js from UglifyJs\r\n    Unexpected token: name (zlibLimiter) [javascript/bundle.js:60019,4]\r\n    Child extract-text-webpack-plugin ../../../node_modules/extract-text-webpack-plugin/dist ../../../node_modules/css-loader/index.js??ref--2-2!../../../node_modules/sass-loader/lib/loader.js!s\r\n\r\n\r\nrunning the application ignoring above error. getting below error.\r\n\r\n    external &quot;crypto&quot;:1 Uncaught ReferenceError: require is not defined\r\n        at Object.__decorate (external &quot;crypto&quot;:1)\r\n        at __webpack_require__ (bootstrap 93620a17882f7a2aa1d3:19)\r\n        at Object.byteToHex (rng.js:4)\r\n        at __webpack_require__ (bootstrap 93620a17882f7a2aa1d3:19)\r\n\r\n\r\nBelow is my webpack config and versions. Can some one please help me to resolve this issue.\r\n\r\n&quot;webpack&quot;: &quot;~3.6.0&quot;,\r\nnpm -v 5.8.0\r\nnode -v v8.4.0\r\n\r\n\r\n\r\n    const webpack = require(&#39;webpack&#39;);\r\n    const env = process.env.NODE_ENV;\r\n    const ExtractTextPlugin = require(&#39;extract-text-webpack-plugin&#39;);\r\n    const path = require(&#39;path&#39;);\r\n    const extractSass = new ExtractTextPlugin({\r\n      filename: &#39;css/[name].css&#39;,\r\n      allChunks: false\r\n    });\r\n    \r\n    \r\n    let output = {\r\n      path: __dirname + &#39;/src/main/resources/static/&#39;,\r\n      filename: &#39;javascript/[name].js&#39;\r\n    };\r\n    \r\n    if (env === &#39;debug&#39; || env === &#39;nondev&#39;) {\r\n      output = {\r\n        path: __dirname + &#39;/target/classes/static/&#39;,\r\n        filename: &#39;javascript/[name].js&#39;\r\n      };\r\n    }\r\n    \r\n    let config = {\r\n      context: __dirname + &#39;/app/js/src&#39;,\r\n      entry: {\r\n        bundle: &#39;./index.jsx&#39;,\r\n        application: &#39;./static/scss/application.scss&#39;,\r\n        &#39;application-pdap&#39;: &#39;./static/scss/application-pdap.scss&#39;\r\n      },\r\n      output: output,\r\n      devtool: &#39;cheap-module-source-map&#39;,\r\n      module: {\r\n        rules: [\r\n          {\r\n            test: /.jsx?$/,\r\n            loader: &#39;babel-loader&#39;,\r\n            exclude: /node_modules/,\r\n            query: {presets: [&#39;es2015&#39;, &#39;react&#39;]}\r\n          },\r\n          {\r\n            test: /\\.(woff|woff2|eot|ttf|svg|png|jpg|gif)$/,\r\n            loader: &#39;file-loader?limit=1024&amp;name=images/[name].[ext]&#39;\r\n          },\r\n          {\r\n            test: /\\.(scss|css)$/,\r\n            include: [path.resolve(__dirname, &#39;app/js/src/static/scss&#39;)],\r\n            use: ExtractTextPlugin.extract({\r\n              publicPath: &#39;../&#39;,\r\n              use: [\r\n                {\r\n                  loader: &#39;css-loader&#39;,\r\n                  options: {\r\n                    minimize: true,\r\n                    sourceMap: false\r\n                  }\r\n                },\r\n                {loader: &#39;sass-loader&#39;}\r\n              ],\r\n              fallback: &#39;style-loader&#39;\r\n            })\r\n          }\r\n        ]\r\n      },\r\n      plugins: [extractSass],\r\n \r\n    };\r\n    \r\n    if (env === &#39;production&#39; || env === &#39;nondev&#39;) {\r\n      config.devtool = &#39;nosources-source-map&#39;;\r\n    \r\n      config.plugins.push(\r\n        new webpack.DefinePlugin({\r\n          &#39;process.env&#39;: {NODE_ENV: &#39;&quot;production&quot;&#39;}\r\n        })\r\n      );\r\n    \r\n      config.plugins.push(new webpack.optimize.UglifyJsPlugin({\r\n        compress: {warnings: false},\r\n        comments: false,\r\n        sourceMap: false,\r\n        minimize: false\r\n      }));\r\n    }\r\n    \r\n    module.exports = config;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49932203/module-not-found-error-cant-resolve-fs-using-webpack",
+            "title": "Module not found: Error: Can&#39;t resolve &#39;fs&#39; Using Webpack",
+            "body": "<p>Hi im using socket io in my application. Which is requiring fs. when i try to bundle my javascript using below webpack config. im getting error can not resolve 'fs'.</p>\n\n<pre><code>Module not found: Error: Can't resolve 'fs' in 'my application path/node_modules/socket.io/lib'\n</code></pre>\n\n<p>i found by adding <code>target:'node'</code> and <code>node:{fs:'empty'}</code>. this issue got resolved. </p>\n\n<p>But there is an issue in sass-loader. Getting below error.</p>\n\n<pre><code>ERROR in javascript/bundle.js from UglifyJs\nUnexpected token: name (zlibLimiter) [javascript/bundle.js:60019,4]\nChild extract-text-webpack-plugin ../../../node_modules/extract-text-webpack-plugin/dist ../../../node_modules/css-loader/index.js??ref--2-2!../../../node_modules/sass-loader/lib/loader.js!s\n</code></pre>\n\n<p>running the application ignoring above error. getting below error.</p>\n\n<pre><code>external \"crypto\":1 Uncaught ReferenceError: require is not defined\n    at Object.__decorate (external \"crypto\":1)\n    at __webpack_require__ (bootstrap 93620a17882f7a2aa1d3:19)\n    at Object.byteToHex (rng.js:4)\n    at __webpack_require__ (bootstrap 93620a17882f7a2aa1d3:19)\n</code></pre>\n\n<p>Below is my webpack config and versions. Can some one please help me to resolve this issue.</p>\n\n<p>\"webpack\": \"~3.6.0\",\nnpm -v 5.8.0\nnode -v v8.4.0</p>\n\n<pre><code>const webpack = require('webpack');\nconst env = process.env.NODE_ENV;\nconst ExtractTextPlugin = require('extract-text-webpack-plugin');\nconst path = require('path');\nconst extractSass = new ExtractTextPlugin({\n  filename: 'css/[name].css',\n  allChunks: false\n});\n\n\nlet output = {\n  path: __dirname + '/src/main/resources/static/',\n  filename: 'javascript/[name].js'\n};\n\nif (env === 'debug' || env === 'nondev') {\n  output = {\n    path: __dirname + '/target/classes/static/',\n    filename: 'javascript/[name].js'\n  };\n}\n\nlet config = {\n  context: __dirname + '/app/js/src',\n  entry: {\n    bundle: './index.jsx',\n    application: './static/scss/application.scss',\n    'application-pdap': './static/scss/application-pdap.scss'\n  },\n  output: output,\n  devtool: 'cheap-module-source-map',\n  module: {\n    rules: [\n      {\n        test: /.jsx?$/,\n        loader: 'babel-loader',\n        exclude: /node_modules/,\n        query: {presets: ['es2015', 'react']}\n      },\n      {\n        test: /\\.(woff|woff2|eot|ttf|svg|png|jpg|gif)$/,\n        loader: 'file-loader?limit=1024&amp;name=images/[name].[ext]'\n      },\n      {\n        test: /\\.(scss|css)$/,\n        include: [path.resolve(__dirname, 'app/js/src/static/scss')],\n        use: ExtractTextPlugin.extract({\n          publicPath: '../',\n          use: [\n            {\n              loader: 'css-loader',\n              options: {\n                minimize: true,\n                sourceMap: false\n              }\n            },\n            {loader: 'sass-loader'}\n          ],\n          fallback: 'style-loader'\n        })\n      }\n    ]\n  },\n  plugins: [extractSass],\n\n};\n\nif (env === 'production' || env === 'nondev') {\n  config.devtool = 'nosources-source-map';\n\n  config.plugins.push(\n    new webpack.DefinePlugin({\n      'process.env': {NODE_ENV: '\"production\"'}\n    })\n  );\n\n  config.plugins.push(new webpack.optimize.UglifyJsPlugin({\n    compress: {warnings: false},\n    comments: false,\n    sourceMap: false,\n    minimize: false\n  }));\n}\n\nmodule.exports = config;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "visual-studio-code"
+            ],
+            "owner": {
+                "reputation": 84,
+                "user_id": 5470921,
+                "user_type": "registered",
+                "accept_rate": 86,
+                "profile_image": "https://www.gravatar.com/avatar/1ce6ee6dd8eb86d90248a4189ba115d3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user5470921",
+                "link": "https://stackoverflow.com/users/5470921/user5470921"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524184745,
+            "creation_date": 1524102355,
+            "question_id": 49911446,
+            "body_markdown": "I&#39;ve added the following keybinding in vscode to open a new terminal window:\r\n\r\n    {\r\n      &quot;key&quot;: &quot;cmd+t&quot;,\r\n      &quot;command&quot;: &quot;workbench.action.terminal.new&quot;\r\n    }\r\n\r\nWhen I execute a command like `cd Desktop` then run `cmd+t` again while still in it, the new terminal starts from zero. Is it possible for the new terminal to be based on the previous one? meaning in our case it should open a new terminal tab that runs on `/Desktop` instead of the root directory.\r\n\r\nI am using bash.",
+            "link": "https://stackoverflow.com/questions/49911446/opening-a-new-terminal-tab-based-on-the-current-one",
+            "title": "Opening a new terminal tab based on the current one",
+            "body": "<p>I've added the following keybinding in vscode to open a new terminal window:</p>\n\n<pre><code>{\n  \"key\": \"cmd+t\",\n  \"command\": \"workbench.action.terminal.new\"\n}\n</code></pre>\n\n<p>When I execute a command like <code>cd Desktop</code> then run <code>cmd+t</code> again while still in it, the new terminal starts from zero. Is it possible for the new terminal to be based on the previous one? meaning in our case it should open a new terminal tab that runs on <code>/Desktop</code> instead of the root directory.</p>\n\n<p>I am using bash.</p>\n"
+        },
+        {
+            "tags": [
+                "ruby-on-rails",
+                "sprockets"
+            ],
+            "owner": {
+                "reputation": 471,
+                "user_id": 1213904,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://i.stack.imgur.com/QKy0Q.jpg?s=128&g=1",
+                "display_name": "user1213904",
+                "link": "https://stackoverflow.com/users/1213904/user1213904"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524184727,
+            "creation_date": 1524184727,
+            "question_id": 49932199,
+            "body_markdown": "I have the following code\r\n\r\n    module EmailHelper\r\n      def email_image_tag(image, **options)\r\n        attachments.inline[image] = File.read(image_path(image))\r\n        image_tag attachments[image].url, **options\r\n      end\r\n    end\r\n\r\nIn production this references the correct image with hash, because the image asset is precompiled, however in development this throws a file read exception.\r\n\r\nIs there an elegant way to do a File.read without having to check on if Rails.env.development? ",
+            "link": "https://stackoverflow.com/questions/49932199/elegant-way-to-file-read-assets-in-development",
+            "title": "elegant way to File.read assets in development",
+            "body": "<p>I have the following code</p>\n\n<pre><code>module EmailHelper\n  def email_image_tag(image, **options)\n    attachments.inline[image] = File.read(image_path(image))\n    image_tag attachments[image].url, **options\n  end\nend\n</code></pre>\n\n<p>In production this references the correct image with hash, because the image asset is precompiled, however in development this throws a file read exception.</p>\n\n<p>Is there an elegant way to do a File.read without having to check on if Rails.env.development? </p>\n"
+        },
+        {
+            "tags": [
+                "gcloud",
+                "google-cloud-dataproc",
+                "google-apis-explorer"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 8674228,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-1n85QR8DaiQ/AAAAAAAAAAI/AAAAAAAAAp4/3Xotz3uLYn0/photo.jpg?sz=128",
+                "display_name": "Georges Kohnen",
+                "link": "https://stackoverflow.com/users/8674228/georges-kohnen"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524184722,
+            "creation_date": 1524169887,
+            "last_edit_date": 1524170662,
+            "question_id": 49929759,
+            "body_markdown": "I am able to create a google dataproc cluster from the command line using a custom image:\r\n\r\n&gt; gcloud beta dataproc clusters create cluster-name --image=custom-image-name\r\n\r\nas specified in https://cloud.google.com/dataproc/docs/guides/dataproc-images, but I am unable to find information about how to do the same using the v1beta2 REST api in order to create a cluster from within airflow. Any help would be greatly appreciated.\r\n",
+            "link": "https://stackoverflow.com/questions/49929759/unable-to-create-dataproc-cluster-using-custom-image",
+            "title": "Unable to create Dataproc cluster using custom image",
+            "body": "<p>I am able to create a google dataproc cluster from the command line using a custom image:</p>\n\n<blockquote>\n  <p>gcloud beta dataproc clusters create cluster-name --image=custom-image-name</p>\n</blockquote>\n\n<p>as specified in <a href=\"https://cloud.google.com/dataproc/docs/guides/dataproc-images\" rel=\"nofollow noreferrer\">https://cloud.google.com/dataproc/docs/guides/dataproc-images</a>, but I am unable to find information about how to do the same using the v1beta2 REST api in order to create a cluster from within airflow. Any help would be greatly appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "go"
+            ],
+            "owner": {
+                "reputation": 89,
+                "user_id": 2361350,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2b0542dfadb335516a8fb70fd73aa7fe?s=128&d=identicon&r=PG",
+                "display_name": "emitle",
+                "link": "https://stackoverflow.com/users/2361350/emitle"
+            },
+            "is_answered": true,
+            "view_count": 3098,
+            "answer_count": 2,
+            "score": 5,
+            "last_activity_date": 1524184722,
+            "creation_date": 1387883130,
+            "question_id": 20759803,
+            "body_markdown": "    map1 := map[string]string{&quot;name&quot;:&quot;John&quot;,&quot;desc&quot;:&quot;Golang&quot;}\r\n    map2 := map[string]int{&quot;apple&quot;:23,&quot;tomato&quot;:13}\r\nso,How to check variable type is map  in Go language？",
+            "link": "https://stackoverflow.com/questions/20759803/how-to-check-variable-type-is-map-in-go-language",
+            "title": "How to check variable type is map in Go language",
+            "body": "<pre><code>map1 := map[string]string{\"name\":\"John\",\"desc\":\"Golang\"}\nmap2 := map[string]int{\"apple\":23,\"tomato\":13}\n</code></pre>\n\n<p>so,How to check variable type is map  in Go language？</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "mysql",
+                "sql"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 3705407,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a67d7da9056cb863fcff2866c1df1809?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3705407",
+                "link": "https://stackoverflow.com/users/3705407/user3705407"
+            },
+            "is_answered": true,
+            "view_count": 48,
+            "accepted_answer_id": 49890632,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524184713,
+            "creation_date": 1523957332,
+            "last_edit_date": 1524184713,
+            "question_id": 49874501,
+            "body_markdown": "so after running the query below, whenever i try to open the affected table, it says &quot;unknown column doc.section in order clause&quot;. i can still run queries on the said table but i can no longer access the table by using the left panel on phpmyadmin.\r\n\r\nquery:\r\n\r\n\tselect pending.*\r\n    from (\r\n    \tselect distinct doc.*, users.dept_id\r\n    \tfrom list_users users, exit_doc doc\r\n    \tinner join ( \r\n    \t\tselect q.section, \r\n    \t\tmax(q.subsection) subsection\r\n    \t\tfrom exit_doc q \r\n    \t\tgroup by q.section ) latest\r\n    \ton doc.section = latest.section\r\n    \tand doc.subsection = latest.subsection\r\n    \twhere doc.user_id = users.user_id) pending\r\n    inner join (\r\n    \tselect approvers.dept_id, approvers.role_code \r\n    \tfrom approvers \r\n    \twhere user_id = 10004 \r\n    \tand delete_flag = 0) user\r\n    on pending.next_user = user.role_code \r\n    and pending.dept_id = user.dept_id\r\n\r\ndid my query somehow affect the structure of the table? the error said unknown column on order clause but i didnt use any order in my query?",
+            "link": "https://stackoverflow.com/questions/49874501/unknown-column-error-when-trying-to-open-table",
+            "title": "unknown column error when trying to open table",
+            "body": "<p>so after running the query below, whenever i try to open the affected table, it says \"unknown column doc.section in order clause\". i can still run queries on the said table but i can no longer access the table by using the left panel on phpmyadmin.</p>\n\n<p>query:</p>\n\n<pre><code>select pending.*\nfrom (\n    select distinct doc.*, users.dept_id\n    from list_users users, exit_doc doc\n    inner join ( \n        select q.section, \n        max(q.subsection) subsection\n        from exit_doc q \n        group by q.section ) latest\n    on doc.section = latest.section\n    and doc.subsection = latest.subsection\n    where doc.user_id = users.user_id) pending\ninner join (\n    select approvers.dept_id, approvers.role_code \n    from approvers \n    where user_id = 10004 \n    and delete_flag = 0) user\non pending.next_user = user.role_code \nand pending.dept_id = user.dept_id\n</code></pre>\n\n<p>did my query somehow affect the structure of the table? the error said unknown column on order clause but i didnt use any order in my query?</p>\n"
+        },
+        {
+            "tags": [
+                "sql-server",
+                "tsql"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 5446047,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/c334d9a8e8fef48d2a488973c572b0be?s=128&d=identicon&r=PG&f=1",
+                "display_name": "K A",
+                "link": "https://stackoverflow.com/users/5446047/k-a"
+            },
+            "is_answered": true,
+            "view_count": 26,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524184709,
+            "creation_date": 1524182851,
+            "question_id": 49931984,
+            "body_markdown": "Is there a way so that in a `CREATE TABLE table ( ... )` I can force a procedure or a function to run on every insert?\r\n\r\n    -- For exmaple:\r\n    CREATE TABLE table (\r\n      ID INT IDENTITY (1,1) PRIMARY KEY,\r\n      Pass varchar(200) -- Can I do Proc(Pass) to return the output instead?\r\n    )\r\n",
+            "link": "https://stackoverflow.com/questions/49931984/run-a-procedure-or-a-function-on-every-new-insert",
+            "title": "Run A Procedure or a Function on Every New Insert",
+            "body": "<p>Is there a way so that in a <code>CREATE TABLE table ( ... )</code> I can force a procedure or a function to run on every insert?</p>\n\n<pre><code>-- For exmaple:\nCREATE TABLE table (\n  ID INT IDENTITY (1,1) PRIMARY KEY,\n  Pass varchar(200) -- Can I do Proc(Pass) to return the output instead?\n)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "ionic2"
+            ],
+            "owner": {
+                "reputation": 839,
+                "user_id": 5102953,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://i.stack.imgur.com/Gt2Ry.jpg?s=128&g=1",
+                "display_name": "Zagonine",
+                "link": "https://stackoverflow.com/users/5102953/zagonine"
+            },
+            "is_answered": false,
+            "view_count": 67,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524184706,
+            "creation_date": 1516139278,
+            "question_id": 48290359,
+            "body_markdown": "I am making 3DSecure payment in an ionic app.  \r\nI display an iframe in a ionic page for let the user enter the 3DSecure code. But after the user enter his code and redirect to a web page of my choice I don&#39;t know how to tell my ionic application to redirect to an another page of the framework...  \r\nI have think to the redirected page to call function present in the parent, so here ionic app but I failed...  \r\nDid you have any another suggestion to do that ? I am lost...",
+            "link": "https://stackoverflow.com/questions/48290359/call-a-function-from-an-iframe-displayed-on-a-ionic-page-application-for-3dsecu",
+            "title": "Call a function from an iframe displayed on a Ionic page application (for 3DSecure)",
+            "body": "<p>I am making 3DSecure payment in an ionic app.<br>\nI display an iframe in a ionic page for let the user enter the 3DSecure code. But after the user enter his code and redirect to a web page of my choice I don't know how to tell my ionic application to redirect to an another page of the framework...<br>\nI have think to the redirected page to call function present in the parent, so here ionic app but I failed...<br>\nDid you have any another suggestion to do that ? I am lost...</p>\n"
+        },
+        {
+            "tags": [
+                "vb.net",
+                "visual-studio",
+                "raspberry-pi",
+                "mono",
+                "raspbian"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9073439,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-lhwm0tfFkk8/AAAAAAAAAAI/AAAAAAAAABQ/KVUEGSIyc3w/photo.jpg?sz=128",
+                "display_name": "noname",
+                "link": "https://stackoverflow.com/users/9073439/noname"
+            },
+            "is_answered": false,
+            "view_count": 127,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1524184700,
+            "creation_date": 1512751089,
+            "last_edit_date": 1512751868,
+            "question_id": 47718574,
+            "body_markdown": "I am trying to run a vb.net script using mono on the latest version of raspbian. The script was originally written in visual studio and i just downloaded the entire folder on to my raspberry pi 3 from dropbox and tried to run the .exe file.\r\n\r\n    mono /home/pi/Downloads/ctof/bin/Debug/ctof.exe\r\n\r\nAnd got met with:\r\n\r\n    Unhandled Exception:\r\n        System.IO.FileNotFoundException: Could not load file or assembly \r\n        &#39;Microsoft.VisualBasic, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a&#39; or one of its dependencies.\r\n        File name: &#39;Microsoft.VisualBasic, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a&#39;\r\n        [ERROR] FATAL UNHANDLED EXCEPTION: System.IO.FileNotFoundException: Could not load file or assembly &#39;Microsoft.VisualBasic, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a&#39; or one of its dependencies.\r\n        File name: &#39;Microsoft.VisualBasic, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a&#39;\r\n\r\ndoes anyone have any suggestions?\r\n\r\n\r\n\r\n \r\n",
+            "link": "https://stackoverflow.com/questions/47718574/running-vb-net-script-with-mono-on-a-raspberry-pi",
+            "title": "Running VB.NET script with mono on a raspberry pi",
+            "body": "<p>I am trying to run a vb.net script using mono on the latest version of raspbian. The script was originally written in visual studio and i just downloaded the entire folder on to my raspberry pi 3 from dropbox and tried to run the .exe file.</p>\n\n<pre><code>mono /home/pi/Downloads/ctof/bin/Debug/ctof.exe\n</code></pre>\n\n<p>And got met with:</p>\n\n<pre><code>Unhandled Exception:\n    System.IO.FileNotFoundException: Could not load file or assembly \n    'Microsoft.VisualBasic, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' or one of its dependencies.\n    File name: 'Microsoft.VisualBasic, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'\n    [ERROR] FATAL UNHANDLED EXCEPTION: System.IO.FileNotFoundException: Could not load file or assembly 'Microsoft.VisualBasic, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a' or one of its dependencies.\n    File name: 'Microsoft.VisualBasic, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'\n</code></pre>\n\n<p>does anyone have any suggestions?</p>\n"
+        },
+        {
+            "tags": [
+                "ms-access",
+                "access-vba"
+            ],
+            "owner": {
+                "reputation": 7,
+                "user_id": 9351922,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9ce10ba619d444e9e41ba9fea831f2db?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Wotterbed",
+                "link": "https://stackoverflow.com/users/9351922/wotterbed"
+            },
+            "is_answered": true,
+            "view_count": 30,
+            "accepted_answer_id": 49931996,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524184680,
+            "creation_date": 1524161358,
+            "last_edit_date": 1524165170,
+            "question_id": 49927550,
+            "body_markdown": "I have an identical AfterUpdate event for 11 fields in my form. Is there any way to put the AfterUpdate code in a function or module and then call the function or module in each AfterUpdate event? \r\n\r\nIf a certain field is changed on the main form, I prompt the user with a message box saying they need to add a note in the subform describing the change. If the user clicks OK on the message box, it brings the focus to the note subform. If the user clicks Cancel, the change is undone in the main form.\r\n\r\nBelow is the code that is repeated for 11 fields:\r\n\r\n    Private Sub ID_AfterUpdate()\r\n\r\n    On Error GoTo StandardErrorHandling\r\n\r\n    Dim NoteReq As Integer\r\n    \r\n    NoteReq = MsgBox(&quot;A change has been made to a protected field! &quot; &amp; _\r\n    &quot;Please provide a note with a brief description of the change.&quot; _\r\n    , vbOKCancel, &quot;A Note is Required!&quot;)\r\n\r\n    If Form.Dirty = True Then\r\n    \r\n        If NoteReq = vbCancel Then\r\n\r\n            Me.Undo\r\n        \r\n        ElseIf NoteReq = vbOK Then\r\n                \r\n        &#39;You may have to set focus to the subform then the control\r\n\r\n        [Forms]![MainForm].[SubFormNotes].SetFocus\r\n\r\n        DoCmd.GoToRecord , , acNewRec &#39;Go to new note record, not existing one\r\n        \r\n        End If\r\n        \r\n    End If\r\n    \r\n    ExitStandardErrorHandling:\r\n    Exit Sub\r\n\r\n    StandardErrorHandling:\r\n\r\n    MsgBox &quot;The following error has occured:&quot; &amp; vbCrLf &amp; vbCrLf &amp; _\r\n                &quot;Error Number: &quot; &amp; Err.Number &amp; vbCrLf &amp; vbCrLf &amp; _\r\n                &quot;Error Description: &quot; &amp; Err.Description &amp; vbCrLf &amp; vbCrLf _\r\n                 , vbCritical, &quot;An Error has Occurred!&quot;\r\n\r\n    Resume ExitStandardErrorHandling\r\n\r\n    End Sub\r\n\r\nI know a function returns a value so if I put the above code in a function, and called the function within the AfterUpdate event of each field, how would I code it so that it returns a value? Or is there another way to cut down on the redundant code? Thanks!\r\n",
+            "link": "https://stackoverflow.com/questions/49927550/how-to-reduce-repeated-vba-code",
+            "title": "How to reduce repeated VBA code",
+            "body": "<p>I have an identical AfterUpdate event for 11 fields in my form. Is there any way to put the AfterUpdate code in a function or module and then call the function or module in each AfterUpdate event? </p>\n\n<p>If a certain field is changed on the main form, I prompt the user with a message box saying they need to add a note in the subform describing the change. If the user clicks OK on the message box, it brings the focus to the note subform. If the user clicks Cancel, the change is undone in the main form.</p>\n\n<p>Below is the code that is repeated for 11 fields:</p>\n\n<pre><code>Private Sub ID_AfterUpdate()\n\nOn Error GoTo StandardErrorHandling\n\nDim NoteReq As Integer\n\nNoteReq = MsgBox(\"A change has been made to a protected field! \" &amp; _\n\"Please provide a note with a brief description of the change.\" _\n, vbOKCancel, \"A Note is Required!\")\n\nIf Form.Dirty = True Then\n\n    If NoteReq = vbCancel Then\n\n        Me.Undo\n\n    ElseIf NoteReq = vbOK Then\n\n    'You may have to set focus to the subform then the control\n\n    [Forms]![MainForm].[SubFormNotes].SetFocus\n\n    DoCmd.GoToRecord , , acNewRec 'Go to new note record, not existing one\n\n    End If\n\nEnd If\n\nExitStandardErrorHandling:\nExit Sub\n\nStandardErrorHandling:\n\nMsgBox \"The following error has occured:\" &amp; vbCrLf &amp; vbCrLf &amp; _\n            \"Error Number: \" &amp; Err.Number &amp; vbCrLf &amp; vbCrLf &amp; _\n            \"Error Description: \" &amp; Err.Description &amp; vbCrLf &amp; vbCrLf _\n             , vbCritical, \"An Error has Occurred!\"\n\nResume ExitStandardErrorHandling\n\nEnd Sub\n</code></pre>\n\n<p>I know a function returns a value so if I put the above code in a function, and called the function within the AfterUpdate event of each field, how would I code it so that it returns a value? Or is there another way to cut down on the redundant code? Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "perl",
+                "libtool",
+                "libtermkey"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 5129631,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/de8987a99f31266cfb64f698b8013703?s=128&d=identicon&r=PG&f=1",
+                "display_name": "se1400",
+                "link": "https://stackoverflow.com/users/5129631/se1400"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1524184676,
+            "creation_date": 1524105095,
+            "last_edit_date": 1524184676,
+            "question_id": 49911818,
+            "body_markdown": "On a MacBookPro with 10.11.6 (El Capitan).  \r\nI&#39;m trying to toy with keyboard events in Terminal using Perl (specifically, I want to differentiate between keyUp and keyDown events). To do this I apparently need `Term::TermKey` (which is a wrapper for `libtermkey`).  \r\n\r\nI installed Apple Command Line Developer Tools.  \r\nVia CPAN, I trying to install Term::TermKey, it says I need libtermkey.  \r\n\r\nI download libtermkey-0.20.tar.gz from http://www.leonerd.org.uk/code/libtermkey/, unpack it, run `make`.  And get error:  \r\n\r\n    glibtool --quiet --mode=compile --tag=CC /usr/bin/cc -Wall -std=c99 -o termkey.lo -c termkey.c \r\n    make: glibtool: No such file or directory\r\n\r\nSo I need `glibtool`, not my own `/usr/bin/libtool`? Unsure of how to proceed, however.  If I go to GNU site (https://www.gnu.org/software/libtool/), they refer to their tool as libtool not glibtool.  \r\n\r\nMy own native libtool, in /usr/bin/libtool, seems to be Apple&#39;s libtool, since it uses the &quot;-&quot; convention for accepting arguments and not GNU&#39;s &quot;--&quot; convention.\r\n\r\nI&#39;m wary of simply installing GNU&#39;s libtool, because I don&#39;t want to overwrite Apple&#39;s.\r\n\r\nTL;DR The makefile is looking for GNU&#39;s glibtool (which GNU calls libtool), and the only libtool I have on my Mac is Apple&#39;s libtool. If I download GNU&#39;s libtool there will be a future conflict.  What&#39;s the common solution to issues like this?\r\n\r\nShould I:  1) download and install GNU&#39;s libtool. 2) Patch `Makefile` to refer to &quot;glibtool&quot; and not &quot;libtool&quot;?  Not exactly sure how to install GNU&#39;s libtool without contamination.\r\n\r\nThere&#39;s got to be a simple solution here(?)\r\n\r\n------------\r\nFrom this transcript, there are two versions of `libtool`, but they&#39;re both not GNU (oddly, they&#39;re the same version but different sizes):  \r\n    (1)% /usr/bin/libtool -V     \r\n    Apple Inc. version cctools-895  \r\n    (2)% /Library/Developer/CommandLineTools/usr/bin/libtool -V  \r\n    Apple Inc. version cctools-895  \r\n    (3)% ls -l /usr/bin/libtool   \r\n    -rwxr-xr-x  1 root  wheel  18176 Aug  8  2017 /usr/bin/libtool  \r\n    (4% ls -l /Library/Developer/CommandLineTools/usr/bin/libtool \r\n    -rwxr-xr-x  1 root  admin  157264 Dec  5  2016 /Library/Developer/CommandLineTools/usr/bin/libtool  \r\n\r\n------------   \r\n\r\nLogfile result when trying to run `make` inside `libtermkey-0.20`:  \r\n  \r\n\r\n    cpanm (App::cpanminus) 1.7043 on perl 5.018002 built for darwin-thread-multi-2level\r\n    Work directory is /Users/foobar/.cpanm/work/1524102210.44938\r\n    You have make /usr/bin/make\r\n    You have LWP 6.05\r\n    You have /usr/bin/tar: bsdtar 2.8.3 - libarchive 2.8.3\r\n    You have /usr/bin/unzip\r\n    Searching Term::TermKey () on cpanmetadb ...\r\n    --&gt; Working on Term::TermKey\r\n    Fetching http://www.cpan.org/authors/id/P/PE/PEVANS/Term-TermKey-0.16.tar.gz\r\n    -&gt; OK\r\n    Unpacking Term-TermKey-0.16.tar.gz\r\n    Entering Term-TermKey-0.16\r\n    Checking configure dependencies from META.json\r\n    Checking if you have Module::Build 0.38 ... Yes (0.4003)\r\n    Checking if you have Exporter 5.57 ... Yes (5.68)\r\n    Checking if you have ExtUtils::PkgConfig 0 ... Yes (1.16)\r\n    Checking if you have Alien::libtermkey 0.13 ... No\r\n    Checking if you have ExtUtils::Install 1.46 ... Yes (1.59)\r\n    ==&gt; Found dependencies: Alien::libtermkey\r\n    Searching Alien::libtermkey (0.13) on cpanmetadb ...\r\n    --&gt; Working on Alien::libtermkey\r\n    Fetching http://www.cpan.org/authors/id/P/PE/PEVANS/Alien-libtermkey-0.19.tar.gz\r\n    -&gt; OK\r\n    Unpacking Alien-libtermkey-0.19.tar.gz\r\n    Entering Alien-libtermkey-0.19\r\n    Checking configure dependencies from META.json\r\n    Checking if you have File::Basename 0 ... Yes (2.84)\r\n    Checking if you have Module::Build 0.38 ... Yes (0.4003)\r\n    Checking if you have ExtUtils::CChecker 0 ... Yes (0.10)\r\n    Checking if you have ExtUtils::Install 1.46 ... Yes (1.59)\r\n    Checking if you have File::Spec 0 ... Yes (3.40)\r\n    Checking if you have File::Path 2.07 ... Yes (2.09)\r\n    Configuring Alien-libtermkey-0.19\r\n    Running Build.PL\r\n    error: /Library/Developer/CommandLineTools/usr/bin/libtool: unknown option character `-&#39; in: --version\r\n    Usage: /Library/Developer/CommandLineTools/usr/bin/libtool -static [-] file [...] [-filelist listfile[,dirname]] [-arch_only arch] [-sacLT] [-no_warning_for_no_symbols]\r\n    Usage: /Library/Developer/CommandLineTools/usr/bin/libtool -dynamic [-] file [...] [-filelist listfile[,dirname]] [-arch_only arch] [-o output] [-install_name name] [-compatibility_version #] [-current_version #] [-seg1addr 0x#] [-segs_read_only_addr 0x#] [-segs_read_write_addr 0x#] [-seg_addr_table &lt;filename&gt;] [-seg_addr_table_filename &lt;file_system_path&gt;] [-all_load] [-noall_load]\r\n    Looking for pkg-config termkey... not found\r\n    Looking for pkg-config unibilium... not found\r\n    Looking for pkg-config ncursesw... not found\r\n    Looking for &lt;curses.h&gt;... OS unsupported - unable to find GNU libtool\r\n    found\r\n    Running Makefile.PL\r\n    # running Build.PL \r\n    error: /Library/Developer/CommandLineTools/usr/bin/libtool: unknown option character `-&#39; in: --version\r\n    Usage: /Library/Developer/CommandLineTools/usr/bin/libtool -static [-] file [...] [-filelist listfile[,dirname]] [-arch_only arch] [-sacLT] [-no_warning_for_no_symbols]\r\n    Usage: /Library/Developer/CommandLineTools/usr/bin/libtool -dynamic [-] file [...] [-filelist listfile[,dirname]] [-arch_only arch] [-o output] [-install_name name] [-compatibility_version #] [-current_version #] [-seg1addr 0x#] [-segs_read_only_addr 0x#] [-segs_read_write_addr 0x#] [-seg_addr_table &lt;filename&gt;] [-seg_addr_table_filename &lt;file_system_path&gt;] [-all_load] [-noall_load]\r\n    Looking for pkg-config termkey... not found\r\n    Looking for pkg-config unibilium... not found\r\n    Looking for pkg-config ncursesw... not found\r\n    Looking for &lt;curses.h&gt;... OS unsupported - unable to find GNU libtool\r\n    found\r\n    Couldn&#39;t run Build.PL:  at /System/Library/Perl/5.18/Module/Build/Compat.pm line 341.\r\n    -&gt; N/A\r\n    -&gt; FAIL Configure failed for Alien-libtermkey-0.19. See /Users/colossus/.cpanm/work/1524102210.44938/build.log for details.\r\n    -&gt; FAIL Installing the dependencies failed: Module &#39;Alien::libtermkey&#39; is not installed\r\n    -&gt; FAIL Bailing out the installation for Term-TermKey-0.16.\r\n\r\nAs you can see from the error message **unknown option character `-&#39; in: --version**, its looking GNU&#39;s version.\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49911818/unable-to-install-libkeyterm-on-mac-need-glibtool-not-libtool-but-glibtool-not",
+            "title": "Unable to install libkeyterm on Mac. Need glibtool not libtool, but glibtool not present",
+            "body": "<p>On a MacBookPro with 10.11.6 (El Capitan).<br>\nI'm trying to toy with keyboard events in Terminal using Perl (specifically, I want to differentiate between keyUp and keyDown events). To do this I apparently need <code>Term::TermKey</code> (which is a wrapper for <code>libtermkey</code>).  </p>\n\n<p>I installed Apple Command Line Developer Tools.<br>\nVia CPAN, I trying to install Term::TermKey, it says I need libtermkey.  </p>\n\n<p>I download libtermkey-0.20.tar.gz from <a href=\"http://www.leonerd.org.uk/code/libtermkey/\" rel=\"nofollow noreferrer\">http://www.leonerd.org.uk/code/libtermkey/</a>, unpack it, run <code>make</code>.  And get error:  </p>\n\n<pre><code>glibtool --quiet --mode=compile --tag=CC /usr/bin/cc -Wall -std=c99 -o termkey.lo -c termkey.c \nmake: glibtool: No such file or directory\n</code></pre>\n\n<p>So I need <code>glibtool</code>, not my own <code>/usr/bin/libtool</code>? Unsure of how to proceed, however.  If I go to GNU site (<a href=\"https://www.gnu.org/software/libtool/\" rel=\"nofollow noreferrer\">https://www.gnu.org/software/libtool/</a>), they refer to their tool as libtool not glibtool.  </p>\n\n<p>My own native libtool, in /usr/bin/libtool, seems to be Apple's libtool, since it uses the \"-\" convention for accepting arguments and not GNU's \"--\" convention.</p>\n\n<p>I'm wary of simply installing GNU's libtool, because I don't want to overwrite Apple's.</p>\n\n<p>TL;DR The makefile is looking for GNU's glibtool (which GNU calls libtool), and the only libtool I have on my Mac is Apple's libtool. If I download GNU's libtool there will be a future conflict.  What's the common solution to issues like this?</p>\n\n<p>Should I:  1) download and install GNU's libtool. 2) Patch <code>Makefile</code> to refer to \"glibtool\" and not \"libtool\"?  Not exactly sure how to install GNU's libtool without contamination.</p>\n\n<p>There's got to be a simple solution here(?)</p>\n\n<hr>\n\n<p>From this transcript, there are two versions of <code>libtool</code>, but they're both not GNU (oddly, they're the same version but different sizes):<br>\n    (1)% /usr/bin/libtool -V<br>\n    Apple Inc. version cctools-895<br>\n    (2)% /Library/Developer/CommandLineTools/usr/bin/libtool -V<br>\n    Apple Inc. version cctools-895<br>\n    (3)% ls -l /usr/bin/libtool<br>\n    -rwxr-xr-x  1 root  wheel  18176 Aug  8  2017 /usr/bin/libtool<br>\n    (4% ls -l /Library/Developer/CommandLineTools/usr/bin/libtool \n    -rwxr-xr-x  1 root  admin  157264 Dec  5  2016 /Library/Developer/CommandLineTools/usr/bin/libtool  </p>\n\n<hr>\n\n<p>Logfile result when trying to run <code>make</code> inside <code>libtermkey-0.20</code>:  </p>\n\n<pre><code>cpanm (App::cpanminus) 1.7043 on perl 5.018002 built for darwin-thread-multi-2level\nWork directory is /Users/foobar/.cpanm/work/1524102210.44938\nYou have make /usr/bin/make\nYou have LWP 6.05\nYou have /usr/bin/tar: bsdtar 2.8.3 - libarchive 2.8.3\nYou have /usr/bin/unzip\nSearching Term::TermKey () on cpanmetadb ...\n--&gt; Working on Term::TermKey\nFetching http://www.cpan.org/authors/id/P/PE/PEVANS/Term-TermKey-0.16.tar.gz\n-&gt; OK\nUnpacking Term-TermKey-0.16.tar.gz\nEntering Term-TermKey-0.16\nChecking configure dependencies from META.json\nChecking if you have Module::Build 0.38 ... Yes (0.4003)\nChecking if you have Exporter 5.57 ... Yes (5.68)\nChecking if you have ExtUtils::PkgConfig 0 ... Yes (1.16)\nChecking if you have Alien::libtermkey 0.13 ... No\nChecking if you have ExtUtils::Install 1.46 ... Yes (1.59)\n==&gt; Found dependencies: Alien::libtermkey\nSearching Alien::libtermkey (0.13) on cpanmetadb ...\n--&gt; Working on Alien::libtermkey\nFetching http://www.cpan.org/authors/id/P/PE/PEVANS/Alien-libtermkey-0.19.tar.gz\n-&gt; OK\nUnpacking Alien-libtermkey-0.19.tar.gz\nEntering Alien-libtermkey-0.19\nChecking configure dependencies from META.json\nChecking if you have File::Basename 0 ... Yes (2.84)\nChecking if you have Module::Build 0.38 ... Yes (0.4003)\nChecking if you have ExtUtils::CChecker 0 ... Yes (0.10)\nChecking if you have ExtUtils::Install 1.46 ... Yes (1.59)\nChecking if you have File::Spec 0 ... Yes (3.40)\nChecking if you have File::Path 2.07 ... Yes (2.09)\nConfiguring Alien-libtermkey-0.19\nRunning Build.PL\nerror: /Library/Developer/CommandLineTools/usr/bin/libtool: unknown option character `-' in: --version\nUsage: /Library/Developer/CommandLineTools/usr/bin/libtool -static [-] file [...] [-filelist listfile[,dirname]] [-arch_only arch] [-sacLT] [-no_warning_for_no_symbols]\nUsage: /Library/Developer/CommandLineTools/usr/bin/libtool -dynamic [-] file [...] [-filelist listfile[,dirname]] [-arch_only arch] [-o output] [-install_name name] [-compatibility_version #] [-current_version #] [-seg1addr 0x#] [-segs_read_only_addr 0x#] [-segs_read_write_addr 0x#] [-seg_addr_table &lt;filename&gt;] [-seg_addr_table_filename &lt;file_system_path&gt;] [-all_load] [-noall_load]\nLooking for pkg-config termkey... not found\nLooking for pkg-config unibilium... not found\nLooking for pkg-config ncursesw... not found\nLooking for &lt;curses.h&gt;... OS unsupported - unable to find GNU libtool\nfound\nRunning Makefile.PL\n# running Build.PL \nerror: /Library/Developer/CommandLineTools/usr/bin/libtool: unknown option character `-' in: --version\nUsage: /Library/Developer/CommandLineTools/usr/bin/libtool -static [-] file [...] [-filelist listfile[,dirname]] [-arch_only arch] [-sacLT] [-no_warning_for_no_symbols]\nUsage: /Library/Developer/CommandLineTools/usr/bin/libtool -dynamic [-] file [...] [-filelist listfile[,dirname]] [-arch_only arch] [-o output] [-install_name name] [-compatibility_version #] [-current_version #] [-seg1addr 0x#] [-segs_read_only_addr 0x#] [-segs_read_write_addr 0x#] [-seg_addr_table &lt;filename&gt;] [-seg_addr_table_filename &lt;file_system_path&gt;] [-all_load] [-noall_load]\nLooking for pkg-config termkey... not found\nLooking for pkg-config unibilium... not found\nLooking for pkg-config ncursesw... not found\nLooking for &lt;curses.h&gt;... OS unsupported - unable to find GNU libtool\nfound\nCouldn't run Build.PL:  at /System/Library/Perl/5.18/Module/Build/Compat.pm line 341.\n-&gt; N/A\n-&gt; FAIL Configure failed for Alien-libtermkey-0.19. See /Users/colossus/.cpanm/work/1524102210.44938/build.log for details.\n-&gt; FAIL Installing the dependencies failed: Module 'Alien::libtermkey' is not installed\n-&gt; FAIL Bailing out the installation for Term-TermKey-0.16.\n</code></pre>\n\n<p>As you can see from the error message <strong>unknown option character `-' in: --version</strong>, its looking GNU's version.</p>\n"
+        },
+        {
+            "tags": [
+                "sql"
+            ],
+            "owner": {
+                "reputation": 19,
+                "user_id": 9427074,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/xMyzI.jpg?s=128&g=1",
+                "display_name": "Elon Muskrat",
+                "link": "https://stackoverflow.com/users/9427074/elon-muskrat"
+            },
+            "is_answered": true,
+            "view_count": 29,
+            "accepted_answer_id": 49930876,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524184674,
+            "creation_date": 1524173872,
+            "last_edit_date": 1524184674,
+            "question_id": 49930615,
+            "body_markdown": "coachID and teamCoach contain the same data but have different column names. I&#39;m having trouble joining them as a result. What can I do?\r\n\r\n    SELECT tblCoaches.coachID AS &quot;Coach ID&quot;, \r\n           tblCoaches.coachName AS &quot;Coach Name&quot;, \r\n           tblCoaches.coachCity AS &quot;Coach City&quot;, \r\n           tblTeams.teamName AS &quot;Team Name&quot;\r\n    FROM tblCoaches\r\n    INNER JOIN tblTeams ON **tblCoaches.coachID = tblTeams.teamCoach**\r\n          AND (coachID IN (SELECT teamCoach FROM tblTeams))\r\n    WHERE teamIsRec IS NULL;",
+            "link": "https://stackoverflow.com/questions/49930615/joining-tables-with-the-same-data-but-different-column-names",
+            "title": "Joining Tables with the Same Data But Different Column Names",
+            "body": "<p>coachID and teamCoach contain the same data but have different column names. I'm having trouble joining them as a result. What can I do?</p>\n\n<pre><code>SELECT tblCoaches.coachID AS \"Coach ID\", \n       tblCoaches.coachName AS \"Coach Name\", \n       tblCoaches.coachCity AS \"Coach City\", \n       tblTeams.teamName AS \"Team Name\"\nFROM tblCoaches\nINNER JOIN tblTeams ON **tblCoaches.coachID = tblTeams.teamCoach**\n      AND (coachID IN (SELECT teamCoach FROM tblTeams))\nWHERE teamIsRec IS NULL;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "html",
+                "css",
+                "wordpress",
+                "blogs"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9672427,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Spencer Varada",
+                "link": "https://stackoverflow.com/users/9672427/spencer-varada"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "closed_date": 1524228231,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524184662,
+            "creation_date": 1524184662,
+            "question_id": 49932189,
+            "body_markdown": "I used an HTML bootstrap template to create a website for a friend of mine. I am trying to integrate wordpress in with the current theme but have hit the roadblock of dealing with php. \r\n\r\nIs there a way to integrate wordpress using the theme I already have? or do I have to use one of wordpress&#39; themes.\r\n\r\nPlease let me know how or link me to a tutorial",
+            "link": "https://stackoverflow.com/questions/49932189/wordpress-integration-to-an-existing-website",
+            "closed_reason": "too broad",
+            "title": "Wordpress integration to an existing website",
+            "body": "<p>I used an HTML bootstrap template to create a website for a friend of mine. I am trying to integrate wordpress in with the current theme but have hit the roadblock of dealing with php. </p>\n\n<p>Is there a way to integrate wordpress using the theme I already have? or do I have to use one of wordpress' themes.</p>\n\n<p>Please let me know how or link me to a tutorial</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 104
+}

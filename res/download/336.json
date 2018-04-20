@@ -1,0 +1,828 @@
+{
+    "items": [
+        {
+            "tags": [
+                "php",
+                "laravel",
+                "routes",
+                "rate-limiting"
+            ],
+            "owner": {
+                "reputation": 962,
+                "user_id": 828314,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://i.stack.imgur.com/rS8Hi.jpg?s=128&g=1",
+                "display_name": "Ya Basha",
+                "link": "https://stackoverflow.com/users/828314/ya-basha"
+            },
+            "is_answered": true,
+            "view_count": 27,
+            "accepted_answer_id": 49933212,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524192987,
+            "creation_date": 1524052914,
+            "question_id": 49899238,
+            "body_markdown": "I have built api routes for returning posts as json resource, when I am putting the middleware &#39;apiThrottle:5,1&#39; on an api route it just display the result for two times and then in the third one it will generate json response &#39;Too many attempts...&#39;\r\n\r\nBut when I add the middleware to a web route it will keep showing the results for the maximium number of times (which is in this case is 5) and after that it generates &#39;Too many attempts...&#39;\r\n\r\nWeb route: `https://project.test/`\r\n\r\n    Route::middleware(&#39;apiThrottle:5,1&#39;)-&gt;get(&#39;/&#39;, function (){\r\n         return &#39;Web Route&#39;;\r\n    });\r\n\r\nApi route: `https://project.test/api/`\r\n\r\n    Route::middleware(&#39;apiThrottle:5,1&#39;)-&gt;get(&#39;/&#39;, function (){\r\n         return &#39;API Route&#39;;\r\n    });\r\n\r\nMiddleware:\r\n\r\n    &lt;?php\r\n    \r\n    namespace App\\Http\\Middleware;\r\n    \r\n    use Closure;\r\n    use Illuminate\\Http\\JsonResponse;\r\n    use Illuminate\\Routing\\Middleware\\ThrottleRequests;\r\n    \r\n    class ThrottleRequestsMiddleware extends ThrottleRequests\r\n    {\r\n        /**\r\n         * Handle an incoming request.\r\n         *\r\n         * @param  \\Illuminate\\Http\\Request $request\r\n         * @param  \\Closure $next\r\n         * @param  int $maxAttempts\r\n         * @param  int $decayMinutes\r\n         * @return mixed\r\n         */\r\n        public function handle($request, Closure $next, $maxAttempts = 60, $decayMinutes = 1)\r\n        {\r\n            $key = $this-&gt;resolveRequestSignature($request);\r\n    \r\n            $maxAttempts = $this-&gt;resolveMaxAttempts($request, $maxAttempts);\r\n    \r\n            if ($this-&gt;limiter-&gt;tooManyAttempts($key, $maxAttempts)) {\r\n                return $this-&gt;buildJsonResponse($key, $maxAttempts);\r\n            }\r\n    \r\n            $this-&gt;limiter-&gt;hit($key, $decayMinutes);\r\n    \r\n            $response = $next($request);\r\n    \r\n            return $this-&gt;addHeaders(\r\n                $response, $maxAttempts,\r\n                $this-&gt;calculateRemainingAttempts($key, $maxAttempts)\r\n            );\r\n        }\r\n    \r\n        /**\r\n         * Create a &#39;too many attempts&#39; JSON response.\r\n         *\r\n         * @param  string  $key\r\n         * @param  int  $maxAttempts\r\n         * @return \\Symfony\\Component\\HttpFoundation\\Response\r\n         */\r\n        protected function buildJsonResponse($key, $maxAttempts)\r\n        {\r\n            $response = new JsonResponse([\r\n                &#39;error&#39; =&gt; [\r\n                    &#39;code&#39; =&gt; 429,\r\n                    &#39;message&#39; =&gt; &#39;Too many attempts, please slow down the request.&#39;,\r\n                ],\r\n            ], 429);\r\n    \r\n            $retryAfter = $this-&gt;limiter-&gt;availableIn($key);\r\n    \r\n            return $this-&gt;addHeaders(\r\n                $response, $maxAttempts,\r\n                $this-&gt;calculateRemainingAttempts($key, $maxAttempts, $retryAfter),\r\n                $retryAfter\r\n            );\r\n        }\r\n    }\r\n\r\n`Kernel.php`:\r\n\r\n         /**\r\n         * The application&#39;s route middleware.\r\n         *\r\n         * These middleware may be assigned to groups or used individually.\r\n         *\r\n         * @var array\r\n         */\r\n        protected $routeMiddleware = [\r\n            .\r\n            .\r\n            .\r\n            &#39;apiThrottle&#39; =&gt; \\App\\Http\\Middleware\\ThrottleRequestsMiddleware::class,\r\n        ];\r\n\r\n\r\nWeb route headers: request and response\r\n\r\n    Content-Security-Policy: default-src &#39;none&#39; ; script-src resource:; \r\n    X-Firefox-Spdy: h2\r\n    cache-control: no-cache, private\r\n    content-type: application/json\r\n    date: Wed, 18 Apr 2018 11:57:50 GMT\r\n    retry-after: 53\r\n    server: nginx/1.13.6\r\n    set-cookie: XSRF-TOKEN=eyJpdiI6ImpRdGlIXC9KbnV3QTY2MkpKbEZUQ3d3PT0iLCJ2YWx1ZSI6IlU5YXFkZmpVXC9nMHpXSW5zK2RUZFlTVTA0N0YzaE9TeURpSHJlV0FUb1NkXC9rN3dvUUdVbzgwNHQ4MCtDU04rYjBNSHB6U2dsUzZ6cys2cGY5N1dUQVE9PSIsIm1hYyI6IjAzMTRkZTdkNmEwMzk5ODZhMTQ2ODhmYTJjOWE2ODIzODQ1YzQ0OThhY2I2NWUxOTk5MDRmNDc0ZjBjMmNjMDgifQ%3D%3D; expires=Wed, 18-Apr-2018 13:57:50 GMT; Max-Age=7200; path=/\r\n    larablog_session=eyJpdiI6IkZqaGZVUk10bFNpb2hUc2xPMXdBbVE9PSIsInZhbHVlIjoiY0hoXC9qMHFWdENIOEZZK3BaUklhMjZtQ2JoS2IwQlRTV053clUyQVd0RmpxTlRmMlVRc1Q4QW8zYUMwZSs0dmFuM3U2N3A2ZGJCZTBaN2JwdHJDSE13PT0iLCJtYWMiOiI1YzQ0ZTNjOGI4NDI3ZDg4NTI5MDQyMDRiMTc3ODk3OGZkYjk4OWJmNzhkODFkM2UwZGU1MTM0NDdmNjIxYTY1In0%3D; expires=Wed, 18-Apr-2018 13:57:50 GMT; Max-Age=7200; path=/; HttpOnly\r\n    x-ratelimit-limit: 5\r\n    x-ratelimit-remaining: 0\r\n    x-ratelimit-reset: 1524052723\r\n    \r\n    Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n    Accept-Encoding: gzip, deflate, br\r\n    Accept-Language: en-US,en;q=0.5\r\n    Cache-Control: max-age=0\r\n    Connection: keep-alive\r\n    Cookie: XSRF-TOKEN=eyJpdiI6IkNibkJQOUM3clJscElSWGZrcDVoZGc9PSIsInZhbHVlIjoiMzJuZGljNnRzUFoxNVVOYVZscFJBRElqMHJGSGxYa2dqVXkwR0VtZlhpQUFLUkI4cHJnOFdLSGIwdEdmRnA2R2Y5WHRXZHNtTFwvUVVpc2xKM1lQVHV3PT0iLCJtYWMiOiJmNmRjMjQwMDllOWFhZGY2Y2Q2YTVmYzFjZGQxNTE4MTk3ZjRkYWUyMTA2OWY0Y2E3NGNjYTg5MmEzYTZmZjJkIn0%3D; larablog_session=eyJpdiI6IlwvUm55cHBaTVdnR21rbkJVU05DUXVBPT0iLCJ2YWx1ZSI6IkJlYVV3dXB6SUNjMkRrUHJ2bTN2R3RUa294aVpjelJlTVFCUENXVldpSzlKNWdYUTdqeHJtY1JEWXV5UUpvbUc0bHB4UG5hcGltTG9OSVYrdjBMS29BPT0iLCJtYWMiOiI0M2ZjYWMyNjY0MjFkYTlhZjZkZmQ5MjVkMDFhODZiODFiNjQ4OGIzOTViZTNmY2E2NmNhMjQzYmRiY2I4ODdhIn0%3D\r\n    Host: project.test\r\n    Referer: https://project.test/\r\n    Upgrade-Insecure-Requests: 1\r\n    User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:60.0) Gecko/20100101 Firefox/60.0\r\n\r\nAPI route headers: request and response\r\n\r\n    Content-Security-Policy: default-src &#39;none&#39; ; script-src resource:; \r\n    X-Firefox-Spdy: h2\r\n    cache-control: no-cache, private\r\n    content-type: application/json\r\n    date: Wed, 18 Apr 2018 11:55:55 GMT\r\n    retry-after: 57\r\n    server: nginx/1.13.6\r\n    x-ratelimit-limit: 60\r\n    x-ratelimit-remaining: 55\r\n    x-ratelimit-reset: 1524052612\r\n    \r\n    Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n    Accept-Encoding: gzip, deflate, br\r\n    Accept-Language: en-US,en;q=0.5\r\n    Cache-Control: max-age=0\r\n    Connection: keep-alive\r\n    Cookie: XSRF-TOKEN=eyJpdiI6InFHZVFHNDg3M2hpcG9rUHd2WnlQclE9PSIsInZhbHVlIjoiQW1oZFZXbFc3NFhwVnpBTGZsM0tKbGlBaDhUNkM0TXpqMzZTb1FHUUI4bFk5XC9wWEdyK0lOZThyZ25vT2FLUHN2MXFZZGtuaVFta1lLdzBxZU9FdnR3PT0iLCJtYWMiOiJhMjM3MzA5ZDI1MmNjMjE0YTkyZjA4ODAyMzNmNDQwM2JjNTJjYzY4NzcyYWIwYWE5NjdmMWI0OTgwNjg5OGY4In0%3D; larablog_session=eyJpdiI6IjhTMnZTSmhMd3lSOUlLZzREd1BEN0E9PSIsInZhbHVlIjoiMVh2SFh4azM2RTJxRWFkV0g4YUxMUmRhVyt0bUVOYkZzbnZLRnBVb1gxQXB5OUQ2Y2lFZmNpMGt0NmNXSVlKSDFoWlE1aVZra2ROZEtYSzNpRzlVbGc9PSIsIm1hYyI6IjhmMDNmNzgzYWViODU3NzQ0MTExMzBlNWI1OTc0MTY5YzI2ZDZkZDQ2OThmZTM3NDJjZjA4MTkxN2Y0YTVhNmQifQ%3D%3D\r\n    Host: project.test\r\n    Upgrade-Insecure-Requests: 1\r\n    User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:60.0) Gecko/20100101 Firefox/60.0\r\n\r\nPlease advice,\r\n",
+            "link": "https://stackoverflow.com/questions/49899238/throttlerequestmiddleware-for-api-route-in-laravel-5-6",
+            "title": "ThrottleRequestMiddleware for api route in laravel 5.6",
+            "body": "<p>I have built api routes for returning posts as json resource, when I am putting the middleware 'apiThrottle:5,1' on an api route it just display the result for two times and then in the third one it will generate json response 'Too many attempts...'</p>\n\n<p>But when I add the middleware to a web route it will keep showing the results for the maximium number of times (which is in this case is 5) and after that it generates 'Too many attempts...'</p>\n\n<p>Web route: <code>https://project.test/</code></p>\n\n<pre><code>Route::middleware('apiThrottle:5,1')-&gt;get('/', function (){\n     return 'Web Route';\n});\n</code></pre>\n\n<p>Api route: <code>https://project.test/api/</code></p>\n\n<pre><code>Route::middleware('apiThrottle:5,1')-&gt;get('/', function (){\n     return 'API Route';\n});\n</code></pre>\n\n<p>Middleware:</p>\n\n<pre><code>&lt;?php\n\nnamespace App\\Http\\Middleware;\n\nuse Closure;\nuse Illuminate\\Http\\JsonResponse;\nuse Illuminate\\Routing\\Middleware\\ThrottleRequests;\n\nclass ThrottleRequestsMiddleware extends ThrottleRequests\n{\n    /**\n     * Handle an incoming request.\n     *\n     * @param  \\Illuminate\\Http\\Request $request\n     * @param  \\Closure $next\n     * @param  int $maxAttempts\n     * @param  int $decayMinutes\n     * @return mixed\n     */\n    public function handle($request, Closure $next, $maxAttempts = 60, $decayMinutes = 1)\n    {\n        $key = $this-&gt;resolveRequestSignature($request);\n\n        $maxAttempts = $this-&gt;resolveMaxAttempts($request, $maxAttempts);\n\n        if ($this-&gt;limiter-&gt;tooManyAttempts($key, $maxAttempts)) {\n            return $this-&gt;buildJsonResponse($key, $maxAttempts);\n        }\n\n        $this-&gt;limiter-&gt;hit($key, $decayMinutes);\n\n        $response = $next($request);\n\n        return $this-&gt;addHeaders(\n            $response, $maxAttempts,\n            $this-&gt;calculateRemainingAttempts($key, $maxAttempts)\n        );\n    }\n\n    /**\n     * Create a 'too many attempts' JSON response.\n     *\n     * @param  string  $key\n     * @param  int  $maxAttempts\n     * @return \\Symfony\\Component\\HttpFoundation\\Response\n     */\n    protected function buildJsonResponse($key, $maxAttempts)\n    {\n        $response = new JsonResponse([\n            'error' =&gt; [\n                'code' =&gt; 429,\n                'message' =&gt; 'Too many attempts, please slow down the request.',\n            ],\n        ], 429);\n\n        $retryAfter = $this-&gt;limiter-&gt;availableIn($key);\n\n        return $this-&gt;addHeaders(\n            $response, $maxAttempts,\n            $this-&gt;calculateRemainingAttempts($key, $maxAttempts, $retryAfter),\n            $retryAfter\n        );\n    }\n}\n</code></pre>\n\n<p><code>Kernel.php</code>:</p>\n\n<pre><code>     /**\n     * The application's route middleware.\n     *\n     * These middleware may be assigned to groups or used individually.\n     *\n     * @var array\n     */\n    protected $routeMiddleware = [\n        .\n        .\n        .\n        'apiThrottle' =&gt; \\App\\Http\\Middleware\\ThrottleRequestsMiddleware::class,\n    ];\n</code></pre>\n\n<p>Web route headers: request and response</p>\n\n<pre><code>Content-Security-Policy: default-src 'none' ; script-src resource:; \nX-Firefox-Spdy: h2\ncache-control: no-cache, private\ncontent-type: application/json\ndate: Wed, 18 Apr 2018 11:57:50 GMT\nretry-after: 53\nserver: nginx/1.13.6\nset-cookie: XSRF-TOKEN=eyJpdiI6ImpRdGlIXC9KbnV3QTY2MkpKbEZUQ3d3PT0iLCJ2YWx1ZSI6IlU5YXFkZmpVXC9nMHpXSW5zK2RUZFlTVTA0N0YzaE9TeURpSHJlV0FUb1NkXC9rN3dvUUdVbzgwNHQ4MCtDU04rYjBNSHB6U2dsUzZ6cys2cGY5N1dUQVE9PSIsIm1hYyI6IjAzMTRkZTdkNmEwMzk5ODZhMTQ2ODhmYTJjOWE2ODIzODQ1YzQ0OThhY2I2NWUxOTk5MDRmNDc0ZjBjMmNjMDgifQ%3D%3D; expires=Wed, 18-Apr-2018 13:57:50 GMT; Max-Age=7200; path=/\nlarablog_session=eyJpdiI6IkZqaGZVUk10bFNpb2hUc2xPMXdBbVE9PSIsInZhbHVlIjoiY0hoXC9qMHFWdENIOEZZK3BaUklhMjZtQ2JoS2IwQlRTV053clUyQVd0RmpxTlRmMlVRc1Q4QW8zYUMwZSs0dmFuM3U2N3A2ZGJCZTBaN2JwdHJDSE13PT0iLCJtYWMiOiI1YzQ0ZTNjOGI4NDI3ZDg4NTI5MDQyMDRiMTc3ODk3OGZkYjk4OWJmNzhkODFkM2UwZGU1MTM0NDdmNjIxYTY1In0%3D; expires=Wed, 18-Apr-2018 13:57:50 GMT; Max-Age=7200; path=/; HttpOnly\nx-ratelimit-limit: 5\nx-ratelimit-remaining: 0\nx-ratelimit-reset: 1524052723\n\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\nAccept-Encoding: gzip, deflate, br\nAccept-Language: en-US,en;q=0.5\nCache-Control: max-age=0\nConnection: keep-alive\nCookie: XSRF-TOKEN=eyJpdiI6IkNibkJQOUM3clJscElSWGZrcDVoZGc9PSIsInZhbHVlIjoiMzJuZGljNnRzUFoxNVVOYVZscFJBRElqMHJGSGxYa2dqVXkwR0VtZlhpQUFLUkI4cHJnOFdLSGIwdEdmRnA2R2Y5WHRXZHNtTFwvUVVpc2xKM1lQVHV3PT0iLCJtYWMiOiJmNmRjMjQwMDllOWFhZGY2Y2Q2YTVmYzFjZGQxNTE4MTk3ZjRkYWUyMTA2OWY0Y2E3NGNjYTg5MmEzYTZmZjJkIn0%3D; larablog_session=eyJpdiI6IlwvUm55cHBaTVdnR21rbkJVU05DUXVBPT0iLCJ2YWx1ZSI6IkJlYVV3dXB6SUNjMkRrUHJ2bTN2R3RUa294aVpjelJlTVFCUENXVldpSzlKNWdYUTdqeHJtY1JEWXV5UUpvbUc0bHB4UG5hcGltTG9OSVYrdjBMS29BPT0iLCJtYWMiOiI0M2ZjYWMyNjY0MjFkYTlhZjZkZmQ5MjVkMDFhODZiODFiNjQ4OGIzOTViZTNmY2E2NmNhMjQzYmRiY2I4ODdhIn0%3D\nHost: project.test\nReferer: https://project.test/\nUpgrade-Insecure-Requests: 1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:60.0) Gecko/20100101 Firefox/60.0\n</code></pre>\n\n<p>API route headers: request and response</p>\n\n<pre><code>Content-Security-Policy: default-src 'none' ; script-src resource:; \nX-Firefox-Spdy: h2\ncache-control: no-cache, private\ncontent-type: application/json\ndate: Wed, 18 Apr 2018 11:55:55 GMT\nretry-after: 57\nserver: nginx/1.13.6\nx-ratelimit-limit: 60\nx-ratelimit-remaining: 55\nx-ratelimit-reset: 1524052612\n\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\nAccept-Encoding: gzip, deflate, br\nAccept-Language: en-US,en;q=0.5\nCache-Control: max-age=0\nConnection: keep-alive\nCookie: XSRF-TOKEN=eyJpdiI6InFHZVFHNDg3M2hpcG9rUHd2WnlQclE9PSIsInZhbHVlIjoiQW1oZFZXbFc3NFhwVnpBTGZsM0tKbGlBaDhUNkM0TXpqMzZTb1FHUUI4bFk5XC9wWEdyK0lOZThyZ25vT2FLUHN2MXFZZGtuaVFta1lLdzBxZU9FdnR3PT0iLCJtYWMiOiJhMjM3MzA5ZDI1MmNjMjE0YTkyZjA4ODAyMzNmNDQwM2JjNTJjYzY4NzcyYWIwYWE5NjdmMWI0OTgwNjg5OGY4In0%3D; larablog_session=eyJpdiI6IjhTMnZTSmhMd3lSOUlLZzREd1BEN0E9PSIsInZhbHVlIjoiMVh2SFh4azM2RTJxRWFkV0g4YUxMUmRhVyt0bUVOYkZzbnZLRnBVb1gxQXB5OUQ2Y2lFZmNpMGt0NmNXSVlKSDFoWlE1aVZra2ROZEtYSzNpRzlVbGc9PSIsIm1hYyI6IjhmMDNmNzgzYWViODU3NzQ0MTExMzBlNWI1OTc0MTY5YzI2ZDZkZDQ2OThmZTM3NDJjZjA4MTkxN2Y0YTVhNmQifQ%3D%3D\nHost: project.test\nUpgrade-Insecure-Requests: 1\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:60.0) Gecko/20100101 Firefox/60.0\n</code></pre>\n\n<p>Please advice,</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-3.x",
+                "selenium",
+                "selenium-webdriver",
+                "firefox-headless"
+            ],
+            "owner": {
+                "reputation": 199,
+                "user_id": 4454657,
+                "user_type": "registered",
+                "accept_rate": 61,
+                "profile_image": "https://www.gravatar.com/avatar/c7ae072439e784aebc6a454b42e8e7d0?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Tintinabulator Zea",
+                "link": "https://stackoverflow.com/users/4454657/tintinabulator-zea"
+            },
+            "is_answered": true,
+            "view_count": 7096,
+            "accepted_answer_id": 46768243,
+            "answer_count": 1,
+            "score": 10,
+            "last_activity_date": 1524192963,
+            "creation_date": 1508057905,
+            "last_edit_date": 1524061047,
+            "question_id": 46753393,
+            "body_markdown": "I am running this code with python, selenium, and firefox but still get &#39;head&#39; version of firefox:\r\n\r\n    binary = FirefoxBinary(&#39;C:\\\\Program Files (x86)\\\\Mozilla Firefox\\\\firefox.exe&#39;, log_file=sys.stdout)\r\n    binary.add_command_line_options(&#39;-headless&#39;)\r\n    self.driver = webdriver.Firefox(firefox_binary=binary)\r\n\r\nI also tried some variations of binary:\r\n\r\n    binary = FirefoxBinary(&#39;C:\\\\Program Files\\\\Nightly\\\\firefox.exe&#39;, log_file=sys.stdout)\r\n            binary.add_command_line_options(&quot;--headless&quot;)\r\n\r\n\r\n\r\n\r\nAny idea what could be going wrong? \r\n",
+            "link": "https://stackoverflow.com/questions/46753393/how-to-make-firefox-headless-programatically-in-selenium-with-python",
+            "title": "How to make firefox headless programatically in Selenium with python?",
+            "body": "<p>I am running this code with python, selenium, and firefox but still get 'head' version of firefox:</p>\n\n<pre><code>binary = FirefoxBinary('C:\\\\Program Files (x86)\\\\Mozilla Firefox\\\\firefox.exe', log_file=sys.stdout)\nbinary.add_command_line_options('-headless')\nself.driver = webdriver.Firefox(firefox_binary=binary)\n</code></pre>\n\n<p>I also tried some variations of binary:</p>\n\n<pre><code>binary = FirefoxBinary('C:\\\\Program Files\\\\Nightly\\\\firefox.exe', log_file=sys.stdout)\n        binary.add_command_line_options(\"--headless\")\n</code></pre>\n\n<p>Any idea what could be going wrong? </p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "android-fragments",
+                "oncreate"
+            ],
+            "owner": {
+                "reputation": 168,
+                "user_id": 2892437,
+                "user_type": "registered",
+                "accept_rate": 62,
+                "profile_image": "https://www.gravatar.com/avatar/c4bd5bf0e1855a6ace4b122842b39003?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user2892437",
+                "link": "https://stackoverflow.com/users/2892437/user2892437"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524192943,
+            "creation_date": 1524089689,
+            "question_id": 49909802,
+            "body_markdown": "**Transition: Fragment A &gt; Fragment B**\r\n\r\nFragment A goes through `onDestroyView()` and does NOT go through any other tear down methods.  \r\n\r\n**Transition: Fragment B is popped and Fragment A is restored**\r\n\r\nFragment A goes through `onAttach()` and `onCreate()`. Why is this the case? Shouldn&#39;t Fragment A only have to recreate its view?  \r\n\r\n**How fragments are being replaced (in Kotlin):** \r\n\r\n    private fun replaceFragment(fragment: Fragment, @IdRes frameId: Int, fragmentTag: String) {\r\n        val transaction: FragmentTransaction = supportFragmentManager.beginTransaction()\r\n        transaction.replace(frameId, fragment, fragmentTag)\r\n        transaction.addToBackStack(fragmentTag)\r\n        transaction.commit()\r\n    }\r\n\r\n**Popping the backstack this way:** \r\n\r\n`supportFragmentManager.popBackStack()`\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49909802/android-why-is-onattach-and-oncreate-being-called-after-popping-backstack",
+            "title": "Android - Why is onAttach() and onCreate() being called after popping backstack?",
+            "body": "<p><strong>Transition: Fragment A > Fragment B</strong></p>\n\n<p>Fragment A goes through <code>onDestroyView()</code> and does NOT go through any other tear down methods.  </p>\n\n<p><strong>Transition: Fragment B is popped and Fragment A is restored</strong></p>\n\n<p>Fragment A goes through <code>onAttach()</code> and <code>onCreate()</code>. Why is this the case? Shouldn't Fragment A only have to recreate its view?  </p>\n\n<p><strong>How fragments are being replaced (in Kotlin):</strong> </p>\n\n<pre><code>private fun replaceFragment(fragment: Fragment, @IdRes frameId: Int, fragmentTag: String) {\n    val transaction: FragmentTransaction = supportFragmentManager.beginTransaction()\n    transaction.replace(frameId, fragment, fragmentTag)\n    transaction.addToBackStack(fragmentTag)\n    transaction.commit()\n}\n</code></pre>\n\n<p><strong>Popping the backstack this way:</strong> </p>\n\n<p><code>supportFragmentManager.popBackStack()</code></p>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "angular-cli"
+            ],
+            "owner": {
+                "reputation": 40,
+                "user_id": 4454888,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5fff8beebc1936c0e02b2aa6e3e48e64?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Sony Claba",
+                "link": "https://stackoverflow.com/users/4454888/sony-claba"
+            },
+            "is_answered": true,
+            "view_count": 4804,
+            "answer_count": 9,
+            "score": 3,
+            "last_activity_date": 1524192939,
+            "creation_date": 1470348188,
+            "last_edit_date": 1516260363,
+            "question_id": 38778135,
+            "body_markdown": "I am trying to create a project (named ngadmin) via the angular cli but it throws errors on this command: `ng new ngadmin`. The errors are:\r\n\r\n&gt; fs: re-evaluating native module sources is not supported. If you are\r\n&gt; using the graceful-fs module, please update it to a more recent\r\n&gt; version.\r\n&gt; \r\n&gt; \r\n&gt; You cannot use the new command inside an angular-cli project.\r\n\r\nI am not sure what the problem is as this cli was working fine for me a few days ago. \r\n\r\n",
+            "link": "https://stackoverflow.com/questions/38778135/angular-cli-wont-create-new-project",
+            "title": "Angular CLI wont create new project",
+            "body": "<p>I am trying to create a project (named ngadmin) via the angular cli but it throws errors on this command: <code>ng new ngadmin</code>. The errors are:</p>\n\n<blockquote>\n  <p>fs: re-evaluating native module sources is not supported. If you are\n  using the graceful-fs module, please update it to a more recent\n  version.</p>\n  \n  <p>You cannot use the new command inside an angular-cli project.</p>\n</blockquote>\n\n<p>I am not sure what the problem is as this cli was working fine for me a few days ago. </p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "unit-testing",
+                "android-studio",
+                "kotlin",
+                "robolectric"
+            ],
+            "owner": {
+                "reputation": 1108,
+                "user_id": 1321025,
+                "user_type": "registered",
+                "accept_rate": 77,
+                "profile_image": "https://i.stack.imgur.com/QFW8g.jpg?s=128&g=1",
+                "display_name": "Albert Gao",
+                "link": "https://stackoverflow.com/users/1321025/albert-gao"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1524192936,
+            "creation_date": 1524192936,
+            "question_id": 49933202,
+            "body_markdown": "**The test pass without problem**\r\n\r\n    @Config(constants = BuildConfig::class)\r\n    @RunWith(RobolectricTestRunner::class)\r\n    class EntryUITest {\r\n    \r\n        lateinit var activity: EntryActivity\r\n    \r\n        @Before\r\n        fun setup(){\r\n            activity = Robolectric.buildActivity(EntryActivity::class.java).create().get()\r\n        }\r\n    \r\n        @Test\r\n        fun tryIt() {\r\n            val button = activity.findViewById&lt;Button&gt;(R.id.auth_button_startBrowsing)\r\n            assertNotNull(button)\r\n        }\r\n    \r\n    }\r\n\r\n\r\n**Version I use:** &lt;br&gt;\r\n`testImplementation &#39;org.robolectric:robolectric:3.8&#39;`\r\n\r\n**How I start the test**\r\nI just right click the `java` folder, and select `Run tests in java`\r\n\r\n**The problem is** &lt;br&gt;\r\nSTOP button in android studio is always enabled after running Robolectric tests. And I tried press it, but nothing happens, it is still enabled.\r\n\r\nAnything I am missing here?",
+            "link": "https://stackoverflow.com/questions/49933202/why-the-stop-button-in-android-studio-is-always-enabled-after-running-robolectri",
+            "title": "Why the STOP button in android studio is always enabled after running Robolectric tests?",
+            "body": "<p><strong>The test pass without problem</strong></p>\n\n<pre><code>@Config(constants = BuildConfig::class)\n@RunWith(RobolectricTestRunner::class)\nclass EntryUITest {\n\n    lateinit var activity: EntryActivity\n\n    @Before\n    fun setup(){\n        activity = Robolectric.buildActivity(EntryActivity::class.java).create().get()\n    }\n\n    @Test\n    fun tryIt() {\n        val button = activity.findViewById&lt;Button&gt;(R.id.auth_button_startBrowsing)\n        assertNotNull(button)\n    }\n\n}\n</code></pre>\n\n<p><strong>Version I use:</strong> <br>\n<code>testImplementation 'org.robolectric:robolectric:3.8'</code></p>\n\n<p><strong>How I start the test</strong>\nI just right click the <code>java</code> folder, and select <code>Run tests in java</code></p>\n\n<p><strong>The problem is</strong> <br>\nSTOP button in android studio is always enabled after running Robolectric tests. And I tried press it, but nothing happens, it is still enabled.</p>\n\n<p>Anything I am missing here?</p>\n"
+        },
+        {
+            "tags": [
+                "azure"
+            ],
+            "owner": {
+                "reputation": 340,
+                "user_id": 2657875,
+                "user_type": "registered",
+                "accept_rate": 77,
+                "profile_image": "https://www.gravatar.com/avatar/40690e8e76fcc4af11b19b4a2f4a3072?s=128&d=identicon&r=PG",
+                "display_name": "menteith",
+                "link": "https://stackoverflow.com/users/2657875/menteith"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524192908,
+            "creation_date": 1524145196,
+            "last_edit_date": 1524147549,
+            "question_id": 49922589,
+            "body_markdown": "For Azure there is an [API Endpoint](https://docs.microsoft.com/en-us/rest/api/storagerp/storageaccounts/regeneratekey) that allows to regenerate key. \r\nThe endpoint looks like \r\n\r\n    POST https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Storage/storageAccounts/{accountName}/regenerateKey?api-version=2017-06-01\r\n\r\n[Documentation](https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-create-service-principal-portal) states\r\n\r\n&gt; When you have code that needs to access or modify resources, you must set up an Azure Active Directory (AD) application.\r\n\r\nHowever, when I use it (i.e. create POST request) I&#39;m getting error `Authentication failed. The &#39;Authorization&#39; header is missing.` I tried to follow [this tutorial][1] and I did all the steps except **Assign application to role** What role should I select to be able to regenerate password? How do I do that? Am I getting this correct?\r\n\r\n\r\n  [1]: https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-create-service-principal-portal",
+            "link": "https://stackoverflow.com/questions/49922589/regenerating-access-keys-in-azure-by-rest-api",
+            "title": "Regenerating access keys in Azure by REST API",
+            "body": "<p>For Azure there is an <a href=\"https://docs.microsoft.com/en-us/rest/api/storagerp/storageaccounts/regeneratekey\" rel=\"nofollow noreferrer\">API Endpoint</a> that allows to regenerate key. \nThe endpoint looks like </p>\n\n<pre><code>POST https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Storage/storageAccounts/{accountName}/regenerateKey?api-version=2017-06-01\n</code></pre>\n\n<p><a href=\"https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-create-service-principal-portal\" rel=\"nofollow noreferrer\">Documentation</a> states</p>\n\n<blockquote>\n  <p>When you have code that needs to access or modify resources, you must set up an Azure Active Directory (AD) application.</p>\n</blockquote>\n\n<p>However, when I use it (i.e. create POST request) I'm getting error <code>Authentication failed. The 'Authorization' header is missing.</code> I tried to follow <a href=\"https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-create-service-principal-portal\" rel=\"nofollow noreferrer\">this tutorial</a> and I did all the steps except <strong>Assign application to role</strong> What role should I select to be able to regenerate password? How do I do that? Am I getting this correct?</p>\n"
+        },
+        {
+            "tags": [
+                "php"
+            ],
+            "owner": {
+                "reputation": 48,
+                "user_id": 2992146,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://i.stack.imgur.com/It1Z7.jpg?s=128&g=1",
+                "display_name": "Decode",
+                "link": "https://stackoverflow.com/users/2992146/decode"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "closed_date": 1524191625,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524192905,
+            "creation_date": 1524189355,
+            "last_edit_date": 1524192905,
+            "question_id": 49932745,
+            "body_markdown": "I have been searching how to get metadata but I couldn&#39;t find the solution.\r\nAnyone can help will be appreciated~",
+            "link": "https://stackoverflow.com/questions/49932745/how-to-extract-the-meta-from-url-of-a-page",
+            "closed_reason": "duplicate",
+            "title": "How to extract the meta from URL of a page?",
+            "body": "<p>I have been searching how to get metadata but I couldn't find the solution.\nAnyone can help will be appreciated~</p>\n"
+        },
+        {
+            "tags": [
+                "compiler-as-a-service"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9672737,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ae0c0a1a59ffcee515247d83c69980b0?s=128&d=identicon&r=PG&f=1",
+                "display_name": "lskqndkrakl",
+                "link": "https://stackoverflow.com/users/9672737/lskqndkrakl"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524192905,
+            "creation_date": 1524192905,
+            "question_id": 49933200,
+            "body_markdown": " will be displayed in a monospaced font. The first four spaces\r\n    will be stripped off, but all other whitespace will be preserved.\r\n    \r\n    Markdown and HTML are turned off in code blocks:\r\n    &lt;i&gt;This is not italic&lt;/i&gt;, and ",
+            "link": "https://stackoverflow.com/questions/49933200/to-create-code-blocks-or-other-preformatted-text-indent-by-four-spaces",
+            "title": "To create code blocks or other preformatted text, indent by four spaces:",
+            "body": "<p>will be displayed in a monospaced font. The first four spaces\n    will be stripped off, but all other whitespace will be preserved.</p>\n\n<pre><code>Markdown and HTML are turned off in code blocks:\n&lt;i&gt;This is not italic&lt;/i&gt;, and \n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "swift",
+                "string",
+                "split",
+                "suffix"
+            ],
+            "owner": {
+                "reputation": 3054,
+                "user_id": 2109038,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://i.stack.imgur.com/ve1RL.jpg?s=128&g=1",
+                "display_name": "Confused",
+                "link": "https://stackoverflow.com/users/2109038/confused"
+            },
+            "is_answered": true,
+            "view_count": 2201,
+            "accepted_answer_id": 39888164,
+            "answer_count": 7,
+            "score": 1,
+            "last_activity_date": 1524192898,
+            "creation_date": 1475729423,
+            "last_edit_date": 1497006699,
+            "question_id": 39887738,
+            "body_markdown": "When trying to remove the suffix from a `filename`, I&#39;m only left with the suffix, which is exactly not what I want.\r\n\r\nWhat (how many things) am I doing wrong here:\r\n\r\n    let myTextureAtlas = SKTextureAtlas(named: &quot;demoArt&quot;)\r\n                               \r\n    let filename = (myTextureAtlas.textureNames.first?.characters.split{$0 == &quot;.&quot;}.map(String.init)[1].replacingOccurrences(of: &quot;\\&#39;&quot;, with: &quot;&quot;))! as String\r\n        \r\n    print(filename)\r\n\r\nThis prints `png` which is the most dull part of the whole thing.",
+            "link": "https://stackoverflow.com/questions/39887738/remove-suffix-from-filename-in-swift",
+            "title": "Remove suffix from filename in Swift",
+            "body": "<p>When trying to remove the suffix from a <code>filename</code>, I'm only left with the suffix, which is exactly not what I want.</p>\n\n<p>What (how many things) am I doing wrong here:</p>\n\n<pre><code>let myTextureAtlas = SKTextureAtlas(named: \"demoArt\")\n\nlet filename = (myTextureAtlas.textureNames.first?.characters.split{$0 == \".\"}.map(String.init)[1].replacingOccurrences(of: \"\\'\", with: \"\"))! as String\n\nprint(filename)\n</code></pre>\n\n<p>This prints <code>png</code> which is the most dull part of the whole thing.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9626286,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-ELxg3kmtMd4/AAAAAAAAAAI/AAAAAAAAADA/NDSDlhybuqA/photo.jpg?sz=128",
+                "display_name": "David Shi",
+                "link": "https://stackoverflow.com/users/9626286/david-shi"
+            },
+            "is_answered": false,
+            "view_count": 45,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1524192892,
+            "creation_date": 1523551681,
+            "last_edit_date": 1523888668,
+            "question_id": 49802020,
+            "body_markdown": "Hi This is my first time using this website, I did do some research about how to convert lowercase letter to uppercase letter but still filles. The requirement is to check if &quot;even&quot;, covert the even digit letter to different type(lower to upper or upper to lower). below is my code:\r\n\r\n    function question4(str,pos)\r\n        {   var newLetter;\r\n        var kkk=str;\r\n    \r\n            if (pos=&#39;even&#39;)\r\n            {\r\n                for (var i=0;i&lt;str.length;i=i+2)\r\n                {\r\n                    if (str[i].toString()==str[i].toString().toUpperCase())\r\n                    {\r\n                        newLetter=str[i].toString().toLowerCase();\r\n                        kkk[i]=newLetter;\r\n                    }else\r\n                    {\r\n                        newLetter=str[i].toUpperCase();\r\n                        kkk[i]=newLetter;\r\n                    }\r\n                }\r\n            }else if (pos=&#39;odd&#39;)\r\n                        for ( i=0;i&lt;str.length;i=i+2)\r\n                        {\r\n                            if (str[i]===str[i].toLowerCase())\r\n                            {\r\n                                alert(&#39;3&#39;);\r\n                            }else if (str[i]===str[i].toUpperCase())\r\n                            {\r\n                                alert(&#39;4&#39;);\r\n                            }\r\n                        }\r\n                        return kkk;\r\n        }\r\n\r\nthe requirement is: Write a function to change the case of all the characters in string based on their position which matches the value of the pos parameter function. function (str, pos [even|odd]). Example ( (‘abCd’, ‘odd’) return Abcd)\r\n\r\nUpdate: now I have make &quot;odd&quot; condition working, but &quot;even &quot;still is not working, can any one take a look why?\r\n\r\n    function question4(strr,pos) {\r\n    var result  ;\r\n    var sum=&quot;&quot;;\r\n    var aaa;\r\n\r\n    for (var i = 0; i &lt;= strr.length - 1; i = i + 1)\r\n    {\r\n        if (pos == &quot;odd&quot;&amp;&amp;i%2==0)\r\n        {   aaa=strr.charCodeAt(i);\r\n\r\n            if (aaa &gt;= 65 &amp;&amp; aaa &lt;= 90 )\r\n            {\r\n                result = String.fromCharCode(aaa + 32);\r\n            } else\r\n                result = String.fromCharCode(aaa - 32);\r\n        }\r\n        else if (pos == &quot;even&quot;&amp;&amp;i%2==1)\r\n        {\r\n            if (aaa &gt;= 65 &amp;&amp; aaa &lt;= 90 )\r\n            {\r\n                result= String.fromCharCode(aaa + 32);\r\n            } else\r\n                result = String.fromCharCode(aaa - 32);\r\n        }else result=strr[i];\r\n        sum+=result;\r\n    }\r\n\r\n\r\n    return sum;\r\n}\r\n    ",
+            "link": "https://stackoverflow.com/questions/49802020/how-to-convert-lowercase-uppercasewith-if-conditions-on-different-digits",
+            "title": "How to convert lowercase uppercase?(with if conditions on different digits.)",
+            "body": "<p>Hi This is my first time using this website, I did do some research about how to convert lowercase letter to uppercase letter but still filles. The requirement is to check if \"even\", covert the even digit letter to different type(lower to upper or upper to lower). below is my code:</p>\n\n<pre><code>function question4(str,pos)\n    {   var newLetter;\n    var kkk=str;\n\n        if (pos='even')\n        {\n            for (var i=0;i&lt;str.length;i=i+2)\n            {\n                if (str[i].toString()==str[i].toString().toUpperCase())\n                {\n                    newLetter=str[i].toString().toLowerCase();\n                    kkk[i]=newLetter;\n                }else\n                {\n                    newLetter=str[i].toUpperCase();\n                    kkk[i]=newLetter;\n                }\n            }\n        }else if (pos='odd')\n                    for ( i=0;i&lt;str.length;i=i+2)\n                    {\n                        if (str[i]===str[i].toLowerCase())\n                        {\n                            alert('3');\n                        }else if (str[i]===str[i].toUpperCase())\n                        {\n                            alert('4');\n                        }\n                    }\n                    return kkk;\n    }\n</code></pre>\n\n<p>the requirement is: Write a function to change the case of all the characters in string based on their position which matches the value of the pos parameter function. function (str, pos [even|odd]). Example ( (‘abCd’, ‘odd’) return Abcd)</p>\n\n<p>Update: now I have make \"odd\" condition working, but \"even \"still is not working, can any one take a look why?</p>\n\n<pre><code>function question4(strr,pos) {\nvar result  ;\nvar sum=\"\";\nvar aaa;\n\nfor (var i = 0; i &lt;= strr.length - 1; i = i + 1)\n{\n    if (pos == \"odd\"&amp;&amp;i%2==0)\n    {   aaa=strr.charCodeAt(i);\n\n        if (aaa &gt;= 65 &amp;&amp; aaa &lt;= 90 )\n        {\n            result = String.fromCharCode(aaa + 32);\n        } else\n            result = String.fromCharCode(aaa - 32);\n    }\n    else if (pos == \"even\"&amp;&amp;i%2==1)\n    {\n        if (aaa &gt;= 65 &amp;&amp; aaa &lt;= 90 )\n        {\n            result= String.fromCharCode(aaa + 32);\n        } else\n            result = String.fromCharCode(aaa - 32);\n    }else result=strr[i];\n    sum+=result;\n}\n\n\nreturn sum;\n</code></pre>\n\n<p>}</p>\n"
+        },
+        {
+            "tags": [
+                "arrays",
+                "swift",
+                "nspredicate"
+            ],
+            "owner": {
+                "reputation": 2,
+                "user_id": 9473689,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/0b32c1cb36d596302f94347627062f8d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "MikeIOSMike",
+                "link": "https://stackoverflow.com/users/9473689/mikeiosmike"
+            },
+            "is_answered": true,
+            "view_count": 41,
+            "accepted_answer_id": 49216649,
+            "answer_count": 3,
+            "score": 1,
+            "last_activity_date": 1524192888,
+            "creation_date": 1520741812,
+            "last_edit_date": 1524192888,
+            "question_id": 49216584,
+            "body_markdown": "I want to search for a particular U.S. President by startYear, and I attempted to use filter in Swift 4. I could not get it to work. I am using the Codable protocol on purpose.\r\n\r\n    struct USPresidents: Codable {\r\n        let FName: String\r\n        let LName: String\r\n        let startYear: Int\r\n        let endYear: Int\r\n    }\r\n\r\n    let widroww = USPresidents(FName: &quot;Widrow&quot;, LName: &quot;Wilson&quot;, startYear: 1913, endYear: 1921)\r\n    let fdr = USPresidents(FName: &quot;Frankly&quot;, LName: &quot;Roosevelt&quot;, startYear: 1933, endYear: 1945)\r\n    let jkf = USPresidents(FName: &quot;John&quot;, LName: &quot;Kennedy&quot;, startYear: 1961, endYear: 1963)\r\n    let dde = USPresidents(FName: &quot;Dwight&quot;, LName: &quot;Eisenhowser&quot;, startYear: 1953, endYear: 1961)\r\n    let anj = USPresidents(FName: &quot;Andrew&quot;, LName: &quot;Jackson&quot;, startYear: 1865, endYear: 1869)\r\n    let gew = USPresidents(FName: &quot;George&quot;, LName: &quot;Washington&quot;, startYear: 1789, endYear: 1796)\r\n\r\n    var allPresidents = [USPresidents]()\r\n    allPresidents.append(contentsOf: [fdr,jkf,dde,anj,gew])\r\n\r\n \r\n    let searchFor = [1953]\r\n    let result = allPresidents.filter {  $0.startYear.contains({ $0.searchFor.contains($0) })\r\n    print(&quot;\\n\\nPresident in 1953 was:  = \\(result)\\n\\n&quot;)\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49216584/ios-struct-codable-and-filter",
+            "title": "iOS Struct Codable and filter?",
+            "body": "<p>I want to search for a particular U.S. President by startYear, and I attempted to use filter in Swift 4. I could not get it to work. I am using the Codable protocol on purpose.</p>\n\n<pre><code>struct USPresidents: Codable {\n    let FName: String\n    let LName: String\n    let startYear: Int\n    let endYear: Int\n}\n\nlet widroww = USPresidents(FName: \"Widrow\", LName: \"Wilson\", startYear: 1913, endYear: 1921)\nlet fdr = USPresidents(FName: \"Frankly\", LName: \"Roosevelt\", startYear: 1933, endYear: 1945)\nlet jkf = USPresidents(FName: \"John\", LName: \"Kennedy\", startYear: 1961, endYear: 1963)\nlet dde = USPresidents(FName: \"Dwight\", LName: \"Eisenhowser\", startYear: 1953, endYear: 1961)\nlet anj = USPresidents(FName: \"Andrew\", LName: \"Jackson\", startYear: 1865, endYear: 1869)\nlet gew = USPresidents(FName: \"George\", LName: \"Washington\", startYear: 1789, endYear: 1796)\n\nvar allPresidents = [USPresidents]()\nallPresidents.append(contentsOf: [fdr,jkf,dde,anj,gew])\n\n\nlet searchFor = [1953]\nlet result = allPresidents.filter {  $0.startYear.contains({ $0.searchFor.contains($0) })\nprint(\"\\n\\nPresident in 1953 was:  = \\(result)\\n\\n\")\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "button",
+                "rippledrawable"
+            ],
+            "owner": {
+                "reputation": 58459,
+                "user_id": 878126,
+                "user_type": "registered",
+                "accept_rate": 51,
+                "profile_image": "https://i.stack.imgur.com/D5dZW.jpg?s=128&g=1",
+                "display_name": "android developer",
+                "link": "https://stackoverflow.com/users/878126/android-developer"
+            },
+            "is_answered": true,
+            "view_count": 29946,
+            "accepted_answer_id": 49933191,
+            "answer_count": 5,
+            "score": 66,
+            "last_activity_date": 1524192875,
+            "creation_date": 1439295983,
+            "question_id": 31941753,
+            "body_markdown": "Background\r\n--\r\nOn the dialer app of Android, when you start searching for something, and you click the arrow button on the left of the EditText, you get a circular ripple effect on it :\r\n\r\n[![enter image description here][1]][1]\r\n\r\nThe problem\r\n--\r\nI&#39;ve tried to have it too, but I got a rectangular one:\r\n\r\n        &lt;ImageButton\r\n            android:id=&quot;@+id/navButton&quot;\r\n            android:layout_width=&quot;40dp&quot;\r\n            android:layout_height=&quot;40dp&quot;\r\n            android:layout_gravity=&quot;center_vertical&quot;\r\n            android:layout_marginLeft=&quot;8dp&quot;\r\n            android:background=&quot;?android:attr/selectableItemBackground&quot;\r\n            android:src=&quot;@drawable/search_ic_back_arrow&quot;/&gt;\r\n\r\nThe question\r\n--\r\nHow do I make the button have a circular ripple effect when being clicked? Do I have to create a new drawable, or is there a built in way for that?\r\n\r\n\r\n  [1]: http://i.stack.imgur.com/1q30Y.png",
+            "link": "https://stackoverflow.com/questions/31941753/how-to-make-a-circular-ripple-on-a-button-when-its-being-clicked",
+            "title": "How to make a circular ripple on a button when it&#39;s being clicked?",
+            "body": "<h2>Background</h2>\n\n<p>On the dialer app of Android, when you start searching for something, and you click the arrow button on the left of the EditText, you get a circular ripple effect on it :</p>\n\n<p><a href=\"https://i.stack.imgur.com/1q30Y.png\"><img src=\"https://i.stack.imgur.com/1q30Y.png\" alt=\"enter image description here\"></a></p>\n\n<h2>The problem</h2>\n\n<p>I've tried to have it too, but I got a rectangular one:</p>\n\n<pre><code>    &lt;ImageButton\n        android:id=\"@+id/navButton\"\n        android:layout_width=\"40dp\"\n        android:layout_height=\"40dp\"\n        android:layout_gravity=\"center_vertical\"\n        android:layout_marginLeft=\"8dp\"\n        android:background=\"?android:attr/selectableItemBackground\"\n        android:src=\"@drawable/search_ic_back_arrow\"/&gt;\n</code></pre>\n\n<h2>The question</h2>\n\n<p>How do I make the button have a circular ripple effect when being clicked? Do I have to create a new drawable, or is there a built in way for that?</p>\n"
+        },
+        {
+            "tags": [
+                "dji-sdk"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9112717,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-RCTFjWpazS8/AAAAAAAAAAI/AAAAAAAABO0/WxlgyZfwjWk/photo.jpg?sz=128",
+                "display_name": "Achia Rosenfeld",
+                "link": "https://stackoverflow.com/users/9112717/achia-rosenfeld"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524192855,
+            "creation_date": 1523276026,
+            "last_edit_date": 1523346728,
+            "question_id": 49732730,
+            "body_markdown": "I tried to set timeline missions to the drone with the Mobile SDK. But the stop function after the mission start dont work. Im use the 4.3.2 version.why the mission dont stop?  (I use this function every time a new mission need to start to clear and stop the timeline)\r\n\r\n    public void stopAndClear()\r\n    {\r\n     \r\n        if (missionControl.scheduledCount() &gt; 0)\r\n        {\r\n            if(missionControl.getRunningElement()!=null)\r\n            {\r\n           \r\n                missionControl.getRunningElement().pause();\r\n                missionControl.getRunningElement().stop();\r\n             \r\n            }\r\n            missionControl.stopTimeline();\r\n            missionControl.unscheduleEverything();\r\n            missionControl.removeAllListeners();\r\n        }\r\n    }\r\n\r\n\r\n\r\n\r\n    \r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49732730/stop-timeline-mission-dji-sdk",
+            "title": "Stop timeline mission - DJI SDK",
+            "body": "<p>I tried to set timeline missions to the drone with the Mobile SDK. But the stop function after the mission start dont work. Im use the 4.3.2 version.why the mission dont stop?  (I use this function every time a new mission need to start to clear and stop the timeline)</p>\n\n<pre><code>public void stopAndClear()\n{\n\n    if (missionControl.scheduledCount() &gt; 0)\n    {\n        if(missionControl.getRunningElement()!=null)\n        {\n\n            missionControl.getRunningElement().pause();\n            missionControl.getRunningElement().stop();\n\n        }\n        missionControl.stopTimeline();\n        missionControl.unscheduleEverything();\n        missionControl.removeAllListeners();\n    }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "google-apps-script",
+                "google-spreadsheet"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 8157345,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://lh5.googleusercontent.com/-I5ZTobj4mNY/AAAAAAAAAAI/AAAAAAAAABo/Fk9lTGhr-p4/photo.jpg?sz=128",
+                "display_name": "Adam Hill",
+                "link": "https://stackoverflow.com/users/8157345/adam-hill"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524192843,
+            "creation_date": 1524061581,
+            "question_id": 49902289,
+            "body_markdown": "I have a basic two tab (sheets) spreadsheet.  One tab stores a lot of data.  The other tab is the front end / user interface that contains some drop down menus that a single, long query formula uses to populate a user generated query.\r\n\r\nThe problem is that this spreadsheet sees a lot of users and that one user&#39;s query actively changes the query results while another user is trying to view her query results.\r\n\r\nImplementing a &quot;filter view&quot; is not a solution because users are actually editing data (the drop down menus) to generate a query.\r\n\r\nI do not want to have users create their own copy of the spreadsheet as I am concerned they will return to the copy and not the master and not see recent changes to the data.",
+            "link": "https://stackoverflow.com/questions/49902289/allow-a-user-to-make-changes-to-a-google-sheet-but-have-these-changes-not-apply",
+            "title": "Allow a user to make changes to a google sheet, but have these changes not apply to other users",
+            "body": "<p>I have a basic two tab (sheets) spreadsheet.  One tab stores a lot of data.  The other tab is the front end / user interface that contains some drop down menus that a single, long query formula uses to populate a user generated query.</p>\n\n<p>The problem is that this spreadsheet sees a lot of users and that one user's query actively changes the query results while another user is trying to view her query results.</p>\n\n<p>Implementing a \"filter view\" is not a solution because users are actually editing data (the drop down menus) to generate a query.</p>\n\n<p>I do not want to have users create their own copy of the spreadsheet as I am concerned they will return to the copy and not the master and not see recent changes to the data.</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "firebase",
+                "firebase-database",
+                "kotlin",
+                "firebaseui"
+            ],
+            "owner": {
+                "reputation": 24,
+                "user_id": 7917159,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-LxVNtQgqzcw/AAAAAAAAAAI/AAAAAAAAAJU/f7Wxh854Sjs/photo.jpg?sz=128",
+                "display_name": "CEO tech4lifeapps",
+                "link": "https://stackoverflow.com/users/7917159/ceo-tech4lifeapps"
+            },
+            "is_answered": true,
+            "view_count": 26,
+            "accepted_answer_id": 49931225,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524192837,
+            "creation_date": 1524116226,
+            "last_edit_date": 1524120760,
+            "question_id": 49913455,
+            "body_markdown": "I wrote a custom FirebaseRecylerAdapter, based on FirebaseUI [documentation][1] like this:\r\n\r\n    class FavoritesAdapter(lifecycleOwner: LifecycleOwner) : FirebaseRecyclerAdapter&lt;Favorite, FavoritesAdapter.FavoritesHolder&gt;(buildOptions(lifecycleOwner)) {\r\n\r\n    companion object {\r\n        private fun buildQuery() = FirebaseDatabase.getInstance()\r\n                .reference\r\n                .child(&quot;favorites&quot;)\r\n                .limitToLast(50)\r\n\r\n        private fun buildOptions(lifecycleOwner: LifecycleOwner) = FirebaseRecyclerOptions.Builder&lt;Favorite&gt;()\r\n                .setQuery(buildQuery(), Favorite::class.java)\r\n                .setLifecycleOwner(lifecycleOwner)\r\n                .build()\r\n    }\r\n\r\n    //...\r\n\r\nThis class overrides an onDataChanged() function:\r\n\r\n    override fun onDataChanged() {\r\n        // Called each time there is a new data snapshot. You may want to use this method\r\n        // to hide a loading spinner or check for the &quot;no documents&quot; state and update your UI.\r\n        // ...\r\n\r\n    }\r\n\r\nNow, how do I actually check for that &quot;no documents&quot; state in order to update my UI? I can find no way to check for an empty data-set. I am looking for something like getItemCount().\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n  [1]: https://github.com/firebase/FirebaseUI-Android/blob/master/database/README.md",
+            "link": "https://stackoverflow.com/questions/49913455/check-for-no-documents-state-or-empty-data-set-in-firebaseuis-firebaserecycle",
+            "title": "Check for &quot;no documents&quot; state or empty data-set in FirebaseUI&#39;s FirebaseRecyclerAdapter",
+            "body": "<p>I wrote a custom FirebaseRecylerAdapter, based on FirebaseUI <a href=\"https://github.com/firebase/FirebaseUI-Android/blob/master/database/README.md\" rel=\"nofollow noreferrer\">documentation</a> like this:</p>\n\n<pre><code>class FavoritesAdapter(lifecycleOwner: LifecycleOwner) : FirebaseRecyclerAdapter&lt;Favorite, FavoritesAdapter.FavoritesHolder&gt;(buildOptions(lifecycleOwner)) {\n\ncompanion object {\n    private fun buildQuery() = FirebaseDatabase.getInstance()\n            .reference\n            .child(\"favorites\")\n            .limitToLast(50)\n\n    private fun buildOptions(lifecycleOwner: LifecycleOwner) = FirebaseRecyclerOptions.Builder&lt;Favorite&gt;()\n            .setQuery(buildQuery(), Favorite::class.java)\n            .setLifecycleOwner(lifecycleOwner)\n            .build()\n}\n\n//...\n</code></pre>\n\n<p>This class overrides an onDataChanged() function:</p>\n\n<pre><code>override fun onDataChanged() {\n    // Called each time there is a new data snapshot. You may want to use this method\n    // to hide a loading spinner or check for the \"no documents\" state and update your UI.\n    // ...\n\n}\n</code></pre>\n\n<p>Now, how do I actually check for that \"no documents\" state in order to update my UI? I can find no way to check for an empty data-set. I am looking for something like getItemCount().</p>\n"
+        },
+        {
+            "tags": [
+                "qt",
+                "gstreamer"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 9470212,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/6e3f3fa8e075965b087dfffe91c663d0?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Runner",
+                "link": "https://stackoverflow.com/users/9470212/runner"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1524192829,
+            "creation_date": 1524192829,
+            "question_id": 49933188,
+            "body_markdown": "We use QT5.8 to develop UI on ARM SoC. We found if the Wayland booting time is too long, so we delete it. And then we found GStreamer can not run correctly. We use GStreamer and QMediaplayer, the mp4 video will flicker. After we change to wayland QT, same code is correctly.My question is how to optimize wayland booting time, if not, how to setting GStreamer without Wayland.",
+            "link": "https://stackoverflow.com/questions/49933188/should-we-run-gstreamer-without-wayland",
+            "title": "Should we run GStreamer without Wayland?",
+            "body": "<p>We use QT5.8 to develop UI on ARM SoC. We found if the Wayland booting time is too long, so we delete it. And then we found GStreamer can not run correctly. We use GStreamer and QMediaplayer, the mp4 video will flicker. After we change to wayland QT, same code is correctly.My question is how to optimize wayland booting time, if not, how to setting GStreamer without Wayland.</p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "visualization",
+                "plotrix"
+            ],
+            "owner": {
+                "reputation": 22,
+                "user_id": 8961426,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e937ce61ce52c7054b75bc0697a08989?s=128&d=identicon&r=PG&f=1",
+                "display_name": "kyle chan",
+                "link": "https://stackoverflow.com/users/8961426/kyle-chan"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524192825,
+            "creation_date": 1524192825,
+            "question_id": 49933185,
+            "body_markdown": "I was using twoord.plot function to draw dual axis graph, and i wrote following code: \r\n`twoord.plot(as.factor(bad_rate_fico_range$fico_range),bad_rate_fico_range$bad_rate,as.factor(bad_rate_fico_range$fico_range),bad_rate_fico_range$int,type = c(&#39;line&#39;,&#39;line&#39;),xticklab = bad_rate_fico_range$fico_range)` \r\n[![enter image description here][1]][1]\r\nSince bad_rate_fico_rage$fico_range is not numeric varibale, i changed it to factor, then i got following graph\r\n  [1]: https://i.stack.imgur.com/4hoGS.png\r\nAs you can see in the graph, there are four long black lines, and i don&#39;t know what they are, and how to remove them or make them smaller",
+            "link": "https://stackoverflow.com/questions/49933185/image-error-using-twoord-plot-of-plotrix-package",
+            "title": "image error using twoord.plot of plotrix package",
+            "body": "<p>I was using twoord.plot function to draw dual axis graph, and i wrote following code: \n<code>twoord.plot(as.factor(bad_rate_fico_range$fico_range),bad_rate_fico_range$bad_rate,as.factor(bad_rate_fico_range$fico_range),bad_rate_fico_range$int,type = c('line','line'),xticklab = bad_rate_fico_range$fico_range)</code> \n<a href=\"https://i.stack.imgur.com/4hoGS.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/4hoGS.png\" alt=\"enter image description here\"></a>\nSince bad_rate_fico_rage$fico_range is not numeric varibale, i changed it to factor, then i got following graph\nAs you can see in the graph, there are four long black lines, and i don't know what they are, and how to remove them or make them smaller</p>\n"
+        },
+        {
+            "tags": [
+                "go",
+                "ethereum"
+            ],
+            "owner": {
+                "reputation": 985,
+                "user_id": 631612,
+                "user_type": "registered",
+                "accept_rate": 58,
+                "profile_image": "https://www.gravatar.com/avatar/b7d2a769fa193f9efa36668148deb9f5?s=128&d=identicon&r=PG",
+                "display_name": "quanta",
+                "link": "https://stackoverflow.com/users/631612/quanta"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524192822,
+            "creation_date": 1524192822,
+            "question_id": 49933184,
+            "body_markdown": "Follow these:\r\n\r\n- https://decentralize.today/introducing-perigord-golang-tools-for-ethereum-dapp-development-60556c2d9fd\r\n- https://www.youtube.com/watch?v=oQZtKf_hzOU\r\n\r\n`perigord deploy` wait for me to enter the passphrase (&quot;blah&quot;):\r\n\r\n    ❯❯❯❯ perigord deploy\r\n    Enter passphrase for account 0x945Cd603A6754cB13C3D61d8fe240990f86f9f8A:\r\n    Enter passphrase for account 0x945Cd603A6754cB13C3D61d8fe240990f86f9f8A:\r\n\r\nbut `perigord test` does not:\r\n\r\n    Running migration 1\r\n    Enter passphrase for account 0x945Cd603A6754cB13C3D61d8fe240990f86f9f8A:\r\n    ----------------------------------------------------------------------\r\n    FAIL: tests/Foo.go:26: foo_test.TestFoo\r\n    \r\n    tests/Foo.go:28:\r\n        c.Assert(session, NotNil)\r\n    ... value = nil\r\n    \r\n    Running migration 1\r\n    Enter passphrase for account 0x945Cd603A6754cB13C3D61d8fe240990f86f9f8A:\r\n    ----------------------------------------------------------------------\r\n    FAIL: tests/TokenERC20.go:19: TokenERC20Suite.SetUpTest\r\n    \r\n    tests/TokenERC20.go:22:\r\n        c.Fatal(err)\r\n    ... Error: authentication needed: password or unlock\r\n    \r\n    \r\n    ----------------------------------------------------------------------\r\n    PANIC: tests/TokenERC20.go:33: TokenERC20Suite.TestName\r\n    \r\n    ... Panic: Fixture has panicked (see related PANIC)\r\n    OOPS: 0 passed, 2 FAILED, 1 MISSED\r\n    --- FAIL: Test (0.01s)\r\n    FAIL\r\n    exit status 1\r\n    FAIL\tgithub.com/quantonganh/tokendapp\t0.065s\r\n    Error: [exit status 1]\r\n    exit status 1\r\n    Error: [exit status 1]\r\n\r\nI have no chance to enter my passphrase. That is the reason for &quot;authentication needed: password or unlock&quot;.\r\n\r\nhttps://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/templates/test/test.go.tpl#L20 --&gt;\r\n\r\nhttps://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/testing/testing.go#L40 --&gt;\r\n https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/migration/migration.go#L115 --&gt;\r\n\r\nhttps://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/migration/migration.go#L86 --&gt;\r\n\r\nhttps://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/migration/migration.go#L33 --&gt;\r\n\r\nhttps://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/templates/migration/migration.go.tpl#L67 --&gt;\r\n\r\nhttps://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/templates/migration/migration.go.tpl#L19 --&gt;\r\n\r\nhttps://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/network/network.go#L133",
+            "link": "https://stackoverflow.com/questions/49933184/perigord-test-does-not-wait-for-user-to-enter-the-passphrase",
+            "title": "`perigord test` does not wait for user to enter the passphrase?",
+            "body": "<p>Follow these:</p>\n\n<ul>\n<li><a href=\"https://decentralize.today/introducing-perigord-golang-tools-for-ethereum-dapp-development-60556c2d9fd\" rel=\"nofollow noreferrer\">https://decentralize.today/introducing-perigord-golang-tools-for-ethereum-dapp-development-60556c2d9fd</a></li>\n<li><a href=\"https://www.youtube.com/watch?v=oQZtKf_hzOU\" rel=\"nofollow noreferrer\">https://www.youtube.com/watch?v=oQZtKf_hzOU</a></li>\n</ul>\n\n<p><code>perigord deploy</code> wait for me to enter the passphrase (\"blah\"):</p>\n\n<pre><code>❯❯❯❯ perigord deploy\nEnter passphrase for account 0x945Cd603A6754cB13C3D61d8fe240990f86f9f8A:\nEnter passphrase for account 0x945Cd603A6754cB13C3D61d8fe240990f86f9f8A:\n</code></pre>\n\n<p>but <code>perigord test</code> does not:</p>\n\n<pre><code>Running migration 1\nEnter passphrase for account 0x945Cd603A6754cB13C3D61d8fe240990f86f9f8A:\n----------------------------------------------------------------------\nFAIL: tests/Foo.go:26: foo_test.TestFoo\n\ntests/Foo.go:28:\n    c.Assert(session, NotNil)\n... value = nil\n\nRunning migration 1\nEnter passphrase for account 0x945Cd603A6754cB13C3D61d8fe240990f86f9f8A:\n----------------------------------------------------------------------\nFAIL: tests/TokenERC20.go:19: TokenERC20Suite.SetUpTest\n\ntests/TokenERC20.go:22:\n    c.Fatal(err)\n... Error: authentication needed: password or unlock\n\n\n----------------------------------------------------------------------\nPANIC: tests/TokenERC20.go:33: TokenERC20Suite.TestName\n\n... Panic: Fixture has panicked (see related PANIC)\nOOPS: 0 passed, 2 FAILED, 1 MISSED\n--- FAIL: Test (0.01s)\nFAIL\nexit status 1\nFAIL    github.com/quantonganh/tokendapp    0.065s\nError: [exit status 1]\nexit status 1\nError: [exit status 1]\n</code></pre>\n\n<p>I have no chance to enter my passphrase. That is the reason for \"authentication needed: password or unlock\".</p>\n\n<p><a href=\"https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/templates/test/test.go.tpl#L20\" rel=\"nofollow noreferrer\">https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/templates/test/test.go.tpl#L20</a> --></p>\n\n<p><a href=\"https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/testing/testing.go#L40\" rel=\"nofollow noreferrer\">https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/testing/testing.go#L40</a> -->\n <a href=\"https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/migration/migration.go#L115\" rel=\"nofollow noreferrer\">https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/migration/migration.go#L115</a> --></p>\n\n<p><a href=\"https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/migration/migration.go#L86\" rel=\"nofollow noreferrer\">https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/migration/migration.go#L86</a> --></p>\n\n<p><a href=\"https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/migration/migration.go#L33\" rel=\"nofollow noreferrer\">https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/migration/migration.go#L33</a> --></p>\n\n<p><a href=\"https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/templates/migration/migration.go.tpl#L67\" rel=\"nofollow noreferrer\">https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/templates/migration/migration.go.tpl#L67</a> --></p>\n\n<p><a href=\"https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/templates/migration/migration.go.tpl#L19\" rel=\"nofollow noreferrer\">https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/templates/migration/migration.go.tpl#L19</a> --></p>\n\n<p><a href=\"https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/network/network.go#L133\" rel=\"nofollow noreferrer\">https://github.com/polyswarm/perigord/blob/59155a8da75c95698ac8949b5385e1e4da98702d/network/network.go#L133</a></p>\n"
+        },
+        {
+            "tags": [
+                "scala"
+            ],
+            "owner": {
+                "reputation": 2,
+                "user_id": 9615835,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2cff89b51c6418474546e452584e5f28?s=128&d=identicon&r=PG&f=1",
+                "display_name": "RakeshN",
+                "link": "https://stackoverflow.com/users/9615835/rakeshn"
+            },
+            "is_answered": false,
+            "view_count": 34,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1524192821,
+            "creation_date": 1524192654,
+            "last_edit_date": 1524192821,
+            "question_id": 49933165,
+            "body_markdown": "I was trying to play around with List and Map within scala programming. And am trying to write the conventional program to do the sum of the list iterator values and it is populating as expected. But the map operation is not populating as what I expect to see. Is my thought process is wrong here? or program is executing correctly?\r\n\r\n    object test1\r\n    {\r\n      def main(args: Array[String])\r\n      {\r\n        var i = (1 to 2).toList\r\n        var x = 0\r\n        for (a &lt;- i)\r\n          x = x + a\r\n          println(x)\r\n      }\r\n      val m = x.map(b =&gt; b * 2)\r\n      println(m)\r\n    }\r\nOutput:\r\n    test1.main(Array())\r\n    List(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)\r\n    3\r\n**How is it printing the list with 2 to 20?**",
+            "link": "https://stackoverflow.com/questions/49933165/map-list-in-scala-example-is-behaving-differently",
+            "title": "Map &amp; List in Scala example is behaving differently",
+            "body": "<p>I was trying to play around with List and Map within scala programming. And am trying to write the conventional program to do the sum of the list iterator values and it is populating as expected. But the map operation is not populating as what I expect to see. Is my thought process is wrong here? or program is executing correctly?</p>\n\n<pre><code>object test1\n{\n  def main(args: Array[String])\n  {\n    var i = (1 to 2).toList\n    var x = 0\n    for (a &lt;- i)\n      x = x + a\n      println(x)\n  }\n  val m = x.map(b =&gt; b * 2)\n  println(m)\n}\n</code></pre>\n\n<p>Output:\n    test1.main(Array())\n    List(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)\n    3\n<strong>How is it printing the list with 2 to 20?</strong></p>\n"
+        },
+        {
+            "tags": [
+                "scala",
+                "apache-spark"
+            ],
+            "owner": {
+                "reputation": 42,
+                "user_id": 5433741,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://www.gravatar.com/avatar/1b4a5cc26dfb91b327de9dedda55a14b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Chandra",
+                "link": "https://stackoverflow.com/users/5433741/chandra"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524192802,
+            "creation_date": 1524192141,
+            "last_edit_date": 1524192802,
+            "question_id": 49933095,
+            "body_markdown": "Can someone help me creating a dataframe.\r\n\r\nI have below dataframe,SKUID is key.So each skuid , we have multiple images.\r\n\r\n    productJoinSkuDF.select(&quot;SKU_ID&quot;,&quot;TAG_SKU&quot;,&quot;MEDIA_ID_SKU&quot;,&quot;IMAGE_NAME_SKU&quot;,&quot;PATH_SKU&quot;)\r\n\r\nSo i want group all the images per skuid. Finally, want a dataframe like\r\n\r\nassuming i have two images for skuid(i can have many values)\r\n\r\n    col1,col2\r\n    skuid,Map(TAG_SKU1 -&gt; (PATH_SKU1,MEDIA_ID_SKU1,IMAGE_NAME_SKU1),TAG_SKU1 -&gt; (PATH_SKU1,MEDIA_ID_SKU1,IMAGE_NAME_SKU1)\r\n\r\nThanks,\r\n",
+            "link": "https://stackoverflow.com/questions/49933095/how-to-create-a-dataframe-with-id-and-grouped-values-in-a-map",
+            "title": "how to create a dataframe with id and grouped values in a map",
+            "body": "<p>Can someone help me creating a dataframe.</p>\n\n<p>I have below dataframe,SKUID is key.So each skuid , we have multiple images.</p>\n\n<pre><code>productJoinSkuDF.select(\"SKU_ID\",\"TAG_SKU\",\"MEDIA_ID_SKU\",\"IMAGE_NAME_SKU\",\"PATH_SKU\")\n</code></pre>\n\n<p>So i want group all the images per skuid. Finally, want a dataframe like</p>\n\n<p>assuming i have two images for skuid(i can have many values)</p>\n\n<pre><code>col1,col2\nskuid,Map(TAG_SKU1 -&gt; (PATH_SKU1,MEDIA_ID_SKU1,IMAGE_NAME_SKU1),TAG_SKU1 -&gt; (PATH_SKU1,MEDIA_ID_SKU1,IMAGE_NAME_SKU1)\n</code></pre>\n\n<p>Thanks,</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "c++",
+                "c",
+                "android-ndk"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9556472,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/79a11a0b6dc8fef9505e36b7f991c235?s=128&d=identicon&r=PG&f=1",
+                "display_name": "kongxiangjia",
+                "link": "https://stackoverflow.com/users/9556472/kongxiangjia"
+            },
+            "is_answered": true,
+            "view_count": 16,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524192770,
+            "creation_date": 1524188458,
+            "last_edit_date": 1524190434,
+            "question_id": 49932625,
+            "body_markdown": "When I try to build [this project](https://github.com/radhoo/android-event-injector), I&#39;m getting several errors:\r\n\r\n        Build command failed.\r\n        Error while executing process E:\\sdk\\ndk-bundle\\ndk-build.cmd with arguments {NDK_PROJECT_PATH=null APP_BUILD_SCRIPT=D:\\TASK\\workspace_3\\android-event-injector-master\\AndroidEventInjector\\src\\main\\jni\\Android.mk APP_ABI=x86_64 NDK_ALL_ABIS=x86_64 NDK_DEBUG=1 APP_PLATFORM=android-21 NDK_OUT=D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/build/intermediates/ndkBuild/debug/obj NDK_LIBS_OUT=D:\\TASK\\workspace_3\\android-event-injector-master\\AndroidEventInjector\\build\\intermediates\\ndkBuild\\debug\\lib D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/build/intermediates/ndkBuild/debug/obj/local/x86_64/libEventInjector.so}\r\n        [x86_64] Compile : EventInjector &lt;= EventInjector.c\r\n        D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/src/main/jni/EventInjector.c:83:7:\r\n            error: format string is not a string literal (potentially insecure) [-Werror,-Wformat-security]\r\n\r\n                LOGD(szBuffer);\r\n                ^~~~~~~~\r\n\r\n        D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/src/main/jni/EventInjector.c:49:65:\r\n            note: expanded from macro &#39;LOGD&#39;\r\n\r\n                #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG , TAG, VA_ARGS)\r\n                ^~~~~~~~~~~\r\n\r\n        D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/src/main/jni/EventInjector.c:83:7:\r\n            note: treat the string as an argument to avoid this\r\n\r\n                LOGD(szBuffer);\r\n                ^\r\n                &quot;%s&quot;,\r\n\r\n        D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/src/main/jni/EventInjector.c:49:65:\r\n            note: expanded from macro &#39;LOGD&#39;\r\n\r\n                #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG , TAG, VA_ARGS)\r\n                ^\r\n\r\n        D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/src/main/jni/EventInjector.c:242:28:\r\n            error: non-void function &#39;Java_net_pocketmagic_android_eventinjector_Events_intSendEvent&#39; should return a value [-Wreturn-type]\r\n\r\n                if (fd &lt;= fileno(stderr)) return;\r\n                ^\r\n\r\n        2 errors generated.\r\n        make: *** [D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/build/intermediates/ndkBuild/debug/obj/local/x86_64/objs-debug/EventInjector/EventInjector.o] Error 1",
+            "link": "https://stackoverflow.com/questions/49932625/i-need-to-build-the-ndk-in-android-studio-but-it-returns-an-error",
+            "title": "I need to build the NDK in Android Studio. but it returns an error",
+            "body": "<p>When I try to build <a href=\"https://github.com/radhoo/android-event-injector\" rel=\"nofollow noreferrer\">this project</a>, I'm getting several errors:</p>\n\n<pre><code>    Build command failed.\n    Error while executing process E:\\sdk\\ndk-bundle\\ndk-build.cmd with arguments {NDK_PROJECT_PATH=null APP_BUILD_SCRIPT=D:\\TASK\\workspace_3\\android-event-injector-master\\AndroidEventInjector\\src\\main\\jni\\Android.mk APP_ABI=x86_64 NDK_ALL_ABIS=x86_64 NDK_DEBUG=1 APP_PLATFORM=android-21 NDK_OUT=D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/build/intermediates/ndkBuild/debug/obj NDK_LIBS_OUT=D:\\TASK\\workspace_3\\android-event-injector-master\\AndroidEventInjector\\build\\intermediates\\ndkBuild\\debug\\lib D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/build/intermediates/ndkBuild/debug/obj/local/x86_64/libEventInjector.so}\n    [x86_64] Compile : EventInjector &lt;= EventInjector.c\n    D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/src/main/jni/EventInjector.c:83:7:\n        error: format string is not a string literal (potentially insecure) [-Werror,-Wformat-security]\n\n            LOGD(szBuffer);\n            ^~~~~~~~\n\n    D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/src/main/jni/EventInjector.c:49:65:\n        note: expanded from macro 'LOGD'\n\n            #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG , TAG, VA_ARGS)\n            ^~~~~~~~~~~\n\n    D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/src/main/jni/EventInjector.c:83:7:\n        note: treat the string as an argument to avoid this\n\n            LOGD(szBuffer);\n            ^\n            \"%s\",\n\n    D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/src/main/jni/EventInjector.c:49:65:\n        note: expanded from macro 'LOGD'\n\n            #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG , TAG, VA_ARGS)\n            ^\n\n    D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/src/main/jni/EventInjector.c:242:28:\n        error: non-void function 'Java_net_pocketmagic_android_eventinjector_Events_intSendEvent' should return a value [-Wreturn-type]\n\n            if (fd &lt;= fileno(stderr)) return;\n            ^\n\n    2 errors generated.\n    make: *** [D:/TASK/workspace_3/android-event-injector-master/AndroidEventInjector/build/intermediates/ndkBuild/debug/obj/local/x86_64/objs-debug/EventInjector/EventInjector.o] Error 1\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html",
+                "asp.net-mvc",
+                "partial-views"
+            ],
+            "owner": {
+                "reputation": 42,
+                "user_id": 9477816,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Gyn Manstot",
+                "link": "https://stackoverflow.com/users/9477816/gyn-manstot"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524192762,
+            "creation_date": 1524186310,
+            "question_id": 49932362,
+            "body_markdown": "I&#39;m trying to open a modal whenever a button is pressed. The button and modal are in an cshtml file that is ran as a partial view.\r\n\r\nLoginModal.cshtml:\r\n\r\n    &lt;head&gt;\r\n        &lt;link rel=&quot;stylesheet&quot; href=&quot;~/Content/loginmodal.css&quot;&gt;\r\n        &lt;script src=&quot;~/Scripts/loginmodal.js&quot;&gt;&lt;/script&gt;\r\n    &lt;/head&gt;\r\n    \r\n    &lt;div class=&quot;wrapper&quot;&gt;\r\n        &lt;!-- Modal button --&gt;\r\n        &lt;button id=&quot;modBtn&quot; class=&quot;modal-btn&quot;&gt;Open Modal&lt;/button&gt;\r\n    &lt;/div&gt;\r\n    \r\n    &lt;!-- Modal --&gt;\r\n    &lt;div id=&quot;modal&quot; class=&quot;modal&quot;&gt;\r\n        &lt;!-- Modal Content --&gt;\r\n        &lt;div class=&quot;modal-content&quot;&gt;\r\n            &lt;!-- Modal Header --&gt;\r\n            &lt;div class=&quot;modal-header&quot;&gt;\r\n                &lt;h3 class=&quot;header-title&quot;&gt;Modal Header&lt;/h3&gt;\r\n                &lt;div class=&quot;close fa fa-close&quot;&gt;&lt;/div&gt;\r\n            &lt;/div&gt;\r\n            &lt;!-- Modal Body --&gt;\r\n            &lt;div class=&quot;modal-body&quot;&gt;\r\n                &lt;h3&gt;Hello&lt;/h3&gt;\r\n            &lt;/div&gt;\r\n            &lt;div class=&quot;modal-footer&quot;&gt;\r\n                &lt;h3&gt;Modal Footer&lt;/h3&gt;\r\n            &lt;/div&gt;\r\n        &lt;/div&gt;\r\n    &lt;/div&gt;\r\n\r\nloginmodal.js:\r\n\r\n    $(function () {\r\n        // Vars\r\n        var modBtn = $(&#39;#modBtn&#39;),\r\n            modal = $(&#39;#modal&#39;),\r\n            close = modal.find(&#39;.close&#39;),\r\n            modContent = modal.find(&#39;.modal-content&#39;);\r\n    \r\n        // open modal when click on open modal button \r\n        modBtn.on(&#39;click&#39;, function () {\r\n            modal.css(&#39;display&#39;, &#39;block&#39;);\r\n            modContent.removeClass(&#39;modal-animated-out&#39;).addClass(&#39;modal-animated-in&#39;);\r\n        });\r\n    \r\n        // close modal when click on close button or somewhere out the modal content \r\n        $(document).on(&#39;click&#39;, function (e) {\r\n            var target = $(e.target);\r\n            if (target.is(modal) || target.is(close)) {\r\n                modContent.removeClass(&#39;modal-animated-in&#39;).addClass(&#39;modal-animated-out&#39;).delay(300).queue(function (next) {\r\n                    modal.css(&#39;display&#39;, &#39;none&#39;);\r\n                    next();\r\n                });\r\n            }\r\n        });\r\n    \r\n    });\r\n\r\nSomewhere in index.cshtml:\r\n\r\n    ...\r\n    @Html.Partial(&quot;LoginModal&quot;)\r\n    ...\r\n\r\nThe button is there but doesn&#39;t do anything, what am I doing wrong?",
+            "link": "https://stackoverflow.com/questions/49932362/opening-a-modal-using-a-partial-view",
+            "title": "Opening a modal using a partial view",
+            "body": "<p>I'm trying to open a modal whenever a button is pressed. The button and modal are in an cshtml file that is ran as a partial view.</p>\n\n<p>LoginModal.cshtml:</p>\n\n<pre><code>&lt;head&gt;\n    &lt;link rel=\"stylesheet\" href=\"~/Content/loginmodal.css\"&gt;\n    &lt;script src=\"~/Scripts/loginmodal.js\"&gt;&lt;/script&gt;\n&lt;/head&gt;\n\n&lt;div class=\"wrapper\"&gt;\n    &lt;!-- Modal button --&gt;\n    &lt;button id=\"modBtn\" class=\"modal-btn\"&gt;Open Modal&lt;/button&gt;\n&lt;/div&gt;\n\n&lt;!-- Modal --&gt;\n&lt;div id=\"modal\" class=\"modal\"&gt;\n    &lt;!-- Modal Content --&gt;\n    &lt;div class=\"modal-content\"&gt;\n        &lt;!-- Modal Header --&gt;\n        &lt;div class=\"modal-header\"&gt;\n            &lt;h3 class=\"header-title\"&gt;Modal Header&lt;/h3&gt;\n            &lt;div class=\"close fa fa-close\"&gt;&lt;/div&gt;\n        &lt;/div&gt;\n        &lt;!-- Modal Body --&gt;\n        &lt;div class=\"modal-body\"&gt;\n            &lt;h3&gt;Hello&lt;/h3&gt;\n        &lt;/div&gt;\n        &lt;div class=\"modal-footer\"&gt;\n            &lt;h3&gt;Modal Footer&lt;/h3&gt;\n        &lt;/div&gt;\n    &lt;/div&gt;\n&lt;/div&gt;\n</code></pre>\n\n<p>loginmodal.js:</p>\n\n<pre><code>$(function () {\n    // Vars\n    var modBtn = $('#modBtn'),\n        modal = $('#modal'),\n        close = modal.find('.close'),\n        modContent = modal.find('.modal-content');\n\n    // open modal when click on open modal button \n    modBtn.on('click', function () {\n        modal.css('display', 'block');\n        modContent.removeClass('modal-animated-out').addClass('modal-animated-in');\n    });\n\n    // close modal when click on close button or somewhere out the modal content \n    $(document).on('click', function (e) {\n        var target = $(e.target);\n        if (target.is(modal) || target.is(close)) {\n            modContent.removeClass('modal-animated-in').addClass('modal-animated-out').delay(300).queue(function (next) {\n                modal.css('display', 'none');\n                next();\n            });\n        }\n    });\n\n});\n</code></pre>\n\n<p>Somewhere in index.cshtml:</p>\n\n<pre><code>...\n@Html.Partial(\"LoginModal\")\n...\n</code></pre>\n\n<p>The button is there but doesn't do anything, what am I doing wrong?</p>\n"
+        },
+        {
+            "tags": [
+                "css",
+                "ruby-on-rails",
+                "twitter-bootstrap",
+                "image"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 7623825,
+                "user_type": "registered",
+                "accept_rate": 25,
+                "profile_image": "https://www.gravatar.com/avatar/ef67ca2fb4178fc2f34ac4b4a64dc923?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Robert",
+                "link": "https://stackoverflow.com/users/7623825/robert"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524192757,
+            "creation_date": 1524191733,
+            "last_edit_date": 1524192757,
+            "question_id": 49933046,
+            "body_markdown": "This seems like it should be a very simple problem but I&#39;ve been trying to fix it for ages and getting nowhere. I have a basic Rails app with a model for blog_posts for which images can be uploaded and displayed. On the show.html.erb page one image can be displayed along with data, the image like this:\r\n\r\n    &lt;%= image_tag @blog_post.image_url if @blog_post.image? %&gt;&lt;br&gt;&lt;br&gt;\r\n\r\n and on the index.html.erb page I have a loop for each image and other data:\r\n\r\n    &lt;%= image_tag(p.image_url(:thumb), :class =&gt; &#39;list_image&#39;) if p.image? %&gt;\r\n\r\nIn order to center the images I used the following css:\r\n\r\n    img { display: block; margin-left: auto; margin-right: auto }\r\n\r\nBut I found that this only centered the images in the show page, but not in the index. I&#39;ve tried every way to center the image in the index, but nothing seems to work. I can&#39;t understand why the image is not recognised by the img selector, and I&#39;ve also tried affecting the thumb image by putting in various div ids and div classes, but nothing has worked. \r\n\r\nThis may seem a bit vague but I can&#39;t figure out what the problem might be, so any pointers would be very much appreciated :-)\r\n\r\nEDIT\r\n\r\nThe uploader render the images to the following:\r\n\r\n      process resize_to_fit: [500, 400]\r\n\r\n      version :thumb do\r\n        process resize_to_fit: [300, 200]\r\n      end",
+            "link": "https://stackoverflow.com/questions/49933046/centering-a-thumb-image-in-rails-app",
+            "title": "Centering a thumb image in Rails app",
+            "body": "<p>This seems like it should be a very simple problem but I've been trying to fix it for ages and getting nowhere. I have a basic Rails app with a model for blog_posts for which images can be uploaded and displayed. On the show.html.erb page one image can be displayed along with data, the image like this:</p>\n\n<pre><code>&lt;%= image_tag @blog_post.image_url if @blog_post.image? %&gt;&lt;br&gt;&lt;br&gt;\n</code></pre>\n\n<p>and on the index.html.erb page I have a loop for each image and other data:</p>\n\n<pre><code>&lt;%= image_tag(p.image_url(:thumb), :class =&gt; 'list_image') if p.image? %&gt;\n</code></pre>\n\n<p>In order to center the images I used the following css:</p>\n\n<pre><code>img { display: block; margin-left: auto; margin-right: auto }\n</code></pre>\n\n<p>But I found that this only centered the images in the show page, but not in the index. I've tried every way to center the image in the index, but nothing seems to work. I can't understand why the image is not recognised by the img selector, and I've also tried affecting the thumb image by putting in various div ids and div classes, but nothing has worked. </p>\n\n<p>This may seem a bit vague but I can't figure out what the problem might be, so any pointers would be very much appreciated :-)</p>\n\n<p>EDIT</p>\n\n<p>The uploader render the images to the following:</p>\n\n<pre><code>  process resize_to_fit: [500, 400]\n\n  version :thumb do\n    process resize_to_fit: [300, 200]\n  end\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "multithreading",
+                "c++11",
+                "thread-synchronization"
+            ],
+            "owner": {
+                "reputation": 76,
+                "user_id": 4523580,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://www.gravatar.com/avatar/a03dd2e1af66dc2bc9257642f8e01850?s=128&d=identicon&r=PG&f=1",
+                "display_name": "kernelman",
+                "link": "https://stackoverflow.com/users/4523580/kernelman"
+            },
+            "is_answered": false,
+            "view_count": 22,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524192710,
+            "creation_date": 1524192162,
+            "last_edit_date": 1524192710,
+            "question_id": 49933097,
+            "body_markdown": "**Situation:**\r\n\r\nA `Factory` class member function `manager` spawns two `worker` threads. Each `worker` thread run a loop for each day of an year, and increment their own var `workHours`, and a shared var `work`. At the end of each day, each `worker` thread signals `manager` to get their report of `work` and `workHours`\r\nWhen the `manager` gets `workHours` from both the `worker` threads, it reports `totalWorkHours` as (`workHours[0] + workHours[1]`) to the `boss` \r\n\r\n**Problem:**\r\n\r\nThreads are not working as expected. Threads are running in multiple loops before reporting to the manager. They are not synced for each day reporting. \r\nHow to achieve this thread syncing, that after each day, both threads report their stats to manager.\r\n\r\n**Code:**\r\n\r\n[The below code is has no compile errors, in case you want to test run, edit]\r\n\r\n    #include &lt;iostream&gt;\r\n    #include &lt;string&gt;\r\n    #include &lt;thread&gt;\r\n    #include &lt;mutex&gt;\r\n    \r\n    using namespace std;\r\n    \r\n    class Factory{\r\n    \r\n    public:\r\n    \tFactory() {\r\n    \t\twork = 0; \r\n    \t\tworkHours[0] = 0; \r\n    \t\tworkHours[1] = 0;\r\n    \t};\r\n    \tvoid manager();\r\n    \r\n    private:\r\n    \tstd::thread threads[2];\r\n    \tstd::mutex m_lock;\r\n    \tstd::condition_variable cond[2];\r\n    \r\n    \tint work;\t\t\t\t// Shared across threads\r\n    \tint workHours[2];\t\t// One var for each thread\r\n       \tint totalWorkHours;\r\n    \r\n    \tvoid worker(int id);\r\n    \tvoid boss(int work, int workHours);\r\n    };\r\n    \r\n    void Factory::worker(int id)\r\n    {\r\n    \tcout&lt;&lt; id &lt;&lt;&quot; Started Working &quot;&lt;&lt;endl;\r\n    \tfor (int day = 0; day&lt;365; day++)\r\n    \t{\r\n    \t\tstd::unique_lock&lt;std::mutex&gt; lck{ m_lock };\r\n    \t\twork++;\r\n    \t\tworkHours[id]++;\r\n    \t\tcout &lt;&lt; id &lt;&lt; &quot; working &quot; &lt;&lt; endl;\r\n    \t\tcond[id].notify_one();\r\n            lck.unlock();\r\n    \t\tstd::this_thread::sleep_for(1s);\r\n    \t}\r\n    }\r\n    \r\n    \r\n    void Factory::manager()\r\n    {\r\n    \tint wHrs0, wHrs1;\r\n    \r\n    \tthreads[0] = std::thread([&amp;](Factory *fac) { fac-&gt;worker(0); }, this);\r\n    \tthreads[1] = std::thread([&amp;](Factory *fac) { fac-&gt;worker(1); }, this);\r\n    \r\n    \t//for (int day=0; day&lt;365; day++)\r\n    \tfor (;;)\r\n    \t{\r\n    \t\tstd::unique_lock&lt;mutex&gt; lck0{ m_lock };\r\n    \t\tcond[0].wait(lck0);\r\n    \t\tcout &lt;&lt; &quot;Worker0 workHours : &quot; &lt;&lt; workHours[0] &lt;&lt; &quot;  Total Work : &quot; &lt;&lt; work &lt;&lt; endl;\r\n    \t\twHrs0 = workHours[0];\r\n    \t\tlck0.unlock();\r\n    \r\n    \t\tstd::unique_lock&lt;mutex&gt; lck1{ m_lock };\r\n    \t\tcond[1].wait(lck1);\r\n    \t\tcout &lt;&lt; &quot;Worker1 workHours : &quot; &lt;&lt; workHours[1] &lt;&lt; &quot;  Total Work : &quot; &lt;&lt; work &lt;&lt; endl;\r\n    \t\twHrs1 = workHours[1];\r\n    \t\tlck1.unlock();\r\n    \r\n    \t\ttotalWorkHours = wHrs0 + wHrs1;\r\n    \r\n    \t\tcout &lt;&lt; &quot;Both Workers Worked one day&quot; &lt;&lt; endl;\r\n    \t\tboss(work, totalWorkHours);\r\n    \t}\r\n    }\r\n    \r\n    void Factory::boss(int work, int workHours)\r\n    {\r\n    \tcout &lt;&lt; &quot;I am not Happy with just &quot; &lt;&lt; work &lt;&lt; &quot; amount of work in damn &quot; &lt;&lt; workHours &lt;&lt; &quot; Hrs &quot; &lt;&lt; endl;\r\n    }\r\n    \r\n    int main()\r\n    {\r\n    \tFactory nike;\r\n    \tnike.manager();\r\n    \r\n    \t//wait for keypress\r\n    \tcin.get();\r\n    \r\n    \treturn 0;\r\n    }\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49933097/how-to-achieve-thread-synchronization-in-two-c11-threads",
+            "title": "How to achieve thread synchronization in two C++11 Threads?",
+            "body": "<p><strong>Situation:</strong></p>\n\n<p>A <code>Factory</code> class member function <code>manager</code> spawns two <code>worker</code> threads. Each <code>worker</code> thread run a loop for each day of an year, and increment their own var <code>workHours</code>, and a shared var <code>work</code>. At the end of each day, each <code>worker</code> thread signals <code>manager</code> to get their report of <code>work</code> and <code>workHours</code>\nWhen the <code>manager</code> gets <code>workHours</code> from both the <code>worker</code> threads, it reports <code>totalWorkHours</code> as (<code>workHours[0] + workHours[1]</code>) to the <code>boss</code> </p>\n\n<p><strong>Problem:</strong></p>\n\n<p>Threads are not working as expected. Threads are running in multiple loops before reporting to the manager. They are not synced for each day reporting. \nHow to achieve this thread syncing, that after each day, both threads report their stats to manager.</p>\n\n<p><strong>Code:</strong></p>\n\n<p>[The below code is has no compile errors, in case you want to test run, edit]</p>\n\n<pre><code>#include &lt;iostream&gt;\n#include &lt;string&gt;\n#include &lt;thread&gt;\n#include &lt;mutex&gt;\n\nusing namespace std;\n\nclass Factory{\n\npublic:\n    Factory() {\n        work = 0; \n        workHours[0] = 0; \n        workHours[1] = 0;\n    };\n    void manager();\n\nprivate:\n    std::thread threads[2];\n    std::mutex m_lock;\n    std::condition_variable cond[2];\n\n    int work;               // Shared across threads\n    int workHours[2];       // One var for each thread\n    int totalWorkHours;\n\n    void worker(int id);\n    void boss(int work, int workHours);\n};\n\nvoid Factory::worker(int id)\n{\n    cout&lt;&lt; id &lt;&lt;\" Started Working \"&lt;&lt;endl;\n    for (int day = 0; day&lt;365; day++)\n    {\n        std::unique_lock&lt;std::mutex&gt; lck{ m_lock };\n        work++;\n        workHours[id]++;\n        cout &lt;&lt; id &lt;&lt; \" working \" &lt;&lt; endl;\n        cond[id].notify_one();\n        lck.unlock();\n        std::this_thread::sleep_for(1s);\n    }\n}\n\n\nvoid Factory::manager()\n{\n    int wHrs0, wHrs1;\n\n    threads[0] = std::thread([&amp;](Factory *fac) { fac-&gt;worker(0); }, this);\n    threads[1] = std::thread([&amp;](Factory *fac) { fac-&gt;worker(1); }, this);\n\n    //for (int day=0; day&lt;365; day++)\n    for (;;)\n    {\n        std::unique_lock&lt;mutex&gt; lck0{ m_lock };\n        cond[0].wait(lck0);\n        cout &lt;&lt; \"Worker0 workHours : \" &lt;&lt; workHours[0] &lt;&lt; \"  Total Work : \" &lt;&lt; work &lt;&lt; endl;\n        wHrs0 = workHours[0];\n        lck0.unlock();\n\n        std::unique_lock&lt;mutex&gt; lck1{ m_lock };\n        cond[1].wait(lck1);\n        cout &lt;&lt; \"Worker1 workHours : \" &lt;&lt; workHours[1] &lt;&lt; \"  Total Work : \" &lt;&lt; work &lt;&lt; endl;\n        wHrs1 = workHours[1];\n        lck1.unlock();\n\n        totalWorkHours = wHrs0 + wHrs1;\n\n        cout &lt;&lt; \"Both Workers Worked one day\" &lt;&lt; endl;\n        boss(work, totalWorkHours);\n    }\n}\n\nvoid Factory::boss(int work, int workHours)\n{\n    cout &lt;&lt; \"I am not Happy with just \" &lt;&lt; work &lt;&lt; \" amount of work in damn \" &lt;&lt; workHours &lt;&lt; \" Hrs \" &lt;&lt; endl;\n}\n\nint main()\n{\n    Factory nike;\n    nike.manager();\n\n    //wait for keypress\n    cin.get();\n\n    return 0;\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "scala",
+                "apache-spark",
+                "spark-graphx"
+            ],
+            "owner": {
+                "reputation": 20,
+                "user_id": 9668306,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/189104df8b0998a7b188928d0e7d0f2d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Subhasis",
+                "link": "https://stackoverflow.com/users/9668306/subhasis"
+            },
+            "is_answered": true,
+            "view_count": 22,
+            "accepted_answer_id": 49933169,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524192698,
+            "creation_date": 1524176634,
+            "last_edit_date": 1524190617,
+            "question_id": 49931098,
+            "body_markdown": "I am trying out a code in Spark GraphX and having difficulty with Null.\r\n\r\n    scala&gt; verticesRDD\r\n    res76: org.apache.spark.rdd.RDD[(Long, (String, Long))] = MapPartitionsRDD[78] at map at &lt;console&gt;:51\r\n    \r\n    scala&gt; EdgesRDD\r\n    res77: org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[Boolean]] = MapPartitionsRDD[18] at map at &lt;console&gt;:41\r\n    \r\n    val graph = Graph(verticesRDD, EdgesRDD).cache()\r\n    \r\n    scala&gt; graph\r\n    res75: org.apache.spark.graphx.Graph[(String, Long),Boolean] = org.apache.spark.graphx.impl.GraphImpl@9533103\r\n\r\n\r\nIf i pull the vertices properties i am getting some null values.\r\n\r\n    val x = graph.vertices.map{case(id, v) =&gt; v}\r\n    \r\n    scala&gt; x\r\n    res78: org.apache.spark.rdd.RDD[(String, Long)] = MapPartitionsRDD[149] at map at &lt;console&gt;:56\r\n    \r\n    scala&gt; x.filter(_ == null).count()\r\n    res79: Long = 8999\r\n\r\n\r\nWhere as in the source verticesRDD there is no NUll.\r\n\r\n    val x = verticesRDD.map{case(id,v) =&gt; v}\r\n    \r\n    scala&gt; x\r\n    res80: org.apache.spark.rdd.RDD[(String, Long)] = MapPartitionsRDD[151] at map at &lt;console&gt;:54\r\n    \r\n    scala&gt; x.filter(_ == null).count()\r\n    res81: Long = 0\r\n\r\nI am not able to understand why vertices values can be null when in source RDD for vertices there is no null in the values?\r\n\r\ni would be really helpful if you could provide some insight about this. \r\n\r\nthanks",
+            "link": "https://stackoverflow.com/questions/49931098/graphx-vertices-populated-with-null-values",
+            "title": "GraphX Vertices populated with Null values",
+            "body": "<p>I am trying out a code in Spark GraphX and having difficulty with Null.</p>\n\n<pre><code>scala&gt; verticesRDD\nres76: org.apache.spark.rdd.RDD[(Long, (String, Long))] = MapPartitionsRDD[78] at map at &lt;console&gt;:51\n\nscala&gt; EdgesRDD\nres77: org.apache.spark.rdd.RDD[org.apache.spark.graphx.Edge[Boolean]] = MapPartitionsRDD[18] at map at &lt;console&gt;:41\n\nval graph = Graph(verticesRDD, EdgesRDD).cache()\n\nscala&gt; graph\nres75: org.apache.spark.graphx.Graph[(String, Long),Boolean] = org.apache.spark.graphx.impl.GraphImpl@9533103\n</code></pre>\n\n<p>If i pull the vertices properties i am getting some null values.</p>\n\n<pre><code>val x = graph.vertices.map{case(id, v) =&gt; v}\n\nscala&gt; x\nres78: org.apache.spark.rdd.RDD[(String, Long)] = MapPartitionsRDD[149] at map at &lt;console&gt;:56\n\nscala&gt; x.filter(_ == null).count()\nres79: Long = 8999\n</code></pre>\n\n<p>Where as in the source verticesRDD there is no NUll.</p>\n\n<pre><code>val x = verticesRDD.map{case(id,v) =&gt; v}\n\nscala&gt; x\nres80: org.apache.spark.rdd.RDD[(String, Long)] = MapPartitionsRDD[151] at map at &lt;console&gt;:54\n\nscala&gt; x.filter(_ == null).count()\nres81: Long = 0\n</code></pre>\n\n<p>I am not able to understand why vertices values can be null when in source RDD for vertices there is no null in the values?</p>\n\n<p>i would be really helpful if you could provide some insight about this. </p>\n\n<p>thanks</p>\n"
+        },
+        {
+            "tags": [
+                "neo4j",
+                "cypher"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9540290,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/6402bed98d1b9576a4d584e0ff8d61a4?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Juliosor",
+                "link": "https://stackoverflow.com/users/9540290/juliosor"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524192695,
+            "creation_date": 1524124784,
+            "last_edit_date": 1524190743,
+            "question_id": 49915747,
+            "body_markdown": "I was trying to get all the properties from the nodes with their labels when:\r\n\r\n![Query][1]\r\n\r\nAs you can see, the first and fifth rows belong to the same node label, but their properties have switched places. They seem to be the same individually, so it&#39;s not a case sensitive problem.\r\n\r\nQuerying with\r\n\r\n    MATCH (N:INCIDENT) RETURN COUNT(N)\r\n\r\nreturns the sum of the *count(N)* value of both rows.\r\n\r\nI&#39;m using [keys()][2] to return the properties, the value being a list of the map [the properties are structured as][3]. I know maps are not ordered per-se, but this kind of defeats the point.\r\n\r\nThis is how I create the offending nodes:\r\n\r\n![Creation][4]\r\n\r\nIs it supposed to work like this? I&#39;d understand the duplicate if the nodes lacked one of the properties.\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/tENBE.jpg\r\n  [2]: https://neo4j.com/docs/developer-manual/current/cypher/functions/list/#functions-keys\r\n  [3]: https://neo4j.com/docs/developer-manual/current/cypher/syntax/values/#structural-types\r\n  [4]: https://i.stack.imgur.com/TsiZ8.jpg",
+            "link": "https://stackoverflow.com/questions/49915747/repeated-properties-from-same-node-when-using-keys",
+            "title": "Repeated properties from same Node when using keys()",
+            "body": "<p>I was trying to get all the properties from the nodes with their labels when:</p>\n\n<p><img src=\"https://i.stack.imgur.com/tENBE.jpg\" alt=\"Query\"></p>\n\n<p>As you can see, the first and fifth rows belong to the same node label, but their properties have switched places. They seem to be the same individually, so it's not a case sensitive problem.</p>\n\n<p>Querying with</p>\n\n<pre><code>MATCH (N:INCIDENT) RETURN COUNT(N)\n</code></pre>\n\n<p>returns the sum of the <em>count(N)</em> value of both rows.</p>\n\n<p>I'm using <a href=\"https://neo4j.com/docs/developer-manual/current/cypher/functions/list/#functions-keys\" rel=\"nofollow noreferrer\">keys()</a> to return the properties, the value being a list of the map <a href=\"https://neo4j.com/docs/developer-manual/current/cypher/syntax/values/#structural-types\" rel=\"nofollow noreferrer\">the properties are structured as</a>. I know maps are not ordered per-se, but this kind of defeats the point.</p>\n\n<p>This is how I create the offending nodes:</p>\n\n<p><img src=\"https://i.stack.imgur.com/TsiZ8.jpg\" alt=\"Creation\"></p>\n\n<p>Is it supposed to work like this? I'd understand the duplicate if the nodes lacked one of the properties.</p>\n"
+        },
+        {
+            "tags": [
+                "mysql",
+                "ruby-on-rails",
+                "ruby",
+                "migrate",
+                "mysql2"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 7403276,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-dRcF2ykgV7c/AAAAAAAAAAI/AAAAAAAAAc8/YfT4hy7lfA4/photo.jpg?sz=128",
+                "display_name": "Monica Agustin",
+                "link": "https://stackoverflow.com/users/7403276/monica-agustin"
+            },
+            "is_answered": true,
+            "view_count": 33,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524192688,
+            "creation_date": 1524140490,
+            "last_edit_date": 1524192688,
+            "question_id": 49921015,
+            "body_markdown": "I can&#39;t understand what&#39;s wrong with my migration syntax, please help.\r\nI ran rake db:migrate, database in MySql2\r\n\r\nerror:\r\n\r\n&gt;Mysql2::Error: You have an error in your SQL syntax; check the manual \r\n    that corresponds to your MySQL server version for the right syntax to use near \r\n    &#39;USING CAST(number AS integer) DEFAULT NULL&#39; at line 1: ALTER TABLE `seats` CHANGE \r\n    `number` `number` integer USING CAST(number AS integer) DEFAULT NULL\r\n\r\nbelow it the syntax:\r\n\r\n    class ChangeNumberTypeInSeats &lt; ActiveRecord::Migration\r\n      def change\r\n        change_column :seats, :number, &#39;integer USING CAST(number AS integer)&#39;\r\n      end\r\n    end\r\n\r\nMy guess is that because my partner uses PostgreSQL locally, but pushed the code anyway to out Git. Please help.",
+            "link": "https://stackoverflow.com/questions/49921015/rake-dbmigrate-returns-mysql2error-you-have-an-error-in-your-sql-syntax-ch",
+            "title": "rake db:migrate returns &quot;Mysql2::Error: You have an error in your SQL syntax; check the manual that corresponds..&quot;",
+            "body": "<p>I can't understand what's wrong with my migration syntax, please help.\nI ran rake db:migrate, database in MySql2</p>\n\n<p>error:</p>\n\n<blockquote>\n  <p>Mysql2::Error: You have an error in your SQL syntax; check the manual \n      that corresponds to your MySQL server version for the right syntax to use near \n      'USING CAST(number AS integer) DEFAULT NULL' at line 1: ALTER TABLE <code>seats</code> CHANGE \n      <code>number</code> <code>number</code> integer USING CAST(number AS integer) DEFAULT NULL</p>\n</blockquote>\n\n<p>below it the syntax:</p>\n\n<pre><code>class ChangeNumberTypeInSeats &lt; ActiveRecord::Migration\n  def change\n    change_column :seats, :number, 'integer USING CAST(number AS integer)'\n  end\nend\n</code></pre>\n\n<p>My guess is that because my partner uses PostgreSQL locally, but pushed the code anyway to out Git. Please help.</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "laravel",
+                "eloquent"
+            ],
+            "owner": {
+                "reputation": 160,
+                "user_id": 4935121,
+                "user_type": "registered",
+                "accept_rate": 38,
+                "profile_image": "https://www.gravatar.com/avatar/09f4207fb2cb332153b84e92ca76f5ad?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Phillip Y.",
+                "link": "https://stackoverflow.com/users/4935121/phillip-y"
+            },
+            "is_answered": true,
+            "view_count": 30,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524192659,
+            "creation_date": 1524191490,
+            "question_id": 49933012,
+            "body_markdown": "I just wanted to make sure this was acceptable and that there were no pitfalls to this method of building Eloquent models. \r\n\r\nI&#39;m used to simple Eloquent::where(&#39;something&#39;, &#39;else&#39;) kinda calls. However with the database I have, I needed to join a couple of tables to properly get the model I need with the data I had accessible in the code. Is it okay to populate an eloquent collection while calling joins and more complex sql queries?\r\n\r\nHere&#39;s some example code to demonstrate the point:\r\n\r\n    $items = Item::select(&#39;items.*&#39;)\r\n    \t-&gt;join(&#39;shops as sh&#39;, &#39;shops.id&#39;, &#39;=&#39;, &#39;items.shop_id&#39;)\r\n    \t-&gt;where(&#39;sh.name&#39;, &#39;Cool Shop&#39;)\r\n    \t-&gt;get();\r\n\r\nI&#39;m aware of the has-any-through relationships too. But if the above is fine, I definitely would appreciate that kind of flexibility that can turn many SQL queries into an Eloquent model.\r\n\r\nThanks",
+            "link": "https://stackoverflow.com/questions/49933012/using-query-builder-to-create-eloquent-collection",
+            "title": "Using query builder to create Eloquent collection",
+            "body": "<p>I just wanted to make sure this was acceptable and that there were no pitfalls to this method of building Eloquent models. </p>\n\n<p>I'm used to simple Eloquent::where('something', 'else') kinda calls. However with the database I have, I needed to join a couple of tables to properly get the model I need with the data I had accessible in the code. Is it okay to populate an eloquent collection while calling joins and more complex sql queries?</p>\n\n<p>Here's some example code to demonstrate the point:</p>\n\n<pre><code>$items = Item::select('items.*')\n    -&gt;join('shops as sh', 'shops.id', '=', 'items.shop_id')\n    -&gt;where('sh.name', 'Cool Shop')\n    -&gt;get();\n</code></pre>\n\n<p>I'm aware of the has-any-through relationships too. But if the above is fine, I definitely would appreciate that kind of flexibility that can turn many SQL queries into an Eloquent model.</p>\n\n<p>Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "database",
+                "tsql",
+                "batch-processing",
+                "deadlock"
+            ],
+            "owner": {
+                "reputation": 417,
+                "user_id": 2181948,
+                "user_type": "registered",
+                "accept_rate": 52,
+                "profile_image": "https://www.gravatar.com/avatar/7993a7ca7aabc103c6e91ad4370872e1?s=128&d=identicon&r=PG",
+                "display_name": "user2181948",
+                "link": "https://stackoverflow.com/users/2181948/user2181948"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524192641,
+            "creation_date": 1524187095,
+            "last_edit_date": 1524192641,
+            "question_id": 49932448,
+            "body_markdown": "I have a C# project which connects to a TSQL database. The project runs multiple sequential update statements on a single table, eg.:\r\n\r\n     private void updateRows() {\r\n          string update1 = &quot;UPDATE WITH (ROWLOCK) table SET ... WHERE ...;&quot;\r\n          string update2 = &quot;UPDATE WITH (ROWLOCK) table SET ... WHERE ...;&quot;\r\n          string update3 = &quot;UPDATE WITH (ROWLOCK) table SET ... WHERE ...;&quot;\r\n\r\n          // execute updates one after the other\r\n     }\r\n\r\n\r\nIdeally, these statements will be batched to avoid making multiple round-trips to/from the database:\r\n\r\n    string update = &quot;\r\n        UPDATE WITH (ROWLOCK) table SET ... WHERE ...;\r\n        GO\r\n        UPDATE WITH (ROWLOCK) table SET ... WHERE ...;\r\n        GO\r\n        UPDATE WITH (ROWLOCK) table SET ... WHERE ...;\r\n        GO\r\n    &quot;;\r\n\r\nMy question is, if the statements are batched, does this increase the chance of deadlock errors occurring due to table scans?\r\n\r\nAs there is less time between each statement, I imagine that this could increase chances of deadlocks as one update could introduce a row or page lock, which may not be released by the time the next statement is executed. However if the update statements were not batched, then there is more time for row or page locks to be released between each update statement, therefore less chance of deadlocks occurring.",
+            "link": "https://stackoverflow.com/questions/49932448/do-batched-sql-statements-increase-chances-of-deadlock-errors",
+            "title": "Do batched SQL statements increase chances of deadlock errors?",
+            "body": "<p>I have a C# project which connects to a TSQL database. The project runs multiple sequential update statements on a single table, eg.:</p>\n\n<pre><code> private void updateRows() {\n      string update1 = \"UPDATE WITH (ROWLOCK) table SET ... WHERE ...;\"\n      string update2 = \"UPDATE WITH (ROWLOCK) table SET ... WHERE ...;\"\n      string update3 = \"UPDATE WITH (ROWLOCK) table SET ... WHERE ...;\"\n\n      // execute updates one after the other\n }\n</code></pre>\n\n<p>Ideally, these statements will be batched to avoid making multiple round-trips to/from the database:</p>\n\n<pre><code>string update = \"\n    UPDATE WITH (ROWLOCK) table SET ... WHERE ...;\n    GO\n    UPDATE WITH (ROWLOCK) table SET ... WHERE ...;\n    GO\n    UPDATE WITH (ROWLOCK) table SET ... WHERE ...;\n    GO\n\";\n</code></pre>\n\n<p>My question is, if the statements are batched, does this increase the chance of deadlock errors occurring due to table scans?</p>\n\n<p>As there is less time between each statement, I imagine that this could increase chances of deadlocks as one update could introduce a row or page lock, which may not be released by the time the next statement is executed. However if the update statements were not batched, then there is more time for row or page locks to be released between each update statement, therefore less chance of deadlocks occurring.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "c++",
+                "python-3.x",
+                "boost",
+                "boost-python"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8360951,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/896de7a4018963dda622a0998ece0d22?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Alen.W",
+                "link": "https://stackoverflow.com/users/8360951/alen-w"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524192624,
+            "creation_date": 1524192624,
+            "question_id": 49933163,
+            "body_markdown": "I try to expose a c++ class to python. But I get the error. like this:\r\n\r\n    Traceback (most recent call last):\r\n      File &quot;1.py&quot;, line 1, in &lt;module&gt;\r\n        from test_class import A\r\n    ImportError: dlopen(/Users/alen/WorkSpace/test/boost-python/test_class.cpython-36m-darwin.so, 2): Symbol not found: __ZN5boost6python7objects15function_objectERKNS1_11py_functionERKSt4pairIPKNS0_6detail7keywordES9_E\r\n      Referenced from: /Users/alen/WorkSpace/test/boost-python/test_class.cpython-36m-darwin.so\r\n      Expected in: flat namespace in /Users/alen/WorkSpace/test/boost-python/test_class.cpython-36m-darwin.so\r\n\r\nExpose c++ function is success. but class failed. So what can I do?\r\n\r\nMy os is Osx. And I install boost and boost-python using brew.\r\n\r\n    brew install boost\r\n    brew install boost-python3\r\n\r\nMy Python is 3.6.5 and boost is 1.66.0. And I saw boost-python3 require boost 1.67.0 in this page(http://formulae.brew.sh/formula/boost-python3). \r\nI try update my boost to 1.67 but the problem is still.\r\n\r\n    #include &lt;boost/python.hpp&gt;\r\n    \r\n    struct A\r\n    {\r\n        void set(std::string msg) { this-&gt;msg = msg; }\r\n        std::string greet() { return msg; }\r\n        std::string msg;\r\n    };\r\n    \r\n    char const *greet()\r\n    {\r\n        return &quot;hello, world&quot;;\r\n    }\r\n    \r\n    BOOST_PYTHON_MODULE(test_class)\r\n    {\r\n        using namespace boost::python;\r\n    \r\n        class_&lt;A&gt;(&quot;A&quot;)\r\n            .def(&quot;greet&quot;, &amp;A::greet)\r\n            .def(&quot;set&quot;, &amp;A::set);\r\n    \r\n        def(&quot;greet&quot;, &amp;greet);\r\n    }\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49933163/expose-c-class-error-using-boost-python3",
+            "title": "Expose c++ class Error using boost-python3",
+            "body": "<p>I try to expose a c++ class to python. But I get the error. like this:</p>\n\n<pre><code>Traceback (most recent call last):\n  File \"1.py\", line 1, in &lt;module&gt;\n    from test_class import A\nImportError: dlopen(/Users/alen/WorkSpace/test/boost-python/test_class.cpython-36m-darwin.so, 2): Symbol not found: __ZN5boost6python7objects15function_objectERKNS1_11py_functionERKSt4pairIPKNS0_6detail7keywordES9_E\n  Referenced from: /Users/alen/WorkSpace/test/boost-python/test_class.cpython-36m-darwin.so\n  Expected in: flat namespace in /Users/alen/WorkSpace/test/boost-python/test_class.cpython-36m-darwin.so\n</code></pre>\n\n<p>Expose c++ function is success. but class failed. So what can I do?</p>\n\n<p>My os is Osx. And I install boost and boost-python using brew.</p>\n\n<pre><code>brew install boost\nbrew install boost-python3\n</code></pre>\n\n<p>My Python is 3.6.5 and boost is 1.66.0. And I saw boost-python3 require boost 1.67.0 in this page(<a href=\"http://formulae.brew.sh/formula/boost-python3\" rel=\"nofollow noreferrer\">http://formulae.brew.sh/formula/boost-python3</a>). \nI try update my boost to 1.67 but the problem is still.</p>\n\n<pre><code>#include &lt;boost/python.hpp&gt;\n\nstruct A\n{\n    void set(std::string msg) { this-&gt;msg = msg; }\n    std::string greet() { return msg; }\n    std::string msg;\n};\n\nchar const *greet()\n{\n    return \"hello, world\";\n}\n\nBOOST_PYTHON_MODULE(test_class)\n{\n    using namespace boost::python;\n\n    class_&lt;A&gt;(\"A\")\n        .def(\"greet\", &amp;A::greet)\n        .def(\"set\", &amp;A::set);\n\n    def(\"greet\", &amp;greet);\n}\n</code></pre>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 220
+}

@@ -2,7 +2,7 @@
 const fs = require('fs')
 
 const merge = {}
-for (var i = 1; i < 240; i++) 
+for (var i = 1; i < 540; i++) 
 {   
     const filen = `./res/download/${i}.json`    
     const dlstr = fs.readFileSync(filen)

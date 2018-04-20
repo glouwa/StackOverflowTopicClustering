@@ -1,0 +1,837 @@
+{
+    "items": [
+        {
+            "tags": [
+                "pandas",
+                "dataframe",
+                "missing-data"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 5411124,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/6a9aadcb68f5e767a75b785ab7ee790d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Wardster",
+                "link": "https://stackoverflow.com/users/5411124/wardster"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524192345,
+            "creation_date": 1524192345,
+            "question_id": 49933121,
+            "body_markdown": "I&#39;m working with Quantopian&#39;s Pipeline functionality which returns a Pandas dataframe.  I&#39;m trying to figure out how to fill in missing values properly.  I have a number of cells with NAN&#39;s in them:\r\n\r\n    &lt;class &#39;pandas.core.frame.DataFrame&#39;&gt;\r\n    MultiIndex: 21099 entries, (2017-02-01 00:00:00+00:00, Equity(2 [ARNC])) to (2018-03-01 00:00:00+00:00, Equity(50910 [JHG]))\r\n    Data columns (total 19 columns):\r\n    AverageDollarVolume90     21099 non-null float64\r\n    CashAndCashEquivalents    20646 non-null float64\r\n    CurrentAssets             18264 non-null float64\r\n    CurrentDebt               18629 non-null float64\r\n    CurrentLiabilities        18264 non-null float64\r\n    EBITDA                    20553 non-null float64\r\n    GrossMargin               18410 non-null float64\r\n    GrossProfit               18254 non-null float64\r\n    MarketCap                 21099 non-null float64\r\n    OperationIncomeGrowth     19854 non-null float64\r\n    OperationMargin           20863 non-null float64\r\n    PERatio:                  20148 non-null float64\r\n    Price                     21099 non-null float64\r\n    Returns90D                21099 non-null float64\r\n    RevenueGrowth             21014 non-null float64\r\n    Sector                    21099 non-null int64\r\n    TotalExpenses             18891 non-null float64\r\n    TotalRevenue              20595 non-null float64\r\n    Volume                    21099 non-null float64\r\n    dtypes: float64(18), int64(1)\r\n    memory usage: 3.2+ MB\r\n\r\nSo I&#39;d like to fill in the missing values forward filling based on security rather just the value from the previous row (or previous column).  Pandas has powerful fillna and apply capabilities.  My mini_pipeline dataframe contains a fundamental value for each Equity ever 30 days.  Each index entry is a tuple:  \r\n\r\n    print(type(mini_pipeline.iloc[0].name))\r\n    print(mini_pipeline.iloc[0].name)\r\n    print(mini_pipeline.iloc[0].name[0])\r\n    print(mini_pipeline.iloc[0].name[1])\r\n    print(mini_pipeline.iloc[0].name[1].symbol)\r\n    mini_pipeline.index.size\r\n    Out[]:\r\n    &lt;type &#39;tuple&#39;&gt;\r\n    (Timestamp(&#39;2017-02-01 00:00:00+0000&#39;, tz=&#39;UTC&#39;), Equity(2 [ARNC]))\r\n    2017-02-01 00:00:00+00:00\r\n    Equity(2 [ARNC])\r\n    ARNC\r\n    21099\r\n\r\nI need to both:\r\n 1.  Find a previous value for the same column for the same security. I have a Index date record for the 1st day of each month.\r\n 2.  Copy the value from the previous row (#1 above) into the NAN cell.\r\n\r\nI thought the simplest thing would just be to iterate through the whole dataframe and fill in the blanks, but copying cell data isn&#39;t as easy as it should be.\r\n\r\n    import datetime\r\n    \r\n    START_DATE = &#39;2017-01-01&#39;\r\n    END_DATE = &#39;2018-04-01&#39;\r\n    \r\n    startyear = START_DATE[0:4]\r\n    startmonth = START_DATE[5:7]\r\n    endyear = END_DATE[0:4]\r\n    endmonth = END_DATE[5:7]\r\n    date_list = [datetime.date(m/12, m%12+1, 1) for m in xrange(int(startyear)*12+int(startmonth)-1, int(endyear)*12+int(endmonth))]\r\n\r\n    equity_list = list(mini_pipeline.index.get_level_values(1))\r\n    equity_set = set(equity_list)\r\n    distinct_equity_list = list(equity_set)\r\n    \r\n    date_format_string = &quot;%Y-%m-%d&quot;\r\n    field_modified_count = 0\r\n    for d in date_list:\r\n        for e in distinct_equity_list:\r\n            if (d.strftime(date_format_string), e) in mini_pipeline.index:\r\n                for c in list(mini_pipeline.columns.values): \r\n                    mp = mini_pipeline.loc[(d.strftime(date_format_string), e),[c]]\r\n                    # print(type(mp))\r\n                    # print(type(mp[0]))\r\n                    # print(mp[0])\r\n                    if mp.iat[0,0] == np.nan:  \r\n                        # get and set the previous value\r\n                        if previous_d is not None and (previous_d.strftime(date_format_string), e) in mini_pipeline.index:\r\n                            mini_pipeline.loc[(d.strftime(date_format_string), e),[c]] = mini_pipeline.loc[(previous_d.strftime(date_format_string), e),[c]]\r\n                            # mini_pipeline.at[d.strftime(date_format_string), e),[c]] = mini_pipeline.at[previous_d.strftime(date_format_string), e),[c]]\r\n                            field_modified_count++\r\n        previous_d = d            \r\n    \r\n    mini_pipeline.info()\r\n\r\nThis code doesn&#39;t break/fail but it doesn&#39;t change any values either.  Any help suggestions greatly appreciated.",
+            "link": "https://stackoverflow.com/questions/49933121/filling-in-nan-data-for-a-multiindex-dataframe",
+            "title": "Filling in NAN data for a MultiIndex Dataframe",
+            "body": "<p>I'm working with Quantopian's Pipeline functionality which returns a Pandas dataframe.  I'm trying to figure out how to fill in missing values properly.  I have a number of cells with NAN's in them:</p>\n\n<pre><code>&lt;class 'pandas.core.frame.DataFrame'&gt;\nMultiIndex: 21099 entries, (2017-02-01 00:00:00+00:00, Equity(2 [ARNC])) to (2018-03-01 00:00:00+00:00, Equity(50910 [JHG]))\nData columns (total 19 columns):\nAverageDollarVolume90     21099 non-null float64\nCashAndCashEquivalents    20646 non-null float64\nCurrentAssets             18264 non-null float64\nCurrentDebt               18629 non-null float64\nCurrentLiabilities        18264 non-null float64\nEBITDA                    20553 non-null float64\nGrossMargin               18410 non-null float64\nGrossProfit               18254 non-null float64\nMarketCap                 21099 non-null float64\nOperationIncomeGrowth     19854 non-null float64\nOperationMargin           20863 non-null float64\nPERatio:                  20148 non-null float64\nPrice                     21099 non-null float64\nReturns90D                21099 non-null float64\nRevenueGrowth             21014 non-null float64\nSector                    21099 non-null int64\nTotalExpenses             18891 non-null float64\nTotalRevenue              20595 non-null float64\nVolume                    21099 non-null float64\ndtypes: float64(18), int64(1)\nmemory usage: 3.2+ MB\n</code></pre>\n\n<p>So I'd like to fill in the missing values forward filling based on security rather just the value from the previous row (or previous column).  Pandas has powerful fillna and apply capabilities.  My mini_pipeline dataframe contains a fundamental value for each Equity ever 30 days.  Each index entry is a tuple:  </p>\n\n<pre><code>print(type(mini_pipeline.iloc[0].name))\nprint(mini_pipeline.iloc[0].name)\nprint(mini_pipeline.iloc[0].name[0])\nprint(mini_pipeline.iloc[0].name[1])\nprint(mini_pipeline.iloc[0].name[1].symbol)\nmini_pipeline.index.size\nOut[]:\n&lt;type 'tuple'&gt;\n(Timestamp('2017-02-01 00:00:00+0000', tz='UTC'), Equity(2 [ARNC]))\n2017-02-01 00:00:00+00:00\nEquity(2 [ARNC])\nARNC\n21099\n</code></pre>\n\n<p>I need to both:\n 1.  Find a previous value for the same column for the same security. I have a Index date record for the 1st day of each month.\n 2.  Copy the value from the previous row (#1 above) into the NAN cell.</p>\n\n<p>I thought the simplest thing would just be to iterate through the whole dataframe and fill in the blanks, but copying cell data isn't as easy as it should be.</p>\n\n<pre><code>import datetime\n\nSTART_DATE = '2017-01-01'\nEND_DATE = '2018-04-01'\n\nstartyear = START_DATE[0:4]\nstartmonth = START_DATE[5:7]\nendyear = END_DATE[0:4]\nendmonth = END_DATE[5:7]\ndate_list = [datetime.date(m/12, m%12+1, 1) for m in xrange(int(startyear)*12+int(startmonth)-1, int(endyear)*12+int(endmonth))]\n\nequity_list = list(mini_pipeline.index.get_level_values(1))\nequity_set = set(equity_list)\ndistinct_equity_list = list(equity_set)\n\ndate_format_string = \"%Y-%m-%d\"\nfield_modified_count = 0\nfor d in date_list:\n    for e in distinct_equity_list:\n        if (d.strftime(date_format_string), e) in mini_pipeline.index:\n            for c in list(mini_pipeline.columns.values): \n                mp = mini_pipeline.loc[(d.strftime(date_format_string), e),[c]]\n                # print(type(mp))\n                # print(type(mp[0]))\n                # print(mp[0])\n                if mp.iat[0,0] == np.nan:  \n                    # get and set the previous value\n                    if previous_d is not None and (previous_d.strftime(date_format_string), e) in mini_pipeline.index:\n                        mini_pipeline.loc[(d.strftime(date_format_string), e),[c]] = mini_pipeline.loc[(previous_d.strftime(date_format_string), e),[c]]\n                        # mini_pipeline.at[d.strftime(date_format_string), e),[c]] = mini_pipeline.at[previous_d.strftime(date_format_string), e),[c]]\n                        field_modified_count++\n    previous_d = d            \n\nmini_pipeline.info()\n</code></pre>\n\n<p>This code doesn't break/fail but it doesn't change any values either.  Any help suggestions greatly appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "vb.net"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 9358090,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-Oa1x8qNX39c/AAAAAAAAAAI/AAAAAAAAABI/o-ki6VFXen8/photo.jpg?sz=128",
+                "display_name": "Asymphir",
+                "link": "https://stackoverflow.com/users/9358090/asymphir"
+            },
+            "is_answered": false,
+            "view_count": 23,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524192341,
+            "creation_date": 1524182072,
+            "question_id": 49931900,
+            "body_markdown": "So I keep getting the error \r\n\r\n&gt; Exception thrown: &#39;System.IndexOutOfRangeException&#39;\r\n\r\nFor my array counter. I&#39;m still learning Visual Basic but I have programming knowledge in other languages, so I&#39;m not sure if I&#39;m just not translating between syntax properly here, or if it&#39;s just a logic error I&#39;m not seeing. \r\n\r\nThe `arrayNumsMultiply()` array is an Integer array declared with 6 values. My counter variable was also declared as an Integer previously in the program.\r\n\r\nThe following code is meant to count through the 6 numbers, check if they have two integers in them (ex: 47, so 4 and 7), and then add them together. From there, it stores it back into the array and wipes the previous value. I have a `System.Console.WriteLine` in the code to see if the If statement is even being initiated and it&#39;s not, but the counter console log is. Any idea on what I may be doing wrong? (The specific line where the error is being thrown is the `If arrayNumsMultiply(counter).ToString.Length = 2 Then`)\r\n\r\n            For counter = 0 To 5\r\n                If arrayNumsMultiply(counter).ToString.Length = 2 Then\r\n                    Dim numOne As String = arrayNumsMultiply(counter).ToString().Substring(1, 1)\r\n                    Dim numTwo As String = arrayNumsMultiply(counter).ToString().Substring(2, 1)\r\n\r\n                    Convert.ToInt32(numOne)\r\n                    Convert.ToInt32(numTwo)\r\n\r\n                    Dim totalNum As Integer\r\n                    totalNum = numOne + numTwo\r\n\r\n                    arrayNumsMultiply(counter) = totalNum\r\n\r\n                    System.Console.WriteLine(&quot;If statement for adding in an integer working&quot;)\r\n                End If\r\n\r\n                System.Console.WriteLine(&quot;Counter working&quot;)\r\n\r\n            Next counter",
+            "link": "https://stackoverflow.com/questions/49931900/exception-thrown-system-indexoutofrangeexception-in-vb-net",
+            "title": "Exception thrown: &#39;System.IndexOutOfRangeException&#39; in VB.net",
+            "body": "<p>So I keep getting the error </p>\n\n<blockquote>\n  <p>Exception thrown: 'System.IndexOutOfRangeException'</p>\n</blockquote>\n\n<p>For my array counter. I'm still learning Visual Basic but I have programming knowledge in other languages, so I'm not sure if I'm just not translating between syntax properly here, or if it's just a logic error I'm not seeing. </p>\n\n<p>The <code>arrayNumsMultiply()</code> array is an Integer array declared with 6 values. My counter variable was also declared as an Integer previously in the program.</p>\n\n<p>The following code is meant to count through the 6 numbers, check if they have two integers in them (ex: 47, so 4 and 7), and then add them together. From there, it stores it back into the array and wipes the previous value. I have a <code>System.Console.WriteLine</code> in the code to see if the If statement is even being initiated and it's not, but the counter console log is. Any idea on what I may be doing wrong? (The specific line where the error is being thrown is the <code>If arrayNumsMultiply(counter).ToString.Length = 2 Then</code>)</p>\n\n<pre><code>        For counter = 0 To 5\n            If arrayNumsMultiply(counter).ToString.Length = 2 Then\n                Dim numOne As String = arrayNumsMultiply(counter).ToString().Substring(1, 1)\n                Dim numTwo As String = arrayNumsMultiply(counter).ToString().Substring(2, 1)\n\n                Convert.ToInt32(numOne)\n                Convert.ToInt32(numTwo)\n\n                Dim totalNum As Integer\n                totalNum = numOne + numTwo\n\n                arrayNumsMultiply(counter) = totalNum\n\n                System.Console.WriteLine(\"If statement for adding in an integer working\")\n            End If\n\n            System.Console.WriteLine(\"Counter working\")\n\n        Next counter\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "sql-server",
+                "python-3.x",
+                "pyodbc"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 7885576,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-5nPzOdtuG2s/AAAAAAAAAAI/AAAAAAAABUc/_0_BoxOmP_0/photo.jpg?sz=128",
+                "display_name": "Ray Chan",
+                "link": "https://stackoverflow.com/users/7885576/ray-chan"
+            },
+            "is_answered": true,
+            "view_count": 12,
+            "accepted_answer_id": 49916901,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1524192316,
+            "creation_date": 1524109880,
+            "last_edit_date": 1524192316,
+            "question_id": 49912427,
+            "body_markdown": "I&#39;ve been tearing my hair out trying to pin point the error when connecting to a SQL Server named instance using pyodbc on a linux box. I can connect fine when connecting to other SQL Servers that are not using a named instance. The example below works on a server without a named instance:\r\n\r\n\timport pyodbc\r\n\r\n\tDB_WMS_NJ62 = &#39;DRIVER={ODBC Driver 13 for SQL Server};SERVER=xxx.xxx.xxx.xxx;PORT=1433;DATABASE=dbname;UID=dbuserid;PWD=dbpass&#39;\r\n\tconn = pyodbc.connect(DB_WMS_NJ62)\r\nThis connects correctly and allows me to execute queries.\r\n\r\nBelow is my problematic code.  Changing the IP, adding a named instance, and changing to the designated port 63810\r\n\r\n\timport pyodbc\r\n\r\n\tDB_WMS_ONTMOD2 = &#39;DRIVER={ODBC Driver 13 for SQL Server};SERVER=xxx.xxx.xxx.xxx\\\\fontanasql;PORT=63810;DATABASE=dbname;UID=dbuserid;PWD=dbpass&#39;\r\n\tconn = pyodbc.connect(DB_WMS_ONTMOD2)\r\nRunning the above, i receve the error:\r\n\r\n    pyodbc.OperationalError: (&#39;HYT00&#39;, &#39;[HYT00] [unixODBC][Microsoft][ODBC Driver 13 for SQL Server]Login timeout expired (0) (SQLDriverConnect)&#39;)\r\n\r\nAny help appreciated.\r\n\r\n\r\n\r\n\r\nResolution:\r\nGord Thompson&#39;s suggestion worked. Those were my exact mistakes.\r\nThank you so much!",
+            "link": "https://stackoverflow.com/questions/49912427/pyodbc-connecting-to-named-instance",
+            "title": "pyodbc connecting to named instance",
+            "body": "<p>I've been tearing my hair out trying to pin point the error when connecting to a SQL Server named instance using pyodbc on a linux box. I can connect fine when connecting to other SQL Servers that are not using a named instance. The example below works on a server without a named instance:</p>\n\n<pre><code>import pyodbc\n\nDB_WMS_NJ62 = 'DRIVER={ODBC Driver 13 for SQL Server};SERVER=xxx.xxx.xxx.xxx;PORT=1433;DATABASE=dbname;UID=dbuserid;PWD=dbpass'\nconn = pyodbc.connect(DB_WMS_NJ62)\n</code></pre>\n\n<p>This connects correctly and allows me to execute queries.</p>\n\n<p>Below is my problematic code.  Changing the IP, adding a named instance, and changing to the designated port 63810</p>\n\n<pre><code>import pyodbc\n\nDB_WMS_ONTMOD2 = 'DRIVER={ODBC Driver 13 for SQL Server};SERVER=xxx.xxx.xxx.xxx\\\\fontanasql;PORT=63810;DATABASE=dbname;UID=dbuserid;PWD=dbpass'\nconn = pyodbc.connect(DB_WMS_ONTMOD2)\n</code></pre>\n\n<p>Running the above, i receve the error:</p>\n\n<pre><code>pyodbc.OperationalError: ('HYT00', '[HYT00] [unixODBC][Microsoft][ODBC Driver 13 for SQL Server]Login timeout expired (0) (SQLDriverConnect)')\n</code></pre>\n\n<p>Any help appreciated.</p>\n\n<p>Resolution:\nGord Thompson's suggestion worked. Those were my exact mistakes.\nThank you so much!</p>\n"
+        },
+        {
+            "tags": [
+                "apache-spark",
+                "apache-kafka",
+                "spark-streaming",
+                "flume"
+            ],
+            "owner": {
+                "reputation": 64,
+                "user_id": 3616059,
+                "user_type": "registered",
+                "accept_rate": 17,
+                "profile_image": "https://graph.facebook.com/100000016899853/picture?type=large",
+                "display_name": "Amin Mohebi",
+                "link": "https://stackoverflow.com/users/3616059/amin-mohebi"
+            },
+            "is_answered": false,
+            "view_count": 34,
+            "closed_date": 1524228453,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524192301,
+            "creation_date": 1523159535,
+            "last_edit_date": 1524192301,
+            "question_id": 49714256,
+            "body_markdown": "Till now, my architecture includes Spark streaming for data pre-processing I would like to do real time streaming of 3 sources including Patient claims data(CSV files which are adding continuously), Electronic Medical Reports(historical in form of CSV which are adding continuously) and hospital operational database\r\n\r\nCan anybody let me know what combination of data ingestion tools are good here?\r\n\r\nis it fine to use flume to pull the data from different sources and stream them into spark streaming? or should I deploy Kafka with flume before passing to spark?\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49714256/flume-or-kafka-for-real-time-event-processing",
+            "closed_reason": "primarily opinion-based",
+            "title": "Flume or Kafka for Real-Time Event Processing",
+            "body": "<p>Till now, my architecture includes Spark streaming for data pre-processing I would like to do real time streaming of 3 sources including Patient claims data(CSV files which are adding continuously), Electronic Medical Reports(historical in form of CSV which are adding continuously) and hospital operational database</p>\n\n<p>Can anybody let me know what combination of data ingestion tools are good here?</p>\n\n<p>is it fine to use flume to pull the data from different sources and stream them into spark streaming? or should I deploy Kafka with flume before passing to spark?</p>\n"
+        },
+        {
+            "tags": [
+                "unity3d",
+                "shader"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 7974583,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-nL7xjGWbKKA/AAAAAAAAAAI/AAAAAAAAAEE/z0ng-2qf4YY/photo.jpg?sz=128",
+                "display_name": "Neeraja Karandikar",
+                "link": "https://stackoverflow.com/users/7974583/neeraja-karandikar"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524192291,
+            "creation_date": 1524168522,
+            "last_edit_date": 1524192291,
+            "question_id": 49929407,
+            "body_markdown": "Is there any way to do multiple passes in a fragment shader? I need to transform the texture in the first step and then in the second step modify parts were affected by the first pass. Is there any way to do this with a single shader? I wrote an example one how I would like to to it but the first pass seems to be fully ignored:\r\n\r\n    Shader &quot;Test/FragmentShaderWithMemory&quot; {\r\n         Properties {\r\n             _MainTex (&quot;MainTexture&quot;, 2D) = &quot;white&quot; {}\r\n         }\r\n         SubShader {\r\n     \r\n             Pass {\r\n                 CGPROGRAM\r\n                 #pragma vertex vert_img\r\n                 #pragma fragment frag\r\n                 #include &quot;UnityCG.cginc&quot;\r\n                 \r\n                 uniform sampler2D _MainTex;\r\n     \r\n                 float3 frag(v2f_img i) : COLOR {\r\n                     float3 pixelColor = tex2D(_MainTex, i.uv);\r\n                     // the red channel to 0 as a test:\r\n                     pixelColor.x = 0; \r\n                     return pixelColor;\r\n                 }\r\n                 ENDCG\r\n             }\r\n             \r\n             Pass {\r\n                 CGPROGRAM\r\n                 #pragma vertex vert_img\r\n                 #pragma fragment frag\r\n                 #include &quot;UnityCG.cginc&quot;\r\n                 \r\n                 uniform sampler2D _MainTex;\r\n     \r\n                 float3 frag(v2f_img i) : COLOR {\r\n                     float3 pixelColor = tex2D(_MainTex, i.uv);\r\n                     // all pixels should now have red to 0, test by setting all green channels to 1:\r\n                     if (pixelColor.x==0) pixelColor.y = 1; \r\n                     return pixelColor;\r\n                 }\r\n                 ENDCG\r\n             }\r\n     \r\n         }\r\n     }",
+            "link": "https://stackoverflow.com/questions/49929407/is-there-any-way-to-do-multiple-passes-on-a-texture-in-a-fragment-shader",
+            "title": "Is there any way to do multiple passes on a texture / in a fragment shader?",
+            "body": "<p>Is there any way to do multiple passes in a fragment shader? I need to transform the texture in the first step and then in the second step modify parts were affected by the first pass. Is there any way to do this with a single shader? I wrote an example one how I would like to to it but the first pass seems to be fully ignored:</p>\n\n<pre><code>Shader \"Test/FragmentShaderWithMemory\" {\n     Properties {\n         _MainTex (\"MainTexture\", 2D) = \"white\" {}\n     }\n     SubShader {\n\n         Pass {\n             CGPROGRAM\n             #pragma vertex vert_img\n             #pragma fragment frag\n             #include \"UnityCG.cginc\"\n\n             uniform sampler2D _MainTex;\n\n             float3 frag(v2f_img i) : COLOR {\n                 float3 pixelColor = tex2D(_MainTex, i.uv);\n                 // the red channel to 0 as a test:\n                 pixelColor.x = 0; \n                 return pixelColor;\n             }\n             ENDCG\n         }\n\n         Pass {\n             CGPROGRAM\n             #pragma vertex vert_img\n             #pragma fragment frag\n             #include \"UnityCG.cginc\"\n\n             uniform sampler2D _MainTex;\n\n             float3 frag(v2f_img i) : COLOR {\n                 float3 pixelColor = tex2D(_MainTex, i.uv);\n                 // all pixels should now have red to 0, test by setting all green channels to 1:\n                 if (pixelColor.x==0) pixelColor.y = 1; \n                 return pixelColor;\n             }\n             ENDCG\n         }\n\n     }\n }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "c",
+                "string",
+                "file",
+                "loops"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 5428926,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3f98fcae113f95b1b58f6220fd560fb9?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Exile",
+                "link": "https://stackoverflow.com/users/5428926/exile"
+            },
+            "is_answered": false,
+            "view_count": 119,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524192283,
+            "creation_date": 1524019126,
+            "last_edit_date": 1524192283,
+            "question_id": 49890293,
+            "body_markdown": "Working on to print the 10 longest words from a file (one word per line).  Words can be printed in any order, and if there are multiple words tied for 10th longest we can decide what to do. The following prints top 1, appreciate any suggestions to build a loop that can iterate and print the next 9.  Assumptions made here, the longest word in the file can be 200 letters and 60 spaces in b/w them. I&#39;m looking to exclude both the assumptions and make it to work more dynamically. Though the following is C like to hear any to write in C++ as well but need to avoid using STL.    \r\n    \r\n    #include &lt;stdio.h&gt;\r\n    #include &lt;string.h&gt;\r\n    #include &lt;stdlib.h&gt;\r\n\r\n    #define MAX_WORD_LENGTH 200\r\n\r\n    int main () {\r\n    FILE *fp = fopen(&quot;words.txt&quot;,&quot;r&quot;);\r\n    char str[60];\r\n    char *largest = (char*) malloc (MAX_WORD_LENGTH);\r\n    int smallest_len = MAX_WORD_LENGTH, largest_len = 0;\r\n\r\n    while (fgets (str, 60, fp) != NULL) \r\n    {\r\n        char *temp = strtok(str, &quot;\\n&quot;);\r\n        while (temp != NULL) \r\n        {\r\n            if (strlen(temp) &gt; largest_len) \r\n            {\r\n                strcpy(largest, temp);\r\n                largest_len = strlen(largest);\r\n            }\r\n            temp = strtok(NULL, &quot;\\n&quot;);\r\n        }\r\n    }\r\n\r\n    printf(&quot;The largest word in the file is: %s\\n&quot;, largest);\r\n\r\n    fclose(fp);\r\n\r\n    return 0;\r\n    }",
+            "link": "https://stackoverflow.com/questions/49890293/find-10-longest-words-in-a-file",
+            "title": "Find 10 longest words in a file",
+            "body": "<p>Working on to print the 10 longest words from a file (one word per line).  Words can be printed in any order, and if there are multiple words tied for 10th longest we can decide what to do. The following prints top 1, appreciate any suggestions to build a loop that can iterate and print the next 9.  Assumptions made here, the longest word in the file can be 200 letters and 60 spaces in b/w them. I'm looking to exclude both the assumptions and make it to work more dynamically. Though the following is C like to hear any to write in C++ as well but need to avoid using STL.    </p>\n\n<pre><code>#include &lt;stdio.h&gt;\n#include &lt;string.h&gt;\n#include &lt;stdlib.h&gt;\n\n#define MAX_WORD_LENGTH 200\n\nint main () {\nFILE *fp = fopen(\"words.txt\",\"r\");\nchar str[60];\nchar *largest = (char*) malloc (MAX_WORD_LENGTH);\nint smallest_len = MAX_WORD_LENGTH, largest_len = 0;\n\nwhile (fgets (str, 60, fp) != NULL) \n{\n    char *temp = strtok(str, \"\\n\");\n    while (temp != NULL) \n    {\n        if (strlen(temp) &gt; largest_len) \n        {\n            strcpy(largest, temp);\n            largest_len = strlen(largest);\n        }\n        temp = strtok(NULL, \"\\n\");\n    }\n}\n\nprintf(\"The largest word in the file is: %s\\n\", largest);\n\nfclose(fp);\n\nreturn 0;\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "dictionary",
+                "hashtable"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9509915,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10215612247003756/picture?type=large",
+                "display_name": "William Machado",
+                "link": "https://stackoverflow.com/users/9509915/william-machado"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524192282,
+            "creation_date": 1524191193,
+            "last_edit_date": 1524192282,
+            "question_id": 49932970,
+            "body_markdown": "While trying to create hash maps i was attempting to implement both open address and separate chaining, i believe i have open address right, but now doing the chaining i can not figure out how i am supposed to compare the input text to the stored data text. \r\n\r\nTo be more specific i do not know and can&#39;t figure out how to access a string named entry_ in a node stored in a linked list, to save space i wont post the node class, its fairly basic. \r\n\r\n    typedef unsigned int unint;\r\n    \r\n    //this bucket is used by the open addressing table\r\n    struct openBucket{\r\n      bool collision;//whether or not there was a collision at this field\r\n      string entry_;\r\n    };\r\n    \r\n    //this bucket is used by the seperate chaining table\r\n    struct chainBucket{\r\n      bool collision;//whether or not there was a collision at this field\r\n      List *bucketList;\r\n    };\r\n    \r\n    class HashTables{\r\n    private:\r\n      std::unordered_map&lt;unint,openBucket&gt; openAddressTable;\r\n      std::unordered_map&lt;unint,chainBucket&gt; chainingTable;\r\n    \r\n    \r\n    void HashTables::addToOpenAddress(unint inputHash, std::string text){\r\n    \topenCollisions = 0;\r\n    \tint size = openAddressTable.size();\r\n    \tfor (int i = inputHash; i &lt; size; i++) {\r\n    \t\tif (openAddressTable[i].entry_==text) {\r\n    \t\t\topenAddressTable[i].collision = true;\r\n    \t\t\ti++;\r\n    \t\t\topenCollisions++;\r\n    \t\t}\r\n    \t\t\telse {\r\n\t\t\topenAddressTable.insert =  new openBucket-&gt;entry_=text;\r\n    \t\t}\r\n    \t}\r\n    }\r\n    \r\n    //TODO\r\n    // finish this function to add an element to the separate chaining table\r\n    // this tables tracks collisions with linked lists\r\n    // if a collision occurs,\r\n    // - edit collision boolean for current location\r\n    // - add to linked list\r\n    // else add new chainBucket to position\r\n    void HashTables::addToChaining(unint inputHash, std::string text){\r\n    \t//int size = chainingTable.size();\r\n    \t//for (int i = 0; i &lt; size; i++) {\r\n    \t//\tif()\r\n    \t//}\r\n    \tstd::list &lt;int&gt; ::iterator i;\r\n    \tint size = chainingTable.size();\r\n    \tfor (int i = inputHash; i &lt; size; i++) {\r\n    \t\tauto it = chainingTable[i].bucketList.begin();\r\n    \t\tif(chainingTable[i].bucketList????)\r\n    \t}\r\n    \t\t\r\n    } ",
+            "link": "https://stackoverflow.com/questions/49932970/accessing-linked-list-from-a-map-c",
+            "title": "accessing linked list from a map c++",
+            "body": "<p>While trying to create hash maps i was attempting to implement both open address and separate chaining, i believe i have open address right, but now doing the chaining i can not figure out how i am supposed to compare the input text to the stored data text. </p>\n\n<p>To be more specific i do not know and can't figure out how to access a string named entry_ in a node stored in a linked list, to save space i wont post the node class, its fairly basic. </p>\n\n<pre><code>typedef unsigned int unint;\n\n//this bucket is used by the open addressing table\nstruct openBucket{\n  bool collision;//whether or not there was a collision at this field\n  string entry_;\n};\n\n//this bucket is used by the seperate chaining table\nstruct chainBucket{\n  bool collision;//whether or not there was a collision at this field\n  List *bucketList;\n};\n\nclass HashTables{\nprivate:\n  std::unordered_map&lt;unint,openBucket&gt; openAddressTable;\n  std::unordered_map&lt;unint,chainBucket&gt; chainingTable;\n\n\nvoid HashTables::addToOpenAddress(unint inputHash, std::string text){\n    openCollisions = 0;\n    int size = openAddressTable.size();\n    for (int i = inputHash; i &lt; size; i++) {\n        if (openAddressTable[i].entry_==text) {\n            openAddressTable[i].collision = true;\n            i++;\n            openCollisions++;\n        }\n            else {\n        openAddressTable.insert =  new openBucket-&gt;entry_=text;\n        }\n    }\n}\n\n//TODO\n// finish this function to add an element to the separate chaining table\n// this tables tracks collisions with linked lists\n// if a collision occurs,\n// - edit collision boolean for current location\n// - add to linked list\n// else add new chainBucket to position\nvoid HashTables::addToChaining(unint inputHash, std::string text){\n    //int size = chainingTable.size();\n    //for (int i = 0; i &lt; size; i++) {\n    //  if()\n    //}\n    std::list &lt;int&gt; ::iterator i;\n    int size = chainingTable.size();\n    for (int i = inputHash; i &lt; size; i++) {\n        auto it = chainingTable[i].bucketList.begin();\n        if(chainingTable[i].bucketList????)\n    }\n\n} \n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "mean"
+            ],
+            "owner": {
+                "reputation": 22,
+                "user_id": 6397290,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-H9Qjt3KsZjQ/AAAAAAAAAAI/AAAAAAAAAkA/hq95YVA46-c/photo.jpg?sz=128",
+                "display_name": "Fatih",
+                "link": "https://stackoverflow.com/users/6397290/fatih"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524192277,
+            "creation_date": 1524189649,
+            "question_id": 49932784,
+            "body_markdown": "I&#39;d like to send user object from angular to express, but when I try to console.log in express, it return undefined. \r\nThis is my method inside ts file :\r\n\r\n      updateProfileCompany(){\r\n        var getUser = localStorage.getItem(&#39;user&#39;);\r\n        getUser = JSON.parse(getUser)\r\n        var id_student = getUser[&quot;id&quot;];\r\n        var nim        = getUser[&quot;nim&quot;];\r\n        var nama       = getUser[&quot;nama&quot;];\r\n        var email      = getUser[&quot;email&quot;];\r\n        var company    = this.company\r\n        const user = {\r\n          id         : id_student,\r\n          nama       : nama,\r\n          email      : email,\r\n          nim        : nim,\r\n          id_company : company\r\n        }\r\n        console.log(user.id_company); // This is work\r\n        this.authService.updateProfileCompany(user)\r\n        .subscribe((res:Response) =&gt; this.user = user);\r\n      }\r\n\r\nThis is my express route :\r\n\r\n    router.put(&#39;/update&#39;, passport.authenticate(&#39;jwt&#39;, {session:false}), (req, res, next)=&gt;{\r\n        user = req.user;\r\n        var result = [];\r\n        console.log(user.id_company); // returns undefined\r\n    });",
+            "link": "https://stackoverflow.com/questions/49932784/angular-5-send-object-from-angular-to-express-route",
+            "title": "Angular 5 Send Object from Angular to Express Route",
+            "body": "<p>I'd like to send user object from angular to express, but when I try to console.log in express, it return undefined. \nThis is my method inside ts file :</p>\n\n<pre><code>  updateProfileCompany(){\n    var getUser = localStorage.getItem('user');\n    getUser = JSON.parse(getUser)\n    var id_student = getUser[\"id\"];\n    var nim        = getUser[\"nim\"];\n    var nama       = getUser[\"nama\"];\n    var email      = getUser[\"email\"];\n    var company    = this.company\n    const user = {\n      id         : id_student,\n      nama       : nama,\n      email      : email,\n      nim        : nim,\n      id_company : company\n    }\n    console.log(user.id_company); // This is work\n    this.authService.updateProfileCompany(user)\n    .subscribe((res:Response) =&gt; this.user = user);\n  }\n</code></pre>\n\n<p>This is my express route :</p>\n\n<pre><code>router.put('/update', passport.authenticate('jwt', {session:false}), (req, res, next)=&gt;{\n    user = req.user;\n    var result = [];\n    console.log(user.id_company); // returns undefined\n});\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "node.js",
+                "turfjs"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9120846,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/45833d2f4bc82e3acf91d1225648d355?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Ghif Aliy",
+                "link": "https://stackoverflow.com/users/9120846/ghif-aliy"
+            },
+            "is_answered": false,
+            "view_count": 52,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524192271,
+            "creation_date": 1513742587,
+            "question_id": 47898611,
+            "body_markdown": "I&#39;m trying to get some point inside multiple polygon using *pointsWithinPolygon* in [turfjs][1], but the result is unexpected.\r\n\r\nIs there any chance that *pointsWithinPolygon* isn&#39;t compatible with *FeatureCollection*?\r\n\r\nHere is the example of my usage.\r\n\r\n    let points = {\r\n        &quot;type&quot;: &quot;Point&quot;,\r\n        &quot;coordinates&quot;: [\r\n            106.866995, -6.261513\r\n        ]\r\n    }\r\n\r\n    let filter = {\r\n    \t&quot;type&quot;: &quot;FeatureCollection&quot;,\r\n    \t&quot;features&quot;: [\r\n    \t\t{\r\n    \t\t\t&quot;type&quot;: &quot;Feature&quot;,\r\n    \t\t\t&quot;properties&quot;: {\r\n    \t\t\t\t&quot;IdArea&quot;: 4\r\n    \t\t\t},\r\n    \t\t\t&quot;geometry&quot;: {\r\n    \t\t\t\t&quot;type&quot;: &quot;Polygon&quot;,\r\n    \t\t\t\t&quot;coordinates&quot;: [\r\n    \t\t\t\t\t[\r\n    \t\t\t\t\t\t[\r\n    \t\t\t\t\t\t\t106.314674,\r\n    \t\t\t\t\t\t\t-6.6348689124\r\n    \t\t\t\t\t\t],\r\n    \t\t\t\t\t\t[\r\n    \t\t\t\t\t\t\t107.5781628906,\r\n    \t\t\t\t\t\t\t-6.6348689124\r\n    \t\t\t\t\t\t],\r\n    \t\t\t\t\t\t[\r\n    \t\t\t\t\t\t\t107.5781628906,\r\n    \t\t\t\t\t\t\t-5.9742195859\r\n    \t\t\t\t\t\t],\r\n    \t\t\t\t\t\t[\r\n    \t\t\t\t\t\t\t106.314674,\r\n    \t\t\t\t\t\t\t-5.9742195859\r\n    \t\t\t\t\t\t],\r\n    \t\t\t\t\t\t[\r\n    \t\t\t\t\t\t\t106.314674,\r\n    \t\t\t\t\t\t\t-6.6348689124\r\n    \t\t\t\t\t\t]\r\n    \t\t\t\t\t]\r\n    \t\t\t\t]\r\n    \t\t\t}\r\n    \t\t}\r\n    \t]\r\n    }\r\n\r\n    let result = turf.pointsWithinPolygon(points, filter);\r\n    console.log(result); \r\n\r\n\r\n  [1]: http://turf.js",
+            "link": "https://stackoverflow.com/questions/47898611/pointswithinpolygon-on-trufjs",
+            "title": "*pointsWithinPolygon* on Trufjs",
+            "body": "<p>I'm trying to get some point inside multiple polygon using <em>pointsWithinPolygon</em> in <a href=\"http://turf.js\" rel=\"nofollow noreferrer\">turfjs</a>, but the result is unexpected.</p>\n\n<p>Is there any chance that <em>pointsWithinPolygon</em> isn't compatible with <em>FeatureCollection</em>?</p>\n\n<p>Here is the example of my usage.</p>\n\n<pre><code>let points = {\n    \"type\": \"Point\",\n    \"coordinates\": [\n        106.866995, -6.261513\n    ]\n}\n\nlet filter = {\n    \"type\": \"FeatureCollection\",\n    \"features\": [\n        {\n            \"type\": \"Feature\",\n            \"properties\": {\n                \"IdArea\": 4\n            },\n            \"geometry\": {\n                \"type\": \"Polygon\",\n                \"coordinates\": [\n                    [\n                        [\n                            106.314674,\n                            -6.6348689124\n                        ],\n                        [\n                            107.5781628906,\n                            -6.6348689124\n                        ],\n                        [\n                            107.5781628906,\n                            -5.9742195859\n                        ],\n                        [\n                            106.314674,\n                            -5.9742195859\n                        ],\n                        [\n                            106.314674,\n                            -6.6348689124\n                        ]\n                    ]\n                ]\n            }\n        }\n    ]\n}\n\nlet result = turf.pointsWithinPolygon(points, filter);\nconsole.log(result); \n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "network-programming",
+                "erlang",
+                "otp"
+            ],
+            "owner": {
+                "reputation": 119,
+                "user_id": 6697354,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10210635751040429/picture?type=large",
+                "display_name": "Roman Rabinovich",
+                "link": "https://stackoverflow.com/users/6697354/roman-rabinovich"
+            },
+            "is_answered": false,
+            "view_count": 59,
+            "bounty_amount": 50,
+            "bounty_closes_date": 1524378427,
+            "answer_count": 0,
+            "score": 2,
+            "last_activity_date": 1524192267,
+            "creation_date": 1523568688,
+            "last_edit_date": 1524192267,
+            "question_id": 49806196,
+            "body_markdown": "I have a standard situation, two distributed Erlang nodes, one master one standby.\r\n\r\nWhen I stop the master the standby comes on - failover, when I start the master the standby stops - takeover. Everything works fine as long as heart is not turned on. \r\n\r\nHowever, when I disconnect the master from the network after 40 seconds or so the standby gives me an error message ** removing (timedout) connection ** and starts up as if the master node stopped. This makes sense to me, it doesn&#39;t know if the master is alive or not, and epmd can&#39;t connect to the master node so it is removed from the nodes() list. Lets pretend that this is the desired outcome.\r\n\r\nThe problem is that when the connection is restored, I have master and standby running at the same time and the standby is oblivious to the fact that the master is running. I even pinged the standby during the masters init, and checked that nodes() on the standby sees the master node, but still it continues to run.\r\n\r\nMy solution for now has been to create a process, that monitors all nodes that are above each node in hierarchy and if any of them are online, can be pinged, the process calls erlang:halt() to terminate the standby node. It works for simple situations, but maybe someone can tell me if there is a better way? I found a similar problem described on Elixir forum so it probably a known erlang problem without an easy solution. https://elixirforum.com/t/distributed-application-network-split/10007\r\n\r\nThe second issue is heart. If there is no delay in heart before it calls start the failover never happens. If heart is running with a sleep before it calls start it stops the failover node when it calls the start.  So even when it can&#39;t start the master do to it not having access to vital resources it stops the failover node and what is worse it doesn&#39;t bring it back up after it fails to start the master. I don&#39;t know if heart is not supposed to be used with a distributed application or if there is an option to run some phase/part of erlang code before stopping the failover node? Maybe using the heart:set_callback(Module, Function) to check if the resources are available before attempting a start? If so are there any examples, the explanation in docs is not clear. \r\n\r\nJust to vent, the documentation on heart is not great. Very hard to find any examples of HEART_COMMAND that is described in the documentation. After some time, I found a way to set the HEART_COMMAND to a script from within my application, to give a 60 sec delay before restarting my app, this also allows the failover to occur but in 60 seconds it stops the failover node so not much point in that.   \r\n`heart:set_cmd(&quot;sleep 60; ./bin/myapp start&quot;)` \r\n\r\nThe solution I&#39;m contemplating is letting heart of the main app start another application, a pre-loader, which will do a preliminary check that all resources are available and if they are will start the main application and if not will continue checking forever. This way the main app will be running on the failover node without interruption. I would do all the checks in the heart script itself but I believe it will be easier using an erlang application. Does this sound reasonable? \r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49806196/distributed-erlang-network-split-recovery-and-using-heart-with-distributed-app",
+            "title": "Distributed Erlang - network split recovery and using heart with distributed applications",
+            "body": "<p>I have a standard situation, two distributed Erlang nodes, one master one standby.</p>\n\n<p>When I stop the master the standby comes on - failover, when I start the master the standby stops - takeover. Everything works fine as long as heart is not turned on. </p>\n\n<p>However, when I disconnect the master from the network after 40 seconds or so the standby gives me an error message ** removing (timedout) connection ** and starts up as if the master node stopped. This makes sense to me, it doesn't know if the master is alive or not, and epmd can't connect to the master node so it is removed from the nodes() list. Lets pretend that this is the desired outcome.</p>\n\n<p>The problem is that when the connection is restored, I have master and standby running at the same time and the standby is oblivious to the fact that the master is running. I even pinged the standby during the masters init, and checked that nodes() on the standby sees the master node, but still it continues to run.</p>\n\n<p>My solution for now has been to create a process, that monitors all nodes that are above each node in hierarchy and if any of them are online, can be pinged, the process calls erlang:halt() to terminate the standby node. It works for simple situations, but maybe someone can tell me if there is a better way? I found a similar problem described on Elixir forum so it probably a known erlang problem without an easy solution. <a href=\"https://elixirforum.com/t/distributed-application-network-split/10007\" rel=\"nofollow noreferrer\">https://elixirforum.com/t/distributed-application-network-split/10007</a></p>\n\n<p>The second issue is heart. If there is no delay in heart before it calls start the failover never happens. If heart is running with a sleep before it calls start it stops the failover node when it calls the start.  So even when it can't start the master do to it not having access to vital resources it stops the failover node and what is worse it doesn't bring it back up after it fails to start the master. I don't know if heart is not supposed to be used with a distributed application or if there is an option to run some phase/part of erlang code before stopping the failover node? Maybe using the heart:set_callback(Module, Function) to check if the resources are available before attempting a start? If so are there any examples, the explanation in docs is not clear. </p>\n\n<p>Just to vent, the documentation on heart is not great. Very hard to find any examples of HEART_COMMAND that is described in the documentation. After some time, I found a way to set the HEART_COMMAND to a script from within my application, to give a 60 sec delay before restarting my app, this also allows the failover to occur but in 60 seconds it stops the failover node so not much point in that.<br>\n<code>heart:set_cmd(\"sleep 60; ./bin/myapp start\")</code> </p>\n\n<p>The solution I'm contemplating is letting heart of the main app start another application, a pre-loader, which will do a preliminary check that all resources are available and if they are will start the main application and if not will continue checking forever. This way the main app will be running on the failover node without interruption. I would do all the checks in the heart script itself but I believe it will be easier using an erlang application. Does this sound reasonable? </p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "laravel"
+            ],
+            "owner": {
+                "reputation": 133,
+                "user_id": 554529,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/de7268dd260443edce979f99a04b8d36?s=128&d=identicon&r=PG",
+                "display_name": "jhine",
+                "link": "https://stackoverflow.com/users/554529/jhine"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524192242,
+            "creation_date": 1524172916,
+            "question_id": 49930439,
+            "body_markdown": "I appreciate this question does appear on here many times, however after looking through the answers and attempting to resolve the issue, it unfortunately still persists.\r\n\r\nI am using the [Caffeinated Modules for Laravel][1] package with Laravel 5.6. I have created a User module which contains the following.\r\n\r\n**UserTableSeeder** App/Modules/User/Database/Seeds/UserTableSeeder.php\r\n\r\n    &lt;?php\r\n    \r\n    namespace App\\Modules\\User\\Database\\Seeds;\r\n    \r\n    use Illuminate\\Database\\Seeder;\r\n    use App\\Modules\\User\\Models\\User;\r\n    \r\n    class UserTableSeeder extends Seeder\r\n    {\r\n        /**\r\n         * Run the database seeds.\r\n         *\r\n         * @return void\r\n         */\r\n        public function run()\r\n        {\r\n            factory(User::class, 3)-&gt;create();\r\n        }\r\n    }\r\n\r\n**UserFactory** App/Modules/User/Database/Factories/UserFactory.php\r\n\r\n    &lt;?php\r\n    \r\n    use Faker\\Generator as Faker;\r\n    \r\n    use App\\Modules\\User\\Models\\User;\r\n    \r\n    /*\r\n    |--------------------------------------------------------------------------\r\n    | Model Factories\r\n    |--------------------------------------------------------------------------\r\n    |\r\n    | This directory should contain each of the model factory definitions for\r\n    | your application. Factories provide a convenient way to generate new\r\n    | model instances for testing / seeding your application&#39;s database.\r\n    |\r\n    */\r\n    \r\n    $factory-&gt;define(User::class, function (Faker $faker) {\r\n        return [\r\n            &#39;name&#39; =&gt; $faker-&gt;name,\r\n            &#39;email&#39; =&gt; $faker-&gt;unique()-&gt;safeEmail,\r\n            &#39;password&#39; =&gt; &#39;$2y$10$TKh8H1.PfQx37YgCzwiKb.KjNyWgaHb9cbcoQgdIVFlYg7B77UdFm&#39;, // secret\r\n            &#39;remember_token&#39; =&gt; str_random(10),\r\n        ];\r\n    });\r\n\r\n**UserDatabaseSeeder** App/Modules/User/Database/Seeds/UserDatabaseSeeder.php\r\n\r\n    &lt;?php\r\n    \r\n    namespace App\\Modules\\User\\Database\\Seeds;\r\n    \r\n    use Illuminate\\Database\\Seeder;\r\n    \r\n    class UserDatabaseSeeder extends Seeder\r\n    {\r\n        public function run()\r\n        {\r\n            $this-&gt;call(UserTableSeeder::class);\r\n        }\r\n    }\r\n\r\n**User** App/Modules/User/Models/User.php\r\n\r\n    &lt;?php\r\n    \r\n    namespace App\\Modules\\User\\Models;\r\n    \r\n    use Illuminate\\Notifications\\Notifiable;\r\n    use Illuminate\\Foundation\\Auth\\User as Authenticatable;\r\n    \r\n    class User extends Authenticatable\r\n    {\r\n        use Notifiable;\r\n    \r\n        /**\r\n         * The attributes that are mass assignable.\r\n         *\r\n         * @var array\r\n         */\r\n        protected $fillable = [\r\n            &#39;name&#39;, &#39;email&#39;, &#39;password&#39;,\r\n        ];\r\n    \r\n        /**\r\n         * The attributes that should be hidden for arrays.\r\n         *\r\n         * @var array\r\n         */\r\n        protected $hidden = [\r\n            &#39;password&#39;, &#39;remember_token&#39;,\r\n        ];\r\n    }\r\n\r\nWhen I run \r\n\r\n&gt; php artisan module:seed\r\n\r\nthe **UserDatabaseSeeder** calls the **UserTableSeeder** but produces the following error message:\r\n\r\n&gt; Seeding: App\\Modules\\User\\Database\\Seeds\\UserTableSeeder\r\n&gt; \r\n&gt;    InvalidArgumentException  : Unable to locate factory with name\r\n&gt; [default] [App\\Modules\\User\\Models\\User].\r\n\r\nAny help is much appreciated.\r\n\r\n  [1]: https://github.com/caffeinated/modules\r\n",
+            "link": "https://stackoverflow.com/questions/49930439/laravel-caffeinated-modules-model-factory-unable-to-locate-factory-with-name",
+            "title": "Laravel Caffeinated Modules Model Factory - Unable to locate factory with name",
+            "body": "<p>I appreciate this question does appear on here many times, however after looking through the answers and attempting to resolve the issue, it unfortunately still persists.</p>\n\n<p>I am using the <a href=\"https://github.com/caffeinated/modules\" rel=\"nofollow noreferrer\">Caffeinated Modules for Laravel</a> package with Laravel 5.6. I have created a User module which contains the following.</p>\n\n<p><strong>UserTableSeeder</strong> App/Modules/User/Database/Seeds/UserTableSeeder.php</p>\n\n<pre><code>&lt;?php\n\nnamespace App\\Modules\\User\\Database\\Seeds;\n\nuse Illuminate\\Database\\Seeder;\nuse App\\Modules\\User\\Models\\User;\n\nclass UserTableSeeder extends Seeder\n{\n    /**\n     * Run the database seeds.\n     *\n     * @return void\n     */\n    public function run()\n    {\n        factory(User::class, 3)-&gt;create();\n    }\n}\n</code></pre>\n\n<p><strong>UserFactory</strong> App/Modules/User/Database/Factories/UserFactory.php</p>\n\n<pre><code>&lt;?php\n\nuse Faker\\Generator as Faker;\n\nuse App\\Modules\\User\\Models\\User;\n\n/*\n|--------------------------------------------------------------------------\n| Model Factories\n|--------------------------------------------------------------------------\n|\n| This directory should contain each of the model factory definitions for\n| your application. Factories provide a convenient way to generate new\n| model instances for testing / seeding your application's database.\n|\n*/\n\n$factory-&gt;define(User::class, function (Faker $faker) {\n    return [\n        'name' =&gt; $faker-&gt;name,\n        'email' =&gt; $faker-&gt;unique()-&gt;safeEmail,\n        'password' =&gt; '$2y$10$TKh8H1.PfQx37YgCzwiKb.KjNyWgaHb9cbcoQgdIVFlYg7B77UdFm', // secret\n        'remember_token' =&gt; str_random(10),\n    ];\n});\n</code></pre>\n\n<p><strong>UserDatabaseSeeder</strong> App/Modules/User/Database/Seeds/UserDatabaseSeeder.php</p>\n\n<pre><code>&lt;?php\n\nnamespace App\\Modules\\User\\Database\\Seeds;\n\nuse Illuminate\\Database\\Seeder;\n\nclass UserDatabaseSeeder extends Seeder\n{\n    public function run()\n    {\n        $this-&gt;call(UserTableSeeder::class);\n    }\n}\n</code></pre>\n\n<p><strong>User</strong> App/Modules/User/Models/User.php</p>\n\n<pre><code>&lt;?php\n\nnamespace App\\Modules\\User\\Models;\n\nuse Illuminate\\Notifications\\Notifiable;\nuse Illuminate\\Foundation\\Auth\\User as Authenticatable;\n\nclass User extends Authenticatable\n{\n    use Notifiable;\n\n    /**\n     * The attributes that are mass assignable.\n     *\n     * @var array\n     */\n    protected $fillable = [\n        'name', 'email', 'password',\n    ];\n\n    /**\n     * The attributes that should be hidden for arrays.\n     *\n     * @var array\n     */\n    protected $hidden = [\n        'password', 'remember_token',\n    ];\n}\n</code></pre>\n\n<p>When I run </p>\n\n<blockquote>\n  <p>php artisan module:seed</p>\n</blockquote>\n\n<p>the <strong>UserDatabaseSeeder</strong> calls the <strong>UserTableSeeder</strong> but produces the following error message:</p>\n\n<blockquote>\n  <p>Seeding: App\\Modules\\User\\Database\\Seeds\\UserTableSeeder</p>\n  \n  <p>InvalidArgumentException  : Unable to locate factory with name\n  [default] [App\\Modules\\User\\Models\\User].</p>\n</blockquote>\n\n<p>Any help is much appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "ruby",
+                "azure",
+                "tiny-tds"
+            ],
+            "owner": {
+                "reputation": 636,
+                "user_id": 393545,
+                "user_type": "registered",
+                "accept_rate": 58,
+                "profile_image": "https://www.gravatar.com/avatar/e32d4bbe6ef4433b7afe21a9ae45d720?s=128&d=identicon&r=PG",
+                "display_name": "patschiboy",
+                "link": "https://stackoverflow.com/users/393545/patschiboy"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524192227,
+            "creation_date": 1524192227,
+            "question_id": 49933105,
+            "body_markdown": "I was given credentials to access an Azure SQL Database and am trying to connect via TinyTds:\r\n\r\n\r\n    #!/usr/bin/env ruby\r\n\r\n    require &#39;tiny_tds&#39;\r\n    server = &#39;xxx.database.windows.net&#39;\r\n    database = &#39;yyysqldb03&#39;\r\n    username = &#39;firstname.lastname@company.onmicrosoft.com&#39;\r\n    password = &#39;zzzz&#39;\r\n    client = TinyTds::Client.new username: username, password: password, \r\n      host: server, port: 1433, database: database, azure: true\r\n\r\n\r\nBut I am always getting an error as it seems the username is interpreted as containing the DB server name after the &#39;@&#39;, yet I am told I need to authenticate with this username (aka an Email address) as is:\r\n\r\n&lt;pre&gt;\r\nruby-2.5.1/gems/tiny_tds-2.1.1/lib/tiny_tds/client.rb:60:in `connect&#39;:\r\n Cannot open server &quot;company.onmicrosoft.com&quot; requested by the login.The login failed. (TinyTds::Error)\r\n&lt;/pre&gt;\r\n\r\nAny ideas ?\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49933105/tinytds-problems-connecting-to-azure-sql-database-using-in-username",
+            "title": "TinyTds - problems connecting to Azure SQL database using &#39;@&#39; in username",
+            "body": "<p>I was given credentials to access an Azure SQL Database and am trying to connect via TinyTds:</p>\n\n<pre><code>#!/usr/bin/env ruby\n\nrequire 'tiny_tds'\nserver = 'xxx.database.windows.net'\ndatabase = 'yyysqldb03'\nusername = 'firstname.lastname@company.onmicrosoft.com'\npassword = 'zzzz'\nclient = TinyTds::Client.new username: username, password: password, \n  host: server, port: 1433, database: database, azure: true\n</code></pre>\n\n<p>But I am always getting an error as it seems the username is interpreted as containing the DB server name after the '@', yet I am told I need to authenticate with this username (aka an Email address) as is:</p>\n\n<pre>\nruby-2.5.1/gems/tiny_tds-2.1.1/lib/tiny_tds/client.rb:60:in `connect':\n Cannot open server \"company.onmicrosoft.com\" requested by the login.The login failed. (TinyTds::Error)\n</pre>\n\n<p>Any ideas ?</p>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "user-interface",
+                "wxwidgets"
+            ],
+            "owner": {
+                "reputation": 32,
+                "user_id": 9178490,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://www.gravatar.com/avatar/f73720385a3dfb05fb833ee4644b7e9d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "aromahola",
+                "link": "https://stackoverflow.com/users/9178490/aromahola"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1524192225,
+            "creation_date": 1524192225,
+            "question_id": 49933104,
+            "body_markdown": "\r\n\r\nI want to display a hyperlink with grey colour. I switched from `wxHyperlinkCtrl` to  `wxGenericHyperlinkCtrl` as colour change was not working in `wxHyperlinkCtrl`.\r\n\r\n    m_hyperLinkOption = new wxGenericHyperlinkCtrl(m_panel, wxID_ANY, &quot;Click this link&quot;, wxT(&quot;&quot;), wxDefaultPosition, wxSize(135, wxDefaultSize.GetHeight()));\r\n\t\tm_hyperLinkOption -&gt;SetNormalColour(wxColour(47,79,79));\r\n\t\tm_hyperLinkOption -&gt;SetVisitedColour(wxColour(112, 128, 144));\r\n\t\tm_hyperLinkOption -&gt;SetHoverColour(wxColour(128, 128, 128));\r\n\r\nNow in `wxGenericHyperlinkCtrl`, I am able to change colour. But underline is missing, how can I add a underline here?\r\n\t",
+            "link": "https://stackoverflow.com/questions/49933104/how-to-display-underline-in-wxgenerichyperlinkctrl",
+            "title": "How to display underline in wxGenericHyperlinkCtrl?",
+            "body": "<p>I want to display a hyperlink with grey colour. I switched from <code>wxHyperlinkCtrl</code> to  <code>wxGenericHyperlinkCtrl</code> as colour change was not working in <code>wxHyperlinkCtrl</code>.</p>\n\n<pre><code>m_hyperLinkOption = new wxGenericHyperlinkCtrl(m_panel, wxID_ANY, \"Click this link\", wxT(\"\"), wxDefaultPosition, wxSize(135, wxDefaultSize.GetHeight()));\n    m_hyperLinkOption -&gt;SetNormalColour(wxColour(47,79,79));\n    m_hyperLinkOption -&gt;SetVisitedColour(wxColour(112, 128, 144));\n    m_hyperLinkOption -&gt;SetHoverColour(wxColour(128, 128, 128));\n</code></pre>\n\n<p>Now in <code>wxGenericHyperlinkCtrl</code>, I am able to change colour. But underline is missing, how can I add a underline here?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "bytebuffer"
+            ],
+            "owner": {
+                "reputation": 2896,
+                "user_id": 195625,
+                "user_type": "registered",
+                "accept_rate": 72,
+                "profile_image": "https://www.gravatar.com/avatar/82372e3f83e9807210ae3ea8e9965950?s=128&d=identicon&r=PG",
+                "display_name": "Seth",
+                "link": "https://stackoverflow.com/users/195625/seth"
+            },
+            "is_answered": true,
+            "view_count": 31231,
+            "accepted_answer_id": 1774663,
+            "answer_count": 8,
+            "score": 33,
+            "last_activity_date": 1524192186,
+            "creation_date": 1258782842,
+            "last_edit_date": 1418515722,
+            "question_id": 1774651,
+            "body_markdown": "Has anyone has ever seen an implementation of java.nio.ByteBuffer that will grow dynamically if a putX() call overruns the capacity?\r\n\r\nThe reason I want to do it this way is twofold:\r\n\r\n 1. I don&#39;t know how much space I need ahead of time.\r\n 2. I&#39;d rather not do a new ByteBuffer.allocate() then a bulk put() every time I run out of space.",
+            "link": "https://stackoverflow.com/questions/1774651/growing-bytebuffer",
+            "title": "Growing ByteBuffer",
+            "body": "<p>Has anyone has ever seen an implementation of java.nio.ByteBuffer that will grow dynamically if a putX() call overruns the capacity?</p>\n\n<p>The reason I want to do it this way is twofold:</p>\n\n<ol>\n<li>I don't know how much space I need ahead of time.</li>\n<li>I'd rather not do a new ByteBuffer.allocate() then a bulk put() every time I run out of space.</li>\n</ol>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "tensorflow",
+                "deep-learning"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 2446555,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2375306d7528180e1f5d3e56bb32fe80?s=128&d=identicon&r=PG",
+                "display_name": "sabaridip",
+                "link": "https://stackoverflow.com/users/2446555/sabaridip"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1524192182,
+            "creation_date": 1524192182,
+            "question_id": 49933099,
+            "body_markdown": "https://github.com/eragonruan/text-detection-ctpn/blob/master/ctpn/demo.py  \r\n\r\n**from lib.networks.factory import get_network  ModuleNotFoundError: No module named &#39;lib.networks&#39;**",
+            "link": "https://stackoverflow.com/questions/49933099/when-i-am-running-the-below-code-i-am-getting-lib-network-is-not-found",
+            "title": "When i am running the below code? i am getting lib.network is not found",
+            "body": "<p><a href=\"https://github.com/eragonruan/text-detection-ctpn/blob/master/ctpn/demo.py\" rel=\"nofollow noreferrer\">https://github.com/eragonruan/text-detection-ctpn/blob/master/ctpn/demo.py</a>  </p>\n\n<p><strong>from lib.networks.factory import get_network  ModuleNotFoundError: No module named 'lib.networks'</strong></p>\n"
+        },
+        {
+            "tags": [
+                "node.js",
+                "postgresql",
+                "aggregate",
+                "graphql"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 4531099,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-t4BgYp-D4CU/AAAAAAAAAAI/AAAAAAAAFfw/zqbQxN9dgO4/photo.jpg?sz=128",
+                "display_name": "Suraj Mistry",
+                "link": "https://stackoverflow.com/users/4531099/suraj-mistry"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524192178,
+            "creation_date": 1524192178,
+            "question_id": 49933098,
+            "body_markdown": "Just migrating an API from PostgraphQL (postgres + graphql) to GraphQL SDL and I need to emulate a query that implements aggregate (min, max, sum, avg, variance) and date_trunc.  \r\n\r\nI&#39;ve found a few solutions to aggregate down to a singular value, but nothing with regards to aggregating over time and then values after that returning summary reports for each day, ie: \r\n\r\n```SELECT date_trunc(&#39;day&#39;, time), avg(value) FROM measured_data;```\r\n\r\n\r\nAny pointers or suggestions more than welcome,\r\n\r\nCheers",
+            "link": "https://stackoverflow.com/questions/49933098/graphql-date-trunc-and-aggregates",
+            "title": "GraphQL date_trunc and aggregates",
+            "body": "<p>Just migrating an API from PostgraphQL (postgres + graphql) to GraphQL SDL and I need to emulate a query that implements aggregate (min, max, sum, avg, variance) and date_trunc.  </p>\n\n<p>I've found a few solutions to aggregate down to a singular value, but nothing with regards to aggregating over time and then values after that returning summary reports for each day, ie: </p>\n\n<p><code>SELECT date_trunc('day', time), avg(value) FROM measured_data;</code></p>\n\n<p>Any pointers or suggestions more than welcome,</p>\n\n<p>Cheers</p>\n"
+        },
+        {
+            "tags": [
+                ".net",
+                "iis-6",
+                "machine.config"
+            ],
+            "owner": {
+                "reputation": 1703,
+                "user_id": 537090,
+                "user_type": "registered",
+                "accept_rate": 70,
+                "profile_image": "https://graph.facebook.com/100000497451095/picture?type=large",
+                "display_name": "slash shogdhe",
+                "link": "https://stackoverflow.com/users/537090/slash-shogdhe"
+            },
+            "is_answered": false,
+            "view_count": 8467,
+            "answer_count": 1,
+            "score": 4,
+            "last_activity_date": 1524192157,
+            "creation_date": 1329373574,
+            "last_edit_date": 1329376730,
+            "question_id": 9306542,
+            "body_markdown": "My application is running on `windows server 2000` and `IIS 6`.\r\nUp until this morning the application was working fine. But now I&#39;m getting the error below:\r\n\r\n\r\n    Configuration Error \r\n    Description: An error occurred during the processing of a configuration file required to service this request. Please review the specific error details below and modify your configuration file appropriately. \r\n    \r\n    Parser Error Message: An error occurred loading a configuration file: Access to the path &#39;C:\\WINDOWS\\Microsoft.NET\\Framework\\v4.0.30319\\Config\\machine.config&#39; is denied.\r\n    \r\n    Source Error: \r\n    \r\n    \r\n    [No relevant source lines]\r\n     \r\n    \r\n    Source File: C:\\WINDOWS\\Microsoft.NET\\Framework\\v4.0.30319\\Config\\machine.config    Line: 0 \r\n    \r\n    \r\n    --------------------------------------------------------------------------------\r\n    Version Information: Microsoft .NET Framework Version:4.0.30319; ASP.NET Version:4.0.30319.272\r\n\r\nDoes anyone know what&#39;s going on?",
+            "link": "https://stackoverflow.com/questions/9306542/machine-config-is-denied",
+            "title": "machine.config&#39; is denied",
+            "body": "<p>My application is running on <code>windows server 2000</code> and <code>IIS 6</code>.\nUp until this morning the application was working fine. But now I'm getting the error below:</p>\n\n<pre><code>Configuration Error \nDescription: An error occurred during the processing of a configuration file required to service this request. Please review the specific error details below and modify your configuration file appropriately. \n\nParser Error Message: An error occurred loading a configuration file: Access to the path 'C:\\WINDOWS\\Microsoft.NET\\Framework\\v4.0.30319\\Config\\machine.config' is denied.\n\nSource Error: \n\n\n[No relevant source lines]\n\n\nSource File: C:\\WINDOWS\\Microsoft.NET\\Framework\\v4.0.30319\\Config\\machine.config    Line: 0 \n\n\n--------------------------------------------------------------------------------\nVersion Information: Microsoft .NET Framework Version:4.0.30319; ASP.NET Version:4.0.30319.272\n</code></pre>\n\n<p>Does anyone know what's going on?</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "audio",
+                "volume"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 1329017,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/261a4cb24b90b30338e8b9c92fc14b97?s=128&d=identicon&r=PG",
+                "display_name": "Feng",
+                "link": "https://stackoverflow.com/users/1329017/feng"
+            },
+            "is_answered": false,
+            "view_count": 16280,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1524192157,
+            "creation_date": 1334232503,
+            "last_edit_date": 1503053319,
+            "question_id": 10123264,
+            "body_markdown": "Once I did dig into Android programing and find the interface `AudioTrack.setStereoVolume(lv,rv)` to set the output audio power.  But the problem is that  it just adjusts the volume within the range that the cellphone vendor specifies in its system. \r\n\r\nHow can I change that range within the Android system with NDK or something else? I want to make my phone able to output more power to help people with weak hearing to catch music or ringtone.",
+            "link": "https://stackoverflow.com/questions/10123264/how-to-increase-the-maximum-audio-output-power",
+            "title": "How to increase the maximum audio output power",
+            "body": "<p>Once I did dig into Android programing and find the interface <code>AudioTrack.setStereoVolume(lv,rv)</code> to set the output audio power.  But the problem is that  it just adjusts the volume within the range that the cellphone vendor specifies in its system. </p>\n\n<p>How can I change that range within the Android system with NDK or something else? I want to make my phone able to output more power to help people with weak hearing to catch music or ringtone.</p>\n"
+        },
+        {
+            "tags": [
+                "unique",
+                "identity",
+                "teradata"
+            ],
+            "owner": {
+                "reputation": 3284,
+                "user_id": 701346,
+                "user_type": "registered",
+                "accept_rate": 68,
+                "profile_image": "https://www.gravatar.com/avatar/6ca406754f72b28508bd1636a3b335b2?s=128&d=identicon&r=PG",
+                "display_name": "oscilatingcretin",
+                "link": "https://stackoverflow.com/users/701346/oscilatingcretin"
+            },
+            "is_answered": false,
+            "view_count": 9333,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524192157,
+            "creation_date": 1343675202,
+            "question_id": 11727972,
+            "body_markdown": "I created a table using the below definition for a Teradata identity column:\r\n\r\n&lt;pre&gt;\r\n      ID INTEGER GENERATED BY DEFAULT AS IDENTITY\r\n           (START WITH 1 \r\n            INCREMENT BY 1 \r\n            MINVALUE 0 \r\n            MAXVALUE 100000000 \r\n            NO CYCLE),\r\n----\r\n      UNIQUE PRIMARY INDEX ( ID )\r\n&lt;/pre&gt;\r\n\r\nFor several months, the ID column has been working properly, automatically generating a unique value for the column.  Over the past month, however, ELMAH has been *intermittently* reporting the following exception from our .NET 4.0 ASP.NET app:\r\n\r\n`Teradata.Client.Provider.TdException: [Teradata Database] [2801] Duplicate unique prime key error in DATABASENAME.TABLENAME.`\r\n\r\nI was able to replicate it by opening SQL Assistant and inserting a bunch of records into the table with raw SQL.  As expected, most of the time it would insert successfully, but other times it would throw the above exception.\r\n\r\nIt appears that this error is occuring because Teradata is trying to generate a value for this column that it has previously generated.\r\n\r\nDoes anyone have any idea how to get to the bottom of what&#39;s happening?  At the very least, I&#39;d like some way to debug the issue a bit deeper.",
+            "link": "https://stackoverflow.com/questions/11727972/teradata-identity-column-and-duplicate-unique-prime-key-error-in-dbname-tablena",
+            "title": "Teradata identity column and &quot;Duplicate unique prime key error in dbname.tablename&quot;",
+            "body": "<p>I created a table using the below definition for a Teradata identity column:</p>\n\n<pre>\n      ID INTEGER GENERATED BY DEFAULT AS IDENTITY\n           (START WITH 1 \n            INCREMENT BY 1 \n            MINVALUE 0 \n            MAXVALUE 100000000 \n            NO CYCLE),\n----\n      UNIQUE PRIMARY INDEX ( ID )\n</pre>\n\n<p>For several months, the ID column has been working properly, automatically generating a unique value for the column.  Over the past month, however, ELMAH has been <em>intermittently</em> reporting the following exception from our .NET 4.0 ASP.NET app:</p>\n\n<p><code>Teradata.Client.Provider.TdException: [Teradata Database] [2801] Duplicate unique prime key error in DATABASENAME.TABLENAME.</code></p>\n\n<p>I was able to replicate it by opening SQL Assistant and inserting a bunch of records into the table with raw SQL.  As expected, most of the time it would insert successfully, but other times it would throw the above exception.</p>\n\n<p>It appears that this error is occuring because Teradata is trying to generate a value for this column that it has previously generated.</p>\n\n<p>Does anyone have any idea how to get to the bottom of what's happening?  At the very least, I'd like some way to debug the issue a bit deeper.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "oracle",
+                "jpa",
+                "jdbc",
+                "spring-batch"
+            ],
+            "owner": {
+                "reputation": 215,
+                "user_id": 2377943,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/2f778ad2cc5ea1f8601ba0479a50ed2e?s=128&d=identicon&r=PG",
+                "display_name": "Nabil Salah",
+                "link": "https://stackoverflow.com/users/2377943/nabil-salah"
+            },
+            "is_answered": false,
+            "view_count": 9249,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1524192157,
+            "creation_date": 1446822004,
+            "last_edit_date": 1447061093,
+            "question_id": 33569623,
+            "body_markdown": "I have this error after executing my batch :\r\n\r\n    2015-11-06 15:45:32,179 [SchemaValidator                         ] ERROR | could not get database metadata\r\n    java.sql.SQLRecoverableException: Erreur d&#39;E/S: Socket read timed out\r\n    \tat oracle.jdbc.driver.T4CConnection.logon(T4CConnection.java:419)\r\n    \tat oracle.jdbc.driver.PhysicalConnection.&lt;init&gt;(PhysicalConnection.java:536)\r\n    \tat oracle.jdbc.driver.T4CConnection.&lt;init&gt;(T4CConnection.java:228)\r\n    \tat oracle.jdbc.driver.T4CDriverExtension.getConnection(T4CDriverExtension.java:32)\r\n    \tat oracle.jdbc.driver.OracleDriver.connect(OracleDriver.java:521)\r\n    \tat java.sql.DriverManager.getConnection(DriverManager.java:571)\r\n    \tat java.sql.DriverManager.getConnection(DriverManager.java:187)\r\n    \tat org.springframework.jdbc.datasource.DriverManagerDataSource.getConnectionFromDriverManager(DriverManagerDataSource.java:173)\r\n    \tat org.springframework.jdbc.datasource.DriverManagerDataSource.getConnectionFromDriver(DriverManagerDataSource.java:164)\r\n    \tat org.springframework.jdbc.datasource.AbstractDriverBasedDataSource.getConnectionFromDriver(AbstractDriverBasedDataSource.java:149)\r\n    \tat org.springframework.jdbc.datasource.AbstractDriverBasedDataSource.getConnection(AbstractDriverBasedDataSource.java:119)\r\n    \tat org.hibernate.ejb.connection.InjectedDataSourceConnectionProvider.getConnection(InjectedDataSourceConnectionProvider.java:46)\r\n    \tat org.hibernate.tool.hbm2ddl.SuppliedConnectionProviderConnectionHelper.prepare(SuppliedConnectionProviderConnectionHelper.java:51)\r\n    \tat org.hibernate.tool.hbm2ddl.SchemaValidator.validate(SchemaValidator.java:130)\r\n    \tat org.hibernate.impl.SessionFactoryImpl.&lt;init&gt;(SessionFactoryImpl.java:349)\r\n    \tat org.hibernate.cfg.Configuration.buildSessionFactory(Configuration.java:1327)\r\n    \tat org.hibernate.cfg.AnnotationConfiguration.buildSessionFactory(AnnotationConfiguration.java:867)\r\n    \tat org.hibernate.ejb.Ejb3Configuration.buildEntityManagerFactory(Ejb3Configuration.java:669)\r\n    \tat org.hibernate.ejb.HibernatePersistence.createContainerEntityManagerFactory(HibernatePersistence.java:132)\r\n    \tat org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:225)\r\n    \tat org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.afterPropertiesSet(AbstractEntityManagerFactoryBean.java:308)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1477)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1417)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:519)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:456)\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory$1.getObject(AbstractBeanFactory.java:291)\r\n    \tat org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:222)\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:288)\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:190)\r\n    \tat org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:322)\r\n    \tat org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:106)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyPropertyValues(AbstractAutowireCapableBeanFactory.java:1325)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1086)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:517)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:456)\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory$1.getObject(AbstractBeanFactory.java:291)\r\n    \tat org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:222)\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:288)\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:190)\r\n    \tat org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:322)\r\n    \tat org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:106)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyPropertyValues(AbstractAutowireCapableBeanFactory.java:1325)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1086)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:517)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:456)\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory$1.getObject(AbstractBeanFactory.java:291)\r\n    \tat org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:222)\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:288)\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:190)\r\n    \tat org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:322)\r\n    \tat org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:106)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyPropertyValues(AbstractAutowireCapableBeanFactory.java:1325)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1086)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:517)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:456)\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory$1.getObject(AbstractBeanFactory.java:291)\r\n    \tat org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:222)\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:288)\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:190)\r\n    \tat org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:580)\r\n    \tat org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:895)\r\n    \tat org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:425)\r\n    \tat org.springframework.context.support.ClassPathXmlApplicationContext.&lt;init&gt;(ClassPathXmlApplicationContext.java:139)\r\n    \tat org.springframework.context.support.ClassPathXmlApplicationContext.&lt;init&gt;(ClassPathXmlApplicationContext.java:83)\r\n    \tat org.springframework.batch.core.launch.support.CommandLineJobRunner.start(CommandLineJobRunner.java:282)\r\n    \tat org.springframework.batch.core.launch.support.CommandLineJobRunner.main(CommandLineJobRunner.java:574)\r\n    Caused by: oracle.net.ns.NetException: Socket read timed out\r\n    \tat oracle.net.ns.Packet.receive(Packet.java:321)\r\n    \tat oracle.net.ns.DataPacket.receive(DataPacket.java:103)\r\n    \tat oracle.net.ns.NetInputStream.getNextPacket(NetInputStream.java:230)\r\n    \tat oracle.net.ns.NetInputStream.read(NetInputStream.java:175)\r\n    \tat oracle.net.ns.NetInputStream.read(NetInputStream.java:100)\r\n    \tat oracle.net.ns.Packet.extractData(Packet.java:423)\r\n    \tat oracle.net.ns.AcceptPacket.&lt;init&gt;(AcceptPacket.java:136)\r\n    \tat oracle.net.ns.NSProtocol.connect(NSProtocol.java:312)\r\n    \tat oracle.jdbc.driver.T4CConnection.connect(T4CConnection.java:1054)\r\n    \tat oracle.jdbc.driver.T4CConnection.logon(T4CConnection.java:308)\r\n\r\nThis my DB configuration from a .properties :\r\n\r\n    batch.jdbc.driver=oracle.jdbc.driver.OracleDriver\r\n    batch.jdbc.url=jdbc:oracle:thin:@*********:****/*****\r\n    batch.jdbc.user=*****\r\n    batch.jdbc.pwd=*****\r\nand this is the config.xml :\r\n\r\n    &lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;\r\n    &lt;beans xmlns=&quot;http://www.springframework.org/schema/beans&quot;\r\n    \txmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;\r\n    \txmlns:util=&quot;http://www.springframework.org/schema/util&quot;\r\n    \txsi:schemaLocation=&quot;http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd\r\n    \thttp://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd&quot;&gt;\r\n    \r\n    \t&lt;bean id=&quot;dataSourceCredentialsProvider&quot;\r\n    \t\tclass=&quot;com.natixis.sphinx.security.credentials.AlcasarCredentialsProvider&quot;&gt;\r\n    \t\t&lt;property name=&quot;ldapEntry&quot; value=&quot;${batch.jdbc.ldapEntry}&quot; /&gt;\r\n    \t\t&lt;property name=&quot;application&quot; ref=&quot;application&quot; /&gt;\r\n    \t&lt;/bean&gt;\r\n    \t\r\n    \t&lt;bean id=&quot;dataSource&quot;\r\n    \t\tclass=&quot;org.springframework.jdbc.datasource.DriverManagerDataSource&quot;&gt;\r\n    \t\t&lt;property name=&quot;driverClassName&quot;\r\n    \t\t\tvalue=&quot;oracle.jdbc.driver.OracleDriver&quot; /&gt;\r\n    \t\t&lt;property name=&quot;url&quot; value=&quot;${batch.jdbc.url}&quot; /&gt;\r\n    \t\t&lt;property name=&quot;username&quot; value=&quot;${batch.jdbc.user}&quot; /&gt;\r\n    \t\t&lt;property name=&quot;password&quot; value=&quot;${batch.jdbc.pwd}&quot; /&gt;\r\n    \t&lt;/bean&gt;\r\n    \r\n    \t&lt;!-- Transaction manager for a single JPA EntityManagerFactory (alternative to JTA) --&gt;\r\n    \t&lt;bean id=&quot;transactionManager&quot;\r\n    \t\tclass=&quot;org.springframework.orm.jpa.JpaTransactionManager&quot;&gt;\r\n    \t\t&lt;property name=&quot;entityManagerFactory&quot;\r\n    \t\t\tref=&quot;entityManagerFactory&quot; /&gt;\r\n    \t&lt;/bean&gt;\r\n    \r\n    \t&lt;!-- Spring Configuration Entity Manager Factory --&gt;\r\n    \t&lt;bean id=&quot;entityManagerFactory&quot;\r\n    \t\tclass=&quot;org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean&quot;&gt;\r\n    \t\t\r\n    \t\t&lt;property name=&quot;jpaVendorAdapter&quot;&gt;\r\n    \t\t\t&lt;bean\r\n    \t\t\t\tclass=&quot;org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter&quot; /&gt;\r\n    \t\t&lt;/property&gt;\r\n    \t\t&lt;property name=&quot;jpaPropertyMap&quot;&gt;\r\n    \t\t\t&lt;map&gt;\r\n    \t\t\t\t&lt;entry key=&quot;hibernate.cache.use_second_level_cache&quot;\r\n    \t\t\t\t\tvalue=&quot;true&quot; /&gt;\r\n    \t\t\t\t&lt;entry key=&quot;hibernate.cache.use_query_cache&quot;\r\n    \t\t\t\t\tvalue=&quot;true&quot; /&gt;\r\n    \t\t\t\t&lt;entry key=&quot;hibernate.cache.provider_class&quot;\r\n    \t\t\t\t\tvalue=&quot;net.sf.ehcache.hibernate.SingletonEhCacheProvider&quot; /&gt;\r\n    \t\t\t\t&lt;entry key=&quot;hibernate.show_sql&quot; value=&quot;true&quot; /&gt;\r\n    \t\t\t\t&lt;entry key=&quot;hibernate.use_sql_comments&quot; value=&quot;false&quot; /&gt;\r\n    \t\t\t\t&lt;entry key=&quot;hibernate.format_sql&quot; value=&quot;false&quot; /&gt;\r\n    \t\t\t\t&lt;entry key=&quot;hibernate.hbm2ddl.auto&quot; value=&quot;validate&quot; /&gt;\r\n    \t\t\t\t&lt;entry key=&quot;hibernate.dialect&quot;\r\n    \t\t\t\t\tvalue=&quot;org.hibernate.dialect.Oracle10gDialect&quot; /&gt;\r\n    \t\t\t\t&lt;entry key=&quot;hibernate.temp.use_jdbc_metadata_defaults&quot;\r\n    \t\t\t\t\tvalue=&quot;false&quot; /&gt;\r\n    \t\t\t&lt;/map&gt;\r\n    \t\t&lt;/property&gt;\r\n    \t\t&lt;property name=&quot;dataSource&quot; ref=&quot;dataSource&quot; /&gt;\r\n    \t&lt;/bean&gt;\r\n    \t&lt;bean id=&quot;namedParameterJdbcTemplate&quot;\r\n    \t\tclass=&quot;org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate&quot;&gt;\r\n    \t\t&lt;constructor-arg ref=&quot;template&quot; /&gt;\r\n    \t&lt;/bean&gt;\r\n    \t&lt;bean id=&quot;template&quot;\r\n    \t\tclass=&quot;org.springframework.jdbc.core.JdbcTemplate&quot;&gt;\r\n    \t\t&lt;property name=&quot;dataSource&quot; ref=&quot;dataSource&quot; /&gt;\r\n    \t\t&lt;!-- &lt;property name=&quot;fetchSize&quot; value=&quot;#{pageSize+1}&quot; /&gt; --&gt;\r\n    \t&lt;/bean&gt;\r\n    \t\r\n    &lt;/beans&gt;\r\n\r\nActually I could access easily to our local web application, and I could see in logs the connection trace to DB, but it is not the case for the batch.\r\n\r\nWhat I notice in the logs before throwing the error, it get stuck some seconds at this log level : \r\n\r\n    2015-11-09 09:56:55,728 [DozerBeanMapper                         ] INFO  | Initializing a new instance of the dozer bean mapper.\r\n\r\nAnd after I have this :\r\n\r\n    2015-11-09 09:57:59,227 [JDBCExceptionReporter                   ] WARN  | SQL Error: 17002, SQLState: 08006\r\n    2015-11-09 09:57:59,227 [JDBCExceptionReporter                   ] ERROR | Erreur d&#39;E/S: Socket read timed out\r\n    2015-11-09 09:57:59,232 [CommandLineJobRunner                    ] ERROR | Job Terminated in error: Could not open JPA EntityManager for transaction; nested exception is javax.persistence.PersistenceException: org.hibernate.exception.JDBCConnectionException: Cannot open connection\r\n    org.springframework.transaction.CannotCreateTransactionException: Could not open JPA EntityManager for transaction; nested exception is javax.persistence.PersistenceException: org.hibernate.exception.JDBCConnectionException: Cannot open connection\r\n\r\nAny help ?",
+            "link": "https://stackoverflow.com/questions/33569623/oracle-net-ns-netexception-socket-read-timed-out",
+            "title": "oracle.net.ns.NetException: Socket read timed out",
+            "body": "<p>I have this error after executing my batch :</p>\n\n<pre><code>2015-11-06 15:45:32,179 [SchemaValidator                         ] ERROR | could not get database metadata\njava.sql.SQLRecoverableException: Erreur d'E/S: Socket read timed out\n    at oracle.jdbc.driver.T4CConnection.logon(T4CConnection.java:419)\n    at oracle.jdbc.driver.PhysicalConnection.&lt;init&gt;(PhysicalConnection.java:536)\n    at oracle.jdbc.driver.T4CConnection.&lt;init&gt;(T4CConnection.java:228)\n    at oracle.jdbc.driver.T4CDriverExtension.getConnection(T4CDriverExtension.java:32)\n    at oracle.jdbc.driver.OracleDriver.connect(OracleDriver.java:521)\n    at java.sql.DriverManager.getConnection(DriverManager.java:571)\n    at java.sql.DriverManager.getConnection(DriverManager.java:187)\n    at org.springframework.jdbc.datasource.DriverManagerDataSource.getConnectionFromDriverManager(DriverManagerDataSource.java:173)\n    at org.springframework.jdbc.datasource.DriverManagerDataSource.getConnectionFromDriver(DriverManagerDataSource.java:164)\n    at org.springframework.jdbc.datasource.AbstractDriverBasedDataSource.getConnectionFromDriver(AbstractDriverBasedDataSource.java:149)\n    at org.springframework.jdbc.datasource.AbstractDriverBasedDataSource.getConnection(AbstractDriverBasedDataSource.java:119)\n    at org.hibernate.ejb.connection.InjectedDataSourceConnectionProvider.getConnection(InjectedDataSourceConnectionProvider.java:46)\n    at org.hibernate.tool.hbm2ddl.SuppliedConnectionProviderConnectionHelper.prepare(SuppliedConnectionProviderConnectionHelper.java:51)\n    at org.hibernate.tool.hbm2ddl.SchemaValidator.validate(SchemaValidator.java:130)\n    at org.hibernate.impl.SessionFactoryImpl.&lt;init&gt;(SessionFactoryImpl.java:349)\n    at org.hibernate.cfg.Configuration.buildSessionFactory(Configuration.java:1327)\n    at org.hibernate.cfg.AnnotationConfiguration.buildSessionFactory(AnnotationConfiguration.java:867)\n    at org.hibernate.ejb.Ejb3Configuration.buildEntityManagerFactory(Ejb3Configuration.java:669)\n    at org.hibernate.ejb.HibernatePersistence.createContainerEntityManagerFactory(HibernatePersistence.java:132)\n    at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:225)\n    at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.afterPropertiesSet(AbstractEntityManagerFactoryBean.java:308)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1477)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1417)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:519)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:456)\n    at org.springframework.beans.factory.support.AbstractBeanFactory$1.getObject(AbstractBeanFactory.java:291)\n    at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:222)\n    at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:288)\n    at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:190)\n    at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:322)\n    at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:106)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyPropertyValues(AbstractAutowireCapableBeanFactory.java:1325)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1086)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:517)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:456)\n    at org.springframework.beans.factory.support.AbstractBeanFactory$1.getObject(AbstractBeanFactory.java:291)\n    at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:222)\n    at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:288)\n    at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:190)\n    at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:322)\n    at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:106)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyPropertyValues(AbstractAutowireCapableBeanFactory.java:1325)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1086)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:517)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:456)\n    at org.springframework.beans.factory.support.AbstractBeanFactory$1.getObject(AbstractBeanFactory.java:291)\n    at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:222)\n    at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:288)\n    at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:190)\n    at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:322)\n    at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:106)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyPropertyValues(AbstractAutowireCapableBeanFactory.java:1325)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1086)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:517)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:456)\n    at org.springframework.beans.factory.support.AbstractBeanFactory$1.getObject(AbstractBeanFactory.java:291)\n    at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:222)\n    at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:288)\n    at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:190)\n    at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:580)\n    at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:895)\n    at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:425)\n    at org.springframework.context.support.ClassPathXmlApplicationContext.&lt;init&gt;(ClassPathXmlApplicationContext.java:139)\n    at org.springframework.context.support.ClassPathXmlApplicationContext.&lt;init&gt;(ClassPathXmlApplicationContext.java:83)\n    at org.springframework.batch.core.launch.support.CommandLineJobRunner.start(CommandLineJobRunner.java:282)\n    at org.springframework.batch.core.launch.support.CommandLineJobRunner.main(CommandLineJobRunner.java:574)\nCaused by: oracle.net.ns.NetException: Socket read timed out\n    at oracle.net.ns.Packet.receive(Packet.java:321)\n    at oracle.net.ns.DataPacket.receive(DataPacket.java:103)\n    at oracle.net.ns.NetInputStream.getNextPacket(NetInputStream.java:230)\n    at oracle.net.ns.NetInputStream.read(NetInputStream.java:175)\n    at oracle.net.ns.NetInputStream.read(NetInputStream.java:100)\n    at oracle.net.ns.Packet.extractData(Packet.java:423)\n    at oracle.net.ns.AcceptPacket.&lt;init&gt;(AcceptPacket.java:136)\n    at oracle.net.ns.NSProtocol.connect(NSProtocol.java:312)\n    at oracle.jdbc.driver.T4CConnection.connect(T4CConnection.java:1054)\n    at oracle.jdbc.driver.T4CConnection.logon(T4CConnection.java:308)\n</code></pre>\n\n<p>This my DB configuration from a .properties :</p>\n\n<pre><code>batch.jdbc.driver=oracle.jdbc.driver.OracleDriver\nbatch.jdbc.url=jdbc:oracle:thin:@*********:****/*****\nbatch.jdbc.user=*****\nbatch.jdbc.pwd=*****\n</code></pre>\n\n<p>and this is the config.xml :</p>\n\n<pre><code>&lt;?xml version=\"1.0\" encoding=\"UTF-8\"?&gt;\n&lt;beans xmlns=\"http://www.springframework.org/schema/beans\"\n    xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n    xmlns:util=\"http://www.springframework.org/schema/util\"\n    xsi:schemaLocation=\"http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd\n    http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd\"&gt;\n\n    &lt;bean id=\"dataSourceCredentialsProvider\"\n        class=\"com.natixis.sphinx.security.credentials.AlcasarCredentialsProvider\"&gt;\n        &lt;property name=\"ldapEntry\" value=\"${batch.jdbc.ldapEntry}\" /&gt;\n        &lt;property name=\"application\" ref=\"application\" /&gt;\n    &lt;/bean&gt;\n\n    &lt;bean id=\"dataSource\"\n        class=\"org.springframework.jdbc.datasource.DriverManagerDataSource\"&gt;\n        &lt;property name=\"driverClassName\"\n            value=\"oracle.jdbc.driver.OracleDriver\" /&gt;\n        &lt;property name=\"url\" value=\"${batch.jdbc.url}\" /&gt;\n        &lt;property name=\"username\" value=\"${batch.jdbc.user}\" /&gt;\n        &lt;property name=\"password\" value=\"${batch.jdbc.pwd}\" /&gt;\n    &lt;/bean&gt;\n\n    &lt;!-- Transaction manager for a single JPA EntityManagerFactory (alternative to JTA) --&gt;\n    &lt;bean id=\"transactionManager\"\n        class=\"org.springframework.orm.jpa.JpaTransactionManager\"&gt;\n        &lt;property name=\"entityManagerFactory\"\n            ref=\"entityManagerFactory\" /&gt;\n    &lt;/bean&gt;\n\n    &lt;!-- Spring Configuration Entity Manager Factory --&gt;\n    &lt;bean id=\"entityManagerFactory\"\n        class=\"org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean\"&gt;\n\n        &lt;property name=\"jpaVendorAdapter\"&gt;\n            &lt;bean\n                class=\"org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter\" /&gt;\n        &lt;/property&gt;\n        &lt;property name=\"jpaPropertyMap\"&gt;\n            &lt;map&gt;\n                &lt;entry key=\"hibernate.cache.use_second_level_cache\"\n                    value=\"true\" /&gt;\n                &lt;entry key=\"hibernate.cache.use_query_cache\"\n                    value=\"true\" /&gt;\n                &lt;entry key=\"hibernate.cache.provider_class\"\n                    value=\"net.sf.ehcache.hibernate.SingletonEhCacheProvider\" /&gt;\n                &lt;entry key=\"hibernate.show_sql\" value=\"true\" /&gt;\n                &lt;entry key=\"hibernate.use_sql_comments\" value=\"false\" /&gt;\n                &lt;entry key=\"hibernate.format_sql\" value=\"false\" /&gt;\n                &lt;entry key=\"hibernate.hbm2ddl.auto\" value=\"validate\" /&gt;\n                &lt;entry key=\"hibernate.dialect\"\n                    value=\"org.hibernate.dialect.Oracle10gDialect\" /&gt;\n                &lt;entry key=\"hibernate.temp.use_jdbc_metadata_defaults\"\n                    value=\"false\" /&gt;\n            &lt;/map&gt;\n        &lt;/property&gt;\n        &lt;property name=\"dataSource\" ref=\"dataSource\" /&gt;\n    &lt;/bean&gt;\n    &lt;bean id=\"namedParameterJdbcTemplate\"\n        class=\"org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate\"&gt;\n        &lt;constructor-arg ref=\"template\" /&gt;\n    &lt;/bean&gt;\n    &lt;bean id=\"template\"\n        class=\"org.springframework.jdbc.core.JdbcTemplate\"&gt;\n        &lt;property name=\"dataSource\" ref=\"dataSource\" /&gt;\n        &lt;!-- &lt;property name=\"fetchSize\" value=\"#{pageSize+1}\" /&gt; --&gt;\n    &lt;/bean&gt;\n\n&lt;/beans&gt;\n</code></pre>\n\n<p>Actually I could access easily to our local web application, and I could see in logs the connection trace to DB, but it is not the case for the batch.</p>\n\n<p>What I notice in the logs before throwing the error, it get stuck some seconds at this log level : </p>\n\n<pre><code>2015-11-09 09:56:55,728 [DozerBeanMapper                         ] INFO  | Initializing a new instance of the dozer bean mapper.\n</code></pre>\n\n<p>And after I have this :</p>\n\n<pre><code>2015-11-09 09:57:59,227 [JDBCExceptionReporter                   ] WARN  | SQL Error: 17002, SQLState: 08006\n2015-11-09 09:57:59,227 [JDBCExceptionReporter                   ] ERROR | Erreur d'E/S: Socket read timed out\n2015-11-09 09:57:59,232 [CommandLineJobRunner                    ] ERROR | Job Terminated in error: Could not open JPA EntityManager for transaction; nested exception is javax.persistence.PersistenceException: org.hibernate.exception.JDBCConnectionException: Cannot open connection\norg.springframework.transaction.CannotCreateTransactionException: Could not open JPA EntityManager for transaction; nested exception is javax.persistence.PersistenceException: org.hibernate.exception.JDBCConnectionException: Cannot open connection\n</code></pre>\n\n<p>Any help ?</p>\n"
+        },
+        {
+            "tags": [
+                "docker",
+                "haskell",
+                "travis-ci",
+                "haskell-stack"
+            ],
+            "owner": {
+                "reputation": 81,
+                "user_id": 2042053,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/8269ce33797e5d4b2fbb726b6e790328?s=128&d=identicon&r=PG",
+                "display_name": "imalison",
+                "link": "https://stackoverflow.com/users/2042053/imalison"
+            },
+            "is_answered": false,
+            "view_count": 35,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524192149,
+            "creation_date": 1524191039,
+            "last_edit_date": 1524191109,
+            "question_id": 49932954,
+            "body_markdown": "The [copy instruction][1] in the docker file for my project seems to cause a [cache miss][2], even though none of the files being copied have changed since the image was last pushed to docker hub. This causes all subsequent layers to miss the cache which makes the build take much longer than it should. I&#39;ve also noticed that the hashes belonging to each layer seem to be different than what they are when I `docker build` on my local machine. Could this be because of a docker version mismatch? What is going on here? How can I diagnose this?\r\n\r\n\r\n  [1]: http://%20https://github.com/travitch/taffybar/blob/0392685bcc3622b48c8afbffbf148f7f697f7f1e/Dockerfile#L21\r\n  [2]: https://travis-ci.org/travitch/taffybar/jobs/368916195#L477",
+            "link": "https://stackoverflow.com/questions/49932954/why-is-the-copy-instruction-causing-a-cache-miss-in-my-docker-build",
+            "title": "Why is the COPY instruction causing a cache miss in my Docker build",
+            "body": "<p>The <a href=\"http://%20https://github.com/travitch/taffybar/blob/0392685bcc3622b48c8afbffbf148f7f697f7f1e/Dockerfile#L21\" rel=\"nofollow noreferrer\">copy instruction</a> in the docker file for my project seems to cause a <a href=\"https://travis-ci.org/travitch/taffybar/jobs/368916195#L477\" rel=\"nofollow noreferrer\">cache miss</a>, even though none of the files being copied have changed since the image was last pushed to docker hub. This causes all subsequent layers to miss the cache which makes the build take much longer than it should. I've also noticed that the hashes belonging to each layer seem to be different than what they are when I <code>docker build</code> on my local machine. Could this be because of a docker version mismatch? What is going on here? How can I diagnose this?</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "html",
+                "css",
+                "wordpress"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9667067,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-5LE92qobFUY/AAAAAAAAAAI/AAAAAAAADzM/aeVWn-LZHnM/photo.jpg?sz=128",
+                "display_name": "Josue",
+                "link": "https://stackoverflow.com/users/9667067/josue"
+            },
+            "is_answered": false,
+            "view_count": 35,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524192137,
+            "creation_date": 1524192137,
+            "question_id": 49933094,
+            "body_markdown": "Initially, I was having issues with the theme not reading the media queries, so, I tried adding a responsive.css file to add all my MQ&#39;s, which did not work, so I got rid of that file. \r\n\r\nI added this line of code to have the header.php connect with the responsive.css file:\r\n\r\n\r\n    &lt;link rel=&quot;stylesheet&quot; href=&quot;&lt;?php echo get_stylesheet_directory_uri() ?&gt;/responsive.css&quot; /&gt;\r\n\r\n**(which did not work)** and then I got rid of that line and after that, it doesn&#39;t read the style.css anymore.\r\n\r\nThis is my current **header.php** file:\r\n\r\n    &lt;!doctype html&gt;\r\n    &lt;html &lt;?php language_attributes(); ?&gt; class=&quot;no-js&quot;&gt;\t\r\n    \t&lt;head&gt;\r\n    \t\t&lt;link rel=&quot;stylesheet&quot; href=&quot;https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css&quot; integrity=&quot;sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm&quot; crossorigin=&quot;anonymous&quot;&gt;\r\n    \t\t&lt;link href=&quot;https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css&quot; rel=&quot;stylesheet&quot; integrity=&quot;sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN&quot; crossorigin=&quot;anonymous&quot;&gt;\r\n        \t&lt;link rel=&quot;stylesheet&quot; href=&quot;css/font-awesome.min.css&quot; type=&quot;text/css&quot; /&gt;\r\n    \t\t&lt;link href=&quot;https://fonts.googleapis.com/css?family=Raleway:400,500,600,700&quot; rel=&quot;stylesheet&quot;&gt;\r\n        \t&lt;link href=&quot;https://fonts.googleapis.com/css?family=Poppins:200,300,400,500,600,700&quot; rel=&quot;stylesheet&quot;&gt;\r\n        \t&lt;link href=&quot;https://fonts.googleapis.com/css?family=Roboto:300,400&quot; rel=&quot;stylesheet&quot;&gt;\r\n    \t\t\r\n    \t\t&lt;meta charset=&quot;&lt;?php bloginfo(&#39;charset&#39;); ?&gt;&quot;&gt;\r\n    \t\t&lt;title&gt;&lt;?php wp_title(&#39;&#39;); ?&gt;&lt;?php if(wp_title(&#39;&#39;, false)) { echo &#39; :&#39;; } ?&gt; &lt;?php bloginfo(&#39;name&#39;); ?&gt;&lt;/title&gt;\r\n    \r\n    \t\t&lt;link href=&quot;//www.google-analytics.com&quot; rel=&quot;dns-prefetch&quot;&gt;\r\n    \t\t&lt;link rel=&quot;stylesheet&quot; href=&quot;&lt;?php bloginfo(&#39;stylesheet_directory&#39;); ?&gt;/style.css&quot; /&gt;\r\n            &lt;link href=&quot;&lt;?php echo get_template_directory_uri(); ?&gt;/img/icons/favicon.ico&quot; rel=&quot;shortcut icon&quot;&gt;\r\n            &lt;link href=&quot;&lt;?php echo get_template_directory_uri(); ?&gt;/img/icons/touch.png&quot; rel=&quot;apple-touch-icon-precomposed&quot;&gt;\r\n    \r\n    \t\t&lt;meta http-equiv=&quot;X-UA-Compatible&quot; content=&quot;IE=edge,chrome=1&quot;&gt;\r\n    \t\t&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;\r\n    \t\t&lt;meta name=&quot;description&quot; content=&quot;&lt;?php bloginfo(&#39;description&#39;); ?&gt;&quot;&gt;\r\n    \r\n    \t\t&lt;?php wp_head(); ?&gt;\r\n    \t\t&lt;script&gt;\r\n            // conditionizr.com\r\n            // configure environment tests\r\n            conditionizr.config({\r\n                assets: &#39;&lt;?php echo get_template_directory_uri(); ?&gt;&#39;,\r\n                tests: {}\r\n            });\r\n            &lt;/script&gt;\r\n    \r\n    \t&lt;/head&gt;\r\n    \t&lt;body &lt;?php body_class(); ?&gt;&gt;\r\n    \t\t\t\r\n    \t&lt;header&gt;\r\n\r\n\r\nCan you please help me?",
+            "link": "https://stackoverflow.com/questions/49933094/html5blank-wordpress-theme-not-reading-style-css",
+            "title": "HTML5Blank WordPress Theme not reading style.css",
+            "body": "<p>Initially, I was having issues with the theme not reading the media queries, so, I tried adding a responsive.css file to add all my MQ's, which did not work, so I got rid of that file. </p>\n\n<p>I added this line of code to have the header.php connect with the responsive.css file:</p>\n\n<pre><code>&lt;link rel=\"stylesheet\" href=\"&lt;?php echo get_stylesheet_directory_uri() ?&gt;/responsive.css\" /&gt;\n</code></pre>\n\n<p><strong>(which did not work)</strong> and then I got rid of that line and after that, it doesn't read the style.css anymore.</p>\n\n<p>This is my current <strong>header.php</strong> file:</p>\n\n<pre><code>&lt;!doctype html&gt;\n&lt;html &lt;?php language_attributes(); ?&gt; class=\"no-js\"&gt;    \n    &lt;head&gt;\n        &lt;link rel=\"stylesheet\" href=\"https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css\" integrity=\"sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm\" crossorigin=\"anonymous\"&gt;\n        &lt;link href=\"https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css\" rel=\"stylesheet\" integrity=\"sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN\" crossorigin=\"anonymous\"&gt;\n        &lt;link rel=\"stylesheet\" href=\"css/font-awesome.min.css\" type=\"text/css\" /&gt;\n        &lt;link href=\"https://fonts.googleapis.com/css?family=Raleway:400,500,600,700\" rel=\"stylesheet\"&gt;\n        &lt;link href=\"https://fonts.googleapis.com/css?family=Poppins:200,300,400,500,600,700\" rel=\"stylesheet\"&gt;\n        &lt;link href=\"https://fonts.googleapis.com/css?family=Roboto:300,400\" rel=\"stylesheet\"&gt;\n\n        &lt;meta charset=\"&lt;?php bloginfo('charset'); ?&gt;\"&gt;\n        &lt;title&gt;&lt;?php wp_title(''); ?&gt;&lt;?php if(wp_title('', false)) { echo ' :'; } ?&gt; &lt;?php bloginfo('name'); ?&gt;&lt;/title&gt;\n\n        &lt;link href=\"//www.google-analytics.com\" rel=\"dns-prefetch\"&gt;\n        &lt;link rel=\"stylesheet\" href=\"&lt;?php bloginfo('stylesheet_directory'); ?&gt;/style.css\" /&gt;\n        &lt;link href=\"&lt;?php echo get_template_directory_uri(); ?&gt;/img/icons/favicon.ico\" rel=\"shortcut icon\"&gt;\n        &lt;link href=\"&lt;?php echo get_template_directory_uri(); ?&gt;/img/icons/touch.png\" rel=\"apple-touch-icon-precomposed\"&gt;\n\n        &lt;meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\"&gt;\n        &lt;meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"&gt;\n        &lt;meta name=\"description\" content=\"&lt;?php bloginfo('description'); ?&gt;\"&gt;\n\n        &lt;?php wp_head(); ?&gt;\n        &lt;script&gt;\n        // conditionizr.com\n        // configure environment tests\n        conditionizr.config({\n            assets: '&lt;?php echo get_template_directory_uri(); ?&gt;',\n            tests: {}\n        });\n        &lt;/script&gt;\n\n    &lt;/head&gt;\n    &lt;body &lt;?php body_class(); ?&gt;&gt;\n\n    &lt;header&gt;\n</code></pre>\n\n<p>Can you please help me?</p>\n"
+        },
+        {
+            "tags": [
+                "azure",
+                "azure-service-fabric",
+                "azure-virtual-machine"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 7584160,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/417026995306414/picture?type=large",
+                "display_name": "Fahim Abrar",
+                "link": "https://stackoverflow.com/users/7584160/fahim-abrar"
+            },
+            "is_answered": true,
+            "view_count": 34,
+            "accepted_answer_id": 49933093,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524192129,
+            "creation_date": 1524142688,
+            "question_id": 49921756,
+            "body_markdown": "Does VM in azure container service cost? Microsoft is saying that the AKS azure container service is free for students. But when I go to create container service it&#39;s give a pricelist with vm. Is it will be cost for me as I am a student subscriber?",
+            "link": "https://stackoverflow.com/questions/49921756/does-vm-in-azure-container-cost",
+            "title": "Does vm in Azure container cost?",
+            "body": "<p>Does VM in azure container service cost? Microsoft is saying that the AKS azure container service is free for students. But when I go to create container service it's give a pricelist with vm. Is it will be cost for me as I am a student subscriber?</p>\n"
+        },
+        {
+            "tags": [
+                "apache-spark",
+                "hadoop",
+                "hdfs"
+            ],
+            "owner": {
+                "reputation": 66,
+                "user_id": 2392151,
+                "user_type": "registered",
+                "accept_rate": 17,
+                "profile_image": "https://www.gravatar.com/avatar/f46bc6295ab484479a6c55f5b1cd906c?s=128&d=identicon&r=PG",
+                "display_name": "Bill",
+                "link": "https://stackoverflow.com/users/2392151/bill"
+            },
+            "is_answered": false,
+            "view_count": 29,
+            "closed_date": 1524232036,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524192123,
+            "creation_date": 1524153241,
+            "last_edit_date": 1524192123,
+            "question_id": 49925338,
+            "body_markdown": "How do I estimate size of the file before writing to HDFS ?, I am using Apache Spark for this exercise. I read a file from HDFS and apply a filter, then write back to HDFS, but before writing to HDFS , want to know the file size.",
+            "link": "https://stackoverflow.com/questions/49925338/estimate-the-size-of-file-before-writing-to-hdfs-in-apache-spark",
+            "closed_reason": "duplicate",
+            "title": "Estimate the size of file before writing to HDFS in Apache Spark",
+            "body": "<p>How do I estimate size of the file before writing to HDFS ?, I am using Apache Spark for this exercise. I read a file from HDFS and apply a filter, then write back to HDFS, but before writing to HDFS , want to know the file size.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "jquery",
+                "csv",
+                "graph",
+                "canvasjs"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 5906692,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/bcf1510fc8c51843f4e3a87b53f818ff?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Nathan A-M",
+                "link": "https://stackoverflow.com/users/5906692/nathan-a-m"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524192115,
+            "creation_date": 1524192115,
+            "question_id": 49933090,
+            "body_markdown": "I&#39;m basicily trying to combine these two codes \r\n\r\nhttps://canvasjs.com/docs/charts/how-to/create-charts-from-csv/ \r\n\r\nhttp://jsfiddle.net/canvasjs/hbsnyc3m/\r\n\r\nfor school project. Where I have to graph data from two csv files. The tabs show up however the graph doesn&#39;t show up. I try troubleshooting with the console I found that in my $get for the CSV files it isn&#39;t printing ( console.log(5);). So the issue may lie there, note I am very inexperienced with JavaScript and there&#39;s probably something super obvious error that I&#39;m just not seeing. \r\n\r\n\r\n    &lt;!DOCTYPE HTML&gt;\r\n    &lt;meta charset=&quot;utf-8&quot;/&gt;\r\n    \r\n    &lt;head&gt;\r\n    \r\n      &lt;script type=&quot;text/javascript&quot; src=&quot;https://canvasjs.com/assets/script/jquery.canvasjs.min.js&quot;&gt;&lt;/script&gt;\r\n      &lt;script type=&quot;text/javascript&quot; src=&quot;https://canvasjs.com/assets/script/canvasjs.min.js&quot;&gt;&lt;/script&gt;\r\n      &lt;script src=&quot;https://code.jquery.com/jquery-3.3.1.slim.min.js&quot; integrity=&quot;sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo&quot; crossorigin=&quot;anonymous&quot;&gt;&lt;/script&gt;\r\n      &lt;script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js&quot; integrity=&quot;sha384-cs/chFZiN24E4KMATLdqdvsezGxaGsi4hLGOzlXwp5UZB1LY//20VyM2taTB4QvJ&quot; crossorigin=&quot;anonymous&quot;&gt;&lt;/script&gt;\r\n      &lt;script src=&quot;https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js&quot; integrity=&quot;sha384-uefMccjFJAIv6A+rW+L4AHf99KvxDjWSu1z9VI8SKNVmz4sk7buKt/6v9KI65qnm&quot; crossorigin=&quot;anonymous&quot;&gt;&lt;/script&gt;\r\n      &lt;link rel=&quot;stylesheet&quot; href=&quot;https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css&quot; integrity=&quot;sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4&quot; crossorigin=&quot;anonymous&quot;&gt;\r\n    &lt;/head&gt;\r\n    &lt;body&gt;\r\n    \r\n      &lt;div class=&quot;container&quot;&gt;\r\n        &lt;div class=&quot;col-md-3&quot;&gt;\r\n          &lt;ul class=&quot;nav nav-pills nav-jt&quot;&gt;\r\n            &lt;li class=&quot;active&quot;&gt;&lt;a data-toggle=&quot;tab&quot; id=&quot;bs-tab1&quot; href=&quot;#tab1&quot;&gt;Chart 1    &lt;/a&gt;&lt;/li&gt;\r\n            &lt;li&gt;&lt;a data-toggle=&quot;tab&quot; id=&quot;bs-tab2&quot; href=&quot;#tab2&quot;&gt;   Chart 2     &lt;/a&gt;&lt;/li&gt;\r\n          &lt;/ul&gt;\r\n          &lt;div class=&quot;tab-content&quot;&gt;\r\n            &lt;div id=&quot;tab1&quot; class=&quot;tab-pane active&quot;&gt;\r\n              &lt;div id=&quot;chart1Container&quot; style=&quot;height: 300px; width: 500px;&quot;&gt;&lt;/div&gt;\r\n            &lt;/div&gt;\r\n            &lt;div id=&quot;tab2&quot; class=&quot;tab-pane&quot;&gt;\r\n              &lt;div id=&quot;chart2Container&quot; style=&quot; height: 300px; width: 500px;&quot;&gt;&lt;/div&gt;\r\n            &lt;/div&gt;\r\n          &lt;/div&gt;\r\n        &lt;/div&gt;\r\n      &lt;/div&gt;\r\n    &lt;/body&gt;\r\n    \r\n    &lt;script type=&quot;text/javascript&quot;&gt;\r\n    var chart1, chart2;\r\n    var dataPoints = [];\r\n    \r\n    function getDataPointsFromCSV(csv) {\r\n        var dataPoints = csvLines = points = [];\r\n        csvLines = csv.split(/[\\r?\\n|\\r|\\n]+/);\r\n    \r\n        for (var i = 0; i &lt; csvLines.length; i++)\r\n            if (csvLines[i].length &gt; 0) {\r\n                points = csvLines[i].split(&quot;,&quot;);\r\n                dataPoints.push({\r\n                    x: parseFloat(points[0]),\r\n                    y: parseFloat(points[1])\r\n                });\r\n            }\r\n        return dataPoints;\r\n    }\r\n    \r\n    \r\n    $.get(&quot;test.csv&quot;, function chartOne (data) {\r\n            var dataPoints = [];\r\n            var chart1 = new CanvasJS.Chart(&quot;chart1Container&quot;, {\r\n              title: {\r\n                   text: &quot;Dog Bowls Eaten&quot;,\r\n              },\r\n              data: [{\r\n                   type: &quot;line&quot;,\r\n                   dataPoints: getDataPointsFromCSV(data)\r\n                }]\r\n             });\r\n    \r\n              chart1.render();\r\n    \r\n        }) ();\r\n    \r\n    $.get(&quot;test.csv&quot;, function chartTwo (data) {\r\n          var dataPoints = [];\r\n           var chart2 = new CanvasJS.Chart(&quot;chart2Container&quot;, {\r\n             title: {\r\n                  text: &quot;Dog Bowls Eaten&quot;,\r\n             },\r\n             data: [{\r\n                  type: &quot;line&quot;,\r\n                  dataPoints: getDataPointsFromCSV(data)\r\n               }]\r\n            });\r\n    \r\n             chart2.render();\r\n    \r\n       });\r\n    \r\n    $(&#39;#bs-tab2&#39;).on(&quot;shown.bs.tab&quot;, function() {\r\n      chartTwo();\r\n      $(&#39;#bs-tab2&#39;).off(); // to remove the binded event after the initial rendering\r\n      renderChartEvents();\r\n    });\r\n    \r\n    function renderChartEvents() {\r\n      $(&#39;#bs-tab1&#39;).on(&quot;shown.bs.tab&quot;, function() {\r\n        chart1.render();\r\n      });\r\n      $(&#39;#bs-tab2&#39;).on(&quot;shown.bs.tab&quot;, function() {\r\n        chart2.render();\r\n      });\r\n    }\r\n    \r\n    &lt;/script&gt;\r\n",
+            "link": "https://stackoverflow.com/questions/49933090/plotting-two-graph-using-canvasjs-from-csv-file",
+            "title": "Plotting two graph using canvasjs from csv file",
+            "body": "<p>I'm basicily trying to combine these two codes </p>\n\n<p><a href=\"https://canvasjs.com/docs/charts/how-to/create-charts-from-csv/\" rel=\"nofollow noreferrer\">https://canvasjs.com/docs/charts/how-to/create-charts-from-csv/</a> </p>\n\n<p><a href=\"http://jsfiddle.net/canvasjs/hbsnyc3m/\" rel=\"nofollow noreferrer\">http://jsfiddle.net/canvasjs/hbsnyc3m/</a></p>\n\n<p>for school project. Where I have to graph data from two csv files. The tabs show up however the graph doesn't show up. I try troubleshooting with the console I found that in my $get for the CSV files it isn't printing ( console.log(5);). So the issue may lie there, note I am very inexperienced with JavaScript and there's probably something super obvious error that I'm just not seeing. </p>\n\n<pre><code>&lt;!DOCTYPE HTML&gt;\n&lt;meta charset=\"utf-8\"/&gt;\n\n&lt;head&gt;\n\n  &lt;script type=\"text/javascript\" src=\"https://canvasjs.com/assets/script/jquery.canvasjs.min.js\"&gt;&lt;/script&gt;\n  &lt;script type=\"text/javascript\" src=\"https://canvasjs.com/assets/script/canvasjs.min.js\"&gt;&lt;/script&gt;\n  &lt;script src=\"https://code.jquery.com/jquery-3.3.1.slim.min.js\" integrity=\"sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo\" crossorigin=\"anonymous\"&gt;&lt;/script&gt;\n  &lt;script src=\"https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js\" integrity=\"sha384-cs/chFZiN24E4KMATLdqdvsezGxaGsi4hLGOzlXwp5UZB1LY//20VyM2taTB4QvJ\" crossorigin=\"anonymous\"&gt;&lt;/script&gt;\n  &lt;script src=\"https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js\" integrity=\"sha384-uefMccjFJAIv6A+rW+L4AHf99KvxDjWSu1z9VI8SKNVmz4sk7buKt/6v9KI65qnm\" crossorigin=\"anonymous\"&gt;&lt;/script&gt;\n  &lt;link rel=\"stylesheet\" href=\"https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css\" integrity=\"sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4\" crossorigin=\"anonymous\"&gt;\n&lt;/head&gt;\n&lt;body&gt;\n\n  &lt;div class=\"container\"&gt;\n    &lt;div class=\"col-md-3\"&gt;\n      &lt;ul class=\"nav nav-pills nav-jt\"&gt;\n        &lt;li class=\"active\"&gt;&lt;a data-toggle=\"tab\" id=\"bs-tab1\" href=\"#tab1\"&gt;Chart 1    &lt;/a&gt;&lt;/li&gt;\n        &lt;li&gt;&lt;a data-toggle=\"tab\" id=\"bs-tab2\" href=\"#tab2\"&gt;   Chart 2     &lt;/a&gt;&lt;/li&gt;\n      &lt;/ul&gt;\n      &lt;div class=\"tab-content\"&gt;\n        &lt;div id=\"tab1\" class=\"tab-pane active\"&gt;\n          &lt;div id=\"chart1Container\" style=\"height: 300px; width: 500px;\"&gt;&lt;/div&gt;\n        &lt;/div&gt;\n        &lt;div id=\"tab2\" class=\"tab-pane\"&gt;\n          &lt;div id=\"chart2Container\" style=\" height: 300px; width: 500px;\"&gt;&lt;/div&gt;\n        &lt;/div&gt;\n      &lt;/div&gt;\n    &lt;/div&gt;\n  &lt;/div&gt;\n&lt;/body&gt;\n\n&lt;script type=\"text/javascript\"&gt;\nvar chart1, chart2;\nvar dataPoints = [];\n\nfunction getDataPointsFromCSV(csv) {\n    var dataPoints = csvLines = points = [];\n    csvLines = csv.split(/[\\r?\\n|\\r|\\n]+/);\n\n    for (var i = 0; i &lt; csvLines.length; i++)\n        if (csvLines[i].length &gt; 0) {\n            points = csvLines[i].split(\",\");\n            dataPoints.push({\n                x: parseFloat(points[0]),\n                y: parseFloat(points[1])\n            });\n        }\n    return dataPoints;\n}\n\n\n$.get(\"test.csv\", function chartOne (data) {\n        var dataPoints = [];\n        var chart1 = new CanvasJS.Chart(\"chart1Container\", {\n          title: {\n               text: \"Dog Bowls Eaten\",\n          },\n          data: [{\n               type: \"line\",\n               dataPoints: getDataPointsFromCSV(data)\n            }]\n         });\n\n          chart1.render();\n\n    }) ();\n\n$.get(\"test.csv\", function chartTwo (data) {\n      var dataPoints = [];\n       var chart2 = new CanvasJS.Chart(\"chart2Container\", {\n         title: {\n              text: \"Dog Bowls Eaten\",\n         },\n         data: [{\n              type: \"line\",\n              dataPoints: getDataPointsFromCSV(data)\n           }]\n        });\n\n         chart2.render();\n\n   });\n\n$('#bs-tab2').on(\"shown.bs.tab\", function() {\n  chartTwo();\n  $('#bs-tab2').off(); // to remove the binded event after the initial rendering\n  renderChartEvents();\n});\n\nfunction renderChartEvents() {\n  $('#bs-tab1').on(\"shown.bs.tab\", function() {\n    chart1.render();\n  });\n  $('#bs-tab2').on(\"shown.bs.tab\", function() {\n    chart2.render();\n  });\n}\n\n&lt;/script&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "ios",
+                "ionic-framework",
+                "bluetooth",
+                "ionic3"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 7271681,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2adc03dbadbcc649942d939ee4bc856c?s=128&d=identicon&r=PG&f=1",
+                "display_name": "K Mmmm",
+                "link": "https://stackoverflow.com/users/7271681/k-mmmm"
+            },
+            "is_answered": false,
+            "view_count": 28,
+            "closed_date": 1524195582,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1524192089,
+            "creation_date": 1524191688,
+            "last_edit_date": 1524192089,
+            "question_id": 49933039,
+            "body_markdown": "I&#39;m fed up. Every cross-platform codebase that i know of (Unity, Ionic, Phonegap, Cordova) is missing what should, to me, be a basic feature: Record audio from a bluetooth microphone-- the kind of microphone you use to take phone calls between songs in your headphones, or that you might use when talking to orher players in an online game.\r\n\r\nI dont have a Mac to build this myself; I had the Android side of things working before my hard drive crashed. Frankly, coding a library like this is a lot harder than you would think. Coding for bluetooth requires a lot of skill that is hard to find.\r\n\r\nAre there any reliable hacker sites out there for someone to get a working library for recording audio over the HFP bluetooth profile in both Android and iOS?",
+            "link": "https://stackoverflow.com/questions/49933039/where-can-i-pay-someone-to-write-an-open-source-ionic-cordova-module-for-ios-a",
+            "closed_reason": "off-topic",
+            "title": "Where can I pay someone to write an open-source ionic / cordova module for iOS and Android?",
+            "body": "<p>I'm fed up. Every cross-platform codebase that i know of (Unity, Ionic, Phonegap, Cordova) is missing what should, to me, be a basic feature: Record audio from a bluetooth microphone-- the kind of microphone you use to take phone calls between songs in your headphones, or that you might use when talking to orher players in an online game.</p>\n\n<p>I dont have a Mac to build this myself; I had the Android side of things working before my hard drive crashed. Frankly, coding a library like this is a lot harder than you would think. Coding for bluetooth requires a lot of skill that is hard to find.</p>\n\n<p>Are there any reliable hacker sites out there for someone to get a working library for recording audio over the HFP bluetooth profile in both Android and iOS?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "docker",
+                "pip",
+                "distutils",
+                "apt"
+            ],
+            "owner": {
+                "reputation": 5845,
+                "user_id": 3642398,
+                "user_type": "registered",
+                "accept_rate": 74,
+                "profile_image": "https://i.stack.imgur.com/mW91u.jpg?s=128&g=1",
+                "display_name": "elethan",
+                "link": "https://stackoverflow.com/users/3642398/elethan"
+            },
+            "is_answered": false,
+            "view_count": 39,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524192085,
+            "creation_date": 1524189493,
+            "last_edit_date": 1524190961,
+            "question_id": 49932759,
+            "body_markdown": "I am dealing with a legacy Dockerfile. Here is a _very simplified_ version of what I am dealing with:\r\n\r\n    FROM ubuntu:14.04\r\n    \r\n    RUN apt-get -y update &amp;&amp; apt-get -y install \\\r\n        python-pip \\\r\n        python-numpy # ...and many other packages\r\n    \r\n    RUN pip install -U pip\r\n    \r\n    RUN pip install -r /tmp/requirements1.txt # includes e.g., numpy==1.13.0\r\n    RUN pip install -r /tmp/requirements2.txt\r\n    RUN pip install -r /tmp/requirements3.txt\r\n\r\nFirst, several packages are installed using `apt`, and then several packages are installed using `pip`. `pip` version 10 has been released, and [part of the release](https://pip.pypa.io/en/stable/news/#deprecations-and-removals) is this new restriction:\r\n\r\n&gt; Removed support for uninstalling projects which have been installed using distutils. distutils installed projects do not include metadata indicating what files belong to that install and thus it is impossible to actually uninstall them rather than just remove the metadata saying they&#39;ve been installed while leaving all of the actual files behind. \r\n\r\nThis leads to the following problem in my setup. For example, first `apt` installs `python-numpy`. Later `pip` tries to install a newer version of `numpy` from e.g., `/tmp/requirements1.txt`, and tries to uninstall the older version, but because of the new restriction, it cannot remove this version:\r\n\r\n    Installing collected packages: numpy\r\n      Found existing installation: numpy 1.8.2\r\n    Cannot uninstall &#39;numpy&#39;. It is a distutils installed project and thus we cannot accurately determine which files belong to it which would lead to only a partial uninstall.\r\n\r\n\r\nNow I know at this point there are several solutions.\r\n\r\nI could not install `python-numpy` through `apt`. However, this causes issues because `python-numpy` installs a few different packages as requirements, and I do not know if another part of the system relies on these packages. And in reality, there are several `apt` packages installed through the Dockerfile, and each one I remove seems to reveal another `Cannot uninstall X` error, and removes a number of other packages along with it, that our app may or may not rely on. \r\n\r\nI could also use the `--ignore-installed` option when I try to `pip` install things that have already been installed through `apt`, but then again I have the same problem of every `--ignore-installed` argument revealing yet another thing that needs to be ignored.\r\n\r\nI could pin `pip` at an older version that does not have this restriction, but I don&#39;t want to be stuck using an outdated version of `pip` forever. \r\n\r\nI have been going around in circles trying to come up with a good solution that involves minimal changes to this legacy Dockerfile, and allows the app we deploy with that file to continue to function as it has been. Any suggestions as to how I can safely get around this problem of `pip` 10 not being able to install newer versions of `distutils` packages? Thank you!\r\n\r\n#UPDATE:\r\n\r\nI did not realize that `--ignore-installed` could be used without a package as an argument to ignore all installed packages. I am considering whether or not this might be a good option for me, and have asked about it [here][1].\r\n\r\n\r\n  [1]: https://stackoverflow.com/q/49932926/3642398",
+            "link": "https://stackoverflow.com/questions/49932759/pip-10-and-apt-how-to-avoid-cannot-uninstall-x-errors-for-distutils-packages",
+            "title": "pip 10 and apt: how to avoid &quot;Cannot uninstall X&quot; errors for distutils packages",
+            "body": "<p>I am dealing with a legacy Dockerfile. Here is a <em>very simplified</em> version of what I am dealing with:</p>\n\n<pre><code>FROM ubuntu:14.04\n\nRUN apt-get -y update &amp;&amp; apt-get -y install \\\n    python-pip \\\n    python-numpy # ...and many other packages\n\nRUN pip install -U pip\n\nRUN pip install -r /tmp/requirements1.txt # includes e.g., numpy==1.13.0\nRUN pip install -r /tmp/requirements2.txt\nRUN pip install -r /tmp/requirements3.txt\n</code></pre>\n\n<p>First, several packages are installed using <code>apt</code>, and then several packages are installed using <code>pip</code>. <code>pip</code> version 10 has been released, and <a href=\"https://pip.pypa.io/en/stable/news/#deprecations-and-removals\" rel=\"nofollow noreferrer\">part of the release</a> is this new restriction:</p>\n\n<blockquote>\n  <p>Removed support for uninstalling projects which have been installed using distutils. distutils installed projects do not include metadata indicating what files belong to that install and thus it is impossible to actually uninstall them rather than just remove the metadata saying they've been installed while leaving all of the actual files behind. </p>\n</blockquote>\n\n<p>This leads to the following problem in my setup. For example, first <code>apt</code> installs <code>python-numpy</code>. Later <code>pip</code> tries to install a newer version of <code>numpy</code> from e.g., <code>/tmp/requirements1.txt</code>, and tries to uninstall the older version, but because of the new restriction, it cannot remove this version:</p>\n\n<pre><code>Installing collected packages: numpy\n  Found existing installation: numpy 1.8.2\nCannot uninstall 'numpy'. It is a distutils installed project and thus we cannot accurately determine which files belong to it which would lead to only a partial uninstall.\n</code></pre>\n\n<p>Now I know at this point there are several solutions.</p>\n\n<p>I could not install <code>python-numpy</code> through <code>apt</code>. However, this causes issues because <code>python-numpy</code> installs a few different packages as requirements, and I do not know if another part of the system relies on these packages. And in reality, there are several <code>apt</code> packages installed through the Dockerfile, and each one I remove seems to reveal another <code>Cannot uninstall X</code> error, and removes a number of other packages along with it, that our app may or may not rely on. </p>\n\n<p>I could also use the <code>--ignore-installed</code> option when I try to <code>pip</code> install things that have already been installed through <code>apt</code>, but then again I have the same problem of every <code>--ignore-installed</code> argument revealing yet another thing that needs to be ignored.</p>\n\n<p>I could pin <code>pip</code> at an older version that does not have this restriction, but I don't want to be stuck using an outdated version of <code>pip</code> forever. </p>\n\n<p>I have been going around in circles trying to come up with a good solution that involves minimal changes to this legacy Dockerfile, and allows the app we deploy with that file to continue to function as it has been. Any suggestions as to how I can safely get around this problem of <code>pip</code> 10 not being able to install newer versions of <code>distutils</code> packages? Thank you!</p>\n\n<h1>UPDATE:</h1>\n\n<p>I did not realize that <code>--ignore-installed</code> could be used without a package as an argument to ignore all installed packages. I am considering whether or not this might be a good option for me, and have asked about it <a href=\"https://stackoverflow.com/q/49932926/3642398\">here</a>.</p>\n"
+        },
+        {
+            "tags": [
+                "vb.net",
+                "datagridview",
+                "treenode"
+            ],
+            "owner": {
+                "reputation": 7,
+                "user_id": 6330942,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/71373379ac596d727d518fc2040704ab?s=128&d=identicon&r=PG",
+                "display_name": "Winda Sari Elisabeth Siburian",
+                "link": "https://stackoverflow.com/users/6330942/winda-sari-elisabeth-siburian"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524192082,
+            "creation_date": 1524191763,
+            "last_edit_date": 1524192082,
+            "question_id": 49933050,
+            "body_markdown": "Hy fellas. Good morning. I have a problem. Maybe it&#39;s so simple for others, but I&#39;m seriously that I don&#39;t know how to solve it.&lt;br&gt;\r\n\r\nI want to add checkednodes from treenode to my datagridview. Could you help me please?&lt;br&gt;\r\n\r\nThis is my code&lt;br&gt;\r\n\r\n    Private Sub btn1_Click(sender As Object, e As EventArgs) Handles btn_add.Click\r\n        TreeviewCountCheckedNode(tv1.Nodes)\r\n    End Sub\r\n\r\n    Private Sub TreeviewCountCheckedNode(tnodecol As TreeNodeCollection)\r\n        koneksi()\r\n        cmdCari.CommandText = &quot;select * from all_kodeprmtr order by kode&quot;\r\n        drCari = cmdCari.ExecuteReader\r\n        dt = New DataTable\r\n        ds = New DataSet\r\n\r\n        While drCari.Read\r\n            For Each node As TreeNode In tnodecol\r\n                If node.Checked = True Then\r\n                    TreeviewCountCheckedNode(node.Nodes)\r\n                    cmdCari.CommandText = &quot;select kode from all_kodeprmtr where kode=&#39;&quot; + node.Text + &quot;&#39;&quot;\r\n                    drCari = cmdCari.ExecuteReader\r\n                    While drCari.Read\r\n                        With drCari\r\n                            dgv1.Rows.Add(.Item(&quot;kode&quot;))\r\n                        End With\r\n                    End While\r\n                    drCari.Close()\r\n                End If\r\n            Next\r\n        End While\r\n        dgv1.AutoGenerateColumns = True\r\n    End Sub",
+            "link": "https://stackoverflow.com/questions/49933050/add-checked-nodes-from-treenode-to-datagridview-in-vb-net",
+            "title": "Add checked nodes from treenode to datagridview in vb.net",
+            "body": "<p>Hy fellas. Good morning. I have a problem. Maybe it's so simple for others, but I'm seriously that I don't know how to solve it.<br></p>\n\n<p>I want to add checkednodes from treenode to my datagridview. Could you help me please?<br></p>\n\n<p>This is my code<br></p>\n\n<pre><code>Private Sub btn1_Click(sender As Object, e As EventArgs) Handles btn_add.Click\n    TreeviewCountCheckedNode(tv1.Nodes)\nEnd Sub\n\nPrivate Sub TreeviewCountCheckedNode(tnodecol As TreeNodeCollection)\n    koneksi()\n    cmdCari.CommandText = \"select * from all_kodeprmtr order by kode\"\n    drCari = cmdCari.ExecuteReader\n    dt = New DataTable\n    ds = New DataSet\n\n    While drCari.Read\n        For Each node As TreeNode In tnodecol\n            If node.Checked = True Then\n                TreeviewCountCheckedNode(node.Nodes)\n                cmdCari.CommandText = \"select kode from all_kodeprmtr where kode='\" + node.Text + \"'\"\n                drCari = cmdCari.ExecuteReader\n                While drCari.Read\n                    With drCari\n                        dgv1.Rows.Add(.Item(\"kode\"))\n                    End With\n                End While\n                drCari.Close()\n            End If\n        Next\n    End While\n    dgv1.AutoGenerateColumns = True\nEnd Sub\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "typescript",
+                "routing"
+            ],
+            "owner": {
+                "reputation": 43,
+                "user_id": 2089066,
+                "user_type": "registered",
+                "accept_rate": 38,
+                "profile_image": "https://www.gravatar.com/avatar/b95326b1fb2c156e495abd8041ca0977?s=128&d=identicon&r=PG",
+                "display_name": "Mao",
+                "link": "https://stackoverflow.com/users/2089066/mao"
+            },
+            "is_answered": true,
+            "view_count": 58,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524192080,
+            "creation_date": 1524106649,
+            "last_edit_date": 1524192080,
+            "question_id": 49912007,
+            "body_markdown": "I Created a angular 5 app, and I defined the following app-routing.module.ts\r\n\r\n    import { ControlPanelComponent } from &#39;./dashboard/control-panel/control-panel.component&#39;;\r\n    import { MainComponent } from &#39;./dashboard/main/main.component&#39;;\r\n    import { NgModule } from &#39;@angular/core&#39;;\r\n    import { Routes, RouterModule } from &#39;@angular/router&#39;;\r\n    import { DashboardComponent } from &#39;./dashboard/dashboard.component&#39;;\r\n    \r\n    const routes: Routes = [\r\n      {path: &#39;&#39;, redirectTo: &#39;/dashboard&#39;, pathMatch: &#39;full&#39;},\r\n      {path: &#39;dashboard&#39;, component: DashboardComponent,\r\n        children: [\r\n          {path: &#39;&#39;, outlet: &#39;dashboard-outlet&#39;, component: MainComponent},\r\n          {path: &#39;control&#39;, outlet: &#39;dashboard-outlet&#39;, component: ControlPanelComponent}\r\n        ]\r\n      }\r\n    ];\r\n    \r\n    @NgModule({\r\n      imports: [RouterModule.forRoot(routes, { enableTracing: true })],\r\n      exports: [RouterModule]\r\n    })\r\n    export class AppRoutingModule { }\r\n\r\nThis works for the following routes:  \r\nhttp://localhost:4200  \r\nhttp://localhost:4200/dashboard  \r\n  \r\nBut doesn&#39;t for  \r\nhttp://localhost:4200/dashboard/control\r\n\r\nWhen I request for &#39;dashboard/control&#39; the console log:\r\n\r\n    NavigationError(id: 2, url: &#39;/dashboard/control&#39;, error: Error: Cannot match any routes. URL Segment: &#39;dashboard/control&#39;)\r\n\r\nUPDATE:\r\n\r\nMy app structure is  \r\n\r\n - app\r\n   - dashboard(where are the left nav with the router links)\r\n      - main\r\n      - control\r\n\r\nthis is the left nav in the dashboard:\r\n\r\n    &lt;!-- sidebar menu --&gt;\r\n            &lt;div id=&quot;sidebar-menu&quot; class=&quot;main_menu_side hidden-print main_menu&quot;&gt;\r\n              &lt;div class=&quot;menu_section&quot;&gt;\r\n                &lt;h3&gt;General&lt;/h3&gt;\r\n                &lt;ul class=&quot;nav side-menu&quot;&gt;\r\n                  &lt;li&gt;&lt;a routerLink=&quot;/dashboard&quot; routerLinkActive=&quot;active&quot;&gt;&lt;i class=&quot;fa fa-home&quot;&gt;&lt;/i&gt;Dashboard&lt;/a&gt;&lt;/li&gt;\r\n                  &lt;li&gt;&lt;a&gt;&lt;i class=&quot;fa fa-shield&quot;&gt;&lt;/i&gt; Options &lt;span class=&quot;fa fa-chevron-down&quot;&gt;&lt;/span&gt;&lt;/a&gt;\r\n                    &lt;ul class=&quot;nav child_menu&quot;&gt;\r\n                      &lt;li&gt;&lt;a [routerLink]=&quot;[&#39;./control&#39;]&quot; routerLinkActive=&quot;active&quot;&gt;Control Panel&lt;/a&gt;&lt;/li&gt;\r\n                    &lt;/ul&gt;\r\n                  &lt;/li&gt;\r\n                &lt;/ul&gt;\r\n              &lt;/div&gt;\r\n            &lt;/div&gt;\r\n            &lt;!-- /sidebar menu --&gt;\r\n\r\nIn the page content in the dashboard is the router-outlet\r\n\r\n    &lt;!-- page content --&gt;\r\n        &lt;div class=&quot;right_col&quot; role=&quot;main&quot;&gt;\r\n          &lt;div class=&quot;&quot;&gt;\r\n            &lt;div class=&quot;page-title&quot;&gt;\r\n              &lt;div class=&quot;title_left&quot;&gt;\r\n                &lt;h3&gt;{{dashboard.pageTitle}}&lt;/h3&gt;\r\n              &lt;/div&gt;\r\n            &lt;/div&gt;\r\n    \r\n            &lt;div class=&quot;clearfix&quot;&gt;&lt;/div&gt;\r\n    \r\n            &lt;router-outlet name=&quot;dashboard-outlet&quot;&gt;&lt;/router-outlet&gt;\r\n          &lt;/div&gt;\r\n        &lt;/div&gt;\r\n        &lt;!-- /page content --&gt;\r\n\r\nI can see that the link in the dashboard is rendered correctly:\r\n\r\nhttp://localhost:4200/dashboard/control\r\n\r\nBut when I click it nothing happens and the console report \r\n\r\n    ERROR Error: Uncaught (in promise): Error: Cannot match any routes. URL Segment: &#39;dashboard/control&#39;\r\n\r\nAny help will be appreciated\r\n",
+            "link": "https://stackoverflow.com/questions/49912007/angular-5-cannot-match-any-routes",
+            "title": "Angular 5: Cannot match any routes",
+            "body": "<p>I Created a angular 5 app, and I defined the following app-routing.module.ts</p>\n\n<pre><code>import { ControlPanelComponent } from './dashboard/control-panel/control-panel.component';\nimport { MainComponent } from './dashboard/main/main.component';\nimport { NgModule } from '@angular/core';\nimport { Routes, RouterModule } from '@angular/router';\nimport { DashboardComponent } from './dashboard/dashboard.component';\n\nconst routes: Routes = [\n  {path: '', redirectTo: '/dashboard', pathMatch: 'full'},\n  {path: 'dashboard', component: DashboardComponent,\n    children: [\n      {path: '', outlet: 'dashboard-outlet', component: MainComponent},\n      {path: 'control', outlet: 'dashboard-outlet', component: ControlPanelComponent}\n    ]\n  }\n];\n\n@NgModule({\n  imports: [RouterModule.forRoot(routes, { enableTracing: true })],\n  exports: [RouterModule]\n})\nexport class AppRoutingModule { }\n</code></pre>\n\n<p>This works for the following routes:<br>\n<a href=\"http://localhost:4200\" rel=\"nofollow noreferrer\">http://localhost:4200</a><br>\n<a href=\"http://localhost:4200/dashboard\" rel=\"nofollow noreferrer\">http://localhost:4200/dashboard</a>  </p>\n\n<p>But doesn't for<br>\n<a href=\"http://localhost:4200/dashboard/control\" rel=\"nofollow noreferrer\">http://localhost:4200/dashboard/control</a></p>\n\n<p>When I request for 'dashboard/control' the console log:</p>\n\n<pre><code>NavigationError(id: 2, url: '/dashboard/control', error: Error: Cannot match any routes. URL Segment: 'dashboard/control')\n</code></pre>\n\n<p>UPDATE:</p>\n\n<p>My app structure is  </p>\n\n<ul>\n<li>app\n\n<ul>\n<li>dashboard(where are the left nav with the router links)\n\n<ul>\n<li>main</li>\n<li>control</li>\n</ul></li>\n</ul></li>\n</ul>\n\n<p>this is the left nav in the dashboard:</p>\n\n<pre><code>&lt;!-- sidebar menu --&gt;\n        &lt;div id=\"sidebar-menu\" class=\"main_menu_side hidden-print main_menu\"&gt;\n          &lt;div class=\"menu_section\"&gt;\n            &lt;h3&gt;General&lt;/h3&gt;\n            &lt;ul class=\"nav side-menu\"&gt;\n              &lt;li&gt;&lt;a routerLink=\"/dashboard\" routerLinkActive=\"active\"&gt;&lt;i class=\"fa fa-home\"&gt;&lt;/i&gt;Dashboard&lt;/a&gt;&lt;/li&gt;\n              &lt;li&gt;&lt;a&gt;&lt;i class=\"fa fa-shield\"&gt;&lt;/i&gt; Options &lt;span class=\"fa fa-chevron-down\"&gt;&lt;/span&gt;&lt;/a&gt;\n                &lt;ul class=\"nav child_menu\"&gt;\n                  &lt;li&gt;&lt;a [routerLink]=\"['./control']\" routerLinkActive=\"active\"&gt;Control Panel&lt;/a&gt;&lt;/li&gt;\n                &lt;/ul&gt;\n              &lt;/li&gt;\n            &lt;/ul&gt;\n          &lt;/div&gt;\n        &lt;/div&gt;\n        &lt;!-- /sidebar menu --&gt;\n</code></pre>\n\n<p>In the page content in the dashboard is the router-outlet</p>\n\n<pre><code>&lt;!-- page content --&gt;\n    &lt;div class=\"right_col\" role=\"main\"&gt;\n      &lt;div class=\"\"&gt;\n        &lt;div class=\"page-title\"&gt;\n          &lt;div class=\"title_left\"&gt;\n            &lt;h3&gt;{{dashboard.pageTitle}}&lt;/h3&gt;\n          &lt;/div&gt;\n        &lt;/div&gt;\n\n        &lt;div class=\"clearfix\"&gt;&lt;/div&gt;\n\n        &lt;router-outlet name=\"dashboard-outlet\"&gt;&lt;/router-outlet&gt;\n      &lt;/div&gt;\n    &lt;/div&gt;\n    &lt;!-- /page content --&gt;\n</code></pre>\n\n<p>I can see that the link in the dashboard is rendered correctly:</p>\n\n<p><a href=\"http://localhost:4200/dashboard/control\" rel=\"nofollow noreferrer\">http://localhost:4200/dashboard/control</a></p>\n\n<p>But when I click it nothing happens and the console report </p>\n\n<pre><code>ERROR Error: Uncaught (in promise): Error: Cannot match any routes. URL Segment: 'dashboard/control'\n</code></pre>\n\n<p>Any help will be appreciated</p>\n"
+        },
+        {
+            "tags": [
+                "regex",
+                "sass",
+                "atom-editor",
+                "scss-lint",
+                "sass-lint"
+            ],
+            "owner": {
+                "reputation": 576,
+                "user_id": 1121268,
+                "user_type": "registered",
+                "accept_rate": 30,
+                "profile_image": "https://www.gravatar.com/avatar/70e415e0db7419bc254241110f49c1eb?s=128&d=identicon&r=PG",
+                "display_name": "Merc",
+                "link": "https://stackoverflow.com/users/1121268/merc"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524192080,
+            "creation_date": 1524056127,
+            "last_edit_date": 1524191458,
+            "question_id": 49900310,
+            "body_markdown": "I have a sass-lint.yml file with the following rule:\r\n\r\n    class-name-format:\r\n        - 1\r\n        - convention: &#39;^([a-zA-Z]*)(__[a-z]+)?(-[a-z]*)*(--[a-z]+)?$&#39;\r\n\r\nThe regex can be checked here:\r\nhttps://regex101.com/r/SsVde6/2\r\n\r\nUnfortunately I can&#39;t get it to work properly.\r\n\r\nIn the regex tester you see what kind of things I want to include.\r\nThe first part of the Class name can be PascalCase from then on BEMified ([BEM][1]) kebabcase (e.g.: `this-is-kebab-case` – all lowercase with dashes in between)\r\n\r\nA very common pattern would look like:\r\n`ComponentName__element-name--modifier-name`\r\n\r\nQuite a few things work already, but I would like to evaluate nested BEM selectors in my scss files as well:\r\n\r\n`&amp;__burgerCross {…}` or `&amp;__burger_cross` or `&amp;__burger__cross` for example should be evaluated as false. This would have to be `&amp;__burger-cross`\r\n\r\nBut I don&#39;t really know how to handle the nested rules.\r\n\r\nAny help on sass-lint and regex is very welcome.\r\n\r\n\r\n  [1]: http://getbem.com/",
+            "link": "https://stackoverflow.com/questions/49900310/atom-sass-lint-regex-for-sass-lint-yml-class-name",
+            "title": "Atom/Sass-lint: Regex for sass-lint.yml class-name",
+            "body": "<p>I have a sass-lint.yml file with the following rule:</p>\n\n<pre><code>class-name-format:\n    - 1\n    - convention: '^([a-zA-Z]*)(__[a-z]+)?(-[a-z]*)*(--[a-z]+)?$'\n</code></pre>\n\n<p>The regex can be checked here:\n<a href=\"https://regex101.com/r/SsVde6/2\" rel=\"nofollow noreferrer\">https://regex101.com/r/SsVde6/2</a></p>\n\n<p>Unfortunately I can't get it to work properly.</p>\n\n<p>In the regex tester you see what kind of things I want to include.\nThe first part of the Class name can be PascalCase from then on BEMified (<a href=\"http://getbem.com/\" rel=\"nofollow noreferrer\">BEM</a>) kebabcase (e.g.: <code>this-is-kebab-case</code> – all lowercase with dashes in between)</p>\n\n<p>A very common pattern would look like:\n<code>ComponentName__element-name--modifier-name</code></p>\n\n<p>Quite a few things work already, but I would like to evaluate nested BEM selectors in my scss files as well:</p>\n\n<p><code>&amp;__burgerCross {…}</code> or <code>&amp;__burger_cross</code> or <code>&amp;__burger__cross</code> for example should be evaluated as false. This would have to be <code>&amp;__burger-cross</code></p>\n\n<p>But I don't really know how to handle the nested rules.</p>\n\n<p>Any help on sass-lint and regex is very welcome.</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 220
+}

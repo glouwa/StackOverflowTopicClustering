@@ -1,0 +1,808 @@
+{
+    "items": [
+        {
+            "tags": [
+                "python",
+                "apache-spark",
+                "streaming",
+                "flume"
+            ],
+            "owner": {
+                "reputation": 26,
+                "user_id": 8809728,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3ac04385dae7414761c82c544b3c3b0b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "just4lizzy",
+                "link": "https://stackoverflow.com/users/8809728/just4lizzy"
+            },
+            "is_answered": false,
+            "view_count": 64,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524191001,
+            "creation_date": 1518794014,
+            "last_edit_date": 1524191001,
+            "question_id": 48829688,
+            "body_markdown": "My goal is to use the [pull method][1] to read lines from a log file stored in a local directory, and display it using Spark Streaming. The Flume agent seems to be working fine. When I use netstat after starting Flume, I can see that the agent is listening on the port.\r\n\r\nHowever, when I try to run the Spark script. I keep getting the same error every time it tries to gather information from the port. \r\n\r\n\r\n\r\n    ERROR scheduler.ReceiverTracker: Deregistered receiver for stream 0: Error starting receiver 0 - java.io.IOException: Error connecting to localhost/127.0.0.1:9992\r\n    \tat org.apache.avro.ipc.NettyTransceiver.getChannel(NettyTransceiver.java:292)\r\n    \tat org.apache.avro.ipc.NettyTransceiver.&lt;init&gt;(NettyTransceiver.java:206)\r\n    \tat org.apache.avro.ipc.NettyTransceiver.&lt;init&gt;(NettyTransceiver.java:141)\r\n    \tat org.apache.spark.streaming.flume.FlumePollingReceiver$$anonfun$onStart$1.apply(FlumePollingInputDStream.scala:83)\r\n    \tat org.apache.spark.streaming.flume.FlumePollingReceiver$$anonfun$onStart$1.apply(FlumePollingInputDStream.scala:82)\r\n    \tat scala.collection.mutable.ResizableArray$class.foreach(ResizableArray.scala:59)\r\n    \tat scala.collection.mutable.ArrayBuffer.foreach(ArrayBuffer.scala:48)\r\n    \tat org.apache.spark.streaming.flume.FlumePollingReceiver.onStart(FlumePollingInputDStream.scala:82)\r\n    \tat org.apache.spark.streaming.receiver.ReceiverSupervisor.startReceiver(ReceiverSupervisor.scala:149)\r\n    \tat org.apache.spark.streaming.receiver.ReceiverSupervisor.start(ReceiverSupervisor.scala:131)\r\n    \tat org.apache.spark.streaming.scheduler.ReceiverTracker$ReceiverTrackerEndpoint$$anonfun$9.apply(ReceiverTracker.scala:607)\r\n    \tat org.apache.spark.streaming.scheduler.ReceiverTracker$ReceiverTrackerEndpoint$$anonfun$9.apply(ReceiverTracker.scala:597)\r\n    \tat org.apache.spark.SparkContext$$anonfun$34.apply(SparkContext.scala:2173)\r\n    \tat org.apache.spark.SparkContext$$anonfun$34.apply(SparkContext.scala:2173)\r\n    \tat org.apache.spark.scheduler.ResultTask.runTask(ResultTask.scala:87)\r\n    \tat org.apache.spark.scheduler.Task.run(Task.scala:108)\r\n    \tat org.apache.spark.executor.Executor$TaskRunner.run(Executor.scala:335)\r\n    \tat java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)\r\n    \tat java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)\r\n    \tat java.lang.Thread.run(Thread.java:748)\r\n    Caused by: java.net.ConnectException: Connection refused: localhost/127.0.0.1:9992\r\n    \tat sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)\r\n    \tat sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:717)\r\n    \tat org.jboss.netty.channel.socket.nio.NioClientBoss.connect(NioClientBoss.java:152)\r\n    \tat org.jboss.netty.channel.socket.nio.NioClientBoss.processSelectedKeys(NioClientBoss.java:105)\r\n    \tat org.jboss.netty.channel.socket.nio.NioClientBoss.process(NioClientBoss.java:79)\r\n    \tat org.jboss.netty.channel.socket.nio.AbstractNioSelector.run(AbstractNioSelector.java:337)\r\n    \tat org.jboss.netty.channel.socket.nio.NioClientBoss.run(NioClientBoss.java:42)\r\n    \tat org.jboss.netty.util.ThreadRenamingRunnable.run(ThreadRenamingRunnable.java:108)\r\n    \tat org.jboss.netty.util.internal.DeadLockProofWorker$1.run(DeadLockProofWorker.java:42)\r\n    \t... 3 more\r\n\r\n\r\n\r\nHere is the Flume agent configuration: \r\n\r\n\r\n    agent1.sources = webserver-log-source\r\n    agent1.channels = memory-channel\r\n    agent1.sinks = sparkSink\r\n\r\n    # Describe the source\r\n    agent1.sources.webserver-log-source.type = spooldir\r\n    agent1.sources.webserver-log-source.spoolDir = &lt;path&gt;\r\n    agent1.sources.webserver-log-source.channels = memory-channel\r\n\r\n    # Describe the sink\r\n    agent1.sinks.sparkSink.type = org.apache.spark.streaming.flume.sink.SparkSink\r\n    agent1.sinks.sparkSink.channel = memory-channel\r\n    agent1.sinks.sparkSink.hostname = localhost\r\n    agent1.sinks.sparkSink.port = 9992\r\n    agent1.sinks.sparkSink.batch-size = 1\r\n\r\n    # Use a channel which buffers events in memory\r\n    agent1.channels.memory-channel.type = memory\r\n    agent1.channels.memory-channel.capacity = 100000\r\n    agent1.channels.memory-channel.transactionCapacity = 1000\r\n\r\n\r\n\r\nAnd here is the Spark code:\r\n\r\n\r\n\r\n    import sys\r\n    from pyspark import SparkContext\r\n    from pyspark.streaming import StreamingContext\r\n    from pyspark.streaming.flume import FlumeUtils\r\n\r\n\r\n    if __name__ == &quot;__main__&quot;:\r\n        if len(sys.argv) != 3:\r\n            print &gt;&gt; sys.stderr, &quot;Usage: StreamingLogs.py &lt;hostname&gt; &lt;port&gt;&quot;\r\n            sys.exit(-1)\r\n        \r\n        # get hostname and port of data source from application arguments\r\n        hostname = sys.argv[1]\r\n        port = int(sys.argv[2])\r\n         \r\n        # Create a new SparkContext\r\n        sc = SparkContext()\r\n\r\n        # Set log level to ERROR to avoid distracting extra output\r\n        sc.setLogLevel(&quot;ERROR&quot;)\r\n\r\n        # Create and configure a new Streaming Context \r\n        # with a 1 second batch duration\r\n        ssc = StreamingContext(sc,1)\r\n\r\n        #Create input DStream with flume\r\n        addresses = {(hostname, port)}\r\n        flumeStream = FlumeUtils.createPollingStream(ssc, addresses)\r\n    \t\r\n        flumeStream.pprint()\r\n    \t\r\n        # Start the streaming context and then wait for application to terminate\r\n        ssc.start()\r\n        ssc.awaitTermination()\r\n\r\n\r\n\r\nI&#39;ve tried other ports and also the fully qualified hostname for the machine itself, and I always get the same error.\r\n\r\nI&#39;ve also noticed that the Flume agent hasn&#39;t moved anything out of the channel and into the Sink. Is that just because it&#39;s the pull method instead of the push method?\r\n\r\n\r\n\r\n    18/02/15 15:34:49 INFO node.PollingPropertiesFileConfigurationProvider: Configuration provider stopping\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Component type: CHANNEL, name: memory-channel stopped\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.start.time == 1518726765931\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.stop.time == 1518726889801\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.capacity == 100000\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.current.size == 1297\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.event.put.attempt == 1297\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.event.put.success == 1297\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.event.take.attempt == 0\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.event.take.success == 0\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Component type: SOURCE, name: webserver-log-source stopped\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. source.start.time == 1518726765956\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. source.stop.time == 1518726889802\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. src.append-batch.accepted == 15\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. src.append-batch.received == 15\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. src.append.accepted == 0\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. src.append.received == 0\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. src.events.accepted == 1297\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. src.events.received == 1297\r\n    18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. src.open-connection.count == 0\r\n    18/02/15 15:34:49 INFO source.SpoolDirectorySource: SpoolDir source webserver-log-source stopped. Metrics: SOURCE:webserver-log-source{src.events.accepted=1297, src.open-connection.count=0, src.append.received=0, src.append-batch.received=15, src.append-batch.accepted=15, src.append.accepted=0, src.events.received=1297}\r\n    18/02/15 15:34:49 INFO sink.SparkSink: Stopping Spark Sink: sparkSink\r\n    18/02/15 15:34:49 INFO sink.SparkAvroCallbackHandler: Shutting down Spark Avro Callback Handler\r\n    18/02/15 15:34:49 INFO sink.SparkSink: Stopping Avro Server for sink: sparkSink\r\n\r\n\r\n\r\n\r\nAm I doing something wrong? Or are there some sort of incorrect configurations that I missed?\r\n\r\n  [1]: https://spark.apache.org/docs/2.2.0/streaming-flume-integration.html#approach-2-pull-based-approach-using-a-custom-sink",
+            "link": "https://stackoverflow.com/questions/48829688/spark-streaming-application-not-connecting-to-flume-agent",
+            "title": "Spark Streaming Application not connecting to Flume agent",
+            "body": "<p>My goal is to use the <a href=\"https://spark.apache.org/docs/2.2.0/streaming-flume-integration.html#approach-2-pull-based-approach-using-a-custom-sink\" rel=\"nofollow noreferrer\">pull method</a> to read lines from a log file stored in a local directory, and display it using Spark Streaming. The Flume agent seems to be working fine. When I use netstat after starting Flume, I can see that the agent is listening on the port.</p>\n\n<p>However, when I try to run the Spark script. I keep getting the same error every time it tries to gather information from the port. </p>\n\n<pre><code>ERROR scheduler.ReceiverTracker: Deregistered receiver for stream 0: Error starting receiver 0 - java.io.IOException: Error connecting to localhost/127.0.0.1:9992\n    at org.apache.avro.ipc.NettyTransceiver.getChannel(NettyTransceiver.java:292)\n    at org.apache.avro.ipc.NettyTransceiver.&lt;init&gt;(NettyTransceiver.java:206)\n    at org.apache.avro.ipc.NettyTransceiver.&lt;init&gt;(NettyTransceiver.java:141)\n    at org.apache.spark.streaming.flume.FlumePollingReceiver$$anonfun$onStart$1.apply(FlumePollingInputDStream.scala:83)\n    at org.apache.spark.streaming.flume.FlumePollingReceiver$$anonfun$onStart$1.apply(FlumePollingInputDStream.scala:82)\n    at scala.collection.mutable.ResizableArray$class.foreach(ResizableArray.scala:59)\n    at scala.collection.mutable.ArrayBuffer.foreach(ArrayBuffer.scala:48)\n    at org.apache.spark.streaming.flume.FlumePollingReceiver.onStart(FlumePollingInputDStream.scala:82)\n    at org.apache.spark.streaming.receiver.ReceiverSupervisor.startReceiver(ReceiverSupervisor.scala:149)\n    at org.apache.spark.streaming.receiver.ReceiverSupervisor.start(ReceiverSupervisor.scala:131)\n    at org.apache.spark.streaming.scheduler.ReceiverTracker$ReceiverTrackerEndpoint$$anonfun$9.apply(ReceiverTracker.scala:607)\n    at org.apache.spark.streaming.scheduler.ReceiverTracker$ReceiverTrackerEndpoint$$anonfun$9.apply(ReceiverTracker.scala:597)\n    at org.apache.spark.SparkContext$$anonfun$34.apply(SparkContext.scala:2173)\n    at org.apache.spark.SparkContext$$anonfun$34.apply(SparkContext.scala:2173)\n    at org.apache.spark.scheduler.ResultTask.runTask(ResultTask.scala:87)\n    at org.apache.spark.scheduler.Task.run(Task.scala:108)\n    at org.apache.spark.executor.Executor$TaskRunner.run(Executor.scala:335)\n    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)\n    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)\n    at java.lang.Thread.run(Thread.java:748)\nCaused by: java.net.ConnectException: Connection refused: localhost/127.0.0.1:9992\n    at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)\n    at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:717)\n    at org.jboss.netty.channel.socket.nio.NioClientBoss.connect(NioClientBoss.java:152)\n    at org.jboss.netty.channel.socket.nio.NioClientBoss.processSelectedKeys(NioClientBoss.java:105)\n    at org.jboss.netty.channel.socket.nio.NioClientBoss.process(NioClientBoss.java:79)\n    at org.jboss.netty.channel.socket.nio.AbstractNioSelector.run(AbstractNioSelector.java:337)\n    at org.jboss.netty.channel.socket.nio.NioClientBoss.run(NioClientBoss.java:42)\n    at org.jboss.netty.util.ThreadRenamingRunnable.run(ThreadRenamingRunnable.java:108)\n    at org.jboss.netty.util.internal.DeadLockProofWorker$1.run(DeadLockProofWorker.java:42)\n    ... 3 more\n</code></pre>\n\n<p>Here is the Flume agent configuration: </p>\n\n<pre><code>agent1.sources = webserver-log-source\nagent1.channels = memory-channel\nagent1.sinks = sparkSink\n\n# Describe the source\nagent1.sources.webserver-log-source.type = spooldir\nagent1.sources.webserver-log-source.spoolDir = &lt;path&gt;\nagent1.sources.webserver-log-source.channels = memory-channel\n\n# Describe the sink\nagent1.sinks.sparkSink.type = org.apache.spark.streaming.flume.sink.SparkSink\nagent1.sinks.sparkSink.channel = memory-channel\nagent1.sinks.sparkSink.hostname = localhost\nagent1.sinks.sparkSink.port = 9992\nagent1.sinks.sparkSink.batch-size = 1\n\n# Use a channel which buffers events in memory\nagent1.channels.memory-channel.type = memory\nagent1.channels.memory-channel.capacity = 100000\nagent1.channels.memory-channel.transactionCapacity = 1000\n</code></pre>\n\n<p>And here is the Spark code:</p>\n\n<pre><code>import sys\nfrom pyspark import SparkContext\nfrom pyspark.streaming import StreamingContext\nfrom pyspark.streaming.flume import FlumeUtils\n\n\nif __name__ == \"__main__\":\n    if len(sys.argv) != 3:\n        print &gt;&gt; sys.stderr, \"Usage: StreamingLogs.py &lt;hostname&gt; &lt;port&gt;\"\n        sys.exit(-1)\n\n    # get hostname and port of data source from application arguments\n    hostname = sys.argv[1]\n    port = int(sys.argv[2])\n\n    # Create a new SparkContext\n    sc = SparkContext()\n\n    # Set log level to ERROR to avoid distracting extra output\n    sc.setLogLevel(\"ERROR\")\n\n    # Create and configure a new Streaming Context \n    # with a 1 second batch duration\n    ssc = StreamingContext(sc,1)\n\n    #Create input DStream with flume\n    addresses = {(hostname, port)}\n    flumeStream = FlumeUtils.createPollingStream(ssc, addresses)\n\n    flumeStream.pprint()\n\n    # Start the streaming context and then wait for application to terminate\n    ssc.start()\n    ssc.awaitTermination()\n</code></pre>\n\n<p>I've tried other ports and also the fully qualified hostname for the machine itself, and I always get the same error.</p>\n\n<p>I've also noticed that the Flume agent hasn't moved anything out of the channel and into the Sink. Is that just because it's the pull method instead of the push method?</p>\n\n<pre><code>18/02/15 15:34:49 INFO node.PollingPropertiesFileConfigurationProvider: Configuration provider stopping\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Component type: CHANNEL, name: memory-channel stopped\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.start.time == 1518726765931\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.stop.time == 1518726889801\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.capacity == 100000\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.current.size == 1297\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.event.put.attempt == 1297\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.event.put.success == 1297\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.event.take.attempt == 0\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: CHANNEL, name: memory-channel. channel.event.take.success == 0\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Component type: SOURCE, name: webserver-log-source stopped\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. source.start.time == 1518726765956\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. source.stop.time == 1518726889802\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. src.append-batch.accepted == 15\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. src.append-batch.received == 15\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. src.append.accepted == 0\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. src.append.received == 0\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. src.events.accepted == 1297\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. src.events.received == 1297\n18/02/15 15:34:49 INFO instrumentation.MonitoredCounterGroup: Shutdown Metric for type: SOURCE, name: webserver-log-source. src.open-connection.count == 0\n18/02/15 15:34:49 INFO source.SpoolDirectorySource: SpoolDir source webserver-log-source stopped. Metrics: SOURCE:webserver-log-source{src.events.accepted=1297, src.open-connection.count=0, src.append.received=0, src.append-batch.received=15, src.append-batch.accepted=15, src.append.accepted=0, src.events.received=1297}\n18/02/15 15:34:49 INFO sink.SparkSink: Stopping Spark Sink: sparkSink\n18/02/15 15:34:49 INFO sink.SparkAvroCallbackHandler: Shutting down Spark Avro Callback Handler\n18/02/15 15:34:49 INFO sink.SparkSink: Stopping Avro Server for sink: sparkSink\n</code></pre>\n\n<p>Am I doing something wrong? Or are there some sort of incorrect configurations that I missed?</p>\n"
+        },
+        {
+            "tags": [
+                "office-js"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 3138293,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/F6cuy.jpg?s=128&g=1",
+                "display_name": "chengfei.heng",
+                "link": "https://stackoverflow.com/users/3138293/chengfei-heng"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524190995,
+            "creation_date": 1524190995,
+            "question_id": 49932945,
+            "body_markdown": "How can I remove the add-in errors.\r\n\r\nStep1:\r\n In add-in project, set &#39;Start document&#39; with &#39;xx.docx&#39;.\r\n\r\nStep2:\r\n Saved the started docx.\r\n\r\nStep3:\r\n Open the docx file in anywhere, add-ins error happen.\r\n\r\n[Start Document][1]\r\n\r\n[Error Image][2]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/YTwOf.png\r\n  [2]: https://i.stack.imgur.com/tti83.png",
+            "link": "https://stackoverflow.com/questions/49932945/when-open-a-docx-file-add-in-error-happens",
+            "title": "When open a docx file,add-in error happens",
+            "body": "<p>How can I remove the add-in errors.</p>\n\n<p>Step1:\n In add-in project, set 'Start document' with 'xx.docx'.</p>\n\n<p>Step2:\n Saved the started docx.</p>\n\n<p>Step3:\n Open the docx file in anywhere, add-ins error happen.</p>\n\n<p><a href=\"https://i.stack.imgur.com/YTwOf.png\" rel=\"nofollow noreferrer\">Start Document</a></p>\n\n<p><a href=\"https://i.stack.imgur.com/tti83.png\" rel=\"nofollow noreferrer\">Error Image</a></p>\n"
+        },
+        {
+            "tags": [
+                "mariadb"
+            ],
+            "owner": {
+                "reputation": 32,
+                "user_id": 8719435,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/de269d26d73aca7ec45bf8b766eeda0d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Tan Jason",
+                "link": "https://stackoverflow.com/users/8719435/tan-jason"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524190994,
+            "creation_date": 1524190994,
+            "question_id": 49932944,
+            "body_markdown": "I&#39;ve been working on a platform which allows users to write their own queries and I am thinking of using stored procedures for row level access. This is how it would work; the user calls the query using the stored procedure, and the procedure will check if it has access to the rows, and will return the result if it passes the check. Here&#39;s a little simplified version of the part I am having trouble with.\r\n\r\nYou guys can copy and paste this code to see what I mean.\r\n\r\n    CREATE TABLE student_tests (\r\n      name CHAR(10), test CHAR(10), \r\n      score TINYINT, test_date DATE\r\n    );\r\n    \r\n    INSERT INTO student_tests \r\n    (name, test, score, test_date) VALUES\r\n    (&#39;Chun&#39;, &#39;SQL&#39;, 75, &#39;2012-11-05&#39;), \r\n    (&#39;Chun&#39;, &#39;Tuning&#39;, 73, &#39;2013-06-14&#39;),\r\n    (&#39;Esben&#39;, &#39;SQL&#39;, 43, &#39;2014-02-11&#39;), \r\n    (&#39;Esben&#39;, &#39;Tuning&#39;, 31, &#39;2014-02-09&#39;), \r\n    (&#39;Kaolin&#39;, &#39;SQL&#39;, 56, &#39;2014-01-01&#39;),\r\n    (&#39;Kaolin&#39;, &#39;Tuning&#39;, 88, &#39;2013-12-29&#39;), \r\n    (&#39;Tatiana&#39;, &#39;SQL&#39;, 87, &#39;2012-04-28&#39;), \r\n    (&#39;Tatiana&#39;, &#39;Tuning&#39;, 83, &#39;2013-09-30&#39;);\r\n    \r\n    DELIMITER //\r\n    CREATE or REPLACE PROCEDURE proc1 (IN qry LONGTEXT) \r\n    NOT DETERMINISTIC\r\n    READS SQL DATA\r\n    SQL SECURITY DEFINER\r\n    BEGIN\r\n    \r\n    EXECUTE IMMEDIATE CONCAT(&quot;create or replace temporary table tab1 as (&quot;,qry,&quot;);&quot;);\r\n    \r\n    SELECT * from tab1;\r\n    \r\n    END\r\n    //\r\n    DELIMITER ;\r\n\r\n    #this works perfectly\r\n    call proc1 (&quot;select * from student_tests&quot;); \r\n\r\n    #it doesnt work when I try to select columns\r\n    ## Unknown column &#39;db.tab1.score&#39; in &#39;field list&#39;\r\n    call proc1 (&quot;select name,test from student_tests&quot;);\r\nI believe this has something to do with the line `SELECT * from tab1;` in the stored procedure. Can someone maybe enlighten me on what is going on? I think I do not understand temporary tables/stored procedures properly.",
+            "link": "https://stackoverflow.com/questions/49932944/behaviour-of-temp-tables-in-stored-procedures",
+            "title": "Behaviour of temp tables in stored procedures",
+            "body": "<p>I've been working on a platform which allows users to write their own queries and I am thinking of using stored procedures for row level access. This is how it would work; the user calls the query using the stored procedure, and the procedure will check if it has access to the rows, and will return the result if it passes the check. Here's a little simplified version of the part I am having trouble with.</p>\n\n<p>You guys can copy and paste this code to see what I mean.</p>\n\n<pre><code>CREATE TABLE student_tests (\n  name CHAR(10), test CHAR(10), \n  score TINYINT, test_date DATE\n);\n\nINSERT INTO student_tests \n(name, test, score, test_date) VALUES\n('Chun', 'SQL', 75, '2012-11-05'), \n('Chun', 'Tuning', 73, '2013-06-14'),\n('Esben', 'SQL', 43, '2014-02-11'), \n('Esben', 'Tuning', 31, '2014-02-09'), \n('Kaolin', 'SQL', 56, '2014-01-01'),\n('Kaolin', 'Tuning', 88, '2013-12-29'), \n('Tatiana', 'SQL', 87, '2012-04-28'), \n('Tatiana', 'Tuning', 83, '2013-09-30');\n\nDELIMITER //\nCREATE or REPLACE PROCEDURE proc1 (IN qry LONGTEXT) \nNOT DETERMINISTIC\nREADS SQL DATA\nSQL SECURITY DEFINER\nBEGIN\n\nEXECUTE IMMEDIATE CONCAT(\"create or replace temporary table tab1 as (\",qry,\");\");\n\nSELECT * from tab1;\n\nEND\n//\nDELIMITER ;\n\n#this works perfectly\ncall proc1 (\"select * from student_tests\"); \n\n#it doesnt work when I try to select columns\n## Unknown column 'db.tab1.score' in 'field list'\ncall proc1 (\"select name,test from student_tests\");\n</code></pre>\n\n<p>I believe this has something to do with the line <code>SELECT * from tab1;</code> in the stored procedure. Can someone maybe enlighten me on what is going on? I think I do not understand temporary tables/stored procedures properly.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "angularjs",
+                "timeout"
+            ],
+            "owner": {
+                "reputation": 75,
+                "user_id": 4093172,
+                "user_type": "registered",
+                "accept_rate": 20,
+                "profile_image": "https://graph.facebook.com/100000425444184/picture?type=large",
+                "display_name": "Sai Ram Gupta",
+                "link": "https://stackoverflow.com/users/4093172/sai-ram-gupta"
+            },
+            "is_answered": false,
+            "view_count": 110,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524190982,
+            "creation_date": 1441995700,
+            "last_edit_date": 1518740659,
+            "question_id": 32529834,
+            "body_markdown": "    $scope.fetchStatus = function (job) {\r\n            $http\r\n                .get(&#39;http://gtrapi/pool/checkStatus/&#39; + sessionId + &#39;/&#39; + job.jobId)\r\n                .success(function (response) {\r\n                    job[job.jobId] = response;\r\n\r\n                    if (response.status !== &#39;InProgress&#39;) {\r\n                        $scope.refreshDataTimeout = $timeout($scope.fetchStatus(job), 1000);\r\n                    }\r\n                })\r\n                .error (function () {\r\n\r\n                });\r\n    };\r\n\r\n\r\nHere is my HTML code\r\n&lt;p&gt;\r\n                    \r\n      &lt;div ng-repeat=&quot;job in gtrLogs&quot; class=&quot;each-log&quot;&gt;\r\n                &lt;div class=&quot;row job-id&quot;&gt;\r\n                    &lt;div class=&quot;col-xs-2&quot;&gt;\r\n                        Job ID: {{job.jobId}}\r\n                    &lt;/div&gt;\r\n                    &lt;div class=&quot;col-xs-10&quot;&gt;\r\n                        End Point: {{job.changes.endpoint}}\r\n                    &lt;/div&gt;\r\n                &lt;/div&gt;\r\n                &lt;div class=&quot;each-job&quot; ng-init=&quot;fetchStatus(job)&quot;&gt;\r\n                    &lt;div class=&quot;job-header row&quot;&gt;\r\n                        &lt;span class=&quot;col-xs-6&quot;&gt;Job Status: &lt;strong&gt;{{job[job.jobId].status}}&lt;/strong&gt;\r\n                            &lt;span class=&quot;glyphicon&quot; ng-class=&quot;{&#39;glyphicon-refresh spin&#39; : job[job.jobId].status === &#39;InProgress&#39;, &#39;glyphicon-ok&#39; : job[job.jobId].status === &#39;submitted&#39;, &#39;glyphicon-remove&#39; : job[job.jobId].status === &#39;Aborted&#39;}&quot;&gt;&lt;/span&gt;\r\n                        &lt;/span&gt;\r\n                        &lt;span class=&quot;col-xs-6&quot;&gt;\r\n                            &lt;span class=&quot;glyphicon glyphicon-stop pull-right&quot; ng-click=&quot;stopLogs()&quot; tooltip=&quot;Stop Action&quot;&gt;&lt;/span&gt;\r\n                            &lt;span class=&quot;glyphicon glyphicon-repeat pull-right&quot; ng-click=&quot;rollBack()&quot; tooltip=&quot;Roll Back&quot;&gt;&lt;/span&gt;\r\n                        &lt;/span&gt;\r\n                    &lt;/div&gt;\r\n                    &lt;div class=&quot;logs-progress&quot;&gt;\r\n                        &lt;table class=&quot;table table-striped table-condensed table-hover&quot;&gt;\r\n                            &lt;thead&gt;\r\n                            &lt;tr&gt;\r\n                                &lt;th&gt;\r\n                                    Message\r\n                                &lt;/th&gt;\r\n                                &lt;th&gt;\r\n                                    Time\r\n                                &lt;/th&gt;\r\n                            &lt;/tr&gt;\r\n                            &lt;/thead&gt;\r\n                            &lt;tbody&gt;\r\n                            &lt;tr ng-repeat=&quot;row in job[job.jobId].logs&quot;&gt;\r\n                                &lt;td&gt;{{row.msg}}&lt;/td&gt;\r\n                                &lt;td&gt;{{row.time | date:&#39;yyyy/MM/dd HH:mm:ss&#39;}}&lt;/td&gt;\r\n                            &lt;/tr&gt;\r\n                            &lt;/tbody&gt;\r\n                        &lt;/table&gt;\r\n                    &lt;/div&gt;\r\n                &lt;/div&gt;\r\n            &lt;/div&gt;                      \r\n&lt;p&gt;\r\nI have to update the data every second and placed $timeout in the function. But because the function is being called multiple times from the HTML the calls are nested.\r\nHow Do I keep polling with respect to the same job.",
+            "link": "https://stackoverflow.com/questions/32529834/keep-track-of-each-timeout-when-calling-the-same-function-multiple-times",
+            "title": "keep track of each $timeout when calling the same function multiple times",
+            "body": "<pre><code>$scope.fetchStatus = function (job) {\n        $http\n            .get('http://gtrapi/pool/checkStatus/' + sessionId + '/' + job.jobId)\n            .success(function (response) {\n                job[job.jobId] = response;\n\n                if (response.status !== 'InProgress') {\n                    $scope.refreshDataTimeout = $timeout($scope.fetchStatus(job), 1000);\n                }\n            })\n            .error (function () {\n\n            });\n};\n</code></pre>\n\n<p>Here is my HTML code\n<p></p>\n\n<pre><code>  &lt;div ng-repeat=\"job in gtrLogs\" class=\"each-log\"&gt;\n            &lt;div class=\"row job-id\"&gt;\n                &lt;div class=\"col-xs-2\"&gt;\n                    Job ID: {{job.jobId}}\n                &lt;/div&gt;\n                &lt;div class=\"col-xs-10\"&gt;\n                    End Point: {{job.changes.endpoint}}\n                &lt;/div&gt;\n            &lt;/div&gt;\n            &lt;div class=\"each-job\" ng-init=\"fetchStatus(job)\"&gt;\n                &lt;div class=\"job-header row\"&gt;\n                    &lt;span class=\"col-xs-6\"&gt;Job Status: &lt;strong&gt;{{job[job.jobId].status}}&lt;/strong&gt;\n                        &lt;span class=\"glyphicon\" ng-class=\"{'glyphicon-refresh spin' : job[job.jobId].status === 'InProgress', 'glyphicon-ok' : job[job.jobId].status === 'submitted', 'glyphicon-remove' : job[job.jobId].status === 'Aborted'}\"&gt;&lt;/span&gt;\n                    &lt;/span&gt;\n                    &lt;span class=\"col-xs-6\"&gt;\n                        &lt;span class=\"glyphicon glyphicon-stop pull-right\" ng-click=\"stopLogs()\" tooltip=\"Stop Action\"&gt;&lt;/span&gt;\n                        &lt;span class=\"glyphicon glyphicon-repeat pull-right\" ng-click=\"rollBack()\" tooltip=\"Roll Back\"&gt;&lt;/span&gt;\n                    &lt;/span&gt;\n                &lt;/div&gt;\n                &lt;div class=\"logs-progress\"&gt;\n                    &lt;table class=\"table table-striped table-condensed table-hover\"&gt;\n                        &lt;thead&gt;\n                        &lt;tr&gt;\n                            &lt;th&gt;\n                                Message\n                            &lt;/th&gt;\n                            &lt;th&gt;\n                                Time\n                            &lt;/th&gt;\n                        &lt;/tr&gt;\n                        &lt;/thead&gt;\n                        &lt;tbody&gt;\n                        &lt;tr ng-repeat=\"row in job[job.jobId].logs\"&gt;\n                            &lt;td&gt;{{row.msg}}&lt;/td&gt;\n                            &lt;td&gt;{{row.time | date:'yyyy/MM/dd HH:mm:ss'}}&lt;/td&gt;\n                        &lt;/tr&gt;\n                        &lt;/tbody&gt;\n                    &lt;/table&gt;\n                &lt;/div&gt;\n            &lt;/div&gt;\n        &lt;/div&gt;                      \n</code></pre>\n\n<p><p>\nI have to update the data every second and placed $timeout in the function. But because the function is being called multiple times from the HTML the calls are nested.\nHow Do I keep polling with respect to the same job.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "linux",
+                "multiprocessing",
+                "python-multiprocessing"
+            ],
+            "owner": {
+                "reputation": 461,
+                "user_id": 5196274,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-PMRuyR54Zh0/AAAAAAAAAAI/AAAAAAAAAAw/WCi22GHOpvE/photo.jpg?sz=128",
+                "display_name": "QA Collective",
+                "link": "https://stackoverflow.com/users/5196274/qa-collective"
+            },
+            "is_answered": false,
+            "view_count": 22,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524190971,
+            "creation_date": 1524141111,
+            "last_edit_date": 1524190971,
+            "question_id": 49921214,
+            "body_markdown": "I&#39;ve read [the python docs on multiprocessing][1] and I&#39;ve written several programs.\r\n\r\nI&#39;ve scoured Google and Stack Overflow, but to no avail.\r\n\r\nOn Linux, I simply want to check if a pipe has been closed on the other end **and its likely that the pipe will contain no data to be `recv()`&#39;d** ... my code has other processing to do - so I don&#39;t want it blocking while I wait for the closure!\r\n\r\nThe simplest possible example I&#39;ve been tinkering with is below, I&#39;ve also investigated Windows.  I&#39;m sure this behavior wont be surprising.\r\n\r\nOn **Windows**:\r\n\r\n    Python 3.5.2 (v3.5.2:4def2a2901a5, Jun 25 2016, 22:18:55) [MSC v.1900 64 bit (AMD64)] on win32\r\n    Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.\r\n    &gt;&gt;&gt; from multiprocessing import Pipe\r\n    &gt;&gt;&gt; p,c=Pipe()\r\n    &gt;&gt;&gt; c.close()\r\n    &gt;&gt;&gt; p.poll()\r\n    Traceback (most recent call last):\r\n      File &quot;&lt;stdin&gt;&quot;, line 1, in &lt;module&gt;\r\n      File &quot;C:\\Program Files\\Python35\\lib\\multiprocessing\\connection.py&quot;, line 257,\r\n    in poll\r\n        return self._poll(timeout)\r\n      File &quot;C:\\Program Files\\Python35\\lib\\multiprocessing\\connection.py&quot;, line 328,\r\n    in _poll\r\n        _winapi.PeekNamedPipe(self._handle)[0] != 0):\r\n    BrokenPipeError: [WinError 109] The pipe has been ended\r\n\r\n*That&#39;s great!* I could simply catch the `BrokenPipeError` exception.\r\n\r\nOn **Linux**:\r\n\r\n    Python 3.5.2 (default, Nov 23 2017, 16:37:01) \r\n    [GCC 5.4.0 20160609] on linux\r\n    Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.\r\n    &gt;&gt;&gt; from multiprocessing import Pipe\r\n    &gt;&gt;&gt; p,c=Pipe()\r\n    &gt;&gt;&gt; c.close()\r\n    &gt;&gt;&gt; p.poll()\r\n    True\r\n    &gt;&gt;&gt; \r\n\r\n*That&#39;s not so great!* Is there is a better way than to call `recv()` and have my code block?\r\n\r\nYes, I could send an &#39;END&#39; string from the other side, but that seems mechanically inelegant.\r\n\r\nFeels like I&#39;m missing an option ...\r\n\r\n  [1]: https://docs.python.org/3/library/multiprocessing.html",
+            "link": "https://stackoverflow.com/questions/49921214/how-can-i-perform-a-non-blocking-check-for-closure-of-a-multiprocessing-pipe-in",
+            "title": "How can I perform a non-blocking check for closure of a multiprocessing Pipe in linux?",
+            "body": "<p>I've read <a href=\"https://docs.python.org/3/library/multiprocessing.html\" rel=\"nofollow noreferrer\">the python docs on multiprocessing</a> and I've written several programs.</p>\n\n<p>I've scoured Google and Stack Overflow, but to no avail.</p>\n\n<p>On Linux, I simply want to check if a pipe has been closed on the other end <strong>and its likely that the pipe will contain no data to be <code>recv()</code>'d</strong> ... my code has other processing to do - so I don't want it blocking while I wait for the closure!</p>\n\n<p>The simplest possible example I've been tinkering with is below, I've also investigated Windows.  I'm sure this behavior wont be surprising.</p>\n\n<p>On <strong>Windows</strong>:</p>\n\n<pre><code>Python 3.5.2 (v3.5.2:4def2a2901a5, Jun 25 2016, 22:18:55) [MSC v.1900 64 bit (AMD64)] on win32\nType \"help\", \"copyright\", \"credits\" or \"license\" for more information.\n&gt;&gt;&gt; from multiprocessing import Pipe\n&gt;&gt;&gt; p,c=Pipe()\n&gt;&gt;&gt; c.close()\n&gt;&gt;&gt; p.poll()\nTraceback (most recent call last):\n  File \"&lt;stdin&gt;\", line 1, in &lt;module&gt;\n  File \"C:\\Program Files\\Python35\\lib\\multiprocessing\\connection.py\", line 257,\nin poll\n    return self._poll(timeout)\n  File \"C:\\Program Files\\Python35\\lib\\multiprocessing\\connection.py\", line 328,\nin _poll\n    _winapi.PeekNamedPipe(self._handle)[0] != 0):\nBrokenPipeError: [WinError 109] The pipe has been ended\n</code></pre>\n\n<p><em>That's great!</em> I could simply catch the <code>BrokenPipeError</code> exception.</p>\n\n<p>On <strong>Linux</strong>:</p>\n\n<pre><code>Python 3.5.2 (default, Nov 23 2017, 16:37:01) \n[GCC 5.4.0 20160609] on linux\nType \"help\", \"copyright\", \"credits\" or \"license\" for more information.\n&gt;&gt;&gt; from multiprocessing import Pipe\n&gt;&gt;&gt; p,c=Pipe()\n&gt;&gt;&gt; c.close()\n&gt;&gt;&gt; p.poll()\nTrue\n&gt;&gt;&gt; \n</code></pre>\n\n<p><em>That's not so great!</em> Is there is a better way than to call <code>recv()</code> and have my code block?</p>\n\n<p>Yes, I could send an 'END' string from the other side, but that seems mechanically inelegant.</p>\n\n<p>Feels like I'm missing an option ...</p>\n"
+        },
+        {
+            "tags": [
+                "django",
+                "multi-upload"
+            ],
+            "owner": {
+                "reputation": 12,
+                "user_id": 9393766,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Jay",
+                "link": "https://stackoverflow.com/users/9393766/jay"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524190964,
+            "creation_date": 1524169328,
+            "question_id": 49929620,
+            "body_markdown": "I&#39;m trying to use the below library to implement multi upload in my Django proejct.\r\n\r\nhttps://github.com/Chive/django-multiupload\r\n\r\n**boutique/models.py**\r\n\r\n    class Photo(models.Model):\r\n        store = models.ForeignKey(Store)\r\n        photo = models.FileField(null=True, blank=True, upload_to=&#39;boutique/index/%Y/%m/%d&#39;)\r\n        url = models.CharField(max_length=40, null=True, blank=True, verbose_name=&#39;Image URL&#39;)\r\n        created_at = models.DateTimeField(auto_now_add=True)\r\n    \r\n        def __unicode__(self):\r\n            return str(self.photo)\r\n    \r\n        def get_absolute_url(self):\r\n            return reverse(&#39;cms:photo_edit&#39;, args=[self.pk])\r\n\r\n**cms/forms.py**\r\n\r\n    from django import forms\r\n    from boutique.models import Photo\r\n    from multiupload.fields import MultiFileField\r\n    \r\n    class PhotoCreateForm(forms.ModelForm):\r\n        class Meta:\r\n            model = Photo\r\n            fields = [&#39;store&#39;]\r\n    \r\n        attachments = MultiFileField(min_num=1, max_num=3, max_file_size=1024*1024*5)\r\n\r\n**cms/views.py**\r\n\r\n    class PhotoCreateView(FormView):\r\n        model=Photo\r\n        template_name=&#39;cms/photo_new.html&#39;\r\n        form_class = PhotoCreateForm\r\n        success_url=reverse_lazy(&#39;cms:photo&#39;)\r\n        queryset = Photo.objects.all()\r\n    \r\n        def form_valid(self, form):\r\n            for each in form.cleaned_data[&#39;attachments&#39;]:\r\n                Attachment.objects.create(file=each)\r\n            return super(PhotoCreateView, self).form_valid(form)\r\n\r\n**cms/photo_new.html**\r\n\r\n    {% extends &#39;cms/base.html&#39; %}\r\n    {% load staticfiles %}\r\n    \r\n    {% block page-header %}Add Photo{% endblock %}\r\n    \r\n    {% block content %}\r\n      &lt;form action=&quot;&quot; method=&quot;post&quot;&gt;\r\n        {% csrf_token %}\r\n        &lt;table class=&quot;table table-hover store-form&quot;&gt;\r\n          {{ form.as_table }}\r\n        &lt;/table&gt;\r\n        &lt;input class=&quot;btn btn-success btn-block&quot; type=&quot;submit&quot; name=&quot;&quot; value=&quot;Submit&quot;&gt;\r\n        &lt;br&gt;\r\n      &lt;/form&gt;\r\n    {% endblock %}\r\n\r\n\r\nFYI, I&#39;m not using Django default admin, but my own customized admin, which is the app named `cms`. I&#39;m also using models in the app named `boutique`.\r\nWhen I upload photos, nothing happens and the page doesn&#39;t even move to the success url. After submitting the files, the file input field just says `&quot;Thie field is required&quot;`, and I don&#39;t see any uploads on the database.\r\nIs there something wrong on my codes?\r\n",
+            "link": "https://stackoverflow.com/questions/49929620/uploading-multiple-images-in-django-with-django-multiupload-library",
+            "title": "Uploading multiple images in Django with django-multiupload library",
+            "body": "<p>I'm trying to use the below library to implement multi upload in my Django proejct.</p>\n\n<p><a href=\"https://github.com/Chive/django-multiupload\" rel=\"nofollow noreferrer\">https://github.com/Chive/django-multiupload</a></p>\n\n<p><strong>boutique/models.py</strong></p>\n\n<pre><code>class Photo(models.Model):\n    store = models.ForeignKey(Store)\n    photo = models.FileField(null=True, blank=True, upload_to='boutique/index/%Y/%m/%d')\n    url = models.CharField(max_length=40, null=True, blank=True, verbose_name='Image URL')\n    created_at = models.DateTimeField(auto_now_add=True)\n\n    def __unicode__(self):\n        return str(self.photo)\n\n    def get_absolute_url(self):\n        return reverse('cms:photo_edit', args=[self.pk])\n</code></pre>\n\n<p><strong>cms/forms.py</strong></p>\n\n<pre><code>from django import forms\nfrom boutique.models import Photo\nfrom multiupload.fields import MultiFileField\n\nclass PhotoCreateForm(forms.ModelForm):\n    class Meta:\n        model = Photo\n        fields = ['store']\n\n    attachments = MultiFileField(min_num=1, max_num=3, max_file_size=1024*1024*5)\n</code></pre>\n\n<p><strong>cms/views.py</strong></p>\n\n<pre><code>class PhotoCreateView(FormView):\n    model=Photo\n    template_name='cms/photo_new.html'\n    form_class = PhotoCreateForm\n    success_url=reverse_lazy('cms:photo')\n    queryset = Photo.objects.all()\n\n    def form_valid(self, form):\n        for each in form.cleaned_data['attachments']:\n            Attachment.objects.create(file=each)\n        return super(PhotoCreateView, self).form_valid(form)\n</code></pre>\n\n<p><strong>cms/photo_new.html</strong></p>\n\n<pre><code>{% extends 'cms/base.html' %}\n{% load staticfiles %}\n\n{% block page-header %}Add Photo{% endblock %}\n\n{% block content %}\n  &lt;form action=\"\" method=\"post\"&gt;\n    {% csrf_token %}\n    &lt;table class=\"table table-hover store-form\"&gt;\n      {{ form.as_table }}\n    &lt;/table&gt;\n    &lt;input class=\"btn btn-success btn-block\" type=\"submit\" name=\"\" value=\"Submit\"&gt;\n    &lt;br&gt;\n  &lt;/form&gt;\n{% endblock %}\n</code></pre>\n\n<p>FYI, I'm not using Django default admin, but my own customized admin, which is the app named <code>cms</code>. I'm also using models in the app named <code>boutique</code>.\nWhen I upload photos, nothing happens and the page doesn't even move to the success url. After submitting the files, the file input field just says <code>\"Thie field is required\"</code>, and I don't see any uploads on the database.\nIs there something wrong on my codes?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "vue.js"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 8682868,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-r9LQWr7NpIY/AAAAAAAAAAI/AAAAAAAAAA0/NsqzJ8QEUOo/photo.jpg?sz=128",
+                "display_name": "pzjzeason",
+                "link": "https://stackoverflow.com/users/8682868/pzjzeason"
+            },
+            "is_answered": true,
+            "view_count": 35,
+            "accepted_answer_id": 49932375,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524190954,
+            "creation_date": 1524186215,
+            "last_edit_date": 1524190954,
+            "question_id": 49932346,
+            "body_markdown": "I&#39;m trying to use vue.js in the following example, but the result in browser is [&quot;product&quot;][1] instead of &quot;Boots&quot;.\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;div id=&quot;app&quot;&gt;\r\n        &lt;h2&gt;{{product}}&lt;/h2&gt;\r\n    &lt;/div&gt;\r\n    &lt;script src=&quot;https://unpkg.com/vue@2.5.16/dist/vue.js&quot;&gt;\r\n        const app = new vue({\r\n        el: &quot;#app&quot;,\r\n        data: {\r\n        product: &quot;Boots&quot;\r\n        }\r\n        })\r\n    &lt;/script&gt;\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/MltWi.png",
+            "link": "https://stackoverflow.com/questions/49932346/vue-js-not-work-as-expected",
+            "title": "vue.js not work as expected",
+            "body": "<p>I'm trying to use vue.js in the following example, but the result in browser is <a href=\"https://i.stack.imgur.com/MltWi.png\" rel=\"nofollow noreferrer\">\"product\"</a> instead of \"Boots\".</p>\n\n<pre class=\"lang-html prettyprint-override\"><code>&lt;div id=\"app\"&gt;\n    &lt;h2&gt;{{product}}&lt;/h2&gt;\n&lt;/div&gt;\n&lt;script src=\"https://unpkg.com/vue@2.5.16/dist/vue.js\"&gt;\n    const app = new vue({\n    el: \"#app\",\n    data: {\n    product: \"Boots\"\n    }\n    })\n&lt;/script&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "selenium",
+                "selenium-webdriver",
+                "automated-tests"
+            ],
+            "owner": {
+                "reputation": 10,
+                "user_id": 3806999,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a9dd40c9dbcbe976b0cd0b401d3f6eef?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3806999",
+                "link": "https://stackoverflow.com/users/3806999/user3806999"
+            },
+            "is_answered": true,
+            "view_count": 39,
+            "accepted_answer_id": 49917768,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524190954,
+            "creation_date": 1524130397,
+            "last_edit_date": 1524190954,
+            "question_id": 49917601,
+            "body_markdown": "      \t\r\n    \t  @Test(priority = 0)\r\n    \t  public void test() throws Exception {\r\n    \t    driver.get(baseUrl + &quot;/&quot;);\r\n    \t    driver.findElement(By.name(&quot;email&quot;)).clear();\r\n    \t    driver.findElement(By.name(&quot;email&quot;)).sendKeys(&quot;lanka@ensiz.com&quot;);\r\n    \t    driver.findElement(By.name(&quot;password&quot;)).clear();\r\n    \t    driver.findElement(By.name(&quot;password&quot;)).sendKeys(&quot;123456&quot;);\r\n    \t    driver.findElement(By.xpath(&quot;//button[contains(text(),&#39;Sign In&#39;)]&quot;)).click();\r\n    \t    \r\n    \t  }\r\n    \t  @Test(priority = 1)\r\n    \t  public void verifyHomepageTitle(){\r\n    \t\t  \t  String expectedTitle = &quot;Placer Admin - Home&quot;;\r\n    \t\t  \t  String actualTitle = driver.getTitle();\r\n    \t\t  \t  Assert.assertEquals(actualTitle, expectedTitle);\t   \r\n    \t  }\r\n    \t  @AfterClass(alwaysRun = true)\r\n    \t  public void tearDown() throws Exception {\r\n    \t    driver.quit();\r\n    \t    String verificationErrorString = verificationErrors.toString();\r\n    \t    if (!&quot;&quot;.equals(verificationErrorString)) {\r\n    \t      fail(verificationErrorString);\r\n    \t    }\r\n    \t  }    \r\n\r\n\r\nI&#39;m new to automation testing.I want to make sure the valid user logins.For that i&#39;m trying to verify the title of the page.But my test fail all the time,because it is execute before valid user going to the dashboard.how can I test this?Can i know the proper modifications for this code?\r\n\r\nPlease help..thanks \r\n",
+            "link": "https://stackoverflow.com/questions/49917601/how-to-confirm-the-page-title-using-selenium",
+            "title": "How to confirm the page title using selenium?",
+            "body": "<pre><code>      @Test(priority = 0)\n      public void test() throws Exception {\n        driver.get(baseUrl + \"/\");\n        driver.findElement(By.name(\"email\")).clear();\n        driver.findElement(By.name(\"email\")).sendKeys(\"lanka@ensiz.com\");\n        driver.findElement(By.name(\"password\")).clear();\n        driver.findElement(By.name(\"password\")).sendKeys(\"123456\");\n        driver.findElement(By.xpath(\"//button[contains(text(),'Sign In')]\")).click();\n\n      }\n      @Test(priority = 1)\n      public void verifyHomepageTitle(){\n              String expectedTitle = \"Placer Admin - Home\";\n              String actualTitle = driver.getTitle();\n              Assert.assertEquals(actualTitle, expectedTitle);     \n      }\n      @AfterClass(alwaysRun = true)\n      public void tearDown() throws Exception {\n        driver.quit();\n        String verificationErrorString = verificationErrors.toString();\n        if (!\"\".equals(verificationErrorString)) {\n          fail(verificationErrorString);\n        }\n      }    \n</code></pre>\n\n<p>I'm new to automation testing.I want to make sure the valid user logins.For that i'm trying to verify the title of the page.But my test fail all the time,because it is execute before valid user going to the dashboard.how can I test this?Can i know the proper modifications for this code?</p>\n\n<p>Please help..thanks </p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "web-audio"
+            ],
+            "owner": {
+                "reputation": 323,
+                "user_id": 2113382,
+                "user_type": "registered",
+                "accept_rate": 65,
+                "profile_image": "https://www.gravatar.com/avatar/04799f7e1772c7e43a25820b14f8cee4?s=128&d=identicon&r=PG",
+                "display_name": "Gregory Tippett",
+                "link": "https://stackoverflow.com/users/2113382/gregory-tippett"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524190952,
+            "creation_date": 1524175243,
+            "last_edit_date": 1524190952,
+            "question_id": 49930872,
+            "body_markdown": "The follow code ( [https://codepen.io/anon/pen/JvoVxb][1] ) plays pitches, however, I&#39;ve found them to be &quot;slow&quot; or &quot;gummy&quot;; if you try playing along with some other music, you will hear that they lag a bit and it is hard to get the rhythms right.\r\n\r\nI&#39;ve not found this to be the case when working directly with the WebAudio API (where I&#39;ve found QWERTY-keyboard performance to be nearly as good as a digital piano.) I&#39;m wondering if this an intractable problem with ToneJS (and *why* is it happening?) ... or if I am &#39;doing something wrong&#39; in my attempts to create this functionality with it.  \r\n\r\n\t\tvar keyToPitch = { &quot; &quot;:&quot; &quot;, &quot;z&quot;:&quot;C3&quot;, &quot;s&quot;:&quot;C#3&quot;, &quot;x&quot;:&quot;D3&quot;, &quot;d&quot;:&quot;D#3&quot;, &quot;c&quot;:&quot;E3&quot;, &quot;v&quot;:&quot;F3&quot;, &quot;g&quot;:&quot;F#3&quot;, &quot;b&quot;:&quot;G3&quot;, &quot;h&quot;:&quot;G#3&quot;, &quot;n&quot;:&quot;A3&quot;, &quot;j&quot;:&quot;A#3&quot;, &quot;m&quot;:&quot;B3&quot;, &quot;,&quot;:&quot;C4&quot;, &quot;q&quot;:&quot;C4&quot;, &quot;2&quot;:&quot;C#4&quot;, &quot;w&quot;:&quot;D4&quot;, &quot;3&quot;:&quot;D#4&quot;, &quot;e&quot;:&quot;E4&quot;, &quot;r&quot;:&quot;F4&quot;, &quot;5&quot;:&quot;F#4&quot;, &quot;t&quot;:&quot;G4&quot;, &quot;6&quot;:&quot;G#4&quot;, &quot;y&quot;:&quot;A4&quot;, &quot;7&quot;:&quot;A#4&quot;, &quot;u&quot;:&quot;B4&quot;, &quot;i&quot;:&quot;C5&quot;, &quot;9&quot;:&quot;C#5&quot;, &quot;o&quot;:&quot;D5&quot;, &quot;0&quot;:&quot;D#5&quot;, &quot;p&quot;:&quot;E5&quot;, &quot;[&quot;:&quot;F5&quot;, &quot;=&quot;:&quot;F#5&quot;, &quot;]&quot;:&quot;G5&quot;, &quot;Backspace&quot;:&quot;G#5&quot;, &quot;\\\\&quot;:&quot;A5&quot; }\r\n\r\n\t\tvar synth = new Tone.Synth()\r\n\t\tsynth.oscillator.type = &quot;sawtooth&quot;\r\n\t\tsynth.toMaster()\r\n\t\t\r\n\t\twindow.addEventListener(&#39;keydown&#39;, this.onkeydown) \r\n\t\twindow.addEventListener(&#39;keyup&#39;, this.onkeyup) \r\n\r\n\t\t// This is &quot;slow&quot;, relative to WebAudio, it&#39;s not playing the pitch in a timely fashion...\t\r\n\t\tfunction onkeydown(e){\r\n\t\t\tconsole.log(e.key)\r\n\t\t\tsynth.triggerAttack(keyToPitch[e.key])\t\t\r\n\t\t}\r\n\t\tfunction onkeyup(e){\r\n\t\t\tconsole.log(e.key)\r\n\t\t\tsynth.triggerRelease()\r\n\t\t}\r\n\r\n\r\n  [1]: http://",
+            "link": "https://stackoverflow.com/questions/49930872/performance-lag-with-tonejs-with-keyboard-entry",
+            "title": "Performance Lag with ToneJS with Keyboard entry",
+            "body": "<p>The follow code ( https://codepen.io/anon/pen/JvoVxb ) plays pitches, however, I've found them to be \"slow\" or \"gummy\"; if you try playing along with some other music, you will hear that they lag a bit and it is hard to get the rhythms right.</p>\n\n<p>I've not found this to be the case when working directly with the WebAudio API (where I've found QWERTY-keyboard performance to be nearly as good as a digital piano.) I'm wondering if this an intractable problem with ToneJS (and <em>why</em> is it happening?) ... or if I am 'doing something wrong' in my attempts to create this functionality with it.  </p>\n\n<pre><code>    var keyToPitch = { \" \":\" \", \"z\":\"C3\", \"s\":\"C#3\", \"x\":\"D3\", \"d\":\"D#3\", \"c\":\"E3\", \"v\":\"F3\", \"g\":\"F#3\", \"b\":\"G3\", \"h\":\"G#3\", \"n\":\"A3\", \"j\":\"A#3\", \"m\":\"B3\", \",\":\"C4\", \"q\":\"C4\", \"2\":\"C#4\", \"w\":\"D4\", \"3\":\"D#4\", \"e\":\"E4\", \"r\":\"F4\", \"5\":\"F#4\", \"t\":\"G4\", \"6\":\"G#4\", \"y\":\"A4\", \"7\":\"A#4\", \"u\":\"B4\", \"i\":\"C5\", \"9\":\"C#5\", \"o\":\"D5\", \"0\":\"D#5\", \"p\":\"E5\", \"[\":\"F5\", \"=\":\"F#5\", \"]\":\"G5\", \"Backspace\":\"G#5\", \"\\\\\":\"A5\" }\n\n    var synth = new Tone.Synth()\n    synth.oscillator.type = \"sawtooth\"\n    synth.toMaster()\n\n    window.addEventListener('keydown', this.onkeydown) \n    window.addEventListener('keyup', this.onkeyup) \n\n    // This is \"slow\", relative to WebAudio, it's not playing the pitch in a timely fashion...  \n    function onkeydown(e){\n        console.log(e.key)\n        synth.triggerAttack(keyToPitch[e.key])      \n    }\n    function onkeyup(e){\n        console.log(e.key)\n        synth.triggerRelease()\n    }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9454280,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/59741a840ead950dcce040759a229ba8?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Joker",
+                "link": "https://stackoverflow.com/users/9454280/joker"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524190948,
+            "creation_date": 1524190314,
+            "question_id": 49932863,
+            "body_markdown": "Implement the ADT double-ended queue.  This ADT is similar to a queue, but supports functions to add and remove from either end of the queue.&lt;br&gt;\r\n\r\nIt seems I am struggling with the remove part. This is what I tried: &lt;br&gt;\r\n\r\n    class deq:\r\n    def __init__(self):\r\n        self.item = []\r\n    \r\n    def is_empty(self):\r\n        return self.item == None\r\n    \r\n    def size(self):\r\n        return len(self.item)\r\n        \r\n    def add_front(self, item):\r\n        self.item.insert(0,item)\r\n        \r\n    def add_back(self, item):\r\n        selft.item.append(item)\r\n        \r\n    def remove_front(self, item):\r\n        self.item.remove(item)\r\n        \r\n    def remove_back(self, item):\r\n        self.item.pop()\r\n\r\nThe sample screenshot of output:\r\n[This is the sample output][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/sOSc7.png",
+            "link": "https://stackoverflow.com/questions/49932863/python-adt-double-ended-queue",
+            "title": "python ADT double-ended queue",
+            "body": "<p>Implement the ADT double-ended queue.  This ADT is similar to a queue, but supports functions to add and remove from either end of the queue.<br></p>\n\n<p>It seems I am struggling with the remove part. This is what I tried: <br></p>\n\n<pre><code>class deq:\ndef __init__(self):\n    self.item = []\n\ndef is_empty(self):\n    return self.item == None\n\ndef size(self):\n    return len(self.item)\n\ndef add_front(self, item):\n    self.item.insert(0,item)\n\ndef add_back(self, item):\n    selft.item.append(item)\n\ndef remove_front(self, item):\n    self.item.remove(item)\n\ndef remove_back(self, item):\n    self.item.pop()\n</code></pre>\n\n<p>The sample screenshot of output:\n<a href=\"https://i.stack.imgur.com/sOSc7.png\" rel=\"nofollow noreferrer\">This is the sample output</a></p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "eclipse",
+                "jar"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9669164,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/282cc4ff88cb146afcd9d2b6bd93ae80?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Steve",
+                "link": "https://stackoverflow.com/users/9669164/steve"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524190939,
+            "creation_date": 1524133511,
+            "last_edit_date": 1524163197,
+            "question_id": 49918731,
+            "body_markdown": "I&#39;m getting different results from the code below depending upon whether I select **JAR file** or **Runnable JAR file** from Eclipse&#39;s File|Export dialog:\r\n\r\n    public static void main(String[] args) throws IOException {\r\n        Enumeration&lt;URL&gt; dirs = Thread.currentThread().getContextClassLoader().getResources(\r\n\t\t\t\t\t&quot;com/test/pojo&quot;);\r\n        System.out.println(dirs.hasMoreElements());\r\n\t}\r\n\r\nIf I choose:\r\n\r\n* *JAR file* - the code above prints **false**\r\n* *Runnable JAR file* - the code above prints **true**  \r\n\r\nI compared the contents of JARs exported both ways, and the files in them are exactly the same!\r\n\r\nCan anyone explain what&#39;s going on here?",
+            "link": "https://stackoverflow.com/questions/49918731/different-behavior-in-jar-file-vs-runnable-jar-file-exported-from-eclipse",
+            "title": "Different behavior in JAR file vs Runnable JAR file exported from Eclipse",
+            "body": "<p>I'm getting different results from the code below depending upon whether I select <strong>JAR file</strong> or <strong>Runnable JAR file</strong> from Eclipse's File|Export dialog:</p>\n\n<pre><code>public static void main(String[] args) throws IOException {\n    Enumeration&lt;URL&gt; dirs = Thread.currentThread().getContextClassLoader().getResources(\n                \"com/test/pojo\");\n    System.out.println(dirs.hasMoreElements());\n}\n</code></pre>\n\n<p>If I choose:</p>\n\n<ul>\n<li><em>JAR file</em> - the code above prints <strong>false</strong></li>\n<li><em>Runnable JAR file</em> - the code above prints <strong>true</strong>  </li>\n</ul>\n\n<p>I compared the contents of JARs exported both ways, and the files in them are exactly the same!</p>\n\n<p>Can anyone explain what's going on here?</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "ajax",
+                "mysqli"
+            ],
+            "owner": {
+                "reputation": 10,
+                "user_id": 9555327,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/32df28a29debec2f7901f78b1dab66a5?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user9555327",
+                "link": "https://stackoverflow.com/users/9555327/user9555327"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524190936,
+            "creation_date": 1524188054,
+            "question_id": 49932571,
+            "body_markdown": "What i&#39;ve tried so far:\r\nWhen I add the id to the data parameters with Javascript the row isn&#39;t deleted. When I add id in with php echo $id it deletes the wrong row. \r\nHow can i properly add id to ajax data for the row I am deleting? \r\n\r\nmy code\r\n\r\n(dbconnect code omitted)\r\n\r\n    $sql = &quot;SELECT id, product_id, price, quantity FROM tbl_cart WHERE member_id = &#39;$member_id&#39; &quot;;\r\n    $result = $conn-&gt;query($sql);\r\n\r\n\r\n    echo &quot;&lt;table class=&#39;anyClass&#39;&gt;&quot;;\r\n    echo &quot;&lt;tr&gt;\r\n             &lt;th&gt;ID&lt;/th&gt;\r\n             &lt;th&gt;Product&lt;/th&gt;\r\n             &lt;th&gt;Price&lt;/th&gt;\r\n             &lt;th&gt;Quantity&lt;/th&gt;\r\n             &lt;th&gt;Remove&lt;/th&gt;\r\n             &lt;th&gt;Add&lt;/th&gt;\r\n             \r\n        &lt;/tr&gt;&quot;;\r\n     while($row = $result-&gt;fetch_assoc()) {\r\n     $id = $row[&#39;id&#39;];\r\n\r\n      echo &quot;&lt;tr&gt; \r\n              &lt;td&gt;&quot;.$row[&#39;id&#39;].&quot;&lt;/td&gt;  \r\n              &lt;td&gt;&quot;.$row[&#39;product_id&#39;].&quot;&lt;/td&gt;\r\n              &lt;td&gt;&quot;.&#39;$&#39;.$row[&#39;price&#39;].&quot;&lt;/td&gt; \r\n              &lt;td&gt;&quot;.$row[&#39;quantity&#39;].&quot;&lt;/td&gt;\r\n              &lt;td&gt;&lt;span class=&#39;delete&#39; id=&#39;&lt;?php echo $id; ?&gt;&#39;&gt;Delete&lt;/span&gt; \r\n    &lt;/td&gt;     \r\n          &lt;/tr&gt;&quot;;\r\n    }\r\n    echo &quot;&lt;/table&gt;&quot;;\r\n    $conn-&gt;close()]\r\n\r\n    ?&gt;\r\nMy AJAX/JQUERY script\r\n\r\n    &lt;script&gt;\r\n    $(document).ready(function(){\r\n\r\n     // Delete \r\n     $(&#39;.delete&#39;).click(function(){\r\n     var el = this;\r\n     var id = this.id;\r\n  \r\n    /* This code doesn&#39;t seem to work. Not sure why the author used split()\r\n    var splitid = id.split(&quot;_&quot;);\r\n\r\n    // Delete id\r\n    var deleteid = splitid[0];\r\n    */\r\n\r\n    // AJAX Request\r\n    $.ajax({\r\n    url: &#39;remove.php&#39;,\r\n    type: &#39;POST&#39;,\r\n    data: { id:8},\r\n    success: function(response){\r\n\r\n    // Removing row from HTML Table\r\n    $(el).closest(&#39;tr&#39;).css(&#39;background&#39;,&#39;tomato&#39;);\r\n    $(el).closest(&#39;tr&#39;).fadeOut(800, function(){ \r\n     $(this).remove();\r\n    });\r\n    }\r\n    });\r\n    });\r\n    });\r\n    &lt;/script&gt;",
+            "link": "https://stackoverflow.com/questions/49932571/delete-row-with-ajax-getting-row-id-into-ajax-data-parameters",
+            "title": "delete row with ajax - getting row id into ajax data parameters",
+            "body": "<p>What i've tried so far:\nWhen I add the id to the data parameters with Javascript the row isn't deleted. When I add id in with php echo $id it deletes the wrong row. \nHow can i properly add id to ajax data for the row I am deleting? </p>\n\n<p>my code</p>\n\n<p>(dbconnect code omitted)</p>\n\n<pre><code>$sql = \"SELECT id, product_id, price, quantity FROM tbl_cart WHERE member_id = '$member_id' \";\n$result = $conn-&gt;query($sql);\n\n\necho \"&lt;table class='anyClass'&gt;\";\necho \"&lt;tr&gt;\n         &lt;th&gt;ID&lt;/th&gt;\n         &lt;th&gt;Product&lt;/th&gt;\n         &lt;th&gt;Price&lt;/th&gt;\n         &lt;th&gt;Quantity&lt;/th&gt;\n         &lt;th&gt;Remove&lt;/th&gt;\n         &lt;th&gt;Add&lt;/th&gt;\n\n    &lt;/tr&gt;\";\n while($row = $result-&gt;fetch_assoc()) {\n $id = $row['id'];\n\n  echo \"&lt;tr&gt; \n          &lt;td&gt;\".$row['id'].\"&lt;/td&gt;  \n          &lt;td&gt;\".$row['product_id'].\"&lt;/td&gt;\n          &lt;td&gt;\".'$'.$row['price'].\"&lt;/td&gt; \n          &lt;td&gt;\".$row['quantity'].\"&lt;/td&gt;\n          &lt;td&gt;&lt;span class='delete' id='&lt;?php echo $id; ?&gt;'&gt;Delete&lt;/span&gt; \n&lt;/td&gt;     \n      &lt;/tr&gt;\";\n}\necho \"&lt;/table&gt;\";\n$conn-&gt;close()]\n\n?&gt;\n</code></pre>\n\n<p>My AJAX/JQUERY script</p>\n\n<pre><code>&lt;script&gt;\n$(document).ready(function(){\n\n // Delete \n $('.delete').click(function(){\n var el = this;\n var id = this.id;\n\n/* This code doesn't seem to work. Not sure why the author used split()\nvar splitid = id.split(\"_\");\n\n// Delete id\nvar deleteid = splitid[0];\n*/\n\n// AJAX Request\n$.ajax({\nurl: 'remove.php',\ntype: 'POST',\ndata: { id:8},\nsuccess: function(response){\n\n// Removing row from HTML Table\n$(el).closest('tr').css('background','tomato');\n$(el).closest('tr').fadeOut(800, function(){ \n $(this).remove();\n});\n}\n});\n});\n});\n&lt;/script&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "numpy",
+                "matplotlib",
+                "vector"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 8426657,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/d200be980a29defb5c813d5d108b3a6e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "SAMPHY86",
+                "link": "https://stackoverflow.com/users/8426657/samphy86"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524190934,
+            "creation_date": 1524183538,
+            "last_edit_date": 1524190934,
+            "question_id": 49932068,
+            "body_markdown": "I have four 2D arrays consist of u, v component of a vector and corresponding coordinates. I can draw these vector by ‘quiver plot’. For understanding, I created two sample u and v vector and draw the result (values represent in m/s). Now I want to show the legend that corresponds the size of an arrow in the plot with the magnitude (Not sure, but it might need to calculate the arrow length from the scale and scale_unit). The result I need something similar to this with the legend:\r\n\r\n[![legend example][1]][1]\r\n\r\nMy sample code is:\r\n\r\n    import numpy as np\r\n    import matplotlib.pyplot as plt\r\n    \r\n    u = np.zeros(shape=(4,4))\r\n    u[0] = [0.0,0.5,0.4,0.1]\r\n    u[1] = [0.2,0.4,-0.2,0.3]\r\n    u[2] = [0.3,0.0,0.4,0.1]\r\n    u[3] = [0.6,0.4,0.2,0.3]\r\n    \r\n    v = np.zeros(shape=(4,4))\r\n    v[0] = [-0.4,0.0,0.1,0.1]\r\n    v[1] = [0.1,0.3,0.2,0.4]\r\n    v[2] = [0.4,0.3,0.3,0.1]\r\n    v[3] = [0.0,0.1,0.3,0.2]\r\n    \r\n    x,y = np.meshgrid(np.linspace(0,3,4), np.linspace(3,0,4))\r\n    \r\n    plt.figure();\r\n    plt.title(&#39;Velocity Field&#39;)\r\n    plt.xlim(-1,4)\r\n    plt.ylim(-1,4)\r\n    plt.quiver(x, y, u, v, color=&#39;r&#39;, scale = 1, angles = &#39;xy&#39;, units=&#39;xy&#39;, scale_units=&#39;xy&#39;) \r\n    plt.show()\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/zqkil.png",
+            "link": "https://stackoverflow.com/questions/49932068/vector-size-legend-in-quiver-plot",
+            "title": "Vector Size Legend in Quiver Plot",
+            "body": "<p>I have four 2D arrays consist of u, v component of a vector and corresponding coordinates. I can draw these vector by ‘quiver plot’. For understanding, I created two sample u and v vector and draw the result (values represent in m/s). Now I want to show the legend that corresponds the size of an arrow in the plot with the magnitude (Not sure, but it might need to calculate the arrow length from the scale and scale_unit). The result I need something similar to this with the legend:</p>\n\n<p><a href=\"https://i.stack.imgur.com/zqkil.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/zqkil.png\" alt=\"legend example\"></a></p>\n\n<p>My sample code is:</p>\n\n<pre><code>import numpy as np\nimport matplotlib.pyplot as plt\n\nu = np.zeros(shape=(4,4))\nu[0] = [0.0,0.5,0.4,0.1]\nu[1] = [0.2,0.4,-0.2,0.3]\nu[2] = [0.3,0.0,0.4,0.1]\nu[3] = [0.6,0.4,0.2,0.3]\n\nv = np.zeros(shape=(4,4))\nv[0] = [-0.4,0.0,0.1,0.1]\nv[1] = [0.1,0.3,0.2,0.4]\nv[2] = [0.4,0.3,0.3,0.1]\nv[3] = [0.0,0.1,0.3,0.2]\n\nx,y = np.meshgrid(np.linspace(0,3,4), np.linspace(3,0,4))\n\nplt.figure();\nplt.title('Velocity Field')\nplt.xlim(-1,4)\nplt.ylim(-1,4)\nplt.quiver(x, y, u, v, color='r', scale = 1, angles = 'xy', units='xy', scale_units='xy') \nplt.show()\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "android-intent",
+                "android-broadcastreceiver"
+            ],
+            "owner": {
+                "reputation": 52,
+                "user_id": 7283740,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/d06d2734e03c5b812442585149314e8d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Parteek Dheri",
+                "link": "https://stackoverflow.com/users/7283740/parteek-dheri"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524190933,
+            "creation_date": 1524188821,
+            "last_edit_date": 1524190933,
+            "question_id": 49932689,
+            "body_markdown": "I am trying to receive ACTION_DOWNLOAD_COMPLETE &lt;br&gt;\r\n**Please note that download is initiated by chrome and then taken over by DownloadManger.**\r\n&lt;HR&gt;\r\nhere is my relevant manifest.xml\r\n\r\n\r\n\r\n        &lt;uses-permission android:name=&quot;android.permission.WRITE_EXTERNAL_STORAGE&quot; /&gt;\r\n        &lt;uses-permission android:name=&quot;android.permission.INTERNET&quot; /&gt; \r\n    &lt;application&gt;\r\n        &lt;receiver\r\n            android:name=&quot;.receivers.DownloadBroadcastReceiver&quot;\r\n            android:directBootAware=&quot;true&quot;\r\n            android:enabled=&quot;true&quot;\r\n            android:exported=&quot;true&quot;&gt;\r\n            &lt;intent-filter&gt;\r\n                &lt;action android:name=&quot;android.intent.action.DOWNLOAD_COMPLETE&quot; /&gt;\r\n            &lt;/intent-filter&gt;\r\n        &lt;/receiver&gt;\r\n    &lt;/application&gt;\r\n    \r\n&lt;hr&gt;\r\nHere is the DownloadBroadcastReceiver\r\n\r\n    public class DownloadBroadcastReceiver extends BroadcastReceiver {\r\n     @Override\r\n     public void onReceive(Context context, Intent intent) {\r\n         Log.i(&quot;TAG&quot;, &quot;onReceive: A download happened&quot;);\r\n     }\r\n    }\r\n\r\n**EDIT :** I tried adb to send intent\r\n&gt; `adb -d shell am  broadcast -a android.intent.action.DOWNLOAD_COMPLETE`\r\n\r\nand then my app responds, looks like DownloadMangeris not sending the intent.",
+            "link": "https://stackoverflow.com/questions/49932689/cant-receive-broadcast-intent-action-download-complete",
+            "title": "Can&#39;t receive broadcast intent ACTION_DOWNLOAD_COMPLETE",
+            "body": "<p>I am trying to receive ACTION_DOWNLOAD_COMPLETE <br>\n<strong>Please note that download is initiated by chrome and then taken over by DownloadManger.</strong>\n<HR>\nhere is my relevant manifest.xml</p>\n\n<pre><code>    &lt;uses-permission android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\" /&gt;\n    &lt;uses-permission android:name=\"android.permission.INTERNET\" /&gt; \n&lt;application&gt;\n    &lt;receiver\n        android:name=\".receivers.DownloadBroadcastReceiver\"\n        android:directBootAware=\"true\"\n        android:enabled=\"true\"\n        android:exported=\"true\"&gt;\n        &lt;intent-filter&gt;\n            &lt;action android:name=\"android.intent.action.DOWNLOAD_COMPLETE\" /&gt;\n        &lt;/intent-filter&gt;\n    &lt;/receiver&gt;\n&lt;/application&gt;\n</code></pre>\n\n<p><hr>\nHere is the DownloadBroadcastReceiver</p>\n\n<pre><code>public class DownloadBroadcastReceiver extends BroadcastReceiver {\n @Override\n public void onReceive(Context context, Intent intent) {\n     Log.i(\"TAG\", \"onReceive: A download happened\");\n }\n}\n</code></pre>\n\n<p><strong>EDIT :</strong> I tried adb to send intent</p>\n\n<blockquote>\n  <p><code>adb -d shell am  broadcast -a android.intent.action.DOWNLOAD_COMPLETE</code></p>\n</blockquote>\n\n<p>and then my app responds, looks like DownloadMangeris not sending the intent.</p>\n"
+        },
+        {
+            "tags": [
+                "session-storage"
+            ],
+            "owner": {
+                "reputation": 295,
+                "user_id": 7740650,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/221619f5ec1c4e27a972417c0abfa986?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Dan",
+                "link": "https://stackoverflow.com/users/7740650/dan"
+            },
+            "is_answered": false,
+            "view_count": 5,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524190925,
+            "creation_date": 1524190925,
+            "question_id": 49932935,
+            "body_markdown": "I can set session storage items, in this case a description:\r\n\r\n    sessionStorage.setItem(&quot;desc&quot;, currentWeather.weather[0].main);\r\n\r\nAnd I can output them in html, e.g:\r\n\r\n    function populateContent(weather){\r\n\r\n        descEl=document.getElementById(&quot;desc&quot;).innerHTML = sessionStorage.getItem(&quot;desc&quot;);\r\n        \r\n        descEl.innerHTML = weather.desc;\r\n\r\n `&lt;div id=&quot;desc&quot;&gt;&lt;/div&gt;`\r\n\r\n\r\nNow I would like to include the description in session storage as an id or class of the `&lt;body&gt;` so that I can style the background based on the description retrieved.\r\n\r\nI have been able to achieve a similar thing in a for loop in another part of my work:\r\n\r\n    forecastDescEl= sessionStorage.getItem(&quot;forecastDesc&quot;);\r\n    var objDesc = JSON.parse(forecastDescEl);\r\n\r\n    var descLength;\r\n    var descText;\r\n    var desc;\r\n\r\n        descLength = objDesc.length;\r\n        descText = &quot;&lt;div class=&#39;descList&#39;&gt;Description:&quot;;\r\n        for (desc = 0; desc &lt; descLength; desc++) {\r\n\r\n            descText += &quot;&lt;ul class=&#39;results &quot; + objDesc[desc] + &quot;&#39;&gt;&quot; + &quot;&lt;li class=&#39;forecastDesc&#39;&gt;&quot; + objDesc[desc] + &quot;&lt;/li&gt;&quot; + &quot;&lt;/ul&gt;&quot;;\r\n        }\r\n        descText += &quot;&lt;/div&gt;&quot;;\r\n\r\n        //outputs result as list\r\n        document.getElementById(&quot;descList&quot;).innerHTML = descText;\r\n\r\nBut I am not sure how to apply it to the `&lt;body&gt;` in this case, as there is no for loop for this.",
+            "link": "https://stackoverflow.com/questions/49932935/add-id-or-class-to-body-based-on-session-storage-value",
+            "title": "Add ID or Class to &lt;body&gt; based on session storage value",
+            "body": "<p>I can set session storage items, in this case a description:</p>\n\n<pre><code>sessionStorage.setItem(\"desc\", currentWeather.weather[0].main);\n</code></pre>\n\n<p>And I can output them in html, e.g:</p>\n\n<pre><code>function populateContent(weather){\n\n    descEl=document.getElementById(\"desc\").innerHTML = sessionStorage.getItem(\"desc\");\n\n    descEl.innerHTML = weather.desc;\n</code></pre>\n\n<p><code>&lt;div id=\"desc\"&gt;&lt;/div&gt;</code></p>\n\n<p>Now I would like to include the description in session storage as an id or class of the <code>&lt;body&gt;</code> so that I can style the background based on the description retrieved.</p>\n\n<p>I have been able to achieve a similar thing in a for loop in another part of my work:</p>\n\n<pre><code>forecastDescEl= sessionStorage.getItem(\"forecastDesc\");\nvar objDesc = JSON.parse(forecastDescEl);\n\nvar descLength;\nvar descText;\nvar desc;\n\n    descLength = objDesc.length;\n    descText = \"&lt;div class='descList'&gt;Description:\";\n    for (desc = 0; desc &lt; descLength; desc++) {\n\n        descText += \"&lt;ul class='results \" + objDesc[desc] + \"'&gt;\" + \"&lt;li class='forecastDesc'&gt;\" + objDesc[desc] + \"&lt;/li&gt;\" + \"&lt;/ul&gt;\";\n    }\n    descText += \"&lt;/div&gt;\";\n\n    //outputs result as list\n    document.getElementById(\"descList\").innerHTML = descText;\n</code></pre>\n\n<p>But I am not sure how to apply it to the <code>&lt;body&gt;</code> in this case, as there is no for loop for this.</p>\n"
+        },
+        {
+            "tags": [
+                "git",
+                "visual-studio-2013"
+            ],
+            "owner": {
+                "reputation": 676,
+                "user_id": 1654904,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://www.gravatar.com/avatar/b804c230f54703b7c8ae2ed15d54d6cc?s=128&d=identicon&r=PG",
+                "display_name": "Bryan Porter",
+                "link": "https://stackoverflow.com/users/1654904/bryan-porter"
+            },
+            "is_answered": true,
+            "view_count": 31106,
+            "answer_count": 20,
+            "score": 93,
+            "last_activity_date": 1524190864,
+            "creation_date": 1389826676,
+            "last_edit_date": 1411399532,
+            "question_id": 21150060,
+            "body_markdown": "I know that you can disable git integration by using the Tools / Options dialog, but what I&#39;ve noticed is that this setting doesn&#39;t seem to persist across sessions; i.e., as soon as close and reopen the solution, Git integration is enabled again. I&#39;m guessing Visual Studio is seeing the .git folder in my solution file system tree.\r\n\r\nThere are a variety of Visual Studio 2013 plugins that behave incorrectly when the Git plug-in is enabled, I prefer to manage my source control at the command line, and I work on a few very large projects for which the Git integration introduces noticeable slowdowns in opening and working with the solution. I&#39;d like to turn it off for good, as I simply don&#39;t use it or need it. Is this possible?",
+            "link": "https://stackoverflow.com/questions/21150060/how-can-you-disable-git-integration-in-visual-studio-2013-permanently",
+            "title": "How can you disable Git integration in Visual Studio 2013 permanently?",
+            "body": "<p>I know that you can disable git integration by using the Tools / Options dialog, but what I've noticed is that this setting doesn't seem to persist across sessions; i.e., as soon as close and reopen the solution, Git integration is enabled again. I'm guessing Visual Studio is seeing the .git folder in my solution file system tree.</p>\n\n<p>There are a variety of Visual Studio 2013 plugins that behave incorrectly when the Git plug-in is enabled, I prefer to manage my source control at the command line, and I work on a few very large projects for which the Git integration introduces noticeable slowdowns in opening and working with the solution. I'd like to turn it off for good, as I simply don't use it or need it. Is this possible?</p>\n"
+        },
+        {
+            "tags": [
+                "edi"
+            ],
+            "owner": {
+                "reputation": 71,
+                "user_id": 3815413,
+                "user_type": "registered",
+                "accept_rate": 33,
+                "profile_image": "https://www.gravatar.com/avatar/c761d79f558403f0745a2a91b9fd1a60?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3815413",
+                "link": "https://stackoverflow.com/users/3815413/user3815413"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524190857,
+            "creation_date": 1524116983,
+            "last_edit_date": 1524190857,
+            "question_id": 49913604,
+            "body_markdown": "I am looking for a tool to create a sample EDIFACT file (CUSCAR 93a/95b) online. There are multiple sites outlining the format, but I am looking for creator with a sample data set.\r\n",
+            "link": "https://stackoverflow.com/questions/49913604/creating-sample-un-edi-file",
+            "title": "Creating sample UN EDI File",
+            "body": "<p>I am looking for a tool to create a sample EDIFACT file (CUSCAR 93a/95b) online. There are multiple sites outlining the format, but I am looking for creator with a sample data set.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "sql-server",
+                "stored-procedures"
+            ],
+            "owner": {
+                "reputation": 14,
+                "user_id": 9521378,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-hCvVz2Q4hlI/AAAAAAAAAAI/AAAAAAAAAAk/0RAJxIUq5mo/photo.jpg?sz=128",
+                "display_name": "Alexis Villar",
+                "link": "https://stackoverflow.com/users/9521378/alexis-villar"
+            },
+            "is_answered": false,
+            "view_count": 34,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524190852,
+            "creation_date": 1524103251,
+            "last_edit_date": 1524117787,
+            "question_id": 49911569,
+            "body_markdown": "Converting the Value of SQL Field from numeric type to double.\r\nInput string was not in a correct format.\r\nCan someone help me solve this? Thanks in Advance!\r\n\r\nDeclaration of new List:\r\n\r\n    public class OTTotal\r\n    {\r\n    public double OTPLAN;\r\n    public double OTACT;\r\n    }\r\n\r\n\r\nthen I have this code to pass the Value of database fields to those public variables.\r\n\r\n\r\n                mylist.Add(new OTTotal\r\n                {\r\n\r\n                    OTAct = double.Parse(dr[&quot;OT&quot;].ToString()) /*+ double.Parse(dr[&quot;SH&quot;].ToString()) + double.Parse(dr[&quot;SHtwo&quot;].ToString())*/,\r\n                    OTPlan = double.Parse(dr[&quot;POT&quot;].ToString())\r\n\r\n\r\n                });\r\n\r\nalso this code was highlighted when i run the program and says incorrect format.\r\n\r\n\r\n[![This is the Error of my COde][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/KawtS.png\r\n\r\nStored Procedure\r\n\r\n    CREATE PROCEDURE [dbo].[spTotalOverTime]\r\n    \t@grpID as INT = 0,\r\n    \t@date as DATE = &#39;2018/3/1&#39;\r\n    AS\r\n    BEGIN\r\n    \r\n    \tSELECT SUM(a.Overtime) as OT, SUM(a.PlanOt) as POT, SUM(a.SunHoliday) as SH, SUM(a.SunHoliday2) as SHtwo FROM tblTimesheet a JOIN userinfo b on a.empID = b.empID\tJOIN tblGroup c on b.groupNo = c.groupID\r\n    \t\t\tWHERE YEAR(a.tsDate) =  YEAR(@Date) AND MONTH(a.tsDate) = MONTH(@date) AND c.groupID = CAST(@grpID AS VARCHAR)\r\n    \r\n    END",
+            "link": "https://stackoverflow.com/questions/49911569/formatexception-was-unhandled-by-user-code-string-format-is-not-in-correct-form",
+            "title": "FormatException was unhandled by user code (string format is not in correct format)",
+            "body": "<p>Converting the Value of SQL Field from numeric type to double.\nInput string was not in a correct format.\nCan someone help me solve this? Thanks in Advance!</p>\n\n<p>Declaration of new List:</p>\n\n<pre><code>public class OTTotal\n{\npublic double OTPLAN;\npublic double OTACT;\n}\n</code></pre>\n\n<p>then I have this code to pass the Value of database fields to those public variables.</p>\n\n<pre><code>            mylist.Add(new OTTotal\n            {\n\n                OTAct = double.Parse(dr[\"OT\"].ToString()) /*+ double.Parse(dr[\"SH\"].ToString()) + double.Parse(dr[\"SHtwo\"].ToString())*/,\n                OTPlan = double.Parse(dr[\"POT\"].ToString())\n\n\n            });\n</code></pre>\n\n<p>also this code was highlighted when i run the program and says incorrect format.</p>\n\n<p><a href=\"https://i.stack.imgur.com/KawtS.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/KawtS.png\" alt=\"This is the Error of my COde\"></a></p>\n\n<p>Stored Procedure</p>\n\n<pre><code>CREATE PROCEDURE [dbo].[spTotalOverTime]\n    @grpID as INT = 0,\n    @date as DATE = '2018/3/1'\nAS\nBEGIN\n\n    SELECT SUM(a.Overtime) as OT, SUM(a.PlanOt) as POT, SUM(a.SunHoliday) as SH, SUM(a.SunHoliday2) as SHtwo FROM tblTimesheet a JOIN userinfo b on a.empID = b.empID   JOIN tblGroup c on b.groupNo = c.groupID\n            WHERE YEAR(a.tsDate) =  YEAR(@Date) AND MONTH(a.tsDate) = MONTH(@date) AND c.groupID = CAST(@grpID AS VARCHAR)\n\nEND\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "xcode",
+                "autolayout",
+                "constraints",
+                "stackview"
+            ],
+            "owner": {
+                "reputation": 993,
+                "user_id": 5717640,
+                "user_type": "registered",
+                "accept_rate": 98,
+                "profile_image": "https://i.stack.imgur.com/7D5PP.png?s=128&g=1",
+                "display_name": "Boober Bunz",
+                "link": "https://stackoverflow.com/users/5717640/boober-bunz"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524190850,
+            "creation_date": 1524190850,
+            "question_id": 49932929,
+            "body_markdown": "For the last couple of days I&#39;ve been doing some major ViewController surgery and working with some new tools (to me):  auto-layout, constraints, and StackViews.\r\n\r\nI&#39;m getting good at it, but I am wondering if I am doing this right:\r\n\r\nImagine the situation where you need to place... a button, say... in such a way that it requires putting the button inside a stackview and using the other &#39;cells&#39; of the StackView as &quot;spacers.&quot;\r\n\r\nWhat type of object is &quot;best practice&quot; to use as the spacer?  Just a &#39;View&#39; with no attributes?\r\n\r\nThanks!",
+            "link": "https://stackoverflow.com/questions/49932929/what-type-of-view-to-use-as-a-spacer-in-ios-xcode-auto-layout",
+            "title": "What type of view to use as a &#39;spacer&#39; in IOS XCode auto-layout?",
+            "body": "<p>For the last couple of days I've been doing some major ViewController surgery and working with some new tools (to me):  auto-layout, constraints, and StackViews.</p>\n\n<p>I'm getting good at it, but I am wondering if I am doing this right:</p>\n\n<p>Imagine the situation where you need to place... a button, say... in such a way that it requires putting the button inside a stackview and using the other 'cells' of the StackView as \"spacers.\"</p>\n\n<p>What type of object is \"best practice\" to use as the spacer?  Just a 'View' with no attributes?</p>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "xamarin"
+            ],
+            "owner": {
+                "reputation": 103,
+                "user_id": 5610491,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/100ce94f4a3f91c0b8704516e0327e00?s=128&d=identicon&r=PG&f=1",
+                "display_name": "C. Carter",
+                "link": "https://stackoverflow.com/users/5610491/c-carter"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524190844,
+            "creation_date": 1524009130,
+            "question_id": 49889100,
+            "body_markdown": "So I have an issue when launching an Android app written in Xamarin Forms.\r\n\r\nEssentially none of the images load on start up. This is a rare occurrence and happens at complete random. The only thing I&#39;ve noticed is that the system seems to stall slightly before it happens.\r\n\r\nLog Cat shows: \r\n\r\n    D/ActivityManager(  624): bindService callerProcessName:[App i&#39;m starting here], calleePkgName: com.android.providers.media, action: android.media.IMediaScannerService\r\n    W/ResourceType( 3893): No package identifier when getting value for resource number 0x00000000\r\n    I/mono-stdout( 3893): FileImageSourceHandler: Could not find image or image file was invalid: File: Icons_Taskbar_logo.png\r\n    W/ResourceType( 3893): No package identifier when getting value for resource number 0x00000000\r\n    I/mono-stdout( 3893): FileImageSourceHandler: Could not find image or image file was invalid: File: Icons_Taskbar_products.png\r\n    W/ResourceType( 3893): No package identifier when getting value for resource number 0x00000000\r\n    I/mono-stdout( 3893): FileImageSourceHandler: Could not find image or image file was invalid: File: Icons_Taskbar_settings.png\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49889100/images-occasionally-not-found-or-invalid-on-startup",
+            "title": "Images occasionally not found or invalid on startup",
+            "body": "<p>So I have an issue when launching an Android app written in Xamarin Forms.</p>\n\n<p>Essentially none of the images load on start up. This is a rare occurrence and happens at complete random. The only thing I've noticed is that the system seems to stall slightly before it happens.</p>\n\n<p>Log Cat shows: </p>\n\n<pre><code>D/ActivityManager(  624): bindService callerProcessName:[App i'm starting here], calleePkgName: com.android.providers.media, action: android.media.IMediaScannerService\nW/ResourceType( 3893): No package identifier when getting value for resource number 0x00000000\nI/mono-stdout( 3893): FileImageSourceHandler: Could not find image or image file was invalid: File: Icons_Taskbar_logo.png\nW/ResourceType( 3893): No package identifier when getting value for resource number 0x00000000\nI/mono-stdout( 3893): FileImageSourceHandler: Could not find image or image file was invalid: File: Icons_Taskbar_products.png\nW/ResourceType( 3893): No package identifier when getting value for resource number 0x00000000\nI/mono-stdout( 3893): FileImageSourceHandler: Could not find image or image file was invalid: File: Icons_Taskbar_settings.png\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "scheduler",
+                "chatbot"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9672400,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3cd09820c4e00c6fbc12e614a2793cdb?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Coreyboulet",
+                "link": "https://stackoverflow.com/users/9672400/coreyboulet"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524190844,
+            "creation_date": 1524183814,
+            "last_edit_date": 1524190844,
+            "question_id": 49932096,
+            "body_markdown": "I&#39;m trying to make my chatbot to send a message every day at a specific time but I&#39;m failing at it. do you see what is wrong in my code ? \r\n\r\nThe function I&#39;m trying to run is the &quot;send message&quot; \r\n\r\n    import schedule\r\n    import time\r\n    \r\n    def daily_message():\r\n      msg = &quot;Hello Everyone, I&#39;m a bot, please use me to notify people that need things on this channel. Right now, you can type @Ditto: Rob and Jackie, @Ghost: Rob @Rare: Mitch, Corey, Abhinay, Sabre, Sam-B @Quest: Mitch, Corey, Abhinay. Contact Corey to be added or deleted from a list &quot; \r\n      usrID= 0,0\r\n      locid= [0, 0],[0, 0]\r\n      send_message(msg, usrID, locid)\r\n    \r\n    \r\n    schedule.every().day.at(&quot;20:18&quot;).do(daily_message)\r\n    schedule.every().day.at(&quot;20:04&quot;).send_message(daily_message)\r\n    \r\n    \r\n    while True:\r\n      schedule.run_pending()\r\n      time.sleep(1)\r\n\r\nThanks have a good day\r\n\r\nPS: here is the complete code: https://github.com/coreyboulet/testbot\r\n\r\nPPS: I&#39;m really new in coding, my appologies if this is a dumb question but I was not able to find or make work anything found on internet\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49932096/failing-at-scheduling-code",
+            "title": "Failing at scheduling code",
+            "body": "<p>I'm trying to make my chatbot to send a message every day at a specific time but I'm failing at it. do you see what is wrong in my code ? </p>\n\n<p>The function I'm trying to run is the \"send message\" </p>\n\n<pre><code>import schedule\nimport time\n\ndef daily_message():\n  msg = \"Hello Everyone, I'm a bot, please use me to notify people that need things on this channel. Right now, you can type @Ditto: Rob and Jackie, @Ghost: Rob @Rare: Mitch, Corey, Abhinay, Sabre, Sam-B @Quest: Mitch, Corey, Abhinay. Contact Corey to be added or deleted from a list \" \n  usrID= 0,0\n  locid= [0, 0],[0, 0]\n  send_message(msg, usrID, locid)\n\n\nschedule.every().day.at(\"20:18\").do(daily_message)\nschedule.every().day.at(\"20:04\").send_message(daily_message)\n\n\nwhile True:\n  schedule.run_pending()\n  time.sleep(1)\n</code></pre>\n\n<p>Thanks have a good day</p>\n\n<p>PS: here is the complete code: <a href=\"https://github.com/coreyboulet/testbot\" rel=\"nofollow noreferrer\">https://github.com/coreyboulet/testbot</a></p>\n\n<p>PPS: I'm really new in coding, my appologies if this is a dumb question but I was not able to find or make work anything found on internet</p>\n"
+        },
+        {
+            "tags": [
+                "mysql"
+            ],
+            "owner": {
+                "reputation": 824,
+                "user_id": 805779,
+                "user_type": "registered",
+                "accept_rate": 58,
+                "profile_image": "https://www.gravatar.com/avatar/90eb6df535f9f997eb4f70035800535b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "CMOS",
+                "link": "https://stackoverflow.com/users/805779/cmos"
+            },
+            "is_answered": true,
+            "view_count": 23,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524190843,
+            "creation_date": 1524169617,
+            "question_id": 49929689,
+            "body_markdown": "So I know questions similar to this have been asked but never anything exactly like this as far as I can find. Basically I have my main root user that has access to everything, and then I want a second user to have access to everything on localhost EXCEPT one database. Technically I want to remove their access to all databases with a prefix but I figured I would start with one. The issue I have found is that the databases I want restricted may change over time but they will always have a prefix. Anyways,\r\n\r\nNormally to setup a user who has access to everything I do something like this \r\n\r\n`GRANT ALL PRIVILEGES ON *.* TO &#39;miniroot&#39;@&#39;localhost&#39; WITH GRANT OPTION;` \r\n\r\nThis way if I make a new database miniroot will always have access, this is great. However I have some tables with a prefix of &#39;PRIVATE&#39;. I want miniroot to NOT have access to this. \r\n\r\nI saw an answer on here on how to revoke access from a DB doing sometihng like this \r\n\r\n    REVOKE all on PRIVATE.* from &#39;miniroot&#39;@&#39;localhost&#39;;\r\n\r\nHowever this does not work and says `ERROR 1141 (42000): There is no such grant defined for user &#39;miniroot&#39; on host &#39;localhost&#39;` Which is true, I need my miniroot to have access to new DB&#39;s as they get created not a specific set. So I cant just remove one from the set. Any idea on how I might make this work?",
+            "link": "https://stackoverflow.com/questions/49929689/how-to-enable-mysql-user-access-to-all-but-one-database",
+            "title": "How to enable MYSQL User access to all but one database",
+            "body": "<p>So I know questions similar to this have been asked but never anything exactly like this as far as I can find. Basically I have my main root user that has access to everything, and then I want a second user to have access to everything on localhost EXCEPT one database. Technically I want to remove their access to all databases with a prefix but I figured I would start with one. The issue I have found is that the databases I want restricted may change over time but they will always have a prefix. Anyways,</p>\n\n<p>Normally to setup a user who has access to everything I do something like this </p>\n\n<p><code>GRANT ALL PRIVILEGES ON *.* TO 'miniroot'@'localhost' WITH GRANT OPTION;</code> </p>\n\n<p>This way if I make a new database miniroot will always have access, this is great. However I have some tables with a prefix of 'PRIVATE'. I want miniroot to NOT have access to this. </p>\n\n<p>I saw an answer on here on how to revoke access from a DB doing sometihng like this </p>\n\n<pre><code>REVOKE all on PRIVATE.* from 'miniroot'@'localhost';\n</code></pre>\n\n<p>However this does not work and says <code>ERROR 1141 (42000): There is no such grant defined for user 'miniroot' on host 'localhost'</code> Which is true, I need my miniroot to have access to new DB's as they get created not a specific set. So I cant just remove one from the set. Any idea on how I might make this work?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-2.7",
+                "pip",
+                "distutils"
+            ],
+            "owner": {
+                "reputation": 5845,
+                "user_id": 3642398,
+                "user_type": "registered",
+                "accept_rate": 74,
+                "profile_image": "https://i.stack.imgur.com/mW91u.jpg?s=128&g=1",
+                "display_name": "elethan",
+                "link": "https://stackoverflow.com/users/3642398/elethan"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524190837,
+            "creation_date": 1524190837,
+            "question_id": 49932926,
+            "body_markdown": "I am having trouble finding good documentation for pip&#39;s `--ignore-installed` flag. `pip install --help` says simply:\r\n\r\n&gt; Ignore the installed packages (reinstalling instead).\r\n\r\nOther than the side effect of there being more cruft on your system, since installed packages will not be uninstalled when e.g., upgrading, are there any other known side effects? Is it possible for conflicts to arise with both packages installed? Will the newer package always &quot;win&quot;, or is there a danger of accidentally using the old package without knowing it? \r\n\r\nI have a situation that calls for me to potentially use this flag, ignoring a number of previously installed packages (because `pip` version 10 [no longer uninstalls packages installed by `distutils`][1], but I want to make sure I am not potentially shooting myself in the foot. Thank you! \r\n\r\n\r\n  [1]: https://pip.pypa.io/en/stable/news/#deprecations-and-removals",
+            "link": "https://stackoverflow.com/questions/49932926/is-there-any-danger-of-e-g-causing-conflicts-using-the-ignore-installed-flag",
+            "title": "Is there any danger of e.g., causing conflicts using the --ignore-installed flag for pip?",
+            "body": "<p>I am having trouble finding good documentation for pip's <code>--ignore-installed</code> flag. <code>pip install --help</code> says simply:</p>\n\n<blockquote>\n  <p>Ignore the installed packages (reinstalling instead).</p>\n</blockquote>\n\n<p>Other than the side effect of there being more cruft on your system, since installed packages will not be uninstalled when e.g., upgrading, are there any other known side effects? Is it possible for conflicts to arise with both packages installed? Will the newer package always \"win\", or is there a danger of accidentally using the old package without knowing it? </p>\n\n<p>I have a situation that calls for me to potentially use this flag, ignoring a number of previously installed packages (because <code>pip</code> version 10 <a href=\"https://pip.pypa.io/en/stable/news/#deprecations-and-removals\" rel=\"nofollow noreferrer\">no longer uninstalls packages installed by <code>distutils</code></a>, but I want to make sure I am not potentially shooting myself in the foot. Thank you! </p>\n"
+        },
+        {
+            "tags": [
+                "label",
+                "stata",
+                "decode"
+            ],
+            "owner": {
+                "reputation": 100,
+                "user_id": 4612575,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/69f7a3a76eef13e62d9638055bea6e81?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Aaron Wolf",
+                "link": "https://stackoverflow.com/users/4612575/aaron-wolf"
+            },
+            "is_answered": true,
+            "view_count": 31,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524190835,
+            "creation_date": 1524144539,
+            "last_edit_date": 1524190835,
+            "question_id": 49922345,
+            "body_markdown": "I am trying to create a new `string` variable that combines the `string` of a `real` number (an ID) with a name. The name is a `numeric` variable with a `value label`. \r\n\r\nExample data can be found below:\r\n\r\n\t* Input Data\r\n\tclear\r\n\tinput long num id\r\n\t1 689347\r\n\t2 972623\r\n\tend\r\n\tlabel values num num\r\n\tlabel def num 1 &quot;Label A&quot; 2 &quot;Label B&quot;\r\n\r\n\t +------------------+\r\n\t |     num       id |\r\n\t |------------------|\r\n\t | Label A   689347 |\r\n\t | Label B   972623 |\r\n\t +------------------+\r\n\r\nWhat I would like to do is create a `string` of the type `689347 - Label A`. This is very easy to do by simply using `decode` on `num`, then writing a new `string` as follows:\r\n\r\n\ttempvar numstr\r\n\tdecode num, gen(`numstr&#39;)\r\n\tgen label = string(id) + &quot; - &quot; + `numstr&#39;\r\n\r\n     +-------------------------------------+\r\n     |     num       id              label |\r\n     |-------------------------------------|\r\n     | Label A   689347   689347 - Label A |\r\n     | Label B   972623   972623 - Label B |\r\n     +-------------------------------------+\r\n\r\nThis is already pretty easy, but is there a way to do this in one line, without the `decode` command? \r\n\r\nFor example something like:\r\n\r\n    gen label = string(if) + &quot; &quot; + string(num)\r\n\r\nThe problem with this is, of course, that this will just give a `string` of the `real` number value (1 and 2) that `num` takes on. \r\n\r\nIn [this post][1] you can see how to reference the `value label` in an `if` command. \r\n\r\n**My question is:**\r\n\r\nIs there a way to tell Stata to create a string and pull the `value label` instead of the value?\r\n\r\n\r\n\r\n\r\n  [1]: https://stackoverflow.com/questions/22767838/use-value-label-in-if-command-in-stata",
+            "link": "https://stackoverflow.com/questions/49922345/extract-value-label-in-command-stata",
+            "title": "Extract value label in command [stata]",
+            "body": "<p>I am trying to create a new <code>string</code> variable that combines the <code>string</code> of a <code>real</code> number (an ID) with a name. The name is a <code>numeric</code> variable with a <code>value label</code>. </p>\n\n<p>Example data can be found below:</p>\n\n<pre><code>* Input Data\nclear\ninput long num id\n1 689347\n2 972623\nend\nlabel values num num\nlabel def num 1 \"Label A\" 2 \"Label B\"\n\n +------------------+\n |     num       id |\n |------------------|\n | Label A   689347 |\n | Label B   972623 |\n +------------------+\n</code></pre>\n\n<p>What I would like to do is create a <code>string</code> of the type <code>689347 - Label A</code>. This is very easy to do by simply using <code>decode</code> on <code>num</code>, then writing a new <code>string</code> as follows:</p>\n\n<pre><code>tempvar numstr\ndecode num, gen(`numstr')\ngen label = string(id) + \" - \" + `numstr'\n\n +-------------------------------------+\n |     num       id              label |\n |-------------------------------------|\n | Label A   689347   689347 - Label A |\n | Label B   972623   972623 - Label B |\n +-------------------------------------+\n</code></pre>\n\n<p>This is already pretty easy, but is there a way to do this in one line, without the <code>decode</code> command? </p>\n\n<p>For example something like:</p>\n\n<pre><code>gen label = string(if) + \" \" + string(num)\n</code></pre>\n\n<p>The problem with this is, of course, that this will just give a <code>string</code> of the <code>real</code> number value (1 and 2) that <code>num</code> takes on. </p>\n\n<p>In <a href=\"https://stackoverflow.com/questions/22767838/use-value-label-in-if-command-in-stata\">this post</a> you can see how to reference the <code>value label</code> in an <code>if</code> command. </p>\n\n<p><strong>My question is:</strong></p>\n\n<p>Is there a way to tell Stata to create a string and pull the <code>value label</code> instead of the value?</p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "dataframe",
+                "rename"
+            ],
+            "owner": {
+                "reputation": 3073,
+                "user_id": 382271,
+                "user_type": "registered",
+                "accept_rate": 94,
+                "profile_image": "https://www.gravatar.com/avatar/2405b4ddcb12a59b846f21ba99969171?s=128&d=identicon&r=PG",
+                "display_name": "Robert Kubrick",
+                "link": "https://stackoverflow.com/users/382271/robert-kubrick"
+            },
+            "is_answered": true,
+            "view_count": 49389,
+            "accepted_answer_id": 9285089,
+            "answer_count": 4,
+            "score": 32,
+            "last_activity_date": 1524190824,
+            "creation_date": 1329248565,
+            "last_edit_date": 1524190824,
+            "question_id": 9283171,
+            "body_markdown": "I want to rename some random columns of a **large** data frame and I want to use the current column names, not the indexes. Column indexes might change if I add or remove columns to the data, so I figure using the existing column names is a more stable solution.\r\nThis is what I have now:\r\n\r\n    mydf = merge(df.1, df.2)\r\n    colnames(mydf)[which(colnames(mydf) == &quot;MyName.1&quot;)] = &quot;MyNewName&quot;\r\n\r\nCan I simplify this code, either the original `merge()` call or just the second line? `&quot;MyName.1&quot;` is actually the result of an xts `merge` of two different xts objects.",
+            "link": "https://stackoverflow.com/questions/9283171/rename-multiple-dataframe-columns-referenced-by-current-names",
+            "title": "Rename multiple dataframe columns, referenced by current names",
+            "body": "<p>I want to rename some random columns of a <strong>large</strong> data frame and I want to use the current column names, not the indexes. Column indexes might change if I add or remove columns to the data, so I figure using the existing column names is a more stable solution.\nThis is what I have now:</p>\n\n<pre><code>mydf = merge(df.1, df.2)\ncolnames(mydf)[which(colnames(mydf) == \"MyName.1\")] = \"MyNewName\"\n</code></pre>\n\n<p>Can I simplify this code, either the original <code>merge()</code> call or just the second line? <code>\"MyName.1\"</code> is actually the result of an xts <code>merge</code> of two different xts objects.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "file-io",
+                "python-3.x",
+                "containers"
+            ],
+            "owner": {
+                "reputation": 27,
+                "user_id": 3078853,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://i.stack.imgur.com/nnlrP.gif?s=128&g=1",
+                "display_name": "GothSparkImvu",
+                "link": "https://stackoverflow.com/users/3078853/gothsparkimvu"
+            },
+            "is_answered": false,
+            "view_count": 119,
+            "answer_count": 4,
+            "score": 1,
+            "last_activity_date": 1524190822,
+            "creation_date": 1386465094,
+            "last_edit_date": 1524190822,
+            "question_id": 20448696,
+            "body_markdown": "I am working on a school project to make a video club management program and I need some help. Here is what I am trying to do:\r\nI have a txt file with the client data, in which there is this:\r\n\r\n    clientId:clientFirstName:clientLastName:clientPhoneNumber\r\n\r\nThe `:` is the separator for any file in data.\r\n\r\nAnd in the movie title data file I got this:\r\n\r\n    movieid:movieKindFlag:MovieName:MovieAvalaible:MovieRented:CopieInTotal\r\n\r\nwhere it is going is that in the rentedData file there should be that:\r\n\r\n    idClient:IdMovie:DateOfReturn\r\n\r\nI am able to do this part. Where I fail due to lack of experience:\r\nI need to actually make a container with 3 levels for the movie data file because I want to track the available and rented numbers (changing them when I rent a movie and when I return one).\r\n\r\nThe first level represents the whole file, calling it will print the whole file, the second level should have each line in a container, the third one is every word of the line in a container.\r\n\r\nHere is an example of what I mean:\r\n\r\n    dataMovie = [[[movie id],[movie title],[MovieAvailable],[MovieRented],[CopieInTotal]],[[movie id],[movie title],[MovieAvailable],[MovieRented],[CopieInTotal]]\r\n\r\nI actually know that I can do this for a two layer in this way:\r\n\r\n    DataMovie=[]\r\n    \tMovieInfo = open(&#39;Data_Movie&#39;, &#39;r&#39;)\r\n    \t#Reading the file and putting it into a container\r\n    \tfor ligne in MovieInfo:\r\n    \t\tprint(ligne, end=&#39;&#39;)\r\n    \t\twords = ligne.split(&quot;:&quot;)\r\n    \t\tDataMovie.append(words)\r\n    \tprint(DataMovie)\r\n    \t\r\n    \tMovieInfo.close()\r\n\r\nIt separates all the words in to this:\r\n\r\n    [[MovieID],[MovieTitle],[movie id],[movie title],[MovieAvailable],[MovieRented],[CopieInTotal], [MovieID],[MovieTitle],[movie id],[movie title],[MovieAvailable],[MovieRented],[CopieInTotal]]\r\n\r\nEach line is in the same container (second layer) but the lines are not separated, not very helpful since I need to change a specific information about the quantity available and the rented one to be able to not rent the movie if all of the copies are rented.",
+            "link": "https://stackoverflow.com/questions/20448696/modifiying-a-txt-file-in-python-3",
+            "title": "Modifiying a txt file in Python 3",
+            "body": "<p>I am working on a school project to make a video club management program and I need some help. Here is what I am trying to do:\nI have a txt file with the client data, in which there is this:</p>\n\n<pre><code>clientId:clientFirstName:clientLastName:clientPhoneNumber\n</code></pre>\n\n<p>The <code>:</code> is the separator for any file in data.</p>\n\n<p>And in the movie title data file I got this:</p>\n\n<pre><code>movieid:movieKindFlag:MovieName:MovieAvalaible:MovieRented:CopieInTotal\n</code></pre>\n\n<p>where it is going is that in the rentedData file there should be that:</p>\n\n<pre><code>idClient:IdMovie:DateOfReturn\n</code></pre>\n\n<p>I am able to do this part. Where I fail due to lack of experience:\nI need to actually make a container with 3 levels for the movie data file because I want to track the available and rented numbers (changing them when I rent a movie and when I return one).</p>\n\n<p>The first level represents the whole file, calling it will print the whole file, the second level should have each line in a container, the third one is every word of the line in a container.</p>\n\n<p>Here is an example of what I mean:</p>\n\n<pre><code>dataMovie = [[[movie id],[movie title],[MovieAvailable],[MovieRented],[CopieInTotal]],[[movie id],[movie title],[MovieAvailable],[MovieRented],[CopieInTotal]]\n</code></pre>\n\n<p>I actually know that I can do this for a two layer in this way:</p>\n\n<pre><code>DataMovie=[]\n    MovieInfo = open('Data_Movie', 'r')\n    #Reading the file and putting it into a container\n    for ligne in MovieInfo:\n        print(ligne, end='')\n        words = ligne.split(\":\")\n        DataMovie.append(words)\n    print(DataMovie)\n\n    MovieInfo.close()\n</code></pre>\n\n<p>It separates all the words in to this:</p>\n\n<pre><code>[[MovieID],[MovieTitle],[movie id],[movie title],[MovieAvailable],[MovieRented],[CopieInTotal], [MovieID],[MovieTitle],[movie id],[movie title],[MovieAvailable],[MovieRented],[CopieInTotal]]\n</code></pre>\n\n<p>Each line is in the same container (second layer) but the lines are not separated, not very helpful since I need to change a specific information about the quantity available and the rented one to be able to not rent the movie if all of the copies are rented.</p>\n"
+        },
+        {
+            "tags": [
+                "parsing",
+                "names"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8552403,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/92df3e5012e36f5caa5ba9d3db713387?s=128&d=identicon&r=PG&f=1",
+                "display_name": "V.B",
+                "link": "https://stackoverflow.com/users/8552403/v-b"
+            },
+            "is_answered": false,
+            "view_count": 3,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524190819,
+            "creation_date": 1524190819,
+            "question_id": 49932925,
+            "body_markdown": "I&#39;ve got a dataframe with around 600 names, some like &quot;Mr John Smith&quot; and some like &quot;Mr John Smith &amp;&quot;. \r\n\r\nI want to find the first name (John) and last name(Smith) but using the humaniformat package, I&#39;m unable to figure out a way to get &quot;Smith&quot; if I use the c command last name(&quot;Mr John Smith &amp;&quot;)",
+            "link": "https://stackoverflow.com/questions/49932925/detecting-first-name-and-last-name-but-ignoring-specific-syllables",
+            "title": "Detecting First Name and Last Name but ignoring specific syllables",
+            "body": "<p>I've got a dataframe with around 600 names, some like \"Mr John Smith\" and some like \"Mr John Smith &amp;\". </p>\n\n<p>I want to find the first name (John) and last name(Smith) but using the humaniformat package, I'm unable to figure out a way to get \"Smith\" if I use the c command last name(\"Mr John Smith &amp;\")</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "onsaveinstancestate"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9378582,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "chemitron",
+                "link": "https://stackoverflow.com/users/9378582/chemitron"
+            },
+            "is_answered": false,
+            "view_count": 22,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524190813,
+            "creation_date": 1524189131,
+            "last_edit_date": 1524189435,
+            "question_id": 49932724,
+            "body_markdown": "Activity 1:SelectBatchStep. RecyclerView populated with MySQL database data\r\n\r\nActivity 2: DoneBy. Simple activity inserting new data in the database.\r\n\r\nActivity 1 is reloaded after Activity 2 finishes in order to show the updated recyclerView item.\r\n\r\nI am trying to save the scrolling position in a recyclerview activity 1. I start a new activity 2 but the scroll position is not recovered when I call back the recyclerview activity 1.\r\n\r\n    @Override\r\n    public void onSaveInstanceState(Bundle savedInstanceState) {\r\n        savedInstanceState.putInt(SCROLL,scrollpositionkeeper);\r\n        super.onSaveInstanceState(savedInstanceState);\r\n        Log.v(TAG,&quot;scrollpositionsaved&quot;+savedInstanceState);\r\n    }\r\n\r\nLogcat shows the bundle Is saved and the scroll position is correctly saved when I start the new activity 2.\r\n\r\nActivity 2 is started from the recycler adapter using com.daimajia.swipe.SwipeLayout library.\r\n\r\nActivity 1 is recalled from activity 2 as follows:\r\n\r\n    Intent intent1 = new Intent(DoneBy.this, SelectBatchStep.class);\r\n\r\nActivity 1 has the following:\r\n\r\n    @Override\r\n    protected void onCreate(Bundle savedInstanceState) {\r\n        super.onCreate(savedInstanceState);\r\n        if (savedInstanceState != null) {\r\n            scrollrecovered = savedInstanceState.getInt(SCROLL);\r\n        }\r\n        else {\r\n            scrollrecovered=0;\r\n        }\r\n        Log.v(TAG,&quot;scrollpositionrecovered&quot;+savedInstanceState);\r\n        setContentView(R.layout.activity_select_batch_step);\r\n\r\nActivity 1 comes to the front and logcat shows that the Bundle is null\r\n\r\nWhy is the saved bundle null?\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49932724/oncreatebundle-savedinstancestate-not-recovering-the-saved-data",
+            "title": "onCreate(Bundle savedInstanceState) not recovering the saved data",
+            "body": "<p>Activity 1:SelectBatchStep. RecyclerView populated with MySQL database data</p>\n\n<p>Activity 2: DoneBy. Simple activity inserting new data in the database.</p>\n\n<p>Activity 1 is reloaded after Activity 2 finishes in order to show the updated recyclerView item.</p>\n\n<p>I am trying to save the scrolling position in a recyclerview activity 1. I start a new activity 2 but the scroll position is not recovered when I call back the recyclerview activity 1.</p>\n\n<pre><code>@Override\npublic void onSaveInstanceState(Bundle savedInstanceState) {\n    savedInstanceState.putInt(SCROLL,scrollpositionkeeper);\n    super.onSaveInstanceState(savedInstanceState);\n    Log.v(TAG,\"scrollpositionsaved\"+savedInstanceState);\n}\n</code></pre>\n\n<p>Logcat shows the bundle Is saved and the scroll position is correctly saved when I start the new activity 2.</p>\n\n<p>Activity 2 is started from the recycler adapter using com.daimajia.swipe.SwipeLayout library.</p>\n\n<p>Activity 1 is recalled from activity 2 as follows:</p>\n\n<pre><code>Intent intent1 = new Intent(DoneBy.this, SelectBatchStep.class);\n</code></pre>\n\n<p>Activity 1 has the following:</p>\n\n<pre><code>@Override\nprotected void onCreate(Bundle savedInstanceState) {\n    super.onCreate(savedInstanceState);\n    if (savedInstanceState != null) {\n        scrollrecovered = savedInstanceState.getInt(SCROLL);\n    }\n    else {\n        scrollrecovered=0;\n    }\n    Log.v(TAG,\"scrollpositionrecovered\"+savedInstanceState);\n    setContentView(R.layout.activity_select_batch_step);\n</code></pre>\n\n<p>Activity 1 comes to the front and logcat shows that the Bundle is null</p>\n\n<p>Why is the saved bundle null?</p>\n"
+        },
+        {
+            "tags": [
+                "tensorflow"
+            ],
+            "owner": {
+                "reputation": 63,
+                "user_id": 593565,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/68d78b76d2d5335de5e49380437faa03?s=128&d=identicon&r=PG",
+                "display_name": "Magic fish",
+                "link": "https://stackoverflow.com/users/593565/magic-fish"
+            },
+            "is_answered": true,
+            "view_count": 517,
+            "accepted_answer_id": 44609159,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1524190794,
+            "creation_date": 1497586284,
+            "question_id": 44580681,
+            "body_markdown": "I download the tensorflow from https://github.com/tensorflow/tensorflow/tree/master/tensorflow/examples/ios\r\n\r\nAnd then install it step by step.\r\n\r\nWhen I install pod, there is an ERROR:\r\n[![enter image description here][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/V5MuK.png\r\n\r\nIs the `TensorFlow-experimental` being renamed or Somethins wrong ?",
+            "link": "https://stackoverflow.com/questions/44580681/the-pod-tensorflow-experimental-is-not-found",
+            "title": "The pod `TensorFlow-experimental` is not found",
+            "body": "<p>I download the tensorflow from <a href=\"https://github.com/tensorflow/tensorflow/tree/master/tensorflow/examples/ios\" rel=\"nofollow noreferrer\">https://github.com/tensorflow/tensorflow/tree/master/tensorflow/examples/ios</a></p>\n\n<p>And then install it step by step.</p>\n\n<p>When I install pod, there is an ERROR:\n<a href=\"https://i.stack.imgur.com/V5MuK.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/V5MuK.png\" alt=\"enter image description here\"></a></p>\n\n<p>Is the <code>TensorFlow-experimental</code> being renamed or Somethins wrong ?</p>\n"
+        },
+        {
+            "tags": [
+                "android-resources",
+                "android-instant-apps"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9305217,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e9df1c621d8bcff8bd79dc7e18acb551?s=128&d=identicon&r=PG",
+                "display_name": "user863873",
+                "link": "https://stackoverflow.com/users/9305217/user863873"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524190789,
+            "creation_date": 1524159289,
+            "last_edit_date": 1524190789,
+            "question_id": 49926999,
+            "body_markdown": "I have one application &quot;Master&quot; installed on phone. Is it possible to access resource from other app &quot;Slave&quot; as instant app ?\r\n\r\nI know that it&#39;s possible between 2 installed apps using : \r\n\r\n    Resources resources = getPackageManager().getResourcesForApplication(packageName);\r\n    String slaveAppName = resources.getString(resources.getIdentifier(&quot;app_name&quot;, &quot;string&quot;, packageName));\r\n\r\nThx",
+            "link": "https://stackoverflow.com/questions/49926999/application-access-resources-from-instant-application-other",
+            "title": "Application access resources from instant application (other)",
+            "body": "<p>I have one application \"Master\" installed on phone. Is it possible to access resource from other app \"Slave\" as instant app ?</p>\n\n<p>I know that it's possible between 2 installed apps using : </p>\n\n<pre><code>Resources resources = getPackageManager().getResourcesForApplication(packageName);\nString slaveAppName = resources.getString(resources.getIdentifier(\"app_name\", \"string\", packageName));\n</code></pre>\n\n<p>Thx</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 220
+}
