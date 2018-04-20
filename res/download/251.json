@@ -1,0 +1,843 @@
+{
+    "items": [
+        {
+            "tags": [
+                "java",
+                "guice"
+            ],
+            "owner": {
+                "reputation": 2909,
+                "user_id": 496978,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://www.gravatar.com/avatar/5c46a5ab8d43bf77c91e5bd6d56a1eaa?s=128&d=identicon&r=PG",
+                "display_name": "psych",
+                "link": "https://stackoverflow.com/users/496978/psych"
+            },
+            "is_answered": true,
+            "view_count": 27,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524210693,
+            "creation_date": 1524143564,
+            "last_edit_date": 1524209200,
+            "question_id": 49922036,
+            "body_markdown": "I am trying to pass a constructor parameter from one class into the factory for another class:\r\n\r\n    public class PerPixelImageUpdater implements ImageUpdater {\r\n        private final PixelUpdater pixelUpdater;\r\n        private final BufferedImage image;\r\n\r\n        @Inject\r\n        PerPixelImageUpdater(PixelUpdaterFactory pixelUpdaterFactory,\r\n                             @Assisted BufferedImage image){\r\n            this.image = image;\r\n            this.pixelUpdater = pixelUpdaterFactory.create(image);\r\n        }\r\n\r\n        //Methods\r\n    }\r\n\r\nFactory:\r\n\r\n    public interface ImageUpdaterFactory {\r\n        ImageUpdater create(BufferedImage image);\r\n    }\r\n\r\nRegister in Guice:\r\n\r\n    install(new FactoryModuleBuilder()\r\n                    .implement(ImageUpdater.class, PerPixelImageUpdater.class)\r\n                    .build(ImageUpdaterFactory.class));\r\n\r\nWhen I run this code I get an error that the implementation was not bound?\r\n\r\n&gt; 1) No implementation for java.awt.image.BufferedImage annotated with\r\n&gt; @com.google.inject.assistedinject.Assisted(value=&quot;&quot;) was bound.  \r\n&gt; while locating java.awt.image.BufferedImage annotated with\r\n&gt; @com.google.inject.assistedinject.Assisted(value=&quot;&quot;)\r\n&gt;     for the 2nd parameter of com.infojolt.imageencrypt.PerPixelImageUpdater.&lt;init&gt;(PerPixelImageUpdater.java:16)\r\n\r\nWhat have I missed? Do I need to register the factory in a different way?\r\n\r\n----------\r\n\r\nExtra details:\r\n\r\nThere are actually two errors \r\n\r\n&gt; 1) No implementation for java.awt.image.BufferedImage annotated with\r\n&gt; @com.google.inject.assistedinject.Assisted(value=&quot;&quot;) was bound.  \r\n&gt; while locating java.awt.image.BufferedImage annotated with\r\n&gt; @com.google.inject.assistedinject.Assisted(value=&quot;&quot;)\r\n&gt;     for the 2nd parameter of com.infojolt.imageencrypt.PerPixelImageUpdater.&lt;init&gt;(PerPixelImageUpdater.java:16)\r\n&gt; at\r\n&gt; com.infojolt.imageencrypt.Injection.ImageEncryptModule.configure(ImageEncryptModule.java:25)\r\n&gt; \r\n&gt; 2) No implementation for java.awt.image.BufferedImage annotated with\r\n&gt; @com.google.inject.assistedinject.Assisted(value=&quot;&quot;) was bound.  \r\n&gt; while locating java.awt.image.BufferedImage annotated with\r\n&gt; @com.google.inject.assistedinject.Assisted(value=&quot;&quot;)\r\n&gt;     for the 3rd parameter of com.infojolt.imageencrypt.SimplePixelUpdater.&lt;init&gt;(SimplePixelUpdater.java:17)\r\n&gt; at\r\n&gt; com.infojolt.imageencrypt.Injection.ImageEncryptModule.configure(ImageEncryptModule.java:18)\r\n\r\nIn `PixelShiftImageEncrypter`, `ImageUpdaterFactory imageUpdaterFactory` is passed in to the constructor:\r\n\r\n    @Inject\r\n    PixelShiftImageEncrypter(PixelShiftCalculator pixelShiftCalculator,\r\n                                    ImageLoader imageLoader,\r\n                                    StringEncryption stringEncryption,\r\n                                    PixelModificationCalculator pixelModificationCalculator,\r\n                                    PixelSkipCountCalculator pixelSkipCountCalculator,\r\n                                    ImageUpdaterFactory imageUpdaterFactory)\r\n\r\n*(I am currently refactoring this project to reduce the number of constructor args / method params, but I&#39;m trying to get the classed under test before ripping it apart.)*\r\n\r\n `ImageUpdater` is then created in a method by calling:\r\n\r\n    ImageUpdater imageUpdater = imageUpdaterFactory.create(image);\r\n\r\n`PixelShiftImageEncrypter` is created in:\r\n\r\n    @Inject\r\n    EncryptJobConfiguration(@Assisted(&quot;inputString&quot;) String inputString,\r\n                            @Assisted(&quot;secretKey&quot;) String secretKey,\r\n                            @Assisted(&quot;inputImagePath&quot;) String inputImagePath,\r\n                            ImageEncrypter imageEncrypter,\r\n                            ImageStorage imageStorage)\r\n\r\n`ImageEncryptModule.java` contains:\r\n   \r\n    install(new FactoryModuleBuilder()\r\n                .implement(JobConfiguration.class, Names.named(&quot;encrypt&quot;), EncryptJobConfiguration.class)\r\n                .implement(JobConfiguration.class, Names.named(&quot;decrypt&quot;), DecryptJobConfiguration.class)\r\n                .build(JobConfigurationFactory.class));\r\n    \r\n        install(new FactoryModuleBuilder()\r\n                .implement(PixelUpdater.class, SimplePixelUpdater.class)\r\n                .build(PixelUpdaterFactory.class));\r\n    \r\n        install(new FactoryModuleBuilder()\r\n                .implement(ImageUpdater.class, PerPixelImageUpdater.class)\r\n                .build(ImageUpdaterFactory.class));\r\n\r\n`PixelUpdaterFactory`:\r\n\r\n    public interface PixelUpdaterFactory {\r\n        PixelUpdater create(BufferedImage image);\r\n    }\r\n\r\n`JobConfigurationFactory`:\r\n\r\n    public interface JobConfigurationFactory {\r\n        @Named(&quot;encrypt&quot;)\r\n        JobConfiguration createEncrypt(@Assisted(&quot;inputString&quot;) String inputString,\r\n                                       @Assisted(&quot;secretKey&quot;) String secretKey,\r\n                                       @Assisted(&quot;inputImagePath&quot;) String inputImagePath);\r\n    \r\n        @Named(&quot;decrypt&quot;)\r\n        JobConfiguration createDecrypt(@Assisted(&quot;secretKey&quot;) String secretKey,\r\n                                       @Assisted(&quot;inputImagePath&quot;) String inputImagePath);\r\n    }\r\n\r\nThis file also contains all of the other bindings which I&#39;ve exclude for brevity. For example:\r\n\r\n    bind(ImageEncrypter.class).to(PixelShiftImageEncrypter.class);",
+            "link": "https://stackoverflow.com/questions/49922036/pass-constructor-parameter-into-factory-in-google-guice",
+            "title": "Pass constructor parameter into factory in Google Guice",
+            "body": "<p>I am trying to pass a constructor parameter from one class into the factory for another class:</p>\n\n<pre><code>public class PerPixelImageUpdater implements ImageUpdater {\n    private final PixelUpdater pixelUpdater;\n    private final BufferedImage image;\n\n    @Inject\n    PerPixelImageUpdater(PixelUpdaterFactory pixelUpdaterFactory,\n                         @Assisted BufferedImage image){\n        this.image = image;\n        this.pixelUpdater = pixelUpdaterFactory.create(image);\n    }\n\n    //Methods\n}\n</code></pre>\n\n<p>Factory:</p>\n\n<pre><code>public interface ImageUpdaterFactory {\n    ImageUpdater create(BufferedImage image);\n}\n</code></pre>\n\n<p>Register in Guice:</p>\n\n<pre><code>install(new FactoryModuleBuilder()\n                .implement(ImageUpdater.class, PerPixelImageUpdater.class)\n                .build(ImageUpdaterFactory.class));\n</code></pre>\n\n<p>When I run this code I get an error that the implementation was not bound?</p>\n\n<blockquote>\n  <p>1) No implementation for java.awt.image.BufferedImage annotated with\n  @com.google.inject.assistedinject.Assisted(value=\"\") was bound.<br>\n  while locating java.awt.image.BufferedImage annotated with\n  @com.google.inject.assistedinject.Assisted(value=\"\")\n      for the 2nd parameter of com.infojolt.imageencrypt.PerPixelImageUpdater.(PerPixelImageUpdater.java:16)</p>\n</blockquote>\n\n<p>What have I missed? Do I need to register the factory in a different way?</p>\n\n<hr>\n\n<p>Extra details:</p>\n\n<p>There are actually two errors </p>\n\n<blockquote>\n  <p>1) No implementation for java.awt.image.BufferedImage annotated with\n  @com.google.inject.assistedinject.Assisted(value=\"\") was bound.<br>\n  while locating java.awt.image.BufferedImage annotated with\n  @com.google.inject.assistedinject.Assisted(value=\"\")\n      for the 2nd parameter of com.infojolt.imageencrypt.PerPixelImageUpdater.(PerPixelImageUpdater.java:16)\n  at\n  com.infojolt.imageencrypt.Injection.ImageEncryptModule.configure(ImageEncryptModule.java:25)</p>\n  \n  <p>2) No implementation for java.awt.image.BufferedImage annotated with\n  @com.google.inject.assistedinject.Assisted(value=\"\") was bound.<br>\n  while locating java.awt.image.BufferedImage annotated with\n  @com.google.inject.assistedinject.Assisted(value=\"\")\n      for the 3rd parameter of com.infojolt.imageencrypt.SimplePixelUpdater.(SimplePixelUpdater.java:17)\n  at\n  com.infojolt.imageencrypt.Injection.ImageEncryptModule.configure(ImageEncryptModule.java:18)</p>\n</blockquote>\n\n<p>In <code>PixelShiftImageEncrypter</code>, <code>ImageUpdaterFactory imageUpdaterFactory</code> is passed in to the constructor:</p>\n\n<pre><code>@Inject\nPixelShiftImageEncrypter(PixelShiftCalculator pixelShiftCalculator,\n                                ImageLoader imageLoader,\n                                StringEncryption stringEncryption,\n                                PixelModificationCalculator pixelModificationCalculator,\n                                PixelSkipCountCalculator pixelSkipCountCalculator,\n                                ImageUpdaterFactory imageUpdaterFactory)\n</code></pre>\n\n<p><em>(I am currently refactoring this project to reduce the number of constructor args / method params, but I'm trying to get the classed under test before ripping it apart.)</em></p>\n\n<p><code>ImageUpdater</code> is then created in a method by calling:</p>\n\n<pre><code>ImageUpdater imageUpdater = imageUpdaterFactory.create(image);\n</code></pre>\n\n<p><code>PixelShiftImageEncrypter</code> is created in:</p>\n\n<pre><code>@Inject\nEncryptJobConfiguration(@Assisted(\"inputString\") String inputString,\n                        @Assisted(\"secretKey\") String secretKey,\n                        @Assisted(\"inputImagePath\") String inputImagePath,\n                        ImageEncrypter imageEncrypter,\n                        ImageStorage imageStorage)\n</code></pre>\n\n<p><code>ImageEncryptModule.java</code> contains:</p>\n\n<pre><code>install(new FactoryModuleBuilder()\n            .implement(JobConfiguration.class, Names.named(\"encrypt\"), EncryptJobConfiguration.class)\n            .implement(JobConfiguration.class, Names.named(\"decrypt\"), DecryptJobConfiguration.class)\n            .build(JobConfigurationFactory.class));\n\n    install(new FactoryModuleBuilder()\n            .implement(PixelUpdater.class, SimplePixelUpdater.class)\n            .build(PixelUpdaterFactory.class));\n\n    install(new FactoryModuleBuilder()\n            .implement(ImageUpdater.class, PerPixelImageUpdater.class)\n            .build(ImageUpdaterFactory.class));\n</code></pre>\n\n<p><code>PixelUpdaterFactory</code>:</p>\n\n<pre><code>public interface PixelUpdaterFactory {\n    PixelUpdater create(BufferedImage image);\n}\n</code></pre>\n\n<p><code>JobConfigurationFactory</code>:</p>\n\n<pre><code>public interface JobConfigurationFactory {\n    @Named(\"encrypt\")\n    JobConfiguration createEncrypt(@Assisted(\"inputString\") String inputString,\n                                   @Assisted(\"secretKey\") String secretKey,\n                                   @Assisted(\"inputImagePath\") String inputImagePath);\n\n    @Named(\"decrypt\")\n    JobConfiguration createDecrypt(@Assisted(\"secretKey\") String secretKey,\n                                   @Assisted(\"inputImagePath\") String inputImagePath);\n}\n</code></pre>\n\n<p>This file also contains all of the other bindings which I've exclude for brevity. For example:</p>\n\n<pre><code>bind(ImageEncrypter.class).to(PixelShiftImageEncrypter.class);\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "typescript",
+                "recursion",
+                "partial",
+                "mapped-types"
+            ],
+            "owner": {
+                "reputation": 23,
+                "user_id": 6835767,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-YzhqRBMI96A/AAAAAAAAAAI/AAAAAAAAAFs/xxoBKOfLg90/photo.jpg?sz=128",
+                "display_name": "Allan Simoyi",
+                "link": "https://stackoverflow.com/users/6835767/allan-simoyi"
+            },
+            "is_answered": true,
+            "view_count": 1201,
+            "accepted_answer_id": 45380315,
+            "answer_count": 2,
+            "score": 4,
+            "last_activity_date": 1524210686,
+            "creation_date": 1501240932,
+            "last_edit_date": 1501308113,
+            "question_id": 45372227,
+            "body_markdown": "Any ideas as to how might apply typescript&#39;s Partial mapped type to an interface recursively, at the same time not breaking any keys with array return types?\r\n\r\nThe following approaches have not been sufficing:  \r\n\r\n    interface User {  \r\n      emailAddress: string;  \r\n      verification: {\r\n        verified: boolean;\r\n        verificationCode: string;\r\n      }\r\n      activeApps: string[];\r\n    }\r\n\r\n    type PartialUser = Partial&lt;User&gt;; // does not affect properties of verification  \r\n\r\n    type PartialUser2 = DeepPartial&lt;User&gt;; // breaks activeApps&#39; array return type;\r\n\r\n    export type DeepPartial&lt;T&gt; = {\r\n      [ P in keyof T ]?: DeepPartial&lt;T[ P ]&gt;;\r\n    }\r\n\r\nAny ideas?\r\n\r\nUPDATE:\r\nAccepted answer - A better and more general solve for now.\r\n\r\nHad found a temporary workaround which involves intersection of types and two mapped types as follows. The most notable drawback is that you have to supply the property overrides to restore sullied keys, the ones with array return types.\r\n\r\nE.g.\r\n\r\n    type PartialDeep&lt;T&gt; = {\r\n      [ P in keyof T ]?: PartialDeep&lt;T[ P ]&gt;;\r\n    }\r\n    type PartialRestoreArrays&lt;K&gt; = {\r\n      [ P in keyof K ]?: K[ P ];\r\n    }\r\n\r\n    export type DeepPartial&lt;T, K&gt; = PartialDeep&lt;T&gt; &amp; PartialRestoreArrays&lt;K&gt;;\r\n\r\n    interface User {  \r\n     emailAddress: string;  \r\n     verification: {\r\n       verified: boolean;\r\n       verificationCode: string;\r\n     }\r\n     activeApps: string[];\r\n    }\r\n\r\n    export type AddDetailsPartialed = DeepPartial&lt;User, {\r\n     activeApps?: string[];\r\n    }&gt;\r\n\r\n[Like so][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/tqqDB.png",
+            "link": "https://stackoverflow.com/questions/45372227/how-to-implement-typescript-deep-partial-mapped-type-not-breaking-array-properti",
+            "title": "how to implement typescript deep partial mapped type not breaking array properties",
+            "body": "<p>Any ideas as to how might apply typescript's Partial mapped type to an interface recursively, at the same time not breaking any keys with array return types?</p>\n\n<p>The following approaches have not been sufficing:  </p>\n\n<pre><code>interface User {  \n  emailAddress: string;  \n  verification: {\n    verified: boolean;\n    verificationCode: string;\n  }\n  activeApps: string[];\n}\n\ntype PartialUser = Partial&lt;User&gt;; // does not affect properties of verification  \n\ntype PartialUser2 = DeepPartial&lt;User&gt;; // breaks activeApps' array return type;\n\nexport type DeepPartial&lt;T&gt; = {\n  [ P in keyof T ]?: DeepPartial&lt;T[ P ]&gt;;\n}\n</code></pre>\n\n<p>Any ideas?</p>\n\n<p>UPDATE:\nAccepted answer - A better and more general solve for now.</p>\n\n<p>Had found a temporary workaround which involves intersection of types and two mapped types as follows. The most notable drawback is that you have to supply the property overrides to restore sullied keys, the ones with array return types.</p>\n\n<p>E.g.</p>\n\n<pre><code>type PartialDeep&lt;T&gt; = {\n  [ P in keyof T ]?: PartialDeep&lt;T[ P ]&gt;;\n}\ntype PartialRestoreArrays&lt;K&gt; = {\n  [ P in keyof K ]?: K[ P ];\n}\n\nexport type DeepPartial&lt;T, K&gt; = PartialDeep&lt;T&gt; &amp; PartialRestoreArrays&lt;K&gt;;\n\ninterface User {  \n emailAddress: string;  \n verification: {\n   verified: boolean;\n   verificationCode: string;\n }\n activeApps: string[];\n}\n\nexport type AddDetailsPartialed = DeepPartial&lt;User, {\n activeApps?: string[];\n}&gt;\n</code></pre>\n\n<p><a href=\"https://i.stack.imgur.com/tqqDB.png\" rel=\"nofollow noreferrer\">Like so</a></p>\n"
+        },
+        {
+            "tags": [
+                "powershell"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 6729601,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9a54599853adf62d7427c7f51717069d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Marco Trapulot",
+                "link": "https://stackoverflow.com/users/6729601/marco-trapulot"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524210684,
+            "creation_date": 1524210684,
+            "question_id": 49936685,
+            "body_markdown": "Everytime my Powershellscript is calling the Batchfile, a new Powershell Window opens. How can i modify the script in order to avoid the new window opens? I&#39;ve tried with -windowstyle hidden and NoNewWindow, but nothing works.\r\n\r\nHere is the Batchfile that starts my Powershell Script:\r\n\r\n    @echo off\r\n\r\n    set scriptFileName=%~n0\r\n    set scriptFolderPath=%~dp0\r\n    set powershellScriptFileName=test.ps1\r\n\r\n    powershell.exe -windowstyle hidden -Command &quot;Start-Process powershell \\&quot;-ExecutionPolicy Bypass -NoProfile -NoExit -Command `\\&quot;cd \\`\\&quot;C:\\Temp\\`\\&quot;; &amp; \\`\\&quot;.\\test.ps1\\`\\&quot;`\\&quot;\\&quot; -Verb RunAs&quot;\r\n\r\nAnd here is my Powershell Script:\r\n\r\n    $Source = &quot;C:\\Program Files\\Planmeca\\Romexis\\client\\cephmodule\\analyses&quot;\r\n\r\n    $Destination = &quot;\\\\PRENCIPE-THINK\\PDATA\\analyses&quot;  #&lt;------ UNC PFAD FUER DEN SERVER ANPASSEN!!\r\n    New-Item -ItemType directory -Path $Destination -Force \r\n    Copy-Item -Path $Source\\*.* -Destination $Destination -Force -Recurse\r\n\r\n    (ROBOCOPY $Source $Destination /MIR /W:30 /R:10) \r\n\r\n    # Ueberpruefe den Ordner auf veraenderungen\r\n    # Fuehre den Script aus bei Aenderung oder Umbennenung\r\n\r\n    $watcher = New-Object System.IO.FileSystemWatcher\r\n    $watcher.Path = &#39;C:\\Program Files\\Planmeca\\Romexis\\client\\cephmodule\\analyses&#39;\r\n    $watcher.IncludeSubdirectories = $true\r\n    $watcher.EnableRaisingEvents = $false\r\n    $watcher.NotifyFilter = [System.IO.NotifyFilters]::LastWrite -bor [System.IO.NotifyFilters]::FileName\r\n\r\n    while($TRUE){\r\n\t$result = $watcher.WaitForChanged([System.IO.WatcherChangeTypes]::Changed -bor [System.IO.WatcherChangeTypes]::Renamed -bOr [System.IO.WatcherChangeTypes]::Created, 1000);\r\n        if($result.TimedOut){\r\n\t\tcontinue;\r\n\t}\r\n\twrite-host &quot;Change in &quot; + $result.Name\r\n    $A = Start-Process -WindowStyle Hidden -FilePath c:\\temp\\Bypass.bat -Wait -passthru ;$a.ExitCode\r\n    }\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49936685/calling-a-batch-file-into-a-powershell-script",
+            "title": "Calling a Batch File into a Powershell Script",
+            "body": "<p>Everytime my Powershellscript is calling the Batchfile, a new Powershell Window opens. How can i modify the script in order to avoid the new window opens? I've tried with -windowstyle hidden and NoNewWindow, but nothing works.</p>\n\n<p>Here is the Batchfile that starts my Powershell Script:</p>\n\n<pre><code>@echo off\n\nset scriptFileName=%~n0\nset scriptFolderPath=%~dp0\nset powershellScriptFileName=test.ps1\n\npowershell.exe -windowstyle hidden -Command \"Start-Process powershell \\\"-ExecutionPolicy Bypass -NoProfile -NoExit -Command `\\\"cd \\`\\\"C:\\Temp\\`\\\"; &amp; \\`\\\".\\test.ps1\\`\\\"`\\\"\\\" -Verb RunAs\"\n</code></pre>\n\n<p>And here is my Powershell Script:</p>\n\n<pre><code>$Source = \"C:\\Program Files\\Planmeca\\Romexis\\client\\cephmodule\\analyses\"\n\n$Destination = \"\\\\PRENCIPE-THINK\\PDATA\\analyses\"  #&lt;------ UNC PFAD FUER DEN SERVER ANPASSEN!!\nNew-Item -ItemType directory -Path $Destination -Force \nCopy-Item -Path $Source\\*.* -Destination $Destination -Force -Recurse\n\n(ROBOCOPY $Source $Destination /MIR /W:30 /R:10) \n\n# Ueberpruefe den Ordner auf veraenderungen\n# Fuehre den Script aus bei Aenderung oder Umbennenung\n\n$watcher = New-Object System.IO.FileSystemWatcher\n$watcher.Path = 'C:\\Program Files\\Planmeca\\Romexis\\client\\cephmodule\\analyses'\n$watcher.IncludeSubdirectories = $true\n$watcher.EnableRaisingEvents = $false\n$watcher.NotifyFilter = [System.IO.NotifyFilters]::LastWrite -bor [System.IO.NotifyFilters]::FileName\n\nwhile($TRUE){\n$result = $watcher.WaitForChanged([System.IO.WatcherChangeTypes]::Changed -bor [System.IO.WatcherChangeTypes]::Renamed -bOr [System.IO.WatcherChangeTypes]::Created, 1000);\n    if($result.TimedOut){\n    continue;\n}\nwrite-host \"Change in \" + $result.Name\n$A = Start-Process -WindowStyle Hidden -FilePath c:\\temp\\Bypass.bat -Wait -passthru ;$a.ExitCode\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "spring",
+                "documentation",
+                "spring-restdocs"
+            ],
+            "owner": {
+                "reputation": 32,
+                "user_id": 7445359,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://i.stack.imgur.com/s1k5i.jpg?s=128&g=1",
+                "display_name": "Aleš Zrak",
+                "link": "https://stackoverflow.com/users/7445359/ale%c5%a1-zrak"
+            },
+            "is_answered": false,
+            "view_count": 39,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524210679,
+            "creation_date": 1523895912,
+            "last_edit_date": 1524210679,
+            "question_id": 49862035,
+            "body_markdown": "I&#39;m trying to document and endpoint in my API, which accepts array of ids (code is in Kotlin).\r\n\r\n        mockMvc.perform(post(&quot;api/getSomething&quot;).accept(MediaType.APPLICATION_JSON))\r\n             .contentType(MediaType.APPLICATION_FORM_URLENCODED)\r\n             .content(&quot;param1=123&amp;param2=abc&amp;param3[]=123&amp;param3[]=456&amp;param3[]=789&quot;))\r\n             .andExpect(MockMvcResultMatchers.status().isOk)\r\n             .andDo(document(&quot;api/getSomething&quot;, requestParameters(\r\n                parameterWithName(&quot;param1&quot;).description(&quot;Desc for parameter 1&quot;),\r\n                parameterWithName(&quot;param2&quot;).description(&quot;Desc for parameter 2&quot;),\r\n                parameterWithName(&quot;param3&quot;).description(&quot;Desc for parameter 3&quot;)\r\n        )))\r\n\r\nThe first two parameters are processed fine, but for the third one I get\r\n\r\n    org.springframework.restdocs.snippet.SnippetException: Request parameters with the following names were not documented: [param3[0]]. Request parameters with the following names were not found in the request: [param3]\r\n\r\nI searched the documentation and found some solutions for response fields, but none for request parameters. What is the correct way to document request parameter of array type? Am I even using correct methods?\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49862035/spring-rest-docs-document-array-request-parameter",
+            "title": "Spring REST docs - document array request parameter",
+            "body": "<p>I'm trying to document and endpoint in my API, which accepts array of ids (code is in Kotlin).</p>\n\n<pre><code>    mockMvc.perform(post(\"api/getSomething\").accept(MediaType.APPLICATION_JSON))\n         .contentType(MediaType.APPLICATION_FORM_URLENCODED)\n         .content(\"param1=123&amp;param2=abc&amp;param3[]=123&amp;param3[]=456&amp;param3[]=789\"))\n         .andExpect(MockMvcResultMatchers.status().isOk)\n         .andDo(document(\"api/getSomething\", requestParameters(\n            parameterWithName(\"param1\").description(\"Desc for parameter 1\"),\n            parameterWithName(\"param2\").description(\"Desc for parameter 2\"),\n            parameterWithName(\"param3\").description(\"Desc for parameter 3\")\n    )))\n</code></pre>\n\n<p>The first two parameters are processed fine, but for the third one I get</p>\n\n<pre><code>org.springframework.restdocs.snippet.SnippetException: Request parameters with the following names were not documented: [param3[0]]. Request parameters with the following names were not found in the request: [param3]\n</code></pre>\n\n<p>I searched the documentation and found some solutions for response fields, but none for request parameters. What is the correct way to document request parameter of array type? Am I even using correct methods?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "java",
+                "html"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9281805,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9f904f9bc7869514cb5d6ae85f807f6a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Supun",
+                "link": "https://stackoverflow.com/users/9281805/supun"
+            },
+            "is_answered": false,
+            "view_count": 31,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1524210677,
+            "creation_date": 1524201041,
+            "last_edit_date": 1524210677,
+            "question_id": 49934401,
+            "body_markdown": "I have a class called user and another is user department.\r\n\r\nWhen I select a user from the user list, the relevant form group based on the department has to be displayed in the jsp page.\r\n\r\nHow should I do this?\r\n\r\nDrop down- \r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;div class=&quot;row&quot;&gt;\r\n        &lt;div class=&quot;col-xs-4&quot;&gt;\r\n            &lt;label class=&quot;control-label&quot;&gt;Developer/Engineer&lt;/label&gt;\r\n            &lt;%--&lt;label class=&quot;&quot; style=&quot;color: red &quot;&gt;*&lt;/label&gt;--%&gt;\r\n            &lt;select name=&quot;user&quot; id=&quot;user&quot; class=&quot;form-control select&quot;&gt;\r\n                &lt;option value=&quot;&quot;&gt;Select Engineer&lt;/option&gt;\r\n                &lt;c:forEach var=&quot;user&quot; items=&quot;${userList}&quot;&gt;\r\n                    &lt;option value=&quot;${user.userId}&quot;&gt;&lt;c:out\r\n                            value=&quot;${user.userName}&quot;/&gt;&lt;/option&gt;\r\n                &lt;/c:forEach&gt;\r\n            &lt;/select&gt;\r\n        &lt;/div&gt;\r\n    &lt;/div&gt;\r\n\r\nform group - \r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;div id=&quot;qaEngineer&gt;\r\n    &lt;/div&gt;",
+            "link": "https://stackoverflow.com/questions/49934401/how-to-display-form-group-based-on-the-selected-option-value-type-in-drop-down",
+            "title": "How to display form group based on the selected option value type in drop down?",
+            "body": "<p>I have a class called user and another is user department.</p>\n\n<p>When I select a user from the user list, the relevant form group based on the department has to be displayed in the jsp page.</p>\n\n<p>How should I do this?</p>\n\n<p>Drop down- </p>\n\n<pre class=\"lang-html prettyprint-override\"><code>&lt;div class=\"row\"&gt;\n    &lt;div class=\"col-xs-4\"&gt;\n        &lt;label class=\"control-label\"&gt;Developer/Engineer&lt;/label&gt;\n        &lt;%--&lt;label class=\"\" style=\"color: red \"&gt;*&lt;/label&gt;--%&gt;\n        &lt;select name=\"user\" id=\"user\" class=\"form-control select\"&gt;\n            &lt;option value=\"\"&gt;Select Engineer&lt;/option&gt;\n            &lt;c:forEach var=\"user\" items=\"${userList}\"&gt;\n                &lt;option value=\"${user.userId}\"&gt;&lt;c:out\n                        value=\"${user.userName}\"/&gt;&lt;/option&gt;\n            &lt;/c:forEach&gt;\n        &lt;/select&gt;\n    &lt;/div&gt;\n&lt;/div&gt;\n</code></pre>\n\n<p>form group - </p>\n\n<pre class=\"lang-html prettyprint-override\"><code>&lt;div id=\"qaEngineer&gt;\n&lt;/div&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "angularjs",
+                "popup",
+                "bootstrap-modal",
+                "edit"
+            ],
+            "owner": {
+                "reputation": 46,
+                "user_id": 2251652,
+                "user_type": "registered",
+                "accept_rate": 46,
+                "profile_image": "https://www.gravatar.com/avatar/c312bc02bedbc490f5242bf366f251da?s=128&d=identicon&r=PG",
+                "display_name": "PiyaModi",
+                "link": "https://stackoverflow.com/users/2251652/piyamodi"
+            },
+            "is_answered": true,
+            "view_count": 1662,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524210674,
+            "creation_date": 1469613295,
+            "last_edit_date": 1524210674,
+            "question_id": 38609600,
+            "body_markdown": "I have made bootstrap modal for edit particular data from my data-table.\r\nI am able to open popup and able to fetch my data as well, but as i am doing some changes in modal&#39;s text box it is suddenly reflect to data-table also (data-table is in another controller).\r\n\r\nI want to reflect it in data-table only if I am clicking **Update** button.\r\nAnd if I click **cancel** button then the previous value should be there.\r\n\r\nHere is my HTML code:\r\n\r\n    &lt;tr ng-repeat=&quot;Filterlist in macAddressListResult&quot; class=&quot;text-center&quot;&gt;\r\n        &lt;td&gt;{{1+$index}}&lt;/td&gt;\r\n        &lt;td class=&quot;padding-top-8&quot;&gt;\r\n             &lt;span class=&quot;label&quot; &gt;{{Filterlist.status}}&lt;/span&gt;\r\n        &lt;/td&gt;\r\n        &lt;td&gt;&lt;span&gt;{{Filterlist.macAddress}}&lt;/span&gt;&lt;/td&gt;\r\n        &lt;td&gt;\r\n            &lt;button ng-click=&quot;openModal(Filterlist)&quot; class=&quot;btn btn-xs btn-primary&quot; title=&quot;Edit&quot;&gt;\r\n                 &lt;i class=&quot;glyphicon glyphicon-edit&quot;&gt;&lt;/i&gt;\r\n            &lt;/button&gt;\r\n            &lt;button  class=&quot;btn btn-xs btn-danger&quot; title=&quot;Delete&quot;&gt;\r\n                 &lt;i class=&quot;glyphicon glyphicon-trash&quot;&gt;&lt;/i&gt;\r\n            &lt;/button&gt;\r\n        &lt;/td&gt;\r\n    &lt;/tr&gt;\r\n\r\nHere is Modal HTML code:\r\n\r\n    &lt;div class=&quot;modal-header bg-color&quot;&gt;\r\n        &lt;h3 class=&quot;modal-title&quot;&gt;Edit&lt;/h3&gt;\r\n    &lt;/div&gt;\r\n    &lt;div class=&quot;modal-body&quot;&gt;\r\n        &lt;div class=&quot;row&quot;&gt;\r\n            &lt;div class=&quot;col-md-2&quot;&gt;\r\n                MacAddress\r\n            &lt;/div&gt; \r\n    \r\n            &lt;div class=&quot;col-md-10&quot;&gt;:\r\n                &lt;input type=&quot;text&quot; ng-model=&quot;mac.macAddress&quot; name=&quot;macAddress&quot; &gt;\r\n            &lt;/div&gt;      \r\n        &lt;/div&gt;\r\n        &lt;br&gt;\r\n        &lt;div class=&quot;row&quot;&gt;\r\n            &lt;div class=&quot;col-md-2&quot;&gt;\r\n                status \r\n            &lt;/div&gt; \r\n    \r\n            &lt;div class=&quot;col-md-10&quot;&gt;:\r\n                &lt;select type=&quot;text&quot; ng-model=&quot;mac.status&quot; name=&quot;macAddress&quot; &gt;\r\n                    &lt;option ng-repeat=&quot;p in denyAllow&quot;&gt;{{p}}&lt;/option&gt;\r\n                &lt;/select&gt;\r\n            &lt;/div&gt;      \r\n        &lt;/div&gt;\r\n    &lt;/div&gt;\r\n    &lt;div class=&quot;modal-footer&quot;&gt;\r\n        &lt;button class=&quot;btn btn-success&quot; ng-click=&quot;ok(mac)&quot;&gt; Save &lt;/button&gt;\r\n        &lt;button class=&quot;btn btn-default&quot; ng-click=&quot;cancel()&quot;&gt;Cancel&lt;/button&gt;\r\n    &lt;/div&gt;\r\n\r\nHere is angularJS code:\r\n\r\n    app.controller(&#39;networkModeCtrl&#39;, function($rootScope, $scope, $state, networkModeService,  $modal, $timeout){\r\n        $scope.openModal    = function(mac){\r\n            var modalInstance = $modal.open({\r\n                templateUrl: &#39;partials/settings/macAddressEdit.html&#39;,\r\n                controller:  &#39;macAddressEditCtrl&#39;,\r\n                controllerAs: &#39;vm&#39;,\r\n                scope: $scope,\r\n                resolve: {\r\n                    mac: function () { return mac}\r\n                }\r\n            });\r\n        }\r\n    });\r\n    \r\n    app.controller(&#39;macAddressEditCtrl&#39;, function($scope, $state, $stateParams, $modalInstance, mac, networkModeService, indexService){\r\n        $scope.mac  = mac; \r\n       \r\n        // === Get Mac address filter  mode (allow/Deny) list === //\r\n        networkModeService.denyAllow().success(function(result){\r\n            $scope.denyAllow    = result; \r\n        });\r\n        \r\n        // === function to  save mac staus  ===//\r\n        $scope.ok    = function(mac) {\r\n            $modalInstance.close();  \r\n        };  \r\n        \r\n        // === function to cancel  model  === //\r\n        $scope.cancel = function () {\r\n            $modalInstance.dismiss(&#39;cancel&#39;);\r\n        };\r\n    });\r\n\r\nSo, please anyone know me where I am going wrong!!!\r\nThanks in advance.",
+            "link": "https://stackoverflow.com/questions/38609600/edit-with-bootstrap-modal-and-angularjs",
+            "title": "Edit with bootstrap modal and AngularJS",
+            "body": "<p>I have made bootstrap modal for edit particular data from my data-table.\nI am able to open popup and able to fetch my data as well, but as i am doing some changes in modal's text box it is suddenly reflect to data-table also (data-table is in another controller).</p>\n\n<p>I want to reflect it in data-table only if I am clicking <strong>Update</strong> button.\nAnd if I click <strong>cancel</strong> button then the previous value should be there.</p>\n\n<p>Here is my HTML code:</p>\n\n<pre><code>&lt;tr ng-repeat=\"Filterlist in macAddressListResult\" class=\"text-center\"&gt;\n    &lt;td&gt;{{1+$index}}&lt;/td&gt;\n    &lt;td class=\"padding-top-8\"&gt;\n         &lt;span class=\"label\" &gt;{{Filterlist.status}}&lt;/span&gt;\n    &lt;/td&gt;\n    &lt;td&gt;&lt;span&gt;{{Filterlist.macAddress}}&lt;/span&gt;&lt;/td&gt;\n    &lt;td&gt;\n        &lt;button ng-click=\"openModal(Filterlist)\" class=\"btn btn-xs btn-primary\" title=\"Edit\"&gt;\n             &lt;i class=\"glyphicon glyphicon-edit\"&gt;&lt;/i&gt;\n        &lt;/button&gt;\n        &lt;button  class=\"btn btn-xs btn-danger\" title=\"Delete\"&gt;\n             &lt;i class=\"glyphicon glyphicon-trash\"&gt;&lt;/i&gt;\n        &lt;/button&gt;\n    &lt;/td&gt;\n&lt;/tr&gt;\n</code></pre>\n\n<p>Here is Modal HTML code:</p>\n\n<pre><code>&lt;div class=\"modal-header bg-color\"&gt;\n    &lt;h3 class=\"modal-title\"&gt;Edit&lt;/h3&gt;\n&lt;/div&gt;\n&lt;div class=\"modal-body\"&gt;\n    &lt;div class=\"row\"&gt;\n        &lt;div class=\"col-md-2\"&gt;\n            MacAddress\n        &lt;/div&gt; \n\n        &lt;div class=\"col-md-10\"&gt;:\n            &lt;input type=\"text\" ng-model=\"mac.macAddress\" name=\"macAddress\" &gt;\n        &lt;/div&gt;      \n    &lt;/div&gt;\n    &lt;br&gt;\n    &lt;div class=\"row\"&gt;\n        &lt;div class=\"col-md-2\"&gt;\n            status \n        &lt;/div&gt; \n\n        &lt;div class=\"col-md-10\"&gt;:\n            &lt;select type=\"text\" ng-model=\"mac.status\" name=\"macAddress\" &gt;\n                &lt;option ng-repeat=\"p in denyAllow\"&gt;{{p}}&lt;/option&gt;\n            &lt;/select&gt;\n        &lt;/div&gt;      \n    &lt;/div&gt;\n&lt;/div&gt;\n&lt;div class=\"modal-footer\"&gt;\n    &lt;button class=\"btn btn-success\" ng-click=\"ok(mac)\"&gt; Save &lt;/button&gt;\n    &lt;button class=\"btn btn-default\" ng-click=\"cancel()\"&gt;Cancel&lt;/button&gt;\n&lt;/div&gt;\n</code></pre>\n\n<p>Here is angularJS code:</p>\n\n<pre><code>app.controller('networkModeCtrl', function($rootScope, $scope, $state, networkModeService,  $modal, $timeout){\n    $scope.openModal    = function(mac){\n        var modalInstance = $modal.open({\n            templateUrl: 'partials/settings/macAddressEdit.html',\n            controller:  'macAddressEditCtrl',\n            controllerAs: 'vm',\n            scope: $scope,\n            resolve: {\n                mac: function () { return mac}\n            }\n        });\n    }\n});\n\napp.controller('macAddressEditCtrl', function($scope, $state, $stateParams, $modalInstance, mac, networkModeService, indexService){\n    $scope.mac  = mac; \n\n    // === Get Mac address filter  mode (allow/Deny) list === //\n    networkModeService.denyAllow().success(function(result){\n        $scope.denyAllow    = result; \n    });\n\n    // === function to  save mac staus  ===//\n    $scope.ok    = function(mac) {\n        $modalInstance.close();  \n    };  \n\n    // === function to cancel  model  === //\n    $scope.cancel = function () {\n        $modalInstance.dismiss('cancel');\n    };\n});\n</code></pre>\n\n<p>So, please anyone know me where I am going wrong!!!\nThanks in advance.</p>\n"
+        },
+        {
+            "tags": [
+                "visual-studio-code"
+            ],
+            "owner": {
+                "reputation": 549,
+                "user_id": 3227909,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/e1d473d65f8d4b634719e9fba55ca3c9?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Andrew",
+                "link": "https://stackoverflow.com/users/3227909/andrew"
+            },
+            "is_answered": true,
+            "view_count": 18945,
+            "accepted_answer_id": 49398449,
+            "answer_count": 10,
+            "score": 54,
+            "last_activity_date": 1524210666,
+            "creation_date": 1457011139,
+            "last_edit_date": 1505401401,
+            "question_id": 35773299,
+            "body_markdown": "I need to send all my installed extensions to my colleagues, how can I export them?\r\n\r\nExtension manager seems to do nothing... It won&#39;t install any extension.",
+            "link": "https://stackoverflow.com/questions/35773299/how-can-you-export-vs-code-extension-list",
+            "title": "How can you export VS Code extension list",
+            "body": "<p>I need to send all my installed extensions to my colleagues, how can I export them?</p>\n\n<p>Extension manager seems to do nothing... It won't install any extension.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-2.7"
+            ],
+            "owner": {
+                "reputation": 15,
+                "user_id": 4269716,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/637179535/picture?type=large",
+                "display_name": "Manoj As Manu",
+                "link": "https://stackoverflow.com/users/4269716/manoj-as-manu"
+            },
+            "is_answered": true,
+            "view_count": 63,
+            "closed_date": 1523981845,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524210664,
+            "creation_date": 1523977252,
+            "last_edit_date": 1523977822,
+            "question_id": 49881510,
+            "body_markdown": "I&#39;m trying to split my Python List using (&quot;&quot;) Empty Object in the list.\r\n\r\n\r\n    [&#39;&#39;, u&#39;WO0000008971346&#39;, u&#39;&#39;, u&#39;Low&#39;, u&#39;Assigned&#39;, u&#39;&#39;, u&#39;&#39;,\r\n    &#39;&#39;, u&#39;WO0000008971321&#39;, u&#39;&#39;, u&#39;Low&#39;, u&#39;Assigned&#39;, u&#39;&#39;, u&#39;&#39;,\r\n    &#39;&#39;, u&#39;WO0000008971307&#39;, u&#39;&#39;, u&#39;Low&#39;, u&#39;Assigned&#39;, u&#39;&#39;, u&#39;&#39;,\r\n    &#39;&#39;, u&#39;WO0000008971247&#39;, u&#39;&#39;, u&#39;Low&#39;, u&#39;Pending&#39;, u&#39;Client Action Required&#39;,     \r\n    u&#39;17/04/2018 15:08:49&#39;,&#39;&#39;, u&#39;WO0000008971245&#39;,u&#39;&#39;, u&#39;Low&#39;, u&#39;Pending&#39;, u&#39;Client Action Required&#39;, \r\n    u&#39;17/04/2018 15:07:10&#39;,&#39;&#39;, u&#39;WO0000008971235&#39;, u&#39;&#39;,\r\n    u&#39;Low&#39;, u&#39;In Progress&#39;, u&#39;&#39;, u&#39;17/04/2018 15:03:50&#39;]\r\n\r\nAny conventions to split this using python?\r\n",
+            "link": "https://stackoverflow.com/questions/49881510/python-list-splitting-on-an-empty-object-in-the-list",
+            "closed_reason": "unclear what you&#39;re asking",
+            "title": "Python List - splitting on an empty object in the list",
+            "body": "<p>I'm trying to split my Python List using (\"\") Empty Object in the list.</p>\n\n<pre><code>['', u'WO0000008971346', u'', u'Low', u'Assigned', u'', u'',\n'', u'WO0000008971321', u'', u'Low', u'Assigned', u'', u'',\n'', u'WO0000008971307', u'', u'Low', u'Assigned', u'', u'',\n'', u'WO0000008971247', u'', u'Low', u'Pending', u'Client Action Required',     \nu'17/04/2018 15:08:49','', u'WO0000008971245',u'', u'Low', u'Pending', u'Client Action Required', \nu'17/04/2018 15:07:10','', u'WO0000008971235', u'',\nu'Low', u'In Progress', u'', u'17/04/2018 15:03:50']\n</code></pre>\n\n<p>Any conventions to split this using python?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "numpy",
+                "optimization",
+                "scipy"
+            ],
+            "owner": {
+                "reputation": 2031,
+                "user_id": 3437787,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://i.stack.imgur.com/W8tmU.jpg?s=128&g=1",
+                "display_name": "vestland",
+                "link": "https://stackoverflow.com/users/3437787/vestland"
+            },
+            "is_answered": true,
+            "view_count": 325,
+            "bounty_amount": 50,
+            "bounty_closes_date": 1524477285,
+            "answer_count": 1,
+            "score": 5,
+            "last_activity_date": 1524210660,
+            "creation_date": 1523271647,
+            "last_edit_date": 1524210660,
+            "question_id": 49731383,
+            "body_markdown": "**Background:**\r\n\r\nI&#39;d like to solve a wide array of optimization problems such as asset weights in a portfolio, and parameters in trading strategies **where the variables are passed to functions containing a bunch of other variables as well**. \r\n\r\nUntil now, I&#39;ve been able to do these things easily in Excel using the Solver Add-In. But I think it would be much more efficient and even more widely applicable using Python. For the sake of clarity, I&#39;m going to boil the question down to the essence of portfolio optimization.\r\n\r\n**My question (short version):**\r\n\r\nHere&#39;s a dataframe and a corresponding plot with asset returns.\r\n\r\n*Dataframe 1:*\r\n\r\n\t\t\t\t\tA1      A2\r\n\t2017-01-01  0.0075  0.0096\r\n\t2017-01-02 -0.0075 -0.0033\r\n\t.\r\n\t.\r\n\t2017-01-10  0.0027  0.0035\r\n\r\n\r\n*Plot 1 - Asset returns*\r\n\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\nBased on that, I would like to find the weights for the optimal portfolio with regards to `risk / return (Sharpe ratio)`, represented by the green dot in the plot below (the red dot is the so-called minimum variance portfolio, and represents another optimization problem).\r\n\r\n*Plot 2 - Efficient frontier and optimal portfolios:*\r\n\r\n[![enter image description here][2]][2]\r\n\r\n##**How can I do this with numpy or scipy?**\r\n\r\n**The details:**\r\n\r\nThe following code section contains the function `returns()` to build a dataframe with random returns for two assets, as well as a function `pf_sharpe` to calculate the Sharpe ratio of two given weights for a portfolio of the returns.\r\n\t\r\n\t# imports\r\n\timport pandas as pd\r\n\timport numpy as np\r\n\tfrom scipy.optimize import minimize\r\n\timport matplotlib.pyplot as plt\r\n\t\r\n\tnp.random.seed(1234)\r\n\t\r\n\t# Reproducible data sample\r\n\tdef returns(rows, names):\r\n\t    &#39;&#39;&#39; Function to create data sample with random returns\r\n\t    \r\n\t    Parameters\r\n\t    ==========\r\n\t    rows : number of rows in the dataframe\r\n\t    names: list of names to represent assets\r\n\t    \r\n\t    Example\r\n\t    =======\r\n\t    \r\n\t    &gt;&gt;&gt; returns(rows = 2, names = [&#39;A&#39;, &#39;B&#39;])\r\n\t    \r\n\t                  A       B\r\n\t    2017-01-01  0.0027  0.0075\r\n\t    2017-01-02 -0.0050 -0.0024\r\n\t    &#39;&#39;&#39;\r\n\t    listVars= names\r\n\t    rng = pd.date_range(&#39;1/1/2017&#39;, periods=rows, freq=&#39;D&#39;)\r\n\t    df_temp = pd.DataFrame(np.random.randint(-100,100,size=(rows, len(listVars))), columns=listVars) \r\n\t    df_temp = df_temp.set_index(rng)\r\n\t    df_temp = df_temp / 10000\r\n\t\r\n\t    return df_temp\r\n\r\n\r\n\t# Sharpe ratio\r\n\tdef pf_sharpe(df, w1, w2):\r\n\t    &#39;&#39;&#39; Function to calculate risk / reward ratio\r\n\t        based on a pandas dataframe with two return series\r\n\t    \r\n\t    Parameters\r\n\t    ==========\r\n\t    df : pandas dataframe\r\n\t    w1 : portfolio weight for asset 1\r\n\t    w2 : portfolio weight for asset 2\r\n\t    \r\n\t    &#39;&#39;&#39;\r\n\t    \r\n\t    weights = [w1,w2]      \r\n\t    \r\n\t    # Calculate portfolio returns and volatility\r\n\t    pf_returns = (np.sum(df.mean() * weights) * 252)\r\n\t    pf_volatility = (np.sqrt(np.dot(np.asarray(weights).T, np.dot(df.cov() * 252, weights))))\r\n\t       \r\n\t    # Calculate sharpe ratio\r\n\t    pf_sharpe = pf_returns / pf_volatility\r\n\t    \r\n\t    return pf_sharpe\r\n\t\r\n\t# Make df with random returns and calculate\r\n\t# sharpe ratio for a 80/20 split between assets\r\n\tdf_returns = returns(rows = 10, names = [&#39;A1&#39;, &#39;A2&#39;])\r\n\tdf_returns.plot(kind = &#39;bar&#39;)\r\n\r\n\tsharpe = pf_sharpe(df = df_returns, w1 = 0.8, w2 = 0.2)\r\n\tprint(sharpe)\r\n\r\n\t# Output:\r\n\t# 5.09477512073\r\n\t\r\n\r\nNow I&#39;d like to find the portfolio weights that optimize the Sharpe ratio. I think you could express the optimization problem as follows:\r\n\r\n\tmaximize:\r\n\t\tpf_sharpe()\r\n\r\n\tby changing:\r\n\t\tw1, w2\r\n\r\n\tunder the constraints:\r\n\t\t0 &lt; w1 &lt; 1\r\n\t\t0 &lt; w2 &lt; 1\r\n\t\tw1 + w2 = 1\r\n\r\n**What I&#39;ve tried so far:**\r\n\r\nI found a possible setup in the post [Python Scipy Optimization.minimize using SLSQP showing maximized results][3]. Below is what I have so far, and it addresses a central aspect of my question directly:\r\n\r\n\r\n&gt; [...]where the variables are passed to functions containing a bunch of other variables as well. \r\n\r\nAs you can see, my initial challenge prevents me from even testing if my bounds and constraints will be accepted by the function `optimize.minimize()`. I haven&#39;t even bothered to take into consideration the fact that this is a maximization and not a minimization problem (hopefully amendable by changing the sign of the function).\r\n\r\n**Attempts:**\t\r\n\r\n\t# bounds\r\n\tb = (0,1)\r\n\tbnds = (b,b)\r\n\t\r\n\t# constraints\r\n\tdef constraint1(w1,w2):\r\n\t    return w1 - w2\r\n\t\r\n\tcons = ({&#39;type&#39;: &#39;eq&#39;, &#39;fun&#39;:constraint1})\r\n\t\r\n\t# initial guess\r\n\tx0 = [0.5, 0.5]\r\n\t\r\n\t# Testing the initial guess\r\n\tprint(pf_sharpe(df = df_returns, weights = x0))\r\n\t\r\n\t# Optimization attempts\r\n\t\r\n\tattempt1 = optimize.minimize(pf_sharpe(), x0, method = &#39;SLSQP&#39;, bounds = bnds, constraints = cons)\r\n\tattempt2 = optimize.minimize(pf_sharpe(df = df_returns, weights),  x0, method = &#39;SLSQP&#39;, bounds = bnds, constraints = cons)\r\n\tattempt3 = optimize.minimize(pf_sharpe(weights, df = df_returns), x0, method = &#39;SLSQP&#39;, bounds = bnds, constraints = cons)\r\n\r\n\r\n**Results:**\r\n\r\n - Attempt1 is closest to the scipy setup [here][4], but understandably fails because neither `df` nor `weights` have been specified.\r\n - Attempt2 fails with `SyntaxError: positional argument follows keyword argument`\r\n - Attempt3 fails with `NameError: name &#39;weights&#39; is not defined`\r\n\r\nI was under the impression that `df` could freely be specified, and that `x0` in `optimize.minimize` would be considered the variables to be tested as &#39;representatives&#39; for the weights in the function specified by `pf_sharpe()`.\r\n\r\nAs you surely understand, my transition from Excel to Python in this regard has not been the easiest, and there is plenty I don&#39;t understand here. Anyway, I&#39;m hoping some of you may offer some suggestions or clarifications!\r\n\r\nThank you!\r\n\r\n**Appendix 1 - Simulation approach**:\r\n\r\nThis particular portfolio optimization problem can easily be solved by simulating a bunch of portfolio weights. And I did exactly that to produce the portfolio plot above. Here&#39;s the whole function if anyone is interested:\r\n\t\r\n\t\r\n\t# Portfolio simulation\r\n\tdef portfolioSim(df, simRuns):\r\n\t    &#39;&#39;&#39; Function to take a df with asset returns,\r\n\t        runs a number of simulated portfolio weights,\r\n\t        plots return and risk for those weights,\r\n\t        and finds minimum risk portfolio\r\n\t        and max risk / return portfolio\r\n\t    \r\n\t    Parameters\r\n\t    ==========\r\n\t    df : pandas dataframe with returns\r\n\t    simRuns : number of simulations\r\n\t    \r\n\t    &#39;&#39;&#39;  \r\n\t    prets = []\r\n\t    pvols = []\r\n\t    pwgts = []\r\n\t    names = list(df_returns)\r\n\t    \r\n\t    for p in range (simRuns):\r\n\t        \r\n\t        # Assign random weights\r\n\t        weights = np.random.random(len(list(df_returns)))\r\n\t        weights /= np.sum(weights)\r\n\t        weights = np.asarray(weights)        \r\n\t    \r\n\t        # Calculate risk and returns with random weights\r\n\t        prets.append(np.sum(df_returns.mean() * weights) * 252)\r\n\t        pvols.append(np.sqrt(np.dot(weights.T, np.dot(df_returns.cov() * 252, weights))))\r\n\t        pwgts.append(weights)\r\n\t            \r\n\t    prets = np.array(prets)\r\n\t    pvols = np.array(pvols)\r\n\t    pwgts = np.array(pwgts)\r\n\t    pshrp = prets / pvols\r\n\t    \r\n\t    # Store calculations in a df\r\n\t    df1 = pd.DataFrame({&#39;return&#39;:prets})         \r\n\t    df2 = pd.DataFrame({&#39;risk&#39;:pvols})    \r\n\t    df3 = pd.DataFrame(pwgts)\r\n\t    df3.columns = names\r\n\t    df4 = pd.DataFrame({&#39;sharpe&#39;:pshrp})\r\n\t    df_temp = pd.concat([df1, df2, df3, df4], axis = 1)\r\n\t    \r\n\t    # Plot resulst\r\n\t    plt.figure(figsize=(8, 4))\r\n\t    plt.scatter(pvols, prets, c=prets / pvols, cmap = &#39;viridis&#39;, marker=&#39;o&#39;)\r\n\t    \r\n\t    # Min risk\r\n\t    min_vol_port = df_temp.iloc[df_temp[&#39;risk&#39;].idxmin()]   \r\n\t    plt.plot([min_vol_port[&#39;risk&#39;]], [min_vol_port[&#39;return&#39;]], marker=&#39;o&#39;, markersize=12, color=&quot;red&quot;)\r\n\t    \r\n\t    # Max sharpe\r\n\t    max_sharpe_port = df_temp.iloc[df_temp[&#39;sharpe&#39;].idxmax()]    \r\n\t    plt.plot([max_sharpe_port[&#39;risk&#39;]], [max_sharpe_port[&#39;return&#39;]], marker=&#39;o&#39;, markersize=12, color=&quot;green&quot;)\r\n\t\r\n\t# Test run\r\n\tportfolioSim(df = df_returns, simRuns = 250)\r\n\r\n**Appendix 2 - Excel Solver approach**:\r\n\r\nHere is how I would approach the problem using Excel Solver. Instead of linking to a file, I&#39;ve only attached a screenshot and included the most important formulas in a code section. I&#39;m guessing not many of you is going to be interested in reproducing this anyway. But I&#39;ve included it just to show that it can be done quite easily in Excel.\r\nGrey ranges represent formulas. Ranges that can be changed and used as arguments in the optimization problem are highlighted in yellow. The green range is the objective function.\r\n\r\n\r\nHere&#39;s an image of the worksheet and Solver setup:\r\n\r\n[![enter image description here][5]][5]\r\n\r\n**Excel formulas:**\r\n\t\r\n\tC3\t=AVERAGE(C7:C16)\r\n\tC4\t=AVERAGE(D7:D16)\r\n\tH4\t=COVARIANCE.P(C7:C16;D7:D16)\r\n\tG5\t=COVARIANCE.P(C7:C16;D7:D16)\r\n\tG10\t=G8+G9\r\n\tG13\t=MMULT(TRANSPOSE(G8:G9);C3:C4)\r\n\tG14\t=SQRT(MMULT(TRANSPOSE(G8:G9);MMULT(G4:H5;G8:G9)))\r\n\tH13\t=G12/G13\r\n\tH14\t=G13*252\r\n\tG16\t=G13/G14\r\n\tH16\t=H13/H14\r\n\r\n**End notes:**\r\n\r\nAs you can see from the screenshot, Excel solver suggests a `47% / 53%` split between A1 and A2 to obtain an optimal Sharpe Ratio of 5,6. Running the Python function `sr_opt = portfolioSim(df = df_returns, simRuns = 25000)` yields a Sharpe Ratio of 5,3 with corresponding weights of `46% and 53%` for A1 and A2:\r\n\r\n\r\n\tprint(sr_opt)\r\n\t#Output\r\n\t#return    0.361439\r\n\t#risk      0.067851\r\n\t#A1        0.465550\r\n\t#A2        0.534450\r\n\t#sharpe    5.326933\r\n\r\nThe method applied in Excel is `GRG Nonlinear`. I understand that changing the `SLSQP` argument to a non-linear method would get me somewhere, and I&#39;ve look into [Nonlinear solvers in scipy][6] as well, but with little success.\r\nAnd maybe Scipy even isn&#39;t the best option here? \r\n\t\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/HrxcG.png\r\n  [2]: https://i.stack.imgur.com/QBSSE.png\r\n  [3]: https://stackoverflow.com/questions/26882087/python-scipy-optimization-minimize-using-slsqp-showing-maximized-results\r\n  [4]: https://meta.stackoverflow.com/questions/365646/is-it-ok-to-use-youtube-links-in-a-question/365647?noredirect=1#comment571606_365647\r\n  [5]: https://i.stack.imgur.com/j28j9.png\r\n  [6]: https://docs.scipy.org/doc/scipy-0.13.0/reference/optimize.nonlin.html",
+            "link": "https://stackoverflow.com/questions/49731383/optimize-function-parameters",
+            "title": "Optimize function parameters",
+            "body": "<p><strong>Background:</strong></p>\n\n<p>I'd like to solve a wide array of optimization problems such as asset weights in a portfolio, and parameters in trading strategies <strong>where the variables are passed to functions containing a bunch of other variables as well</strong>. </p>\n\n<p>Until now, I've been able to do these things easily in Excel using the Solver Add-In. But I think it would be much more efficient and even more widely applicable using Python. For the sake of clarity, I'm going to boil the question down to the essence of portfolio optimization.</p>\n\n<p><strong>My question (short version):</strong></p>\n\n<p>Here's a dataframe and a corresponding plot with asset returns.</p>\n\n<p><em>Dataframe 1:</em></p>\n\n<pre><code>                A1      A2\n2017-01-01  0.0075  0.0096\n2017-01-02 -0.0075 -0.0033\n.\n.\n2017-01-10  0.0027  0.0035\n</code></pre>\n\n<p><em>Plot 1 - Asset returns</em></p>\n\n<p><a href=\"https://i.stack.imgur.com/HrxcG.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/HrxcG.png\" alt=\"enter image description here\"></a></p>\n\n<p>Based on that, I would like to find the weights for the optimal portfolio with regards to <code>risk / return (Sharpe ratio)</code>, represented by the green dot in the plot below (the red dot is the so-called minimum variance portfolio, and represents another optimization problem).</p>\n\n<p><em>Plot 2 - Efficient frontier and optimal portfolios:</em></p>\n\n<p><a href=\"https://i.stack.imgur.com/QBSSE.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/QBSSE.png\" alt=\"enter image description here\"></a></p>\n\n<h2><strong>How can I do this with numpy or scipy?</strong></h2>\n\n<p><strong>The details:</strong></p>\n\n<p>The following code section contains the function <code>returns()</code> to build a dataframe with random returns for two assets, as well as a function <code>pf_sharpe</code> to calculate the Sharpe ratio of two given weights for a portfolio of the returns.</p>\n\n<pre><code># imports\nimport pandas as pd\nimport numpy as np\nfrom scipy.optimize import minimize\nimport matplotlib.pyplot as plt\n\nnp.random.seed(1234)\n\n# Reproducible data sample\ndef returns(rows, names):\n    ''' Function to create data sample with random returns\n\n    Parameters\n    ==========\n    rows : number of rows in the dataframe\n    names: list of names to represent assets\n\n    Example\n    =======\n\n    &gt;&gt;&gt; returns(rows = 2, names = ['A', 'B'])\n\n                  A       B\n    2017-01-01  0.0027  0.0075\n    2017-01-02 -0.0050 -0.0024\n    '''\n    listVars= names\n    rng = pd.date_range('1/1/2017', periods=rows, freq='D')\n    df_temp = pd.DataFrame(np.random.randint(-100,100,size=(rows, len(listVars))), columns=listVars) \n    df_temp = df_temp.set_index(rng)\n    df_temp = df_temp / 10000\n\n    return df_temp\n\n\n# Sharpe ratio\ndef pf_sharpe(df, w1, w2):\n    ''' Function to calculate risk / reward ratio\n        based on a pandas dataframe with two return series\n\n    Parameters\n    ==========\n    df : pandas dataframe\n    w1 : portfolio weight for asset 1\n    w2 : portfolio weight for asset 2\n\n    '''\n\n    weights = [w1,w2]      \n\n    # Calculate portfolio returns and volatility\n    pf_returns = (np.sum(df.mean() * weights) * 252)\n    pf_volatility = (np.sqrt(np.dot(np.asarray(weights).T, np.dot(df.cov() * 252, weights))))\n\n    # Calculate sharpe ratio\n    pf_sharpe = pf_returns / pf_volatility\n\n    return pf_sharpe\n\n# Make df with random returns and calculate\n# sharpe ratio for a 80/20 split between assets\ndf_returns = returns(rows = 10, names = ['A1', 'A2'])\ndf_returns.plot(kind = 'bar')\n\nsharpe = pf_sharpe(df = df_returns, w1 = 0.8, w2 = 0.2)\nprint(sharpe)\n\n# Output:\n# 5.09477512073\n</code></pre>\n\n<p>Now I'd like to find the portfolio weights that optimize the Sharpe ratio. I think you could express the optimization problem as follows:</p>\n\n<pre><code>maximize:\n    pf_sharpe()\n\nby changing:\n    w1, w2\n\nunder the constraints:\n    0 &lt; w1 &lt; 1\n    0 &lt; w2 &lt; 1\n    w1 + w2 = 1\n</code></pre>\n\n<p><strong>What I've tried so far:</strong></p>\n\n<p>I found a possible setup in the post <a href=\"https://stackoverflow.com/questions/26882087/python-scipy-optimization-minimize-using-slsqp-showing-maximized-results\">Python Scipy Optimization.minimize using SLSQP showing maximized results</a>. Below is what I have so far, and it addresses a central aspect of my question directly:</p>\n\n<blockquote>\n  <p>[...]where the variables are passed to functions containing a bunch of other variables as well. </p>\n</blockquote>\n\n<p>As you can see, my initial challenge prevents me from even testing if my bounds and constraints will be accepted by the function <code>optimize.minimize()</code>. I haven't even bothered to take into consideration the fact that this is a maximization and not a minimization problem (hopefully amendable by changing the sign of the function).</p>\n\n<p><strong>Attempts:</strong>   </p>\n\n<pre><code># bounds\nb = (0,1)\nbnds = (b,b)\n\n# constraints\ndef constraint1(w1,w2):\n    return w1 - w2\n\ncons = ({'type': 'eq', 'fun':constraint1})\n\n# initial guess\nx0 = [0.5, 0.5]\n\n# Testing the initial guess\nprint(pf_sharpe(df = df_returns, weights = x0))\n\n# Optimization attempts\n\nattempt1 = optimize.minimize(pf_sharpe(), x0, method = 'SLSQP', bounds = bnds, constraints = cons)\nattempt2 = optimize.minimize(pf_sharpe(df = df_returns, weights),  x0, method = 'SLSQP', bounds = bnds, constraints = cons)\nattempt3 = optimize.minimize(pf_sharpe(weights, df = df_returns), x0, method = 'SLSQP', bounds = bnds, constraints = cons)\n</code></pre>\n\n<p><strong>Results:</strong></p>\n\n<ul>\n<li>Attempt1 is closest to the scipy setup <a href=\"https://meta.stackoverflow.com/questions/365646/is-it-ok-to-use-youtube-links-in-a-question/365647?noredirect=1#comment571606_365647\">here</a>, but understandably fails because neither <code>df</code> nor <code>weights</code> have been specified.</li>\n<li>Attempt2 fails with <code>SyntaxError: positional argument follows keyword argument</code></li>\n<li>Attempt3 fails with <code>NameError: name 'weights' is not defined</code></li>\n</ul>\n\n<p>I was under the impression that <code>df</code> could freely be specified, and that <code>x0</code> in <code>optimize.minimize</code> would be considered the variables to be tested as 'representatives' for the weights in the function specified by <code>pf_sharpe()</code>.</p>\n\n<p>As you surely understand, my transition from Excel to Python in this regard has not been the easiest, and there is plenty I don't understand here. Anyway, I'm hoping some of you may offer some suggestions or clarifications!</p>\n\n<p>Thank you!</p>\n\n<p><strong>Appendix 1 - Simulation approach</strong>:</p>\n\n<p>This particular portfolio optimization problem can easily be solved by simulating a bunch of portfolio weights. And I did exactly that to produce the portfolio plot above. Here's the whole function if anyone is interested:</p>\n\n<pre><code># Portfolio simulation\ndef portfolioSim(df, simRuns):\n    ''' Function to take a df with asset returns,\n        runs a number of simulated portfolio weights,\n        plots return and risk for those weights,\n        and finds minimum risk portfolio\n        and max risk / return portfolio\n\n    Parameters\n    ==========\n    df : pandas dataframe with returns\n    simRuns : number of simulations\n\n    '''  \n    prets = []\n    pvols = []\n    pwgts = []\n    names = list(df_returns)\n\n    for p in range (simRuns):\n\n        # Assign random weights\n        weights = np.random.random(len(list(df_returns)))\n        weights /= np.sum(weights)\n        weights = np.asarray(weights)        \n\n        # Calculate risk and returns with random weights\n        prets.append(np.sum(df_returns.mean() * weights) * 252)\n        pvols.append(np.sqrt(np.dot(weights.T, np.dot(df_returns.cov() * 252, weights))))\n        pwgts.append(weights)\n\n    prets = np.array(prets)\n    pvols = np.array(pvols)\n    pwgts = np.array(pwgts)\n    pshrp = prets / pvols\n\n    # Store calculations in a df\n    df1 = pd.DataFrame({'return':prets})         \n    df2 = pd.DataFrame({'risk':pvols})    \n    df3 = pd.DataFrame(pwgts)\n    df3.columns = names\n    df4 = pd.DataFrame({'sharpe':pshrp})\n    df_temp = pd.concat([df1, df2, df3, df4], axis = 1)\n\n    # Plot resulst\n    plt.figure(figsize=(8, 4))\n    plt.scatter(pvols, prets, c=prets / pvols, cmap = 'viridis', marker='o')\n\n    # Min risk\n    min_vol_port = df_temp.iloc[df_temp['risk'].idxmin()]   \n    plt.plot([min_vol_port['risk']], [min_vol_port['return']], marker='o', markersize=12, color=\"red\")\n\n    # Max sharpe\n    max_sharpe_port = df_temp.iloc[df_temp['sharpe'].idxmax()]    \n    plt.plot([max_sharpe_port['risk']], [max_sharpe_port['return']], marker='o', markersize=12, color=\"green\")\n\n# Test run\nportfolioSim(df = df_returns, simRuns = 250)\n</code></pre>\n\n<p><strong>Appendix 2 - Excel Solver approach</strong>:</p>\n\n<p>Here is how I would approach the problem using Excel Solver. Instead of linking to a file, I've only attached a screenshot and included the most important formulas in a code section. I'm guessing not many of you is going to be interested in reproducing this anyway. But I've included it just to show that it can be done quite easily in Excel.\nGrey ranges represent formulas. Ranges that can be changed and used as arguments in the optimization problem are highlighted in yellow. The green range is the objective function.</p>\n\n<p>Here's an image of the worksheet and Solver setup:</p>\n\n<p><a href=\"https://i.stack.imgur.com/j28j9.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/j28j9.png\" alt=\"enter image description here\"></a></p>\n\n<p><strong>Excel formulas:</strong></p>\n\n<pre><code>C3  =AVERAGE(C7:C16)\nC4  =AVERAGE(D7:D16)\nH4  =COVARIANCE.P(C7:C16;D7:D16)\nG5  =COVARIANCE.P(C7:C16;D7:D16)\nG10 =G8+G9\nG13 =MMULT(TRANSPOSE(G8:G9);C3:C4)\nG14 =SQRT(MMULT(TRANSPOSE(G8:G9);MMULT(G4:H5;G8:G9)))\nH13 =G12/G13\nH14 =G13*252\nG16 =G13/G14\nH16 =H13/H14\n</code></pre>\n\n<p><strong>End notes:</strong></p>\n\n<p>As you can see from the screenshot, Excel solver suggests a <code>47% / 53%</code> split between A1 and A2 to obtain an optimal Sharpe Ratio of 5,6. Running the Python function <code>sr_opt = portfolioSim(df = df_returns, simRuns = 25000)</code> yields a Sharpe Ratio of 5,3 with corresponding weights of <code>46% and 53%</code> for A1 and A2:</p>\n\n<pre><code>print(sr_opt)\n#Output\n#return    0.361439\n#risk      0.067851\n#A1        0.465550\n#A2        0.534450\n#sharpe    5.326933\n</code></pre>\n\n<p>The method applied in Excel is <code>GRG Nonlinear</code>. I understand that changing the <code>SLSQP</code> argument to a non-linear method would get me somewhere, and I've look into <a href=\"https://docs.scipy.org/doc/scipy-0.13.0/reference/optimize.nonlin.html\" rel=\"nofollow noreferrer\">Nonlinear solvers in scipy</a> as well, but with little success.\nAnd maybe Scipy even isn't the best option here? </p>\n"
+        },
+        {
+            "tags": [
+                "c",
+                "ip",
+                "ip-address",
+                "endianness",
+                "radius"
+            ],
+            "owner": {
+                "reputation": 59,
+                "user_id": 3857354,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://www.gravatar.com/avatar/b62b954429df3d2e5481a7c537dcd703?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Preethi",
+                "link": "https://stackoverflow.com/users/3857354/preethi"
+            },
+            "is_answered": false,
+            "view_count": 29,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524210653,
+            "creation_date": 1524210653,
+            "question_id": 49936679,
+            "body_markdown": "I am testing RADIUS-DISCONNECT options.\r\nServer sends disconnect request to disconnect (Cmd: cat packet.txt | radclient -c 10 -i 40 -x 12.0.0.1:3799 disconnect &quot;Secret&quot;)\r\nMy RAIDUS server is configured as 12.0.0.100. RADIUS client IP is configured as 12.0.0.1.\r\nSending packets from sverer acptured the same using packet capture command. Packet capture says source IP as: Source: 12.0.0.100 (12.0.0.100).\r\nBut on reception, when printing my server IP, it is 100.0.0.12 because of which, I am unable to track or validate the server details. I am not aware if it is due to little endian, big endian issues.\r\nGDB prints on server IP: `{0xc, 0x0, 0x0, 0x64, 0x0 &lt;repeats 12 times&gt;}` But it actually has to be `{0x64, 0x0, 0x0, 0xc, 0x0 &lt;repeats 12 times&gt;}`\r\n\r\nIf it is due to little endian or big endian issues, can anyone tell me how to resolve the issue.\r\n\r\nPlease someone kindly help.",
+            "link": "https://stackoverflow.com/questions/49936679/why-my-ip-address-received-is-reversed-given-12-0-0-100-received-as-100-0-0",
+            "title": "Why my IP address received is reversed? Given - 12.0.0.100, received as 100.0.0.1 in C",
+            "body": "<p>I am testing RADIUS-DISCONNECT options.\nServer sends disconnect request to disconnect (Cmd: cat packet.txt | radclient -c 10 -i 40 -x 12.0.0.1:3799 disconnect \"Secret\")\nMy RAIDUS server is configured as 12.0.0.100. RADIUS client IP is configured as 12.0.0.1.\nSending packets from sverer acptured the same using packet capture command. Packet capture says source IP as: Source: 12.0.0.100 (12.0.0.100).\nBut on reception, when printing my server IP, it is 100.0.0.12 because of which, I am unable to track or validate the server details. I am not aware if it is due to little endian, big endian issues.\nGDB prints on server IP: <code>{0xc, 0x0, 0x0, 0x64, 0x0 &lt;repeats 12 times&gt;}</code> But it actually has to be <code>{0x64, 0x0, 0x0, 0xc, 0x0 &lt;repeats 12 times&gt;}</code></p>\n\n<p>If it is due to little endian or big endian issues, can anyone tell me how to resolve the issue.</p>\n\n<p>Please someone kindly help.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "c#",
+                "asp.net",
+                "webforms",
+                "onbeforeunload"
+            ],
+            "owner": {
+                "reputation": 20,
+                "user_id": 8818079,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/6a71ada82a87da3f19ebbb1e914013ef?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Hilai",
+                "link": "https://stackoverflow.com/users/8818079/hilai"
+            },
+            "is_answered": true,
+            "view_count": 15,
+            "accepted_answer_id": 49936678,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524210652,
+            "creation_date": 1524210381,
+            "question_id": 49936608,
+            "body_markdown": "I use JavaScript function beforeunload to display a modal during the loading of the application. \r\nCode in my master page: \r\n\r\n    &lt;script&gt;\r\n            window.addEventListener(&quot;beforeunload&quot;, function (e) {\r\n                var modal = document.createElement(&quot;div&quot;);\r\n                modal.className = &quot;modal-backdrop fade in&quot;\r\n                modal.innerHTML = &#39;&amp;nbsp;&#39;;\r\n                var loader = document.createElement(&quot;div&quot;);\r\n                loader.className = &quot;loader&quot;\r\n                loader.innerHTML = &#39;&lt;i class=&quot;glyphicon glyphicon-hourglass&quot;&gt;&lt;/i&gt;&lt;br/&gt;&lt;br/&gt;Veuillez patienter...&lt;br/&gt;&#39;;\r\n                document.body.appendChild(modal);\r\n                document.body.appendChild(loader);\r\n                return null;\r\n            });\r\n        &lt;/script&gt;\r\nIt works well except for a button event that generates an excel file. The end of the loading is not detected so the modal does not close.\r\n\r\nFor information I give the end of c# code of the button event:\r\n\r\n                Response.Write(style);\r\n                Response.Output.Write(sw.ToString());\r\n                Response.Flush();\r\n                Response.End();\r\n\r\nI tried to call this function in my button event but it doesn&#39;t work : \r\n\r\n    function stopNavigate() {\r\n       \r\n            window.onbeforeunload = null;\r\n\r\n        }\r\nHow can I disable the beforeunload for this button only ?\r\n\r\n \r\n",
+            "link": "https://stackoverflow.com/questions/49936608/disable-event-onbeforeunload-for-1-event-button-only",
+            "title": "disable event onbeforeunload for 1 event button only",
+            "body": "<p>I use JavaScript function beforeunload to display a modal during the loading of the application. \nCode in my master page: </p>\n\n<pre><code>&lt;script&gt;\n        window.addEventListener(\"beforeunload\", function (e) {\n            var modal = document.createElement(\"div\");\n            modal.className = \"modal-backdrop fade in\"\n            modal.innerHTML = '&amp;nbsp;';\n            var loader = document.createElement(\"div\");\n            loader.className = \"loader\"\n            loader.innerHTML = '&lt;i class=\"glyphicon glyphicon-hourglass\"&gt;&lt;/i&gt;&lt;br/&gt;&lt;br/&gt;Veuillez patienter...&lt;br/&gt;';\n            document.body.appendChild(modal);\n            document.body.appendChild(loader);\n            return null;\n        });\n    &lt;/script&gt;\n</code></pre>\n\n<p>It works well except for a button event that generates an excel file. The end of the loading is not detected so the modal does not close.</p>\n\n<p>For information I give the end of c# code of the button event:</p>\n\n<pre><code>            Response.Write(style);\n            Response.Output.Write(sw.ToString());\n            Response.Flush();\n            Response.End();\n</code></pre>\n\n<p>I tried to call this function in my button event but it doesn't work : </p>\n\n<pre><code>function stopNavigate() {\n\n        window.onbeforeunload = null;\n\n    }\n</code></pre>\n\n<p>How can I disable the beforeunload for this button only ?</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "laravel"
+            ],
+            "owner": {
+                "reputation": 56,
+                "user_id": 5419827,
+                "user_type": "registered",
+                "accept_rate": 77,
+                "profile_image": "https://i.stack.imgur.com/p9im5.jpg?s=128&g=1",
+                "display_name": "NulisDefo",
+                "link": "https://stackoverflow.com/users/5419827/nulisdefo"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524210648,
+            "creation_date": 1524210648,
+            "question_id": 49936677,
+            "body_markdown": "I have a learning exercise for learning laravel. This task asks me to create an online page for questionaires/tests. The key points are:\r\n\r\n-questions are to be displayed in random order and not repeat\r\n\r\n-at one time only one question is to be displayed, after answering it, next one is displayed\r\n\r\n-questions have point value and its supposed to be summed (for correct questions for total value point in the end)\r\n\r\n-upon refreshing page or closing it and reopening it has to remember all the data (current question, point sum, etc)\r\n\r\n-ability to restart the test\r\n\r\n-after finishing client is supposed to be submit the results by entering his name \r\n\r\n-upon submiting test give a link to review the questions\r\n\r\nThe question is, how can i do this? I have finished it using cookies to transfer ids of question choices, answered questions, etc. which are used to summon data from database and it works fine. (as I preferred doing it with laravel php purely to get better acquainted with the framework)\r\n\r\nAlso, i think doing it with local storage would work (never used that) though not sure how exactly. \r\n\r\nSessions would not work, i think, because it would lose data upon closing, to my understanding. \r\n\r\nWhat I&#39;m looking for is suggestions for alternate paths to finish the task (for learning purposes). \r\n\r\nP.S. if anything is unclear, ask, I&#39;ll edit the post for clarity. (tags are laravel and php, but other ways of doing the task would also be accepted, I just don&#39;t know what else to mark)",
+            "link": "https://stackoverflow.com/questions/49936677/methods-for-creating-random-single-display-test",
+            "title": "methods for creating random single display test",
+            "body": "<p>I have a learning exercise for learning laravel. This task asks me to create an online page for questionaires/tests. The key points are:</p>\n\n<p>-questions are to be displayed in random order and not repeat</p>\n\n<p>-at one time only one question is to be displayed, after answering it, next one is displayed</p>\n\n<p>-questions have point value and its supposed to be summed (for correct questions for total value point in the end)</p>\n\n<p>-upon refreshing page or closing it and reopening it has to remember all the data (current question, point sum, etc)</p>\n\n<p>-ability to restart the test</p>\n\n<p>-after finishing client is supposed to be submit the results by entering his name </p>\n\n<p>-upon submiting test give a link to review the questions</p>\n\n<p>The question is, how can i do this? I have finished it using cookies to transfer ids of question choices, answered questions, etc. which are used to summon data from database and it works fine. (as I preferred doing it with laravel php purely to get better acquainted with the framework)</p>\n\n<p>Also, i think doing it with local storage would work (never used that) though not sure how exactly. </p>\n\n<p>Sessions would not work, i think, because it would lose data upon closing, to my understanding. </p>\n\n<p>What I'm looking for is suggestions for alternate paths to finish the task (for learning purposes). </p>\n\n<p>P.S. if anything is unclear, ask, I'll edit the post for clarity. (tags are laravel and php, but other ways of doing the task would also be accepted, I just don't know what else to mark)</p>\n"
+        },
+        {
+            "tags": [
+                "git"
+            ],
+            "owner": {
+                "reputation": 1097,
+                "user_id": 121095,
+                "user_type": "registered",
+                "accept_rate": 40,
+                "profile_image": "https://www.gravatar.com/avatar/8c6a071678da71840e6e72f7a46170a4?s=128&d=identicon&r=PG",
+                "display_name": "Alexandre Rademaker",
+                "link": "https://stackoverflow.com/users/121095/alexandre-rademaker"
+            },
+            "is_answered": true,
+            "view_count": 91608,
+            "accepted_answer_id": 984973,
+            "answer_count": 10,
+            "score": 155,
+            "last_activity_date": 1524210636,
+            "creation_date": 1244772622,
+            "last_edit_date": 1402462119,
+            "question_id": 984707,
+            "body_markdown": "Does anyone know what are the Git limits for number of files and size of files?\r\n",
+            "link": "https://stackoverflow.com/questions/984707/what-are-the-file-limits-in-git-number-and-size",
+            "title": "What are the file limits in Git (number and size)?",
+            "body": "<p>Does anyone know what are the Git limits for number of files and size of files?</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "android-edittext",
+                "textview",
+                "widget",
+                "android-textinputedittext"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 4928684,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-E8NUP_nNLO0/AAAAAAAAAAI/AAAAAAAAABU/PbzdZuhPwNo/photo.jpg?sz=128",
+                "display_name": "RAJ KUMAR",
+                "link": "https://stackoverflow.com/users/4928684/raj-kumar"
+            },
+            "is_answered": false,
+            "view_count": 29,
+            "closed_date": 1524205897,
+            "answer_count": 0,
+            "score": -7,
+            "last_activity_date": 1524210636,
+            "creation_date": 1524205228,
+            "last_edit_date": 1524210636,
+            "question_id": 49935234,
+            "body_markdown": "How to get sum of  two edit text value without button click",
+            "link": "https://stackoverflow.com/questions/49935234/how-to-get-sum-of-two-edit-text-value-in-third-one-edit-text-without-click-on-bu",
+            "closed_reason": "too broad",
+            "title": "How to get sum of two edit text value in third one edit text without click on button in android like in excel",
+            "body": "<p>How to get sum of  two edit text value without button click</p>\n"
+        },
+        {
+            "tags": [
+                "random",
+                "julia-lang"
+            ],
+            "owner": {
+                "reputation": 34,
+                "user_id": 9529736,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5f680561890a58a2eeee93866346801a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Julien ",
+                "link": "https://stackoverflow.com/users/9529736/julien"
+            },
+            "is_answered": true,
+            "view_count": 43,
+            "accepted_answer_id": 49925389,
+            "answer_count": 3,
+            "score": 1,
+            "last_activity_date": 1524210635,
+            "creation_date": 1524149598,
+            "question_id": 49924115,
+            "body_markdown": "Hello\r\n\r\nI would like create an array with numbers from different intervals.\r\n\r\nFor example, with the following code:\r\n\r\n    using Distributions\r\n    \r\n    A = rand(Uniform(1,10),1,20)\r\n\r\n&quot;A&quot; contains 20 numbers between 1 and 10.\r\n\r\nI would like create &quot;B&quot; where &quot;B&quot; contains 20 numbers between 1 and 4, or between 6 and 10 but not between 4 and 6.\r\n\r\nIs it possible ?\r\n\r\nThank you   ",
+            "link": "https://stackoverflow.com/questions/49924115/julia-random-number-in-different-intervals",
+            "title": "Julia - Random number in different intervals",
+            "body": "<p>Hello</p>\n\n<p>I would like create an array with numbers from different intervals.</p>\n\n<p>For example, with the following code:</p>\n\n<pre><code>using Distributions\n\nA = rand(Uniform(1,10),1,20)\n</code></pre>\n\n<p>\"A\" contains 20 numbers between 1 and 10.</p>\n\n<p>I would like create \"B\" where \"B\" contains 20 numbers between 1 and 4, or between 6 and 10 but not between 4 and 6.</p>\n\n<p>Is it possible ?</p>\n\n<p>Thank you   </p>\n"
+        },
+        {
+            "tags": [
+                "ember.js",
+                "ember-data",
+                "relationships"
+            ],
+            "owner": {
+                "reputation": 96,
+                "user_id": 1363047,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9f1b5b5520c5acc2db6adbeed753edac?s=128&d=identicon&r=PG",
+                "display_name": "tothda",
+                "link": "https://stackoverflow.com/users/1363047/tothda"
+            },
+            "is_answered": true,
+            "view_count": 3669,
+            "answer_count": 4,
+            "score": 8,
+            "last_activity_date": 1524210624,
+            "creation_date": 1359974707,
+            "last_edit_date": 1360063425,
+            "question_id": 14685046,
+            "body_markdown": "I have two models with parent-child relationship: training and exercise:\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    App.Training = DS.Model.extend({\r\n      exercises: DS.hasMany(&#39;App.Exercise&#39;)\r\n    })\r\n\r\n    App.Exercise = DS.Model.extend({\r\n      training: DS.belongsTo(&#39;App.Training&#39;)\r\n    })\r\n\r\nI want to have a page where a training with all its related exercises is displayed. If the user presses the `Edit` button, the page becomes editable with the possibility of adding new exercises. I also want to have a `Cancel` button which discards all the changes made. \r\n\r\nHere is my controller:\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    App.TrainingsShowController = Em.ObjectController.extend({\r\n      editing: false,\r\n    \r\n      edit: function() {\r\n        this.set(&#39;editing&#39;, true);\r\n        transaction = this.get(&#39;store&#39;).transaction();\r\n        transaction.add(this.get(&#39;model&#39;));\r\n        this.get(&#39;model.exercises&#39;).forEach(function(x){\r\n          transaction.add(x);\r\n        });\r\n      },\r\n  \r\n      cancel: function() {\r\n        this.set(&#39;editing&#39;, false);\r\n        this.get(&#39;model.transaction&#39;).rollback();\r\n      },\r\n  \r\n      save: function() {\r\n        this.set(&#39;editing&#39;, false);\r\n        this.get(&#39;model.transaction&#39;).commit();\r\n      },\r\n  \r\n      addExercise: function() {\r\n        this.get(&#39;model.exercises&#39;).createRecord({});\r\n      }\r\n    })\r\n    \r\nThere are four event handlers in the controller:\r\n\r\n1. `edit`: The user pressed the `Edit` button: a transaction is created, the page is put into &quot;Editing&quot; mode.\r\n2. `cancel`: The user pressed the `Cancel` button: transaction is rolled back and back to &quot;Normal&quot; mode.\r\n3. `save`: The user pressed the `Save` button: transaction is commited and back to &quot;Normal&quot; mode.\r\n4. `addExercise`: The user pressed the `Add exercise` button: a new exercise is created (in the same transaction) and added to the trainings.\r\n    \r\nThe rollback functionality works fine except for newly created records: if I push the `Edit` button, add a new exercise and push the `Cancel` button, the newly created exercise stays on the page.\r\n\r\nWhat is the best way to get rid of the discarded child record?\r\n\r\n**UPDATE:**\r\n\r\nI&#39;ve created a jsFiddle to reproduce problem, but it worked. Unlike my application here I used `DS.FixtureAdapter`: http://jsfiddle.net/tothda/LaXLG/13/\r\n\r\nThen I&#39;ve created an other one using `DS.RESTAdapter` and the problem showed up: http://jsfiddle.net/tothda/qwZc4/5/\r\n\r\nIn the fiddle try: Edit, Add new and then Rollback.\r\n\r\nI figured it out, that in case of the RESTAdapter when I add a new child record to a `hasMany` relationship, the parent record won&#39;t become dirty. Which seems fine, but when I rollback the transaction, the newly created child record stays in the parent&#39;s `ManyArray`.\r\n\r\nI still don&#39;t know, what&#39;s the best way to handle the situation.",
+            "link": "https://stackoverflow.com/questions/14685046/how-to-rollback-relationship-changes-in-emberdata",
+            "title": "How to rollback relationship changes in EmberData",
+            "body": "<p>I have two models with parent-child relationship: training and exercise:</p>\n\n<pre class=\"lang-js prettyprint-override\"><code>App.Training = DS.Model.extend({\n  exercises: DS.hasMany('App.Exercise')\n})\n\nApp.Exercise = DS.Model.extend({\n  training: DS.belongsTo('App.Training')\n})\n</code></pre>\n\n<p>I want to have a page where a training with all its related exercises is displayed. If the user presses the <code>Edit</code> button, the page becomes editable with the possibility of adding new exercises. I also want to have a <code>Cancel</code> button which discards all the changes made. </p>\n\n<p>Here is my controller:</p>\n\n<pre class=\"lang-js prettyprint-override\"><code>App.TrainingsShowController = Em.ObjectController.extend({\n  editing: false,\n\n  edit: function() {\n    this.set('editing', true);\n    transaction = this.get('store').transaction();\n    transaction.add(this.get('model'));\n    this.get('model.exercises').forEach(function(x){\n      transaction.add(x);\n    });\n  },\n\n  cancel: function() {\n    this.set('editing', false);\n    this.get('model.transaction').rollback();\n  },\n\n  save: function() {\n    this.set('editing', false);\n    this.get('model.transaction').commit();\n  },\n\n  addExercise: function() {\n    this.get('model.exercises').createRecord({});\n  }\n})\n</code></pre>\n\n<p>There are four event handlers in the controller:</p>\n\n<ol>\n<li><code>edit</code>: The user pressed the <code>Edit</code> button: a transaction is created, the page is put into \"Editing\" mode.</li>\n<li><code>cancel</code>: The user pressed the <code>Cancel</code> button: transaction is rolled back and back to \"Normal\" mode.</li>\n<li><code>save</code>: The user pressed the <code>Save</code> button: transaction is commited and back to \"Normal\" mode.</li>\n<li><code>addExercise</code>: The user pressed the <code>Add exercise</code> button: a new exercise is created (in the same transaction) and added to the trainings.</li>\n</ol>\n\n<p>The rollback functionality works fine except for newly created records: if I push the <code>Edit</code> button, add a new exercise and push the <code>Cancel</code> button, the newly created exercise stays on the page.</p>\n\n<p>What is the best way to get rid of the discarded child record?</p>\n\n<p><strong>UPDATE:</strong></p>\n\n<p>I've created a jsFiddle to reproduce problem, but it worked. Unlike my application here I used <code>DS.FixtureAdapter</code>: <a href=\"http://jsfiddle.net/tothda/LaXLG/13/\">http://jsfiddle.net/tothda/LaXLG/13/</a></p>\n\n<p>Then I've created an other one using <code>DS.RESTAdapter</code> and the problem showed up: <a href=\"http://jsfiddle.net/tothda/qwZc4/5/\">http://jsfiddle.net/tothda/qwZc4/5/</a></p>\n\n<p>In the fiddle try: Edit, Add new and then Rollback.</p>\n\n<p>I figured it out, that in case of the RESTAdapter when I add a new child record to a <code>hasMany</code> relationship, the parent record won't become dirty. Which seems fine, but when I rollback the transaction, the newly created child record stays in the parent's <code>ManyArray</code>.</p>\n\n<p>I still don't know, what's the best way to handle the situation.</p>\n"
+        },
+        {
+            "tags": [
+                "openerp",
+                "scaffold",
+                "openerp-8",
+                "odoo"
+            ],
+            "owner": {
+                "reputation": 4708,
+                "user_id": 1455384,
+                "user_type": "registered",
+                "accept_rate": 69,
+                "profile_image": "https://www.gravatar.com/avatar/4b402d3012a9074b276741f75610a9ca?s=128&d=identicon&r=PG",
+                "display_name": "Andrius",
+                "link": "https://stackoverflow.com/users/1455384/andrius"
+            },
+            "is_answered": true,
+            "view_count": 11375,
+            "accepted_answer_id": 27375209,
+            "answer_count": 12,
+            "score": 16,
+            "last_activity_date": 1524210612,
+            "creation_date": 1403610210,
+            "last_edit_date": 1403615913,
+            "question_id": 24385750,
+            "body_markdown": "I read [here][1] that you can scaffold a module using a command, so you won&#39;t need to manually create some initial files. But such command does not work on master (on Odoo development branch):\r\n\r\n    ./oe scaffold Academy ../my-modules\r\n\r\nBecause there is no such file called `oe` in openerp directory. Did this thing change in the newest version? How can I scaffold a module in Odoo?\r\n\r\n\r\n  [1]: https://doc.openerp.com/trunk/server/howto/howto_website/",
+            "link": "https://stackoverflow.com/questions/24385750/odoo-scaffolding",
+            "title": "Odoo - scaffolding?",
+            "body": "<p>I read <a href=\"https://doc.openerp.com/trunk/server/howto/howto_website/\">here</a> that you can scaffold a module using a command, so you won't need to manually create some initial files. But such command does not work on master (on Odoo development branch):</p>\n\n<pre><code>./oe scaffold Academy ../my-modules\n</code></pre>\n\n<p>Because there is no such file called <code>oe</code> in openerp directory. Did this thing change in the newest version? How can I scaffold a module in Odoo?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "android"
+            ],
+            "owner": {
+                "reputation": 48,
+                "user_id": 9550968,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/95d83a65cae151591bfb0428de08ea82?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Smith",
+                "link": "https://stackoverflow.com/users/9550968/smith"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524210612,
+            "creation_date": 1524210612,
+            "question_id": 49936671,
+            "body_markdown": "I&#39;m making an app where i&#39;m using viewpager to implement Swipeable cardstack which we can move back and forth as you can see in the image [![enter image description here][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/HDBuC.png\r\n**For this i did some research and found some useful libraries on github like**\r\n\r\n    https://github.com/yuyakaido/CardStackView\r\n    https://github.com/edisonw/Android-StackedView\r\n    https://github.com/blipinsk/FlippableStackView\r\n    https://github.com/oguzbabaoglu/android-card-pager\r\n    https://github.com/aaronbond/Swipe-Deck\r\n    https://github.com/wenchaojiang/AndroidSwipeableCardStack\r\n\r\n**Along with that i found some questions on  So as well like**\r\nhttps://stackoverflow.com/questions/42708042/android-tinder-like-swipeable-card-stack-with-viewpager\r\nhttps://stackoverflow.com/questions/45170366/badoo-like-swipeable-cards\r\n\r\n**But still i&#39;m not able to solve the issue below is the image of what i&#39;m getting now along with viewpager code**\r\n\r\n    public class CardStackAdapter extends FragmentStatePagerAdapter {\r\n        public CardStackAdapter(FragmentManager fm) {\r\n            super(fm);\r\n        }\r\n    \r\n        @Override\r\n        public Fragment getItem(int position) {\r\n            return new CardStackFragment();\r\n        }\r\n    \r\n        @Override\r\n        public int getCount() {\r\n            return 5;\r\n        }\r\n    }\r\n\r\n    public class CardStackTransformer implements ViewPager.PageTransformer {\r\n        @Override\r\n        public void transformPage(View page, float position) {\r\n            if(position&gt;=0){\r\n                page.setScaleX(0.8f);\r\n                //page.setScaleY(0.8f);\r\n                page.setTranslationX(-page.getWidth()*position);\r\n                page.setTranslationY(30*position);\r\n            }\r\n        }\r\n    }\r\n\r\n    protected void onCreate(Bundle savedInstanceState) {\r\n            super.onCreate(savedInstanceState);\r\n            setContentView(R.layout.activity_main);\r\n            OverScrollBounceBehavior overScrollBounceBehavior = new OverScrollBounceBehavior();\r\n             bounceScrollView = (BounceScrollView) findViewById(R.id.scrollview);\r\n            floatingActionButton = (FloatingActionButton)findViewById(R.id.fab);\r\n    \r\n            BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);\r\n            //navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);\r\n            navigation.setSelectedItemId(R.id.navigation_home);\r\n            BottomNavigationViewHelper.disableShiftMode(navigation);\r\n    \r\n            //mDataset  = new ArrayList&lt;&gt;();\r\n            viewPager = findViewById(R.id.viewpager);\r\n            cardStackAdapter = new CardStackAdapter(getSupportFragmentManager());\r\n            viewPager.setAdapter(cardStackAdapter);\r\n            viewPager.setPageTransformer(true,new CardStackTransformer());\r\n            viewPager.setOffscreenPageLimit(5);\r\n\r\nand image of my current output\r\nhttps://imgur.com/dNG8EIo\r\nplease any help would be appreciated thank you",
+            "link": "https://stackoverflow.com/questions/49936671/issues-in-implementing-viepager-with-cardstack-swipe-animation",
+            "title": "issues in implementing viepager with cardstack swipe animation",
+            "body": "<p>I'm making an app where i'm using viewpager to implement Swipeable cardstack which we can move back and forth as you can see in the image <a href=\"https://i.stack.imgur.com/HDBuC.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/HDBuC.png\" alt=\"enter image description here\"></a></p>\n\n<p><strong>For this i did some research and found some useful libraries on github like</strong></p>\n\n<pre><code>https://github.com/yuyakaido/CardStackView\nhttps://github.com/edisonw/Android-StackedView\nhttps://github.com/blipinsk/FlippableStackView\nhttps://github.com/oguzbabaoglu/android-card-pager\nhttps://github.com/aaronbond/Swipe-Deck\nhttps://github.com/wenchaojiang/AndroidSwipeableCardStack\n</code></pre>\n\n<p><strong>Along with that i found some questions on  So as well like</strong>\n<a href=\"https://stackoverflow.com/questions/42708042/android-tinder-like-swipeable-card-stack-with-viewpager\">Android Tinder-like swipeable card stack with ViewPager</a>\n<a href=\"https://stackoverflow.com/questions/45170366/badoo-like-swipeable-cards\">Badoo like Swipeable Cards</a></p>\n\n<p><strong>But still i'm not able to solve the issue below is the image of what i'm getting now along with viewpager code</strong></p>\n\n<pre><code>public class CardStackAdapter extends FragmentStatePagerAdapter {\n    public CardStackAdapter(FragmentManager fm) {\n        super(fm);\n    }\n\n    @Override\n    public Fragment getItem(int position) {\n        return new CardStackFragment();\n    }\n\n    @Override\n    public int getCount() {\n        return 5;\n    }\n}\n\npublic class CardStackTransformer implements ViewPager.PageTransformer {\n    @Override\n    public void transformPage(View page, float position) {\n        if(position&gt;=0){\n            page.setScaleX(0.8f);\n            //page.setScaleY(0.8f);\n            page.setTranslationX(-page.getWidth()*position);\n            page.setTranslationY(30*position);\n        }\n    }\n}\n\nprotected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        setContentView(R.layout.activity_main);\n        OverScrollBounceBehavior overScrollBounceBehavior = new OverScrollBounceBehavior();\n         bounceScrollView = (BounceScrollView) findViewById(R.id.scrollview);\n        floatingActionButton = (FloatingActionButton)findViewById(R.id.fab);\n\n        BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);\n        //navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);\n        navigation.setSelectedItemId(R.id.navigation_home);\n        BottomNavigationViewHelper.disableShiftMode(navigation);\n\n        //mDataset  = new ArrayList&lt;&gt;();\n        viewPager = findViewById(R.id.viewpager);\n        cardStackAdapter = new CardStackAdapter(getSupportFragmentManager());\n        viewPager.setAdapter(cardStackAdapter);\n        viewPager.setPageTransformer(true,new CardStackTransformer());\n        viewPager.setOffscreenPageLimit(5);\n</code></pre>\n\n<p>and image of my current output\n<a href=\"https://imgur.com/dNG8EIo\" rel=\"nofollow noreferrer\">https://imgur.com/dNG8EIo</a>\nplease any help would be appreciated thank you</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "html",
+                "asp.net-mvc",
+                "redirect",
+                "razor"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 9672706,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1954050457969754/picture?type=large",
+                "display_name": "Torake",
+                "link": "https://stackoverflow.com/users/9672706/torake"
+            },
+            "is_answered": true,
+            "view_count": 22,
+            "accepted_answer_id": 49933352,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524210601,
+            "creation_date": 1524192408,
+            "last_edit_date": 1524193788,
+            "question_id": 49933125,
+            "body_markdown": "Here&#39;s my issue , after user logged in, i&#39;ll try to validate if an user password is temporal. If it is, i want to redirect to a different view or else keep going to the app menu. However, when it redirects, its says that the resource is not found.\r\n\r\n    if (Session[&quot;IdUsuario&quot;] == null)\r\n    {\r\n        Response.Redirect(&quot;~/&quot;);\r\n    }\r\n    else\r\n    {\r\n        if ((bool)Session[&quot;Temporal&quot;] == true)\r\n        {\r\n            Response.Redirect(&quot;~/Login/Contrase&#241;aTemporal.cshtml&quot;);// &lt;--- Here is my issue\r\n        }\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49933125/trying-to-redirect-after-login-c-mvc",
+            "title": "Trying to redirect after login c# mvc",
+            "body": "<p>Here's my issue. After the user logs in, I'll try to validate if a user password is temporal. If it is, I want to redirect to a different view. If not, I want to go to the app menu. However, when it redirects, it says that the resource is not found.</p>\n\n<pre><code>if (Session[\"IdUsuario\"] == null)\n{\n    Response.Redirect(\"~/\");\n}\nelse\n{\n    if ((bool)Session[\"Temporal\"] == true)\n    {\n        Response.Redirect(\"~/Login/ContraseñaTemporal.cshtml\");// &lt;--- Here is my issue\n    }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "sql-server",
+                "database",
+                "database-replication",
+                "merge-replication"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 9673568,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ccf0b7519d0b89c8d24412c20eeb8531?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Gumvert",
+                "link": "https://stackoverflow.com/users/9673568/gumvert"
+            },
+            "is_answered": false,
+            "view_count": 22,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524210600,
+            "creation_date": 1524210600,
+            "question_id": 49936667,
+            "body_markdown": "I am looking for solution to replicate MS SQL Server (2012 standard) database on 4 servers and so far merge replication suit most to my needs. Unfortunately once server which is a publisher is down or not accessible replication isn&#39;t working anymore. Is there any way to have more publishers/merge agents?",
+            "link": "https://stackoverflow.com/questions/49936667/ms-sql-merge-replication",
+            "title": "MS SQL Merge replication",
+            "body": "<p>I am looking for solution to replicate MS SQL Server (2012 standard) database on 4 servers and so far merge replication suit most to my needs. Unfortunately once server which is a publisher is down or not accessible replication isn't working anymore. Is there any way to have more publishers/merge agents?</p>\n"
+        },
+        {
+            "tags": [
+                "angularjs",
+                "twitter-bootstrap-3",
+                "pagination"
+            ],
+            "owner": {
+                "reputation": 117,
+                "user_id": 8884846,
+                "user_type": "registered",
+                "accept_rate": 87,
+                "profile_image": "https://www.gravatar.com/avatar/6a6a3b0b2edec153292dfe73aa74ee7f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Md Ghousemohi",
+                "link": "https://stackoverflow.com/users/8884846/md-ghousemohi"
+            },
+            "is_answered": false,
+            "view_count": 67,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524210600,
+            "creation_date": 1512714842,
+            "last_edit_date": 1524210600,
+            "question_id": 47708948,
+            "body_markdown": "Please help me, why pagination bar is not showing ?\r\n\r\n      &lt;tr ng-repeat=&quot;Emp  in Employee |startFrom:1|limitTo:pagesize&quot;&gt;\r\n         &lt;pagination total-items=&quot;Employee.length&quot; ng-model=&quot;currentPage&quot; items-per-page=&quot;pagesize&quot;&gt;&lt;/pagination&gt;\r\n\r\nWhen I check values as   `{{Employee.length}}{{pagesize}}`  it displays my values\r\n\r\nOn my table i config as   `&lt;tr ng-repeat=&quot;Emp  in Employee |startFrom:1 |limitTo:pagesize&quot;&gt;`\r\n\r\n**Myfilters**\r\n  \r\n\r\n     $scope.currentPage = 1\r\n        $scope.pagesize = 3\r\n       $scope.maxSize = 5;\r\n        .filter(&#39;startFrom&#39;, function () {\r\n            debugger;\r\n            return function(data,start){\r\n                return data.slice(start)\r\n            }\r\n        })\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/47708948/angularjs-pagination-not-showing-pagination-bar",
+            "title": "AngularJS pagination not showing pagination bar",
+            "body": "<p>Please help me, why pagination bar is not showing ?</p>\n\n<pre><code>  &lt;tr ng-repeat=\"Emp  in Employee |startFrom:1|limitTo:pagesize\"&gt;\n     &lt;pagination total-items=\"Employee.length\" ng-model=\"currentPage\" items-per-page=\"pagesize\"&gt;&lt;/pagination&gt;\n</code></pre>\n\n<p>When I check values as   <code>{{Employee.length}}{{pagesize}}</code>  it displays my values</p>\n\n<p>On my table i config as   <code>&lt;tr ng-repeat=\"Emp  in Employee |startFrom:1 |limitTo:pagesize\"&gt;</code></p>\n\n<p><strong>Myfilters</strong></p>\n\n<pre><code> $scope.currentPage = 1\n    $scope.pagesize = 3\n   $scope.maxSize = 5;\n    .filter('startFrom', function () {\n        debugger;\n        return function(data,start){\n            return data.slice(start)\n        }\n    })\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "postgresql",
+                "sequelize.js",
+                "erd",
+                "feathersjs"
+            ],
+            "owner": {
+                "reputation": 142,
+                "user_id": 5655370,
+                "user_type": "registered",
+                "accept_rate": 53,
+                "profile_image": "https://www.gravatar.com/avatar/94afdc259800c3bb96f15fd1d42b1c94?s=128&d=identicon&r=PG&f=1",
+                "display_name": "j.doe",
+                "link": "https://stackoverflow.com/users/5655370/j-doe"
+            },
+            "is_answered": false,
+            "view_count": 5,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524210597,
+            "creation_date": 1524210168,
+            "last_edit_date": 1524210597,
+            "question_id": 49936555,
+            "body_markdown": "I installed feathersjs and generated app than generated service I choosed sequelize for my service and postgresql for my database Now I should created my table like as figure:\r\n[![ https://i.stack.imgur.com/nvK1h.png][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/nvK1h.png\r\nBut I cant know how I created this model and How created connection \r\nAny advise \r\n",
+            "link": "https://stackoverflow.com/questions/49936555/create-erd-table-using-feathersjs-sequelize-in-postgresql",
+            "title": "Create ERD Table using Feathersjs Sequelize in Postgresql",
+            "body": "<p>I installed feathersjs and generated app than generated service I choosed sequelize for my service and postgresql for my database Now I should created my table like as figure:\n<a href=\"https://i.stack.imgur.com/nvK1h.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/nvK1h.png\" alt=\" https://i.stack.imgur.com/nvK1h.png\"></a></p>\n\n<p>But I cant know how I created this model and How created connection \nAny advise </p>\n"
+        },
+        {
+            "tags": [
+                "python"
+            ],
+            "owner": {
+                "reputation": 725,
+                "user_id": 5198101,
+                "user_type": "registered",
+                "accept_rate": 53,
+                "profile_image": "https://www.gravatar.com/avatar/e368f319f68500b32b5fdbe73e27f640?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Explorer_N",
+                "link": "https://stackoverflow.com/users/5198101/explorer-n"
+            },
+            "is_answered": true,
+            "view_count": 12108,
+            "accepted_answer_id": 37852762,
+            "answer_count": 3,
+            "score": 9,
+            "last_activity_date": 1524210589,
+            "creation_date": 1466062031,
+            "last_edit_date": 1510680211,
+            "question_id": 37852560,
+            "body_markdown": "I do things mostly in C++, where the destructor method is really meant for destruction of an acquired resource. Recently I started with python (which is really a fun and fantastic), and I came to learn it has GC like java.\r\nThus, there is no heavy emphasis on object ownership (construction and destruction).\r\n\r\nAs far as I&#39;ve learned, the  `__init__()` method makes more sense to me in python than it does for ruby too, but the `__del__()` method, do we really need to implement this built-in function in our class? Will my class lack something if I miss `__del__()`? The one scenario I could see `__del__()` useful is, if I want to log something when destroying an object. Is there anything other than this?",
+            "link": "https://stackoverflow.com/questions/37852560/is-del-really-a-destructor",
+            "title": "Is __del__ really a destructor?",
+            "body": "<p>I do things mostly in C++, where the destructor method is really meant for destruction of an acquired resource. Recently I started with python (which is really a fun and fantastic), and I came to learn it has GC like java.\nThus, there is no heavy emphasis on object ownership (construction and destruction).</p>\n\n<p>As far as I've learned, the  <code>__init__()</code> method makes more sense to me in python than it does for ruby too, but the <code>__del__()</code> method, do we really need to implement this built-in function in our class? Will my class lack something if I miss <code>__del__()</code>? The one scenario I could see <code>__del__()</code> useful is, if I want to log something when destroying an object. Is there anything other than this?</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift",
+                "uitableview",
+                "autolayout",
+                "nslayoutconstraint"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 1648188,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/73e45b22360f2ab49f50f9c2df0b49bf?s=128&d=identicon&r=PG",
+                "display_name": "Musti",
+                "link": "https://stackoverflow.com/users/1648188/musti"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524210586,
+            "creation_date": 1524209232,
+            "last_edit_date": 1524210586,
+            "question_id": 49936297,
+            "body_markdown": "I have a `tableView` inside a `tableViewCell`. The nested `tableView` **top, bottom, left and right** `constraint` are pinned to parent&#39;s `tableViewCell` and there is an additional `constraint` for height **(on nested tableView)** which varies based on the `tableView` content size. Everything works fine on `iOS10` and `iOS11`, but in `iOS9` xCode generates a warning \r\n\r\n&gt; &#39;Will attempt to recover by breaking constraint&#39;\r\n\r\n and breaks the `height constraint` and nothing gets loaded in `tableView`. Is there something wrong? Both, parent and nested `tableView` cells are self-sizing.\r\n\r\nBelow is the console log:\r\n\r\nUnable to simultaneously satisfy constraints.\r\n\tProbably at least one of the constraints in the following list is one you don&#39;t want. Try this: (1) look at each constraint and try to figure out which you don&#39;t expect; (2) find the code that added the unwanted constraint or constraints and fix it. (Note: If you&#39;re seeing NSAutoresizingMaskLayoutConstraints that you don&#39;t understand, refer to the documentation for the UIView property translatesAutoresizingMaskIntoConstraints) \r\n(\r\n    &quot;NSLayoutConstraint:0x7fb9b7dca800 V:[UIView:0x7fb9b7f4f980(124.5)]&quot;,\r\n    &quot;NSLayoutConstraint:0x7fb9b7dcab60 V:|-(0)-[UIView:0x7fb9b7f4f980]   (Names: &#39;|&#39;:UITableViewCellContentView:0x7fb9b7f8d6e0 )&quot;,\r\n    &quot;NSLayoutConstraint:0x7fb9b7dcabb0 V:[UIView:0x7fb9b7f4f980]-(0)-|   (Names: &#39;|&#39;:UITableViewCellContentView:0x7fb9b7f8d6e0 )&quot;,\r\n    &quot;NSLayoutConstraint:0x7fb9b7ec5830 &#39;UIView-Encapsulated-Layout-Height&#39; V:[UITableViewCellContentView:0x7fb9b7f8d6e0(44)]&quot;\r\n)\r\n\r\nWill attempt to recover by breaking constraint \r\n&lt;NSLayoutConstraint:0x7fb9b7dca800 V:[UIView:0x7fb9b7f4f980(124.5)]&gt;\r\n",
+            "link": "https://stackoverflow.com/questions/49936297/autolayout-constraints-breaking-on-ios9",
+            "title": "AutoLayout Constraints breaking on iOS9",
+            "body": "<p>I have a <code>tableView</code> inside a <code>tableViewCell</code>. The nested <code>tableView</code> <strong>top, bottom, left and right</strong> <code>constraint</code> are pinned to parent's <code>tableViewCell</code> and there is an additional <code>constraint</code> for height <strong>(on nested tableView)</strong> which varies based on the <code>tableView</code> content size. Everything works fine on <code>iOS10</code> and <code>iOS11</code>, but in <code>iOS9</code> xCode generates a warning </p>\n\n<blockquote>\n  <p>'Will attempt to recover by breaking constraint'</p>\n</blockquote>\n\n<p>and breaks the <code>height constraint</code> and nothing gets loaded in <code>tableView</code>. Is there something wrong? Both, parent and nested <code>tableView</code> cells are self-sizing.</p>\n\n<p>Below is the console log:</p>\n\n<p>Unable to simultaneously satisfy constraints.\n    Probably at least one of the constraints in the following list is one you don't want. Try this: (1) look at each constraint and try to figure out which you don't expect; (2) find the code that added the unwanted constraint or constraints and fix it. (Note: If you're seeing NSAutoresizingMaskLayoutConstraints that you don't understand, refer to the documentation for the UIView property translatesAutoresizingMaskIntoConstraints) \n(\n    \"NSLayoutConstraint:0x7fb9b7dca800 V:[UIView:0x7fb9b7f4f980(124.5)]\",\n    \"NSLayoutConstraint:0x7fb9b7dcab60 V:|-(0)-[UIView:0x7fb9b7f4f980]   (Names: '|':UITableViewCellContentView:0x7fb9b7f8d6e0 )\",\n    \"NSLayoutConstraint:0x7fb9b7dcabb0 V:[UIView:0x7fb9b7f4f980]-(0)-|   (Names: '|':UITableViewCellContentView:0x7fb9b7f8d6e0 )\",\n    \"NSLayoutConstraint:0x7fb9b7ec5830 'UIView-Encapsulated-Layout-Height' V:[UITableViewCellContentView:0x7fb9b7f8d6e0(44)]\"\n)</p>\n\n<p>Will attempt to recover by breaking constraint \n</p>\n"
+        },
+        {
+            "tags": [
+                "reactjs",
+                "typescript",
+                "material-ui"
+            ],
+            "owner": {
+                "reputation": 1051,
+                "user_id": 5735030,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/19be1a536c9554797f28a745e1a1be43?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Alexandre Annic",
+                "link": "https://stackoverflow.com/users/5735030/alexandre-annic"
+            },
+            "is_answered": false,
+            "view_count": 25,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524210581,
+            "creation_date": 1523956646,
+            "last_edit_date": 1524210581,
+            "question_id": 49874241,
+            "body_markdown": "I&#39;m refactoring an application with Typescript. Everthing&#39;s going well except for this simple component. I&#39;m using `Input` from `material-ui`.\r\n\r\n    import {Input} from &quot;material-ui&quot;;\r\n\r\n    class Cp extends React.Component&lt;any, any&gt; {\r\n        render = () =&gt; &lt;Input readOnly/&gt;          \r\n    }\r\n\r\nTypescript compiler complains about `readOnly` property but it was working well in JavaScript.\r\n\r\n    TS2559: Type &#39;{ readOnly: true; }&#39; has no properties in common with type &#39;IntrinsicAttributes &amp; InputProps &amp; { children?: ReactNode; }&#39;.\r\n\r\nHowever I can see the property `readOnly` in the interface `HTMLInputElement` extended by the props of the `Input` element.\r\n\r\nHow to bypass this error ?\r\n",
+            "link": "https://stackoverflow.com/questions/49874241/refactoring-react-to-typescript-causes-error-property-readonly-does-not-exist",
+            "title": "Refactoring React to Typescript causes error Property &#39;readOnly&#39; does not exist",
+            "body": "<p>I'm refactoring an application with Typescript. Everthing's going well except for this simple component. I'm using <code>Input</code> from <code>material-ui</code>.</p>\n\n<pre><code>import {Input} from \"material-ui\";\n\nclass Cp extends React.Component&lt;any, any&gt; {\n    render = () =&gt; &lt;Input readOnly/&gt;          \n}\n</code></pre>\n\n<p>Typescript compiler complains about <code>readOnly</code> property but it was working well in JavaScript.</p>\n\n<pre><code>TS2559: Type '{ readOnly: true; }' has no properties in common with type 'IntrinsicAttributes &amp; InputProps &amp; { children?: ReactNode; }'.\n</code></pre>\n\n<p>However I can see the property <code>readOnly</code> in the interface <code>HTMLInputElement</code> extended by the props of the <code>Input</code> element.</p>\n\n<p>How to bypass this error ?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "junit",
+                "annotations"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9426680,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e91309fe7f7cad6c612cd3fb3f651667?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Chamikara",
+                "link": "https://stackoverflow.com/users/9426680/chamikara"
+            },
+            "is_answered": true,
+            "view_count": 20,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524210578,
+            "creation_date": 1524210316,
+            "last_edit_date": 1524210578,
+            "question_id": 49936588,
+            "body_markdown": "I need to run Initialize code one time in junit before test - java.\r\n\r\nif we choose\r\n@Before\r\n\r\nIt will run before on every test void.\r\n\r\n\r\n    Object me;\r\n\r\n\r\n`public void InstalizeTestClass()}`\r\n\r\n    me = configReader.read();\r\n\r\n`}`\r\n\r\n    @Test\r\n    public void SumTest(){\r\n    \r\n    }\r\n\r\nwhen i used @BeforeClass found exeption\r\njava.lang.Exception: Method InstalizemockTest() should be static\r\n\r\n\tat org.junit.runners.model.FrameworkMethod.validatePublicVoid(FrameworkMethod.java:93)\r\n\tat org.junit.runners.model.FrameworkMethod.validatePublicVoidNoArg(FrameworkMethod.java:74)\r\n\tat org.junit.runners.ParentRunner.validatePublicVoidNoArgMethods(ParentRunner.java:155)\r\n\tat org.junit.runners.ParentRunner.collectInitializationErrors(ParentRunner.java:125)\r\n\tat org.junit.runners.BlockJUnit4ClassRunner.collectInitializationErrors(BlockJUnit4ClassRunner.java:124)\r\n\tat org.junit.runners.ParentRunner.validate(ParentRunner.java:416)\r\n\tat org.junit.runners.ParentRunner.&lt;init&gt;(ParentRunner.java:84)\r\n\tat org.junit.runners.BlockJUnit4ClassRunner.&lt;init&gt;(BlockJUnit4ClassRunner.java:65)\r\n\tat org.junit.internal.builders.JUnit4Builder.runnerForClass(JUnit4Builder.java:10)\r\n\tat org.junit.runners.model.RunnerBuilder.safeRunnerForClass(RunnerBuilder.java:59)\r\n\tat org.junit.internal.builders.AllDefaultPossibilitiesBuilder.runnerForClass(AllDefaultPossibilitiesBuilder.java:26)\r\n\tat org.junit.runners.model.RunnerBuilder.safeRunnerForClass(RunnerBuilder.java:59)\r\n\tat org.junit.internal.requests.ClassRequest.getRunner(ClassRequest.java:33)\r\n\tat com.intellij.junit4.JUnit4IdeaTestRunner.startRunnerWithArgs(JUnit4IdeaTestRunner.java:49)\r\n\tat com.intellij.rt.execution.junit.IdeaTestRunner$Repeater.startRunnerWithArgs(IdeaTestRunner.java:47)\r\n\tat com.intellij.rt.execution.junit.JUnitStarter.prepareStreamsAndStart(JUnitStarter.java:242)\r\n\tat com.intellij.rt.execution.junit.JUnitStarter.main(JUnitStarter.java:70)\r\n",
+            "link": "https://stackoverflow.com/questions/49936588/i-need-to-run-initialize-code-one-time-in-junit-before-test-java",
+            "title": "I need to run Initialize code one time in junit before test - java",
+            "body": "<p>I need to run Initialize code one time in junit before test - java.</p>\n\n<p>if we choose\n@Before</p>\n\n<p>It will run before on every test void.</p>\n\n<pre><code>Object me;\n</code></pre>\n\n<p><code>public void InstalizeTestClass()}</code></p>\n\n<pre><code>me = configReader.read();\n</code></pre>\n\n<p><code>}</code></p>\n\n<pre><code>@Test\npublic void SumTest(){\n\n}\n</code></pre>\n\n<p>when i used @BeforeClass found exeption\njava.lang.Exception: Method InstalizemockTest() should be static</p>\n\n<pre><code>at org.junit.runners.model.FrameworkMethod.validatePublicVoid(FrameworkMethod.java:93)\nat org.junit.runners.model.FrameworkMethod.validatePublicVoidNoArg(FrameworkMethod.java:74)\nat org.junit.runners.ParentRunner.validatePublicVoidNoArgMethods(ParentRunner.java:155)\nat org.junit.runners.ParentRunner.collectInitializationErrors(ParentRunner.java:125)\nat org.junit.runners.BlockJUnit4ClassRunner.collectInitializationErrors(BlockJUnit4ClassRunner.java:124)\nat org.junit.runners.ParentRunner.validate(ParentRunner.java:416)\nat org.junit.runners.ParentRunner.&lt;init&gt;(ParentRunner.java:84)\nat org.junit.runners.BlockJUnit4ClassRunner.&lt;init&gt;(BlockJUnit4ClassRunner.java:65)\nat org.junit.internal.builders.JUnit4Builder.runnerForClass(JUnit4Builder.java:10)\nat org.junit.runners.model.RunnerBuilder.safeRunnerForClass(RunnerBuilder.java:59)\nat org.junit.internal.builders.AllDefaultPossibilitiesBuilder.runnerForClass(AllDefaultPossibilitiesBuilder.java:26)\nat org.junit.runners.model.RunnerBuilder.safeRunnerForClass(RunnerBuilder.java:59)\nat org.junit.internal.requests.ClassRequest.getRunner(ClassRequest.java:33)\nat com.intellij.junit4.JUnit4IdeaTestRunner.startRunnerWithArgs(JUnit4IdeaTestRunner.java:49)\nat com.intellij.rt.execution.junit.IdeaTestRunner$Repeater.startRunnerWithArgs(IdeaTestRunner.java:47)\nat com.intellij.rt.execution.junit.JUnitStarter.prepareStreamsAndStart(JUnitStarter.java:242)\nat com.intellij.rt.execution.junit.JUnitStarter.main(JUnitStarter.java:70)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "arangodb",
+                "aql"
+            ],
+            "owner": {
+                "reputation": 4308,
+                "user_id": 511837,
+                "user_type": "registered",
+                "accept_rate": 78,
+                "profile_image": "https://i.stack.imgur.com/ZOTKx.png?s=128&g=1",
+                "display_name": "igr",
+                "link": "https://stackoverflow.com/users/511837/igr"
+            },
+            "is_answered": true,
+            "view_count": 23,
+            "accepted_answer_id": 49909572,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524210577,
+            "creation_date": 1524074438,
+            "last_edit_date": 1524210577,
+            "question_id": 49906182,
+            "body_markdown": "I have the list of events of certain type, structured on the following example:\r\n\r\n    {\r\n     createdAt: 123123132,\r\n     type: STARTED,\r\n     metadata: {\r\n         emailAddress: &quot;foo@bar.com&quot;\r\n     }\r\n    }\r\n\r\nThe number of types is predefined (`START`, `STOP`, `REMOVE`...). Users produce one or more events during time.\r\n\r\nI want to get the following aggregation:\r\n\r\n&gt; For each user, calculate the number of events for each type.\r\n\r\nMy AQL query looks like this:\r\n\r\n    FOR event IN events\r\n      COLLECT\r\n        email = event.metadata.emailAddress,\r\n        type = event.type WITH COUNT INTO count\r\n      LIMIT 10\r\n      RETURN {\r\n          email,\r\n          t: {type, count}\r\n      }\r\n\r\nThis produces the following output:\r\n\r\n    { email: &#39;_84@example.com&#39;, t: { type: &#39;CREATE&#39;, count: 203 } }\r\n    { email: &#39;_84@example.com&#39;, t: { type: &#39;DEPLOY&#39;, count: 214 } }\r\n    { email: &#39;_84@example.com&#39;, t: { type: &#39;REMOVE&#39;, count: 172 } }\r\n    { email: &#39;_84@example.com&#39;, t: { type: &#39;START&#39;, count: 204 } }\r\n    { email: &#39;_84@example.com&#39;, t: { type: &#39;STOP&#39;, count: 187 } }\r\n    { email: &#39;_95@example.com&#39;, t: { type: &#39;CREATE&#39;, count: 189 } }\r\n    { email: &#39;_95@example.com&#39;, t: { type: &#39;DEPLOY&#39;, count: 173 } }\r\n    { email: &#39;_95@example.com&#39;, t: { type: &#39;REMOVE&#39;, count: 194 } }\r\n    { email: &#39;_95@example.com&#39;, t: { type: &#39;START&#39;, count: 213 } }\r\n    { email: &#39;_95@example.com&#39;, t: { type: &#39;STOP&#39;, count: 208 } }\r\n    ...\r\n\r\ni.e. I got a row for each type. But I want results like this:\r\n\r\n    { email: foo@bar.com, count1: 203, count2: 214, count3: 172 ...}\r\n    { email: aaa@fff.com, count1: 189, count2: 173, count3: 194 ...}\r\n    ...\r\n\r\nOR\r\n\r\n     { email: foo@bar.com, CREATE: 203, DEPLOY: 214, ... }\r\n     ...\r\n\r\ni.e. to group again the results.\r\n\r\nI also need to sort the results (not the events) by the counts: to return e.g. the top 10 users with max number of `CREATE` events.\r\n\r\nHow to do that?\r\n\r\n\r\n## ONE SOLUTION\r\n\r\nOne solution is here, check the accepted answer for more.\r\n\r\n    FOR a in (FOR event IN events\r\n      COLLECT\r\n        emailAddress = event.metadata.emailAddress,\r\n        type = event.type WITH COUNT INTO count\r\n      COLLECT email = emailAddress INTO perUser KEEP type, count\r\n      RETURN MERGE(PUSH(perUser[* RETURN {[LOWER(CURRENT.type)]: CURRENT.count}], {email})))\r\n    SORT a.create desc\r\n    LIMIT 10\r\n    RETURN a",
+            "link": "https://stackoverflow.com/questions/49906182/how-to-group-results-in-arangodb-into-single-record",
+            "title": "How to group results in ArangoDb into single record?",
+            "body": "<p>I have the list of events of certain type, structured on the following example:</p>\n\n<pre><code>{\n createdAt: 123123132,\n type: STARTED,\n metadata: {\n     emailAddress: \"foo@bar.com\"\n }\n}\n</code></pre>\n\n<p>The number of types is predefined (<code>START</code>, <code>STOP</code>, <code>REMOVE</code>...). Users produce one or more events during time.</p>\n\n<p>I want to get the following aggregation:</p>\n\n<blockquote>\n  <p>For each user, calculate the number of events for each type.</p>\n</blockquote>\n\n<p>My AQL query looks like this:</p>\n\n<pre><code>FOR event IN events\n  COLLECT\n    email = event.metadata.emailAddress,\n    type = event.type WITH COUNT INTO count\n  LIMIT 10\n  RETURN {\n      email,\n      t: {type, count}\n  }\n</code></pre>\n\n<p>This produces the following output:</p>\n\n<pre><code>{ email: '_84@example.com', t: { type: 'CREATE', count: 203 } }\n{ email: '_84@example.com', t: { type: 'DEPLOY', count: 214 } }\n{ email: '_84@example.com', t: { type: 'REMOVE', count: 172 } }\n{ email: '_84@example.com', t: { type: 'START', count: 204 } }\n{ email: '_84@example.com', t: { type: 'STOP', count: 187 } }\n{ email: '_95@example.com', t: { type: 'CREATE', count: 189 } }\n{ email: '_95@example.com', t: { type: 'DEPLOY', count: 173 } }\n{ email: '_95@example.com', t: { type: 'REMOVE', count: 194 } }\n{ email: '_95@example.com', t: { type: 'START', count: 213 } }\n{ email: '_95@example.com', t: { type: 'STOP', count: 208 } }\n...\n</code></pre>\n\n<p>i.e. I got a row for each type. But I want results like this:</p>\n\n<pre><code>{ email: foo@bar.com, count1: 203, count2: 214, count3: 172 ...}\n{ email: aaa@fff.com, count1: 189, count2: 173, count3: 194 ...}\n...\n</code></pre>\n\n<p>OR</p>\n\n<pre><code> { email: foo@bar.com, CREATE: 203, DEPLOY: 214, ... }\n ...\n</code></pre>\n\n<p>i.e. to group again the results.</p>\n\n<p>I also need to sort the results (not the events) by the counts: to return e.g. the top 10 users with max number of <code>CREATE</code> events.</p>\n\n<p>How to do that?</p>\n\n<h2>ONE SOLUTION</h2>\n\n<p>One solution is here, check the accepted answer for more.</p>\n\n<pre><code>FOR a in (FOR event IN events\n  COLLECT\n    emailAddress = event.metadata.emailAddress,\n    type = event.type WITH COUNT INTO count\n  COLLECT email = emailAddress INTO perUser KEEP type, count\n  RETURN MERGE(PUSH(perUser[* RETURN {[LOWER(CURRENT.type)]: CURRENT.count}], {email})))\nSORT a.create desc\nLIMIT 10\nRETURN a\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "ssl",
+                "apache2",
+                "ssl-certificate"
+            ],
+            "owner": {
+                "reputation": 64,
+                "user_id": 4693532,
+                "user_type": "registered",
+                "accept_rate": 86,
+                "profile_image": "https://i.stack.imgur.com/thJpO.png?s=128&g=1",
+                "display_name": "rdabrowski",
+                "link": "https://stackoverflow.com/users/4693532/rdabrowski"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524210569,
+            "creation_date": 1524210569,
+            "question_id": 49936664,
+            "body_markdown": "I have a problem after updating ssl certificate in apache2. It seems to use an old one. I know that there is a lot of questions about it, but none of answers helped me.\r\n\r\nMy VirtualHost configuration:\r\n\r\n    *:80                   domain.eu (/etc/apache2/sites-enabled/domain.conf:1)\r\n    *:443                  domain.eu (/etc/apache2/sites-enabled/domain_ssl.conf:1)\r\n    ServerRoot: &quot;/etc/apache2&quot;\r\n    Main DocumentRoot: &quot;/var/www/html&quot;\r\n    Main ErrorLog: &quot;/var/log/apache2/error.log&quot;\r\n    Mutex watchdog-callback: using_defaults\r\n    Mutex rewrite-map: using_defaults\r\n    Mutex ssl-stapling: using_defaults\r\n    Mutex proxy: using_defaults\r\n    Mutex ssl-cache: using_defaults\r\n    Mutex default: dir=&quot;/var/lock/apache2&quot; mechanism=fcntl\r\n    PidFile: &quot;/var/run/apache2/apache2.pid&quot;\r\n    Define: DUMP_VHOSTS\r\n    Define: DUMP_RUN_CFG\r\n    User: name=&quot;www-data&quot; id=33\r\n    Group: name=&quot;www-data&quot; id=33\r\n\r\ndomain_ssl.conf\r\n\r\n    &lt;VirtualHost *:443&gt;\r\n    \r\n            ServerName domain.eu\r\n    \r\n            ServerAdmin webmaster@localhost\r\n            DocumentRoot /var/www/html/prek/webroot/\r\n    \r\n            ErrorLog ${APACHE_LOG_DIR}/venroll_ssl_error.log\r\n            CustomLog ${APACHE_LOG_DIR}/venroll_ssl_access.log combined\r\n    \r\n    \tServerSignature Off\r\n    \r\n        SSLEngine on\r\n        SSLCertificateFile /etc/apache2/cert/certificate.crt\r\n    \tSSLCertificateKeyFile /etc/apache2/cert/domain.key\r\n    \tSSLCertificateChainFile /etc/apache2/cert/root_ca_2.ca-bundle\r\n    \r\n    \r\n    \t#SSLProxyEngine on\r\n    \tProxyRequests off\r\n    \r\n    \tSSLProxyEngine on\r\n    \tSSLProxyVerify none \r\n    \tSSLProxyCheckPeerCN off\r\n    \tSSLProxyCheckPeerName off\r\n    \tSSLProxyCheckPeerExpire off\r\n\r\n        #PROXIES CONFIGURATION\r\n    \r\n            &lt;Directory /var/www/html&gt;\r\n                    Options Indexes FollowSymLinks MultiViews\r\n                    AllowOverride All\r\n                    Order allow,deny\r\n                    allow from all\r\n            &lt;/Directory&gt;\r\n    \r\n    &lt;/VirtualHost&gt;\r\n\r\nOf course certificate files are in place.\r\n\r\nWhen I call localhost:443 via `openssl s_client -connect localhost:443` it gets me a new certificate and everything is fine, but when I call `openssl s_client -connect domain.eu:443` it shows an old one. Can you explain me why and how to fix it?\r\n",
+            "link": "https://stackoverflow.com/questions/49936664/old-certificate-in-apache2-after-update",
+            "title": "Old certificate in apache2 after update",
+            "body": "<p>I have a problem after updating ssl certificate in apache2. It seems to use an old one. I know that there is a lot of questions about it, but none of answers helped me.</p>\n\n<p>My VirtualHost configuration:</p>\n\n<pre><code>*:80                   domain.eu (/etc/apache2/sites-enabled/domain.conf:1)\n*:443                  domain.eu (/etc/apache2/sites-enabled/domain_ssl.conf:1)\nServerRoot: \"/etc/apache2\"\nMain DocumentRoot: \"/var/www/html\"\nMain ErrorLog: \"/var/log/apache2/error.log\"\nMutex watchdog-callback: using_defaults\nMutex rewrite-map: using_defaults\nMutex ssl-stapling: using_defaults\nMutex proxy: using_defaults\nMutex ssl-cache: using_defaults\nMutex default: dir=\"/var/lock/apache2\" mechanism=fcntl\nPidFile: \"/var/run/apache2/apache2.pid\"\nDefine: DUMP_VHOSTS\nDefine: DUMP_RUN_CFG\nUser: name=\"www-data\" id=33\nGroup: name=\"www-data\" id=33\n</code></pre>\n\n<p>domain_ssl.conf</p>\n\n<pre><code>&lt;VirtualHost *:443&gt;\n\n        ServerName domain.eu\n\n        ServerAdmin webmaster@localhost\n        DocumentRoot /var/www/html/prek/webroot/\n\n        ErrorLog ${APACHE_LOG_DIR}/venroll_ssl_error.log\n        CustomLog ${APACHE_LOG_DIR}/venroll_ssl_access.log combined\n\n    ServerSignature Off\n\n    SSLEngine on\n    SSLCertificateFile /etc/apache2/cert/certificate.crt\n    SSLCertificateKeyFile /etc/apache2/cert/domain.key\n    SSLCertificateChainFile /etc/apache2/cert/root_ca_2.ca-bundle\n\n\n    #SSLProxyEngine on\n    ProxyRequests off\n\n    SSLProxyEngine on\n    SSLProxyVerify none \n    SSLProxyCheckPeerCN off\n    SSLProxyCheckPeerName off\n    SSLProxyCheckPeerExpire off\n\n    #PROXIES CONFIGURATION\n\n        &lt;Directory /var/www/html&gt;\n                Options Indexes FollowSymLinks MultiViews\n                AllowOverride All\n                Order allow,deny\n                allow from all\n        &lt;/Directory&gt;\n\n&lt;/VirtualHost&gt;\n</code></pre>\n\n<p>Of course certificate files are in place.</p>\n\n<p>When I call localhost:443 via <code>openssl s_client -connect localhost:443</code> it gets me a new certificate and everything is fine, but when I call <code>openssl s_client -connect domain.eu:443</code> it shows an old one. Can you explain me why and how to fix it?</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net-mvc"
+            ],
+            "owner": {
+                "reputation": 604,
+                "user_id": 5073958,
+                "user_type": "registered",
+                "accept_rate": 81,
+                "profile_image": "https://i.stack.imgur.com/ypA94.png?s=128&g=1",
+                "display_name": "Caz1224",
+                "link": "https://stackoverflow.com/users/5073958/caz1224"
+            },
+            "is_answered": true,
+            "view_count": 61,
+            "accepted_answer_id": 49934124,
+            "answer_count": 4,
+            "score": 0,
+            "last_activity_date": 1524210560,
+            "creation_date": 1524196838,
+            "last_edit_date": 1524210560,
+            "question_id": 49933786,
+            "body_markdown": "I am running into an issue and am not sure what the solution is.\r\nWHat I need to do is get a string, find the first fully capitalized word eg. (WORD) not (Word) and then split the string on that.\r\n\r\nFor instance the data looks like this. \r\n\r\n    &quot;Text 123 and more Text THIS IS MORE TEXT&quot;\r\n\r\nThe result needs to be \r\n\r\n\r\n    [0] &quot;Text 123 and more Text&quot;\r\n\r\n    [1] &quot;THIS IS MORE TEXT&quot;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49933786/c-get-the-first-instance-of-a-complete-capital-word",
+            "title": "C# Get the first instance of a complete capital word",
+            "body": "<p>I am running into an issue and am not sure what the solution is.\nWHat I need to do is get a string, find the first fully capitalized word eg. (WORD) not (Word) and then split the string on that.</p>\n\n<p>For instance the data looks like this. </p>\n\n<pre><code>\"Text 123 and more Text THIS IS MORE TEXT\"\n</code></pre>\n\n<p>The result needs to be </p>\n\n<pre><code>[0] \"Text 123 and more Text\"\n\n[1] \"THIS IS MORE TEXT\"\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "spring",
+                "spring-boot",
+                "swagger",
+                "swagger-ui"
+            ],
+            "owner": {
+                "reputation": 2267,
+                "user_id": 3551773,
+                "user_type": "registered",
+                "accept_rate": 10,
+                "profile_image": "https://www.gravatar.com/avatar/6590d92cb7423ec48b0e6114549bb1f4?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Bravo",
+                "link": "https://stackoverflow.com/users/3551773/bravo"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524210556,
+            "creation_date": 1524208038,
+            "question_id": 49935962,
+            "body_markdown": "In my spring controller class i have below two methods\r\n\r\n \r\n\r\n    @GetMapping(value = &quot;/published_messages&quot;, produces = MediaType.APPLICATION_JSON_VALUE)\r\n        public ResponseEntity&lt;String&gt; handleEmptyQueryParam() throws Exception\r\n        {\r\n        \treturn ResponseEntity.status(HttpStatus.BAD_REQUEST).body(&quot;Invalid Request , No Request Param received in the request&quot;);\r\n        }\r\n        \r\n        @GetMapping(value = &quot;/published_messages&quot;, produces = MediaType.APPLICATION_JSON_VALUE)\r\n        public ResponseEntity&lt;String&gt; getEdiDetailsByusername(@RequestParam(required=false, value=&quot;username&quot;) String username) throws Exception\r\n        {\r\n        \tList&lt;String&gt; userList = userService.getUserList(username);\r\n            return isAValidResponse(userList);\r\n        }\r\n\r\nwith this when starting the app , got below exception\r\n\r\n\r\n    Caused by: java.lang.IllegalStateException: Ambiguous mapping. Cannot map &#39;UserAppController&#39; method \r\n    public org.springframework.http.ResponseEntity&lt;java.lang.String&gt; com.rby.trans.controller.UserAppController.getEdiDetailsByusername(java.lang.String) throws java.lang.Exception\r\n    to {[/published_messages],methods=[GET],produces=[application/json]}: There is already &#39;UserAppController&#39; bean method\r\n    public org.springframework.http.ResponseEntity&lt;java.lang.String&gt; com.tgt.trans.controller.UserAppController.handleEmptyQueryParam() throws java.lang.Exception mapped.\r\n    \tat org.springframework.web.servlet.handler.AbstractHandlerMethodMapping$MappingRegistry.assertUniqueMethodMapping(AbstractHandlerMethodMapping.java:576)\r\n    \tat org.springframework.web.servlet.handler.AbstractHandlerMethodMapping$MappingRegistry.register(AbstractHandlerMethodMapping.java:540)\r\n    \tat org.springframework.web.servlet.handler.AbstractHandlerMethodMapping.registerHandlerMethod(AbstractHandlerMethodMapping.java:264)\r\n    \tat org.springframework.web.servlet.handler.AbstractHandlerMethodMapping.detectHandlerMethods(AbstractHandlerMethodMapping.java:250)\r\n    \tat org.springframework.web.servlet.handler.AbstractHandlerMethodMapping.initHandlerMethods(AbstractHandlerMethodMapping.java:214)\r\n    \tat org.springframework.web.servlet.handler.AbstractHandlerMethodMapping.afterPropertiesSet(AbstractHandlerMethodMapping.java:184)\r\n    \tat org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping.afterPropertiesSet(RequestMappingHandlerMapping.java:127)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1642)\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1579)\r\n    \t... 50 common frames omitted\r\n\r\n\r\nseems something issue with swagger , which we have below dependencies in our build file \r\n\r\n\r\n    compile group: &#39;io.springfox&#39;, name: &#39;springfox-swagger2&#39;, version: &#39;2.4.0&#39;\r\n        compile group: &#39;io.springfox&#39;, name: &#39;springfox-swagger-ui&#39;, version: &#39;2.4.0&#39;\r\n\r\n\r\ncan anyone suggest what to in this case ,\r\n\r\nwhatever am following and doing in the rest controller is correct only and it is possible to do that in spring , then why swagger giving errors on that ?",
+            "link": "https://stackoverflow.com/questions/49935962/how-to-solve-spring-swagger-ambiguous-mapping",
+            "title": "How to solve Spring swagger Ambiguous mapping?",
+            "body": "<p>In my spring controller class i have below two methods</p>\n\n<pre><code>@GetMapping(value = \"/published_messages\", produces = MediaType.APPLICATION_JSON_VALUE)\n    public ResponseEntity&lt;String&gt; handleEmptyQueryParam() throws Exception\n    {\n        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(\"Invalid Request , No Request Param received in the request\");\n    }\n\n    @GetMapping(value = \"/published_messages\", produces = MediaType.APPLICATION_JSON_VALUE)\n    public ResponseEntity&lt;String&gt; getEdiDetailsByusername(@RequestParam(required=false, value=\"username\") String username) throws Exception\n    {\n        List&lt;String&gt; userList = userService.getUserList(username);\n        return isAValidResponse(userList);\n    }\n</code></pre>\n\n<p>with this when starting the app , got below exception</p>\n\n<pre><code>Caused by: java.lang.IllegalStateException: Ambiguous mapping. Cannot map 'UserAppController' method \npublic org.springframework.http.ResponseEntity&lt;java.lang.String&gt; com.rby.trans.controller.UserAppController.getEdiDetailsByusername(java.lang.String) throws java.lang.Exception\nto {[/published_messages],methods=[GET],produces=[application/json]}: There is already 'UserAppController' bean method\npublic org.springframework.http.ResponseEntity&lt;java.lang.String&gt; com.tgt.trans.controller.UserAppController.handleEmptyQueryParam() throws java.lang.Exception mapped.\n    at org.springframework.web.servlet.handler.AbstractHandlerMethodMapping$MappingRegistry.assertUniqueMethodMapping(AbstractHandlerMethodMapping.java:576)\n    at org.springframework.web.servlet.handler.AbstractHandlerMethodMapping$MappingRegistry.register(AbstractHandlerMethodMapping.java:540)\n    at org.springframework.web.servlet.handler.AbstractHandlerMethodMapping.registerHandlerMethod(AbstractHandlerMethodMapping.java:264)\n    at org.springframework.web.servlet.handler.AbstractHandlerMethodMapping.detectHandlerMethods(AbstractHandlerMethodMapping.java:250)\n    at org.springframework.web.servlet.handler.AbstractHandlerMethodMapping.initHandlerMethods(AbstractHandlerMethodMapping.java:214)\n    at org.springframework.web.servlet.handler.AbstractHandlerMethodMapping.afterPropertiesSet(AbstractHandlerMethodMapping.java:184)\n    at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping.afterPropertiesSet(RequestMappingHandlerMapping.java:127)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1642)\n    at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1579)\n    ... 50 common frames omitted\n</code></pre>\n\n<p>seems something issue with swagger , which we have below dependencies in our build file </p>\n\n<pre><code>compile group: 'io.springfox', name: 'springfox-swagger2', version: '2.4.0'\n    compile group: 'io.springfox', name: 'springfox-swagger-ui', version: '2.4.0'\n</code></pre>\n\n<p>can anyone suggest what to in this case ,</p>\n\n<p>whatever am following and doing in the rest controller is correct only and it is possible to do that in spring , then why swagger giving errors on that ?</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 299
+}

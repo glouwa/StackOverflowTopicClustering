@@ -1,0 +1,829 @@
+{
+    "items": [
+        {
+            "tags": [
+                "mysql",
+                "triggers",
+                "auto-increment",
+                "last-insert-id"
+            ],
+            "owner": {
+                "reputation": 333,
+                "user_id": 6430078,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10204857806084476/picture?type=large",
+                "display_name": "Sergio Bernardo",
+                "link": "https://stackoverflow.com/users/6430078/sergio-bernardo"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524161333,
+            "creation_date": 1524161333,
+            "question_id": 49927545,
+            "body_markdown": "**Challenge:**\r\n\r\nCreate a method to set &quot;auto_increment&quot; values for tables in a non-sequential way.\r\nThe goal is to override the &quot;auto_increment&quot; mechanism and allow the function &quot;LAST_INSERT_ID()&quot; to continue working as expected (returning an INT), so that no changes are needed in software side.\r\n\r\n**My Solution**\r\n\r\nThe method I found is based on an auxiliary table (*unique_id*), that stores values available to be assigned. Values are then selected randomly, and removed from the tables as used. When the table gets empty, a new set of ID&#39;s is created.\r\n\r\nThis example is working as expected, but with one problem.\r\nTables for the demo:\r\n\r\n    CREATE TABLE `unique_id` (\r\n\t  `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,\r\n\t  PRIMARY KEY (`id`)\r\n    )\r\n    COLLATE=&#39;latin1_swedish_ci&#39;\r\n    ENGINE=InnoDB\r\n    AUTO_INCREMENT=100;\r\n    \r\n    CREATE TABLE `test_unique_id` (\r\n\t   `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,\r\n\t   `name` VARCHAR(50) NOT NULL DEFAULT &#39;0&#39;,\r\n\t   PRIMARY KEY (`id`)\r\n    )\r\n    COLLATE=&#39;latin1_swedish_ci&#39;\r\n    ENGINE=InnoDB\r\n    AUTO_INCREMENT=1;\r\n    \r\nDefined a stored procedure and a function:\r\n    \r\n    DELIMITER $$  \r\n    DROP PROCEDURE IF EXISTS `UNIQUE_ID_REFILL`$$\r\n    CREATE PROCEDURE UNIQUE_ID_REFILL()\r\n    BEGIN\r\n       DECLARE a INT Default 0 ;\r\n       simple_loop: LOOP\r\n          SET a=a+1;\r\n          INSERT INTO unique_id (id) values(null);\r\n          IF a=100 THEN\r\n             LEAVE simple_loop;\r\n          END IF;\r\n       END LOOP simple_loop;\r\n    END $$\r\n    \r\n    DROP FUNCTION IF EXISTS `UNIQUE_ID_GET`$$\r\n    CREATE FUNCTION UNIQUE_ID_GET()\r\n    RETURNS INT(11)\r\n    MODIFIES SQL DATA\r\n    BEGIN\r\n    \tDECLARE new_id INT(11);\r\n    \tDECLARE unique_id_count INT(11);\r\n    \tSET new_id = 0;\r\n    \tSELECT COUNT(*) INTO unique_id_count FROM unique_id;\r\n    \tIF unique_id_count=0 THEN\r\n    \t\tCALL UNIQUE_ID_REFILL();\r\n    \tEND IF;\r\n        SELECT id INTO new_id FROM unique_id ORDER BY RAND() LIMIT 1;\r\n        DELETE FROM unique_id WHERE id = new_id;\r\n        RETURN new_id;\r\n    END $$\r\n    \r\nCreated a Trigger on the destination table (*test_unique_id*):\r\n    \r\n    CREATE TRIGGER test_unique_id__unique_id BEFORE INSERT ON test_unique_id\r\n      FOR EACH ROW \r\n        SET NEW.id = UNIQUE_ID_GET();\r\n\r\n\r\nThe solution is getting the random ID&#39;s as expected:\r\n\r\n    INSERT INTO test_unique_id(name) VALUES (&#39;A&#39;),(&#39;B&#39;),(&#39;C&#39;);\r\n\r\nCreates the rows:\r\n\r\n    id   name\r\n    154  &#39;A&#39;\r\n    129  &#39;B&#39;\r\n    173  &#39;C&#39;\r\n\r\n**The Problem**\r\n\r\nThe main problem is that LAST_INSERT_ID() stops working... and the software side is broken:\r\n\r\n    SELECT LAST_INSERT_ID();\r\n    0\r\n\r\nAny ideas on how to solve this problem? or any other different approach to the challenge? \r\n\r\nThank you very much.",
+            "link": "https://stackoverflow.com/questions/49927545/mysql-non-sequential-id",
+            "title": "MySQL Non Sequential ID",
+            "body": "<p><strong>Challenge:</strong></p>\n\n<p>Create a method to set \"auto_increment\" values for tables in a non-sequential way.\nThe goal is to override the \"auto_increment\" mechanism and allow the function \"LAST_INSERT_ID()\" to continue working as expected (returning an INT), so that no changes are needed in software side.</p>\n\n<p><strong>My Solution</strong></p>\n\n<p>The method I found is based on an auxiliary table (<em>unique_id</em>), that stores values available to be assigned. Values are then selected randomly, and removed from the tables as used. When the table gets empty, a new set of ID's is created.</p>\n\n<p>This example is working as expected, but with one problem.\nTables for the demo:</p>\n\n<pre><code>CREATE TABLE `unique_id` (\n  `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,\n  PRIMARY KEY (`id`)\n)\nCOLLATE='latin1_swedish_ci'\nENGINE=InnoDB\nAUTO_INCREMENT=100;\n\nCREATE TABLE `test_unique_id` (\n   `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,\n   `name` VARCHAR(50) NOT NULL DEFAULT '0',\n   PRIMARY KEY (`id`)\n)\nCOLLATE='latin1_swedish_ci'\nENGINE=InnoDB\nAUTO_INCREMENT=1;\n</code></pre>\n\n<p>Defined a stored procedure and a function:</p>\n\n<pre><code>DELIMITER $$  \nDROP PROCEDURE IF EXISTS `UNIQUE_ID_REFILL`$$\nCREATE PROCEDURE UNIQUE_ID_REFILL()\nBEGIN\n   DECLARE a INT Default 0 ;\n   simple_loop: LOOP\n      SET a=a+1;\n      INSERT INTO unique_id (id) values(null);\n      IF a=100 THEN\n         LEAVE simple_loop;\n      END IF;\n   END LOOP simple_loop;\nEND $$\n\nDROP FUNCTION IF EXISTS `UNIQUE_ID_GET`$$\nCREATE FUNCTION UNIQUE_ID_GET()\nRETURNS INT(11)\nMODIFIES SQL DATA\nBEGIN\n    DECLARE new_id INT(11);\n    DECLARE unique_id_count INT(11);\n    SET new_id = 0;\n    SELECT COUNT(*) INTO unique_id_count FROM unique_id;\n    IF unique_id_count=0 THEN\n        CALL UNIQUE_ID_REFILL();\n    END IF;\n    SELECT id INTO new_id FROM unique_id ORDER BY RAND() LIMIT 1;\n    DELETE FROM unique_id WHERE id = new_id;\n    RETURN new_id;\nEND $$\n</code></pre>\n\n<p>Created a Trigger on the destination table (<em>test_unique_id</em>):</p>\n\n<pre><code>CREATE TRIGGER test_unique_id__unique_id BEFORE INSERT ON test_unique_id\n  FOR EACH ROW \n    SET NEW.id = UNIQUE_ID_GET();\n</code></pre>\n\n<p>The solution is getting the random ID's as expected:</p>\n\n<pre><code>INSERT INTO test_unique_id(name) VALUES ('A'),('B'),('C');\n</code></pre>\n\n<p>Creates the rows:</p>\n\n<pre><code>id   name\n154  'A'\n129  'B'\n173  'C'\n</code></pre>\n\n<p><strong>The Problem</strong></p>\n\n<p>The main problem is that LAST_INSERT_ID() stops working... and the software side is broken:</p>\n\n<pre><code>SELECT LAST_INSERT_ID();\n0\n</code></pre>\n\n<p>Any ideas on how to solve this problem? or any other different approach to the challenge? </p>\n\n<p>Thank you very much.</p>\n"
+        },
+        {
+            "tags": [
+                "share",
+                "docker",
+                "host",
+                "mount"
+            ],
+            "owner": {
+                "reputation": 3327,
+                "user_id": 2125837,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://www.gravatar.com/avatar/760b6ec2b6e1cba2b0218178425f4cde?s=128&d=identicon&r=PG",
+                "display_name": "xpt",
+                "link": "https://stackoverflow.com/users/2125837/xpt"
+            },
+            "is_answered": true,
+            "view_count": 119747,
+            "accepted_answer_id": 35828197,
+            "answer_count": 6,
+            "score": 145,
+            "last_activity_date": 1524161327,
+            "creation_date": 1411696844,
+            "last_edit_date": 1457275558,
+            "question_id": 26050899,
+            "body_markdown": "Original question: How to use the VOLUME instruction in Dockerfile?\r\n\r\n**Revised:** update from the answer below, so the actual question I want to solve is -- how to mount host volumes into docker containers in Dockerfile during build, i.e., having the `docker run -v /export:/export` capability during `docker build`.\r\n\r\n**Latest Update:** There is a solution now. Although it is not strictly Docker, but &quot;*it solves all the weak points of Dockerfile*&quot;, so I think it is the perfect answer. Check my latest answer for details.\r\n\r\n\r\n**Update:** So the answer is &quot;Not possible&quot;. I can accept it as an answer as I know the issue has been extensively discussed at https://github.com/docker/docker/issues/3156. I can understand that portability is a paramount issue for docker developer; but as a docker user, I have to say I&#39;m very disappointed about this missing feature. Let me close my argument with a quote from aforementioned discussion: &quot;*I would like to use Gentoo as a base image but definitely don&#39;t want &gt; 1GB of Portage tree data to be in any of the layers once the image has been built. You could have some nice a compact containers if it wasn&#39;t for the gigantic portage tree having to appear in the image during the install.*&quot; Yes, I can use wget or curl to download whatever I need, but the fact that merely a portability consideration is now forcing me to download &gt; 1GB of Portage tree each time I build a Gentoo base image is neither efficient nor user friendly. Further more, the package repository WILL ALWAYS be under /usr/portage, thus ALWAYS PORTABLE under Gentoo. Again, I respect the decision, but please allow me expressing my disappointment as well in the mean time. Thanks.\r\n\r\nOriginal question in details:\r\n\r\nFrom \r\n\r\n**Share Directories via Volumes**  \r\nhttp://docker.readthedocs.org/en/v0.7.3/use/working_with_volumes/\r\n\r\nit says that Data volumes feature &quot;have been available since version 1 of the Docker Remote API&quot;. My docker is of version 1.2.0, but I found the example given in above article not working:\r\n\r\n    # BUILD-USING: &#160;&#160;&#160;&#160;&#160;&#160;&#160;docker build -t data .\r\n    # RUN-USING: &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;docker run -name DATA data\r\n    FROM &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;busybox\r\n    VOLUME &#160;&#160;&#160;&#160;&#160;&#160;&#160;[&quot;/var/volume1&quot;, &quot;/var/volume2&quot;]\r\n    CMD &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;[&quot;/usr/bin/true&quot;]\r\n\r\nWhat&#39;s the proper way in Dockerfile to mount host-mounted volumes into docker containers,  via the VOLUME command?\r\n\r\n    $ apt-cache policy lxc-docker\r\n    lxc-docker:\r\n      Installed: 1.2.0\r\n      Candidate: 1.2.0\r\n      Version table:\r\n     *** 1.2.0 0\r\n            500 https://get.docker.io/ubuntu/ docker/main amd64 Packages\r\n            100 /var/lib/dpkg/status\r\n\r\n    $ cat Dockerfile \r\n    FROM          debian:sid\r\n    \r\n    VOLUME        [&quot;/export&quot;]\r\n    RUN ls -l /export\r\n    CMD ls -l /export\r\n    \r\n    $ docker build -t data .\r\n    Sending build context to Docker daemon  2.56 kB\r\n    Sending build context to Docker daemon \r\n    Step 0 : FROM          debian:sid\r\n     ---&gt; 77e97a48ce6a\r\n    Step 1 : VOLUME        [&quot;/export&quot;]\r\n     ---&gt; Using cache\r\n     ---&gt; 59b69b65a074\r\n    Step 2 : RUN ls -l /export\r\n     ---&gt; Running in df43c78d74be\r\n    total 0\r\n     ---&gt; 9d29a6eb263f\r\n    Removing intermediate container df43c78d74be\r\n    Step 3 : CMD ls -l /export\r\n     ---&gt; Running in 8e4916d3e390\r\n     ---&gt; d6e7e1c52551\r\n    Removing intermediate container 8e4916d3e390\r\n    Successfully built d6e7e1c52551\r\n    \r\n    $ docker run data\r\n    total 0\r\n    \r\n    $ ls -l /export | wc \r\n         20     162    1131\r\n\r\n    $ docker -v\r\n    Docker version 1.2.0, build fa7b24f\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/26050899/how-to-mount-host-volumes-into-docker-containers-in-dockerfile-during-build",
+            "title": "How to mount host volumes into docker containers in Dockerfile during build",
+            "body": "<p>Original question: How to use the VOLUME instruction in Dockerfile?</p>\n\n<p><strong>Revised:</strong> update from the answer below, so the actual question I want to solve is -- how to mount host volumes into docker containers in Dockerfile during build, i.e., having the <code>docker run -v /export:/export</code> capability during <code>docker build</code>.</p>\n\n<p><strong>Latest Update:</strong> There is a solution now. Although it is not strictly Docker, but \"<em>it solves all the weak points of Dockerfile</em>\", so I think it is the perfect answer. Check my latest answer for details.</p>\n\n<p><strong>Update:</strong> So the answer is \"Not possible\". I can accept it as an answer as I know the issue has been extensively discussed at <a href=\"https://github.com/docker/docker/issues/3156\">https://github.com/docker/docker/issues/3156</a>. I can understand that portability is a paramount issue for docker developer; but as a docker user, I have to say I'm very disappointed about this missing feature. Let me close my argument with a quote from aforementioned discussion: \"<em>I would like to use Gentoo as a base image but definitely don't want > 1GB of Portage tree data to be in any of the layers once the image has been built. You could have some nice a compact containers if it wasn't for the gigantic portage tree having to appear in the image during the install.</em>\" Yes, I can use wget or curl to download whatever I need, but the fact that merely a portability consideration is now forcing me to download > 1GB of Portage tree each time I build a Gentoo base image is neither efficient nor user friendly. Further more, the package repository WILL ALWAYS be under /usr/portage, thus ALWAYS PORTABLE under Gentoo. Again, I respect the decision, but please allow me expressing my disappointment as well in the mean time. Thanks.</p>\n\n<p>Original question in details:</p>\n\n<p>From </p>\n\n<p><strong>Share Directories via Volumes</strong><br>\n<a href=\"http://docker.readthedocs.org/en/v0.7.3/use/working_with_volumes/\">http://docker.readthedocs.org/en/v0.7.3/use/working_with_volumes/</a></p>\n\n<p>it says that Data volumes feature \"have been available since version 1 of the Docker Remote API\". My docker is of version 1.2.0, but I found the example given in above article not working:</p>\n\n<pre><code># BUILD-USING:        docker build -t data .\n# RUN-USING:          docker run -name DATA data\nFROM          busybox\nVOLUME        [\"/var/volume1\", \"/var/volume2\"]\nCMD           [\"/usr/bin/true\"]\n</code></pre>\n\n<p>What's the proper way in Dockerfile to mount host-mounted volumes into docker containers,  via the VOLUME command?</p>\n\n<pre><code>$ apt-cache policy lxc-docker\nlxc-docker:\n  Installed: 1.2.0\n  Candidate: 1.2.0\n  Version table:\n *** 1.2.0 0\n        500 https://get.docker.io/ubuntu/ docker/main amd64 Packages\n        100 /var/lib/dpkg/status\n\n$ cat Dockerfile \nFROM          debian:sid\n\nVOLUME        [\"/export\"]\nRUN ls -l /export\nCMD ls -l /export\n\n$ docker build -t data .\nSending build context to Docker daemon  2.56 kB\nSending build context to Docker daemon \nStep 0 : FROM          debian:sid\n ---&gt; 77e97a48ce6a\nStep 1 : VOLUME        [\"/export\"]\n ---&gt; Using cache\n ---&gt; 59b69b65a074\nStep 2 : RUN ls -l /export\n ---&gt; Running in df43c78d74be\ntotal 0\n ---&gt; 9d29a6eb263f\nRemoving intermediate container df43c78d74be\nStep 3 : CMD ls -l /export\n ---&gt; Running in 8e4916d3e390\n ---&gt; d6e7e1c52551\nRemoving intermediate container 8e4916d3e390\nSuccessfully built d6e7e1c52551\n\n$ docker run data\ntotal 0\n\n$ ls -l /export | wc \n     20     162    1131\n\n$ docker -v\nDocker version 1.2.0, build fa7b24f\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "vmware",
+                "apache-storm"
+            ],
+            "owner": {
+                "reputation": 5,
+                "user_id": 4938029,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/CTWTF.jpg?s=128&g=1",
+                "display_name": "avantika",
+                "link": "https://stackoverflow.com/users/4938029/avantika"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524161318,
+            "creation_date": 1524119627,
+            "question_id": 49914220,
+            "body_markdown": "I do not have machines to setup my cluster. Is there any way storm multi-node cluster can be setup and run successfully in single machine ?",
+            "link": "https://stackoverflow.com/questions/49914220/can-i-setup-apache-storm-multi-node-cluster-in-vmware",
+            "title": "Can I setup Apache Storm multi-node cluster in VMWare?",
+            "body": "<p>I do not have machines to setup my cluster. Is there any way storm multi-node cluster can be setup and run successfully in single machine ?</p>\n"
+        },
+        {
+            "tags": [
+                "c",
+                "arrays"
+            ],
+            "owner": {
+                "reputation": 25,
+                "user_id": 1936582,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/c387c0f01f31cd5b17b845f92302d055?s=128&d=identicon&r=PG",
+                "display_name": "user1936582",
+                "link": "https://stackoverflow.com/users/1936582/user1936582"
+            },
+            "is_answered": true,
+            "view_count": 48,
+            "accepted_answer_id": 49925316,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1524161313,
+            "creation_date": 1524152534,
+            "question_id": 49925115,
+            "body_markdown": "I am attempting to use a macro to initialize all the array parameters of a structure array where one of the parameters is an array.\r\n\r\nMy struct is \r\n\r\n    typedef struct\r\n    {\r\n      int size_parts;\r\n      int *parts;\r\n      int width;\r\n      int length;\r\n    } parts_struct;\r\nAnd my macro is defined as\r\n\r\n    #define SET_ARRAY_INPUT(_width, _length, ...) {width:_width, length:_length, parts:{__VA_ARGS__}, size_parts:(sizeof((int[]){__VA_ARGS__})/sizeof(int))}\r\n\r\nMy array is initialized as\r\n\r\n    static parts_struct parts[] = {\r\n       SET_ARRAY_INPUT(2, 3, 9354, 39458, 3294),\r\n       SET_ARRAY_INPUT(4, 2, 9354, 3294)\r\n    }\r\n\r\nHowever this is always failing and I keep getting error &quot;error: braces around scalar initializer for type&quot;. Any help would be greatly appreciated.",
+            "link": "https://stackoverflow.com/questions/49925115/initializing-an-array-of-structs-in-c-using-macros-with-an-array-parameter",
+            "title": "Initializing an array of structs in C using Macros with an array parameter",
+            "body": "<p>I am attempting to use a macro to initialize all the array parameters of a structure array where one of the parameters is an array.</p>\n\n<p>My struct is </p>\n\n<pre><code>typedef struct\n{\n  int size_parts;\n  int *parts;\n  int width;\n  int length;\n} parts_struct;\n</code></pre>\n\n<p>And my macro is defined as</p>\n\n<pre><code>#define SET_ARRAY_INPUT(_width, _length, ...) {width:_width, length:_length, parts:{__VA_ARGS__}, size_parts:(sizeof((int[]){__VA_ARGS__})/sizeof(int))}\n</code></pre>\n\n<p>My array is initialized as</p>\n\n<pre><code>static parts_struct parts[] = {\n   SET_ARRAY_INPUT(2, 3, 9354, 39458, 3294),\n   SET_ARRAY_INPUT(4, 2, 9354, 3294)\n}\n</code></pre>\n\n<p>However this is always failing and I keep getting error \"error: braces around scalar initializer for type\". Any help would be greatly appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "ruby-on-rails",
+                "ubuntu-16.04"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 7815499,
+                "user_type": "registered",
+                "accept_rate": 25,
+                "profile_image": "https://www.gravatar.com/avatar/757925018d2495cbfe9d48d5c3326183?s=128&d=identicon&r=PG&f=1",
+                "display_name": "fineboy1",
+                "link": "https://stackoverflow.com/users/7815499/fineboy1"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524161309,
+            "creation_date": 1524159303,
+            "question_id": 49927000,
+            "body_markdown": "I understand the code is trying to make the executable in $HOME/.rbenv/bin available in $PATH so it can be executed from the command line but I can&#39;t figure out how the code does this. The code is shown below:\r\n\r\necho &#39;export PATH=&quot;$HOME/.rbenv/bin:$PATH&quot;&#39; &gt;&gt; $HOME/.bashrc.\r\n\r\nI know that something is being appended to the end of the bashrc file and I know export is used to export environment variables to new shells but I don&#39;t see any new shell here. And I have seen echo used in the following way: a = 5; echo $a but I can&#39;t figure out why you need it here and what is \r\n\r\nPATH=&quot;$HOME/.rbenv/bin:$PATH&quot;\r\n\r\ndoing. what does &#39;PATH&#39; represent. Is it a variable without the $ and what is &#39;bin:$PATH&#39;.",
+            "link": "https://stackoverflow.com/questions/49927000/explain-the-different-parts-of-the-code-needed-to-add-home-rbenv-bin-to-your",
+            "title": "Explain the different parts of the code needed to add $HOME/.rbenv/bin to your $PATH",
+            "body": "<p>I understand the code is trying to make the executable in $HOME/.rbenv/bin available in $PATH so it can be executed from the command line but I can't figure out how the code does this. The code is shown below:</p>\n\n<p>echo 'export PATH=\"$HOME/.rbenv/bin:$PATH\"' >> $HOME/.bashrc.</p>\n\n<p>I know that something is being appended to the end of the bashrc file and I know export is used to export environment variables to new shells but I don't see any new shell here. And I have seen echo used in the following way: a = 5; echo $a but I can't figure out why you need it here and what is </p>\n\n<p>PATH=\"$HOME/.rbenv/bin:$PATH\"</p>\n\n<p>doing. what does 'PATH' represent. Is it a variable without the $ and what is 'bin:$PATH'.</p>\n"
+        },
+        {
+            "tags": [
+                "iis",
+                "asp-classic",
+                "odbc",
+                "oledb"
+            ],
+            "owner": {
+                "reputation": 1390,
+                "user_id": 1325107,
+                "user_type": "registered",
+                "accept_rate": 57,
+                "profile_image": "https://www.gravatar.com/avatar/facf49c4fdea726502233aa328dd7994?s=128&d=identicon&r=PG",
+                "display_name": "John Brunner",
+                "link": "https://stackoverflow.com/users/1325107/john-brunner"
+            },
+            "is_answered": true,
+            "view_count": 24983,
+            "answer_count": 7,
+            "score": 2,
+            "last_activity_date": 1524161300,
+            "creation_date": 1357915653,
+            "last_edit_date": 1383667799,
+            "question_id": 14280517,
+            "body_markdown": "I have to move some customer sites from a very old IIS Server to a newer one, and some sites have troubles to work in the correct way. Most of them complain about a failure called:\r\n\r\n&gt; Microsoft OLE DB Provider for ODBC Drivers error &#39;80004005&#39; \r\n\r\n&gt; [Microsoft][ODBC Driver Manager]Data source name not found and no default driver specified.\r\n\r\nI&#39;ve read on the internet that this could depend on missing rights given to the user; other sites states that a Temp folder is missing (I can&#39;t imagine that this is right)... and there are several other &quot;solutions&quot;.\r\n\r\nOpen the rights for everone on the server (as someone stated) is not an option for me. Also it is very painful to give explicit rights to every customer (there are several customers which needs the rights).\r\n\r\nDo you know an easier solution, or a similar way, or alternative?",
+            "link": "https://stackoverflow.com/questions/14280517/ole-db-provider-for-odbc-drivers-error-80004005",
+            "title": "OLE DB Provider for ODBC Drivers Error &quot;80004005&#39;",
+            "body": "<p>I have to move some customer sites from a very old IIS Server to a newer one, and some sites have troubles to work in the correct way. Most of them complain about a failure called:</p>\n\n<blockquote>\n  <p>Microsoft OLE DB Provider for ODBC Drivers error '80004005' </p>\n  \n  <p>[Microsoft][ODBC Driver Manager]Data source name not found and no default driver specified.</p>\n</blockquote>\n\n<p>I've read on the internet that this could depend on missing rights given to the user; other sites states that a Temp folder is missing (I can't imagine that this is right)... and there are several other \"solutions\".</p>\n\n<p>Open the rights for everone on the server (as someone stated) is not an option for me. Also it is very painful to give explicit rights to every customer (there are several customers which needs the rights).</p>\n\n<p>Do you know an easier solution, or a similar way, or alternative?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "regex",
+                "string"
+            ],
+            "owner": {
+                "reputation": 9,
+                "user_id": 4431370,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-GGh9xi1eYM4/AAAAAAAAAAI/AAAAAAAAALg/ESb5nQuEpmc/photo.jpg?sz=128",
+                "display_name": "Bryce",
+                "link": "https://stackoverflow.com/users/4431370/bryce"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1524161294,
+            "creation_date": 1524158815,
+            "question_id": 49926876,
+            "body_markdown": "I have an array of HTML code that comes as a String from a Salesforce query.\r\n\r\nIf a string in that array contains two break tags followed by a sentence, I need the regex to match everything that comes after Sentence 1. For example: `Dear {!Contact.FirstName}, &lt;br /&gt; &lt;br /&gt; Sentence 1. Sentence 2. &lt;br /&gt; &lt;br /&gt; Sentence 3. Sentence 4. ***Should return: Sentence 2. &lt;br /&gt; &lt;br /&gt; Sentence 3. Sentence 4.`\r\n\r\nBut, if the string contains two break tags, a sentence, and another set of break tags, then the regex should match everything after the second set of break tags. For example: `Dear {!Contact.FirstName}, &lt;br /&gt; &lt;br /&gt; Sentence 1. &lt;br /&gt; &lt;br /&gt; Sentence 2. &lt;br /&gt; &lt;br /&gt; Sentence 3. Sentence 4. ***Should return: Sentence 2. &lt;br /&gt; &lt;br /&gt; Sentence 3. Sentence 4.`\r\n\r\nBut, if the string contains two break tags, two sentences, and another set of break tags, then the regex should match everything after Sentence 1. For example: `Dear {!Contact.FirstName}, &lt;br /&gt; &lt;br /&gt; Sentence 1. Sentence 2. &lt;br /&gt; &lt;br /&gt; Sentence 3. Sentence 4. ***Should return: Sentence 2. &lt;br /&gt; &lt;br /&gt; Sentence 3. Sentence 4.`\r\n\r\nEssentially, the first sentence should always be discarded and everything following the second sentence should match (not including any break tags that precede the match). I&#39;ve tried the following regex but with no success:\r\n`/(?&lt;=\\.\\s+&lt;br \\/&gt; &lt;br \\/&gt;)(.*)|(?&lt;=\\.\\s+[A-Z])(.*)/`\r\n",
+            "link": "https://stackoverflow.com/questions/49926876/match-2nd-sentence-in-string-using-regex-without-including-preceding-break-tags",
+            "title": "Match 2nd sentence in String using regex, without including preceding break tags",
+            "body": "<p>I have an array of HTML code that comes as a String from a Salesforce query.</p>\n\n<p>If a string in that array contains two break tags followed by a sentence, I need the regex to match everything that comes after Sentence 1. For example: <code>Dear {!Contact.FirstName}, &lt;br /&gt; &lt;br /&gt; Sentence 1. Sentence 2. &lt;br /&gt; &lt;br /&gt; Sentence 3. Sentence 4. ***Should return: Sentence 2. &lt;br /&gt; &lt;br /&gt; Sentence 3. Sentence 4.</code></p>\n\n<p>But, if the string contains two break tags, a sentence, and another set of break tags, then the regex should match everything after the second set of break tags. For example: <code>Dear {!Contact.FirstName}, &lt;br /&gt; &lt;br /&gt; Sentence 1. &lt;br /&gt; &lt;br /&gt; Sentence 2. &lt;br /&gt; &lt;br /&gt; Sentence 3. Sentence 4. ***Should return: Sentence 2. &lt;br /&gt; &lt;br /&gt; Sentence 3. Sentence 4.</code></p>\n\n<p>But, if the string contains two break tags, two sentences, and another set of break tags, then the regex should match everything after Sentence 1. For example: <code>Dear {!Contact.FirstName}, &lt;br /&gt; &lt;br /&gt; Sentence 1. Sentence 2. &lt;br /&gt; &lt;br /&gt; Sentence 3. Sentence 4. ***Should return: Sentence 2. &lt;br /&gt; &lt;br /&gt; Sentence 3. Sentence 4.</code></p>\n\n<p>Essentially, the first sentence should always be discarded and everything following the second sentence should match (not including any break tags that precede the match). I've tried the following regex but with no success:\n<code>/(?&lt;=\\.\\s+&lt;br \\/&gt; &lt;br \\/&gt;)(.*)|(?&lt;=\\.\\s+[A-Z])(.*)/</code></p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "networking",
+                "android-networking",
+                "connectivity",
+                "network-interface"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 7718036,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/544816c34ee6c2a69c81e08c8d4c2683?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user7718036",
+                "link": "https://stackoverflow.com/users/7718036/user7718036"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524161292,
+            "creation_date": 1524161292,
+            "question_id": 49927534,
+            "body_markdown": "I was looking into the network configurations in android devices. Android makes WIFI as default network preference. And I noticed only one network interface can be active at a time in android. Even ifconfig shows both wifi and rmnet_data0 interfaces UP, the routing table has routing rules applied for only one interface. Can you please point me to which file in AOSP file that these restriction implementation has been made (like register only one net_device). In ConnectivityManager.java file I saw that TYPE_WIFI was made default interface but I would not find how and where they register and unregister network interfaces when WIFI is present or not. Please guide me on this. Thanks!",
+            "link": "https://stackoverflow.com/questions/49927534/only-one-network-interface-active-at-a-time-in-android",
+            "title": "Only one network interface active at a time in android",
+            "body": "<p>I was looking into the network configurations in android devices. Android makes WIFI as default network preference. And I noticed only one network interface can be active at a time in android. Even ifconfig shows both wifi and rmnet_data0 interfaces UP, the routing table has routing rules applied for only one interface. Can you please point me to which file in AOSP file that these restriction implementation has been made (like register only one net_device). In ConnectivityManager.java file I saw that TYPE_WIFI was made default interface but I would not find how and where they register and unregister network interfaces when WIFI is present or not. Please guide me on this. Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "firebase",
+                "firebase-authentication"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 8971710,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e3fa696c461d21226bd03c52b0b67a37?s=128&d=identicon&r=PG&f=1",
+                "display_name": "farhan",
+                "link": "https://stackoverflow.com/users/8971710/farhan"
+            },
+            "is_answered": true,
+            "view_count": 15,
+            "accepted_answer_id": 49927395,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524161287,
+            "creation_date": 1524159320,
+            "last_edit_date": 1524161287,
+            "question_id": 49927008,
+            "body_markdown": "\nI am facing a problem with firebase authentication ( Google sign in)\nIt is running fine when I was testing but after generating signed APK and I installed it manually it&#39;s not working, for cross check , I have checked again it working when I am debugging..but in signed APK authentication not working.\nPlease tell me why its happening..",
+            "link": "https://stackoverflow.com/questions/49927008/firebase-authentication-is-not-working-after-signed-apk-generation-google-sign",
+            "title": "Firebase Authentication is not working after signed APK generation (Google sign in)",
+            "body": "<p>I am facing a problem with firebase authentication ( Google sign in)\nIt is running fine when I was testing but after generating signed APK and I installed it manually it's not working, for cross check , I have checked again it working when I am debugging..but in signed APK authentication not working.\nPlease tell me why its happening..</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "android-fileprovider"
+            ],
+            "owner": {
+                "reputation": 9201,
+                "user_id": 1022836,
+                "user_type": "registered",
+                "accept_rate": 62,
+                "profile_image": "https://i.stack.imgur.com/mpr3x.jpg?s=128&g=1",
+                "display_name": "Peri Hartman",
+                "link": "https://stackoverflow.com/users/1022836/peri-hartman"
+            },
+            "is_answered": true,
+            "view_count": 41,
+            "accepted_answer_id": 49927532,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524161278,
+            "creation_date": 1524097798,
+            "last_edit_date": 1524099730,
+            "question_id": 49910898,
+            "body_markdown": "*** NEW INFO ***\r\nSinglestepping into the FileProvider code, I see that *external-files-path* is not actually rooted at */storage/emulated/0/* but at */storage/emulated/0/Android/data/com.perinote.perinote/files/*. So, I ask the question, how do I share a file in external storage /DCIM?\r\n\r\n-----------\r\n\r\n\r\nI&#39;m passing an &quot;external&quot; file to an Intent and getting an &quot;IllegalArgumentException: Failed to find configured root that contains ...&quot; error.\r\n\r\nNot sure what&#39;s missing. Doing something similar with a &quot;cache&quot; file works.\r\n\r\nHere&#39;s my provider part of my manifest:\r\n\r\n        &lt;provider\r\n          android:name=&quot;android.support.v4.content.FileProvider&quot;\r\n          android:authorities=&quot;com.perinote.image_access&quot;\r\n          android:grantUriPermissions=&quot;true&quot;\r\n          android:exported=&quot;false&quot;&gt;\r\n            &lt;meta-data\r\n              android:name=&quot;android.support.FILE_PROVIDER_PATHS&quot;\r\n              android:resource=&quot;@xml/filepaths&quot; /&gt;\r\n        &lt;/provider&gt;\r\n\r\nThe &quot;filepaths.xml&quot; file:\r\n\r\n    &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;\r\n    &lt;paths&gt;\r\n      &lt;external-files-path\r\n        path=&quot;DCIM/Perinote/&quot; name=&quot;images&quot; /&gt; &lt;!-- must be same as ImageData.getPerinoteDirectory --&gt;\r\n    &lt;/paths&gt;\r\n\r\nAnd the snip of code, where &quot;file&quot; is the file name (without path) in question:\r\n\r\n    Intent intent = new Intent (Intent.ACTION_SEND);\r\n    intent.setType (&quot;plain/text&quot;);\r\n    intent.putExtra (Intent.EXTRA_EMAIL, new String[] {address});\r\n    intent.putExtra (Intent.EXTRA_SUBJECT, subject);\r\n    intent.putExtra (Intent.EXTRA_TEXT, body);\r\n    Uri uri = FileProvider.getUriForFile (getContext (), &quot;com.perinote.image_access&quot;, file);\r\n    intent.putExtra (Intent.EXTRA_STREAM, uri);\r\n    intent.addFlags (Intent.FLAG_GRANT_READ_URI_PERMISSION);\r\n    intent.addFlags (Intent.FLAG_GRANT_WRITE_URI_PERMISSION);\r\n    intent.addFlags (Intent.FLAG_ACTIVITY_NEW_TASK);\r\n    startActivityForResult (intent, ACTIVITY_REQUEST_SEND_EMAIL);\r\n\r\nIt&#39;s failing in getUriForFile().\r\n\r\nWhen I use a file manager app on the device, the file is definitely there, under DCIM/Perinote/\r\n\r\nFor example, using the debugger, *file* is &quot;IMG_20171130_204015.jpg&quot;.\r\nAnd opening an *explorer* window on Windows shows the path\r\n\r\n&gt; This PC\\Moto G (4)\\Internal shared storage\\DCIM\\Perinote\r\n\r\nand the file appears in the list below.",
+            "link": "https://stackoverflow.com/questions/49910898/android-geturiforfile-fails-for-external-files-path",
+            "title": "android getUriForFile fails for external_files_path",
+            "body": "<p><strong>* NEW INFO *</strong>\nSinglestepping into the FileProvider code, I see that <em>external-files-path</em> is not actually rooted at <em>/storage/emulated/0/</em> but at <em>/storage/emulated/0/Android/data/com.perinote.perinote/files/</em>. So, I ask the question, how do I share a file in external storage /DCIM?</p>\n\n<hr>\n\n<p>I'm passing an \"external\" file to an Intent and getting an \"IllegalArgumentException: Failed to find configured root that contains ...\" error.</p>\n\n<p>Not sure what's missing. Doing something similar with a \"cache\" file works.</p>\n\n<p>Here's my provider part of my manifest:</p>\n\n<pre><code>    &lt;provider\n      android:name=\"android.support.v4.content.FileProvider\"\n      android:authorities=\"com.perinote.image_access\"\n      android:grantUriPermissions=\"true\"\n      android:exported=\"false\"&gt;\n        &lt;meta-data\n          android:name=\"android.support.FILE_PROVIDER_PATHS\"\n          android:resource=\"@xml/filepaths\" /&gt;\n    &lt;/provider&gt;\n</code></pre>\n\n<p>The \"filepaths.xml\" file:</p>\n\n<pre><code>&lt;?xml version=\"1.0\" encoding=\"utf-8\"?&gt;\n&lt;paths&gt;\n  &lt;external-files-path\n    path=\"DCIM/Perinote/\" name=\"images\" /&gt; &lt;!-- must be same as ImageData.getPerinoteDirectory --&gt;\n&lt;/paths&gt;\n</code></pre>\n\n<p>And the snip of code, where \"file\" is the file name (without path) in question:</p>\n\n<pre><code>Intent intent = new Intent (Intent.ACTION_SEND);\nintent.setType (\"plain/text\");\nintent.putExtra (Intent.EXTRA_EMAIL, new String[] {address});\nintent.putExtra (Intent.EXTRA_SUBJECT, subject);\nintent.putExtra (Intent.EXTRA_TEXT, body);\nUri uri = FileProvider.getUriForFile (getContext (), \"com.perinote.image_access\", file);\nintent.putExtra (Intent.EXTRA_STREAM, uri);\nintent.addFlags (Intent.FLAG_GRANT_READ_URI_PERMISSION);\nintent.addFlags (Intent.FLAG_GRANT_WRITE_URI_PERMISSION);\nintent.addFlags (Intent.FLAG_ACTIVITY_NEW_TASK);\nstartActivityForResult (intent, ACTIVITY_REQUEST_SEND_EMAIL);\n</code></pre>\n\n<p>It's failing in getUriForFile().</p>\n\n<p>When I use a file manager app on the device, the file is definitely there, under DCIM/Perinote/</p>\n\n<p>For example, using the debugger, <em>file</em> is \"IMG_20171130_204015.jpg\".\nAnd opening an <em>explorer</em> window on Windows shows the path</p>\n\n<blockquote>\n  <p>This PC\\Moto G (4)\\Internal shared storage\\DCIM\\Perinote</p>\n</blockquote>\n\n<p>and the file appears in the list below.</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "javascript",
+                "jquery",
+                "ajax",
+                "error-handling"
+            ],
+            "owner": {
+                "reputation": 19982,
+                "user_id": 159319,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://i.stack.imgur.com/BNcfw.png?s=128&g=1",
+                "display_name": "jantimon",
+                "link": "https://stackoverflow.com/users/159319/jantimon"
+            },
+            "is_answered": true,
+            "view_count": 424788,
+            "accepted_answer_id": 1637051,
+            "answer_count": 10,
+            "score": 168,
+            "last_activity_date": 1524161276,
+            "creation_date": 1256733633,
+            "last_edit_date": 1423497269,
+            "question_id": 1637019,
+            "body_markdown": "I am sending an error response to my jQuery.\r\nHowever, I can not get the response text (in the example below this would be **Gone to the beach**)\r\n\r\nThe only thing jQuery says is &#39;error&#39;.\r\n\r\nSee this example for details:\r\n\r\nphp\r\n\r\n    &lt;?\r\n        header(&#39;HTTP/1.1 500 Internal Server Error&#39;);\r\n        print &quot;Gone to the beach&quot;\r\n    ?&gt;\r\n\r\njQuery\r\n    \r\n    $.ajax({\r\n        type:     &quot;post&quot;,\r\n        data:     {id: 0},\r\n        cache:    false,\r\n        url:      &quot;doIt.php&quot;,\r\n        dataType: &quot;text&quot;,\r\n        error: function (request, error) {\r\n            console.log(arguments);\r\n            alert(&quot; Can&#39;t do because: &quot; + error);\r\n        },\r\n        success: function () {\r\n            alert(&quot; Done ! &quot;);\r\n        }\r\n    });\r\n\r\nNow my result ist:\r\n\r\nlog:\r\n\r\n     [XMLHttpRequest readyState=4 status=500, &quot;error&quot;, undefined]\r\n\r\nalert:\r\n\r\n&gt; Can&#39;t do because: error\r\n\r\nAny ideas?",
+            "link": "https://stackoverflow.com/questions/1637019/how-to-get-the-jquery-ajax-error-response-text",
+            "title": "How to get the jQuery $.ajax error response text?",
+            "body": "<p>I am sending an error response to my jQuery.\nHowever, I can not get the response text (in the example below this would be <strong>Gone to the beach</strong>)</p>\n\n<p>The only thing jQuery says is 'error'.</p>\n\n<p>See this example for details:</p>\n\n<p>php</p>\n\n<pre><code>&lt;?\n    header('HTTP/1.1 500 Internal Server Error');\n    print \"Gone to the beach\"\n?&gt;\n</code></pre>\n\n<p>jQuery</p>\n\n<pre><code>$.ajax({\n    type:     \"post\",\n    data:     {id: 0},\n    cache:    false,\n    url:      \"doIt.php\",\n    dataType: \"text\",\n    error: function (request, error) {\n        console.log(arguments);\n        alert(\" Can't do because: \" + error);\n    },\n    success: function () {\n        alert(\" Done ! \");\n    }\n});\n</code></pre>\n\n<p>Now my result ist:</p>\n\n<p>log:</p>\n\n<pre><code> [XMLHttpRequest readyState=4 status=500, \"error\", undefined]\n</code></pre>\n\n<p>alert:</p>\n\n<blockquote>\n  <p>Can't do because: error</p>\n</blockquote>\n\n<p>Any ideas?</p>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "angular-material-5"
+            ],
+            "owner": {
+                "reputation": 69,
+                "user_id": 5659141,
+                "user_type": "registered",
+                "accept_rate": 10,
+                "profile_image": "https://www.gravatar.com/avatar/bc7aa129f998c43635f1d343eea9f17f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Tanvi Shah",
+                "link": "https://stackoverflow.com/users/5659141/tanvi-shah"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524161275,
+            "creation_date": 1524158742,
+            "question_id": 49926854,
+            "body_markdown": "In Angular material official website [Angular Material Table][1] it is mentioned that filterPredicate: ((data: T, filter: string) =&gt; boolean) will filter data based on a specific field. But don&#39;t know how to start. Is there any example is present for this.\r\n\r\n  [1]: https://material.angular.io/components/table/overview",
+            "link": "https://stackoverflow.com/questions/49926854/how-to-create-custom-filtering-using-mattabledatasource-in-angular-5",
+            "title": "How to create custom filtering using MatTableDataSource in angular 5?",
+            "body": "<p>In Angular material official website <a href=\"https://material.angular.io/components/table/overview\" rel=\"nofollow noreferrer\">Angular Material Table</a> it is mentioned that filterPredicate: ((data: T, filter: string) => boolean) will filter data based on a specific field. But don't know how to start. Is there any example is present for this.</p>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "unicode",
+                "visual-studio-2015"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9670205,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/1263d282a2793a2a5ccd7dc2a27a1aa4?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Raelz",
+                "link": "https://stackoverflow.com/users/9670205/raelz"
+            },
+            "is_answered": false,
+            "view_count": 37,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524161270,
+            "creation_date": 1524147995,
+            "question_id": 49923575,
+            "body_markdown": "I keep getting this warning in my code:\r\n\r\n    warning C4819: The file contains a character that cannot be represented in the current code page (0). Save the file in Unicode format to prevent data loss\r\n\r\nI&#39;ve done what was suggested in [this question][1] with advanced save options and saving in unicode without BOM, but that didn&#39;t work; I tried &quot;Use Unicode Character Set&quot; in the project properties, but that didn&#39;t work either. Why would it not be able to deal with unicode? For reference I have this line which sprints a unicode character:\r\n\r\n    sprintf(mac, &quot;\\x02\\x60\\x8c%c%c%c&quot;, (num &gt;&gt; 16) &amp; 0xff, (num &gt;&gt; 8) &amp; 0xff, num &amp; 0xff);\r\n\r\n\r\n  [1]: https://stackoverflow.com/questions/27770229/displaying-unicode-in-visual-studio",
+            "link": "https://stackoverflow.com/questions/49923575/cant-use-unicode-in-vs-c-despite-options-enabling-it",
+            "title": "Can&#39;t use unicode in VS C++, despite options enabling it",
+            "body": "<p>I keep getting this warning in my code:</p>\n\n<pre><code>warning C4819: The file contains a character that cannot be represented in the current code page (0). Save the file in Unicode format to prevent data loss\n</code></pre>\n\n<p>I've done what was suggested in <a href=\"https://stackoverflow.com/questions/27770229/displaying-unicode-in-visual-studio\">this question</a> with advanced save options and saving in unicode without BOM, but that didn't work; I tried \"Use Unicode Character Set\" in the project properties, but that didn't work either. Why would it not be able to deal with unicode? For reference I have this line which sprints a unicode character:</p>\n\n<pre><code>sprintf(mac, \"\\x02\\x60\\x8c%c%c%c\", (num &gt;&gt; 16) &amp; 0xff, (num &gt;&gt; 8) &amp; 0xff, num &amp; 0xff);\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html",
+                "css",
+                "radio"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 2430472,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/6fa383da5696fc6bd5f2275e0abb3b92?s=128&d=identicon&r=PG",
+                "display_name": "Dowens",
+                "link": "https://stackoverflow.com/users/2430472/dowens"
+            },
+            "is_answered": true,
+            "view_count": 8494,
+            "answer_count": 3,
+            "score": 2,
+            "last_activity_date": 1524161267,
+            "creation_date": 1369796456,
+            "question_id": 16804776,
+            "body_markdown": "I have this http://jsfiddle.net/TtX7F/1/ but I don&#39;t know how to get it to work in weebly. The HTML part works, but the js only works when editing, not when it&#39;s published and I don&#39;t know where to put in the CSS. \r\n\r\n\r\nThis is the javascript\r\n\r\n    $(&quot;input&quot;).on(&quot;click&quot;, color);\r\n    $(document).ready(color);\r\n\r\n    function color() {\r\n    var shell = $(&quot;[name=&#39;shell&#39;]:checked&quot;).val(),\r\n        thumbs = $(&quot;[name=&#39;thumbs&#39;]:checked&quot;).val(),\r\n        result = {\r\n            &quot;shell&quot;: &quot;&quot;,\r\n                &quot;thumbs&quot;: &quot;&quot;\r\n        };\r\n\r\n    switch (true) {\r\n        case (shell === &quot;black&quot;):\r\n            result.shell = &quot;http://liberatedinamerica.com/wp-content/uploads/2013/05/shell-black.png&quot;;\r\n            break;\r\n        case (shell === &quot;blue&quot;):\r\n            result.shell = &quot;http://liberatedinamerica.com/wp-content/uploads/2013/05/shell-blue.png&quot;;\r\n            break;\r\n        case (shell === &quot;pink&quot;):\r\n            result.shell = &quot;http://liberatedinamerica.com/wp-content/uploads/2013/05/shell-pink.png&quot;;\r\n            break;\r\n    }\r\n\r\n    switch (true) {\r\n        case (thumbs === &quot;red&quot;):\r\n            result.thumbs = &quot;http://liberatedinamerica.com/wp-content/uploads/2013/05/ey-thumbs-ps3-red.png&quot;;\r\n            break;\r\n        case (thumbs === &quot;lime&quot;):\r\n            result.thumbs = &quot;http://liberatedinamerica.com/wp-content/uploads/2013/05/ey-thumbs-ps3-lime.png&quot;;\r\n            break;\r\n    }\r\n\r\n    $(&quot;.shell&quot;).attr(&quot;src&quot;, result.shell);\r\n    $(&quot;.thumbs&quot;).attr(&quot;src&quot;, result.thumbs);\r\n\r\n    console.log(result);\r\n\r\n}\r\n    ",
+            "link": "https://stackoverflow.com/questions/16804776/adding-code-into-weebly",
+            "title": "Adding code into weebly",
+            "body": "<p>I have this <a href=\"http://jsfiddle.net/TtX7F/1/\" rel=\"nofollow\">http://jsfiddle.net/TtX7F/1/</a> but I don't know how to get it to work in weebly. The HTML part works, but the js only works when editing, not when it's published and I don't know where to put in the CSS. </p>\n\n<p>This is the javascript</p>\n\n<pre><code>$(\"input\").on(\"click\", color);\n$(document).ready(color);\n\nfunction color() {\nvar shell = $(\"[name='shell']:checked\").val(),\n    thumbs = $(\"[name='thumbs']:checked\").val(),\n    result = {\n        \"shell\": \"\",\n            \"thumbs\": \"\"\n    };\n\nswitch (true) {\n    case (shell === \"black\"):\n        result.shell = \"http://liberatedinamerica.com/wp-content/uploads/2013/05/shell-black.png\";\n        break;\n    case (shell === \"blue\"):\n        result.shell = \"http://liberatedinamerica.com/wp-content/uploads/2013/05/shell-blue.png\";\n        break;\n    case (shell === \"pink\"):\n        result.shell = \"http://liberatedinamerica.com/wp-content/uploads/2013/05/shell-pink.png\";\n        break;\n}\n\nswitch (true) {\n    case (thumbs === \"red\"):\n        result.thumbs = \"http://liberatedinamerica.com/wp-content/uploads/2013/05/ey-thumbs-ps3-red.png\";\n        break;\n    case (thumbs === \"lime\"):\n        result.thumbs = \"http://liberatedinamerica.com/wp-content/uploads/2013/05/ey-thumbs-ps3-lime.png\";\n        break;\n}\n\n$(\".shell\").attr(\"src\", result.shell);\n$(\".thumbs\").attr(\"src\", result.thumbs);\n\nconsole.log(result);\n</code></pre>\n\n<p>}</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pandas"
+            ],
+            "owner": {
+                "reputation": 100,
+                "user_id": 6137760,
+                "user_type": "registered",
+                "accept_rate": 86,
+                "profile_image": "https://www.gravatar.com/avatar/8deb9e6ab542c0dc522da27d7769d5e3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Wmbuch",
+                "link": "https://stackoverflow.com/users/6137760/wmbuch"
+            },
+            "is_answered": true,
+            "view_count": 19,
+            "accepted_answer_id": 49927073,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524161267,
+            "creation_date": 1524158789,
+            "last_edit_date": 1524159108,
+            "question_id": 49926867,
+            "body_markdown": "I have a `pandas` `DataFrame` with columns `patient_id`, `patient_sex`, `patient_dob` (and other less relevant columns). Rows can have duplicate `patient_id`s, as each patient may have more than one entry in the data for multiple medical procedures. I discovered, however, that a great many of the `patient_id`s are overloaded, i.e. more than one patient has been assigned to the same id (evidenced by many instances of a single `patient_id` being associated with multiple sexes and multiple days of birth).\r\n\r\nTo refactor the ids so that each patient has a unique one, my plan was to group the data not only by `patient_id`, but by `patient_sex` and `patient_dob` as well. I figure this must be sufficient to separate the data into individual users (and if two patients with the same sex and dob just happened to be assigned the same id, then so be it.\r\n\r\nHere is the code I currently use:\r\n\r\n    # I just use first() here as a way to aggregate the groups into a DataFrame.\r\n    # Bonus points if you have a better solution!\r\n    indv_patients = patients.groupby([&#39;patient_id&#39;, &#39;patient_sex&#39;, &#39;patient_dob&#39;]).first()\r\n   \r\n    # Create unique ids\r\n    new_patient_id = &#39;new_patient_id&#39;\r\n    for index, row in indv_patients.iterrows():\r\n        # index is a tuple of the three column values, so this should get me a unique \r\n        # patient id for each patient\r\n        indv_patients.loc[index, new_patient_id] = str(hash(index))\r\n\r\n    # Merge new ids into original patients frame\r\n    patients_with_new_ids = patients.merge(indv_patients, left_on=[&#39;patient_id&#39;, &#39;patient_sex&#39;, &#39;patient_dob&#39;], right_index=True)\r\n\r\n    # Remove byproduct columns, and original id column\r\n    drop_columns = [col for col in patients_with_new_ids.columns if col not in patients.columns or col == new_patient_id]\r\n    drop_columns.append(&#39;patient_id&#39;)\r\n    patients_with_new_ids = patients_with_new_ids.drop(columns=drop_columns)\r\n\r\n    patients = patients_with_new_ids.rename(columns={new_patient_id : &#39;patient_id&#39;})\r\n\r\nThe problem is that with over 7 million patients, this is way too slow a solution, the biggest bottleneck being the for-loop. So my question is, is there a better way to fix these overloaded ids? (The actual id doesn&#39;t matter, so long as its unique for each patient)",
+            "link": "https://stackoverflow.com/questions/49926867/pandas-split-and-refactor-and-overloaded-id-column",
+            "title": "Pandas - Split and refactor and overloaded ID column",
+            "body": "<p>I have a <code>pandas</code> <code>DataFrame</code> with columns <code>patient_id</code>, <code>patient_sex</code>, <code>patient_dob</code> (and other less relevant columns). Rows can have duplicate <code>patient_id</code>s, as each patient may have more than one entry in the data for multiple medical procedures. I discovered, however, that a great many of the <code>patient_id</code>s are overloaded, i.e. more than one patient has been assigned to the same id (evidenced by many instances of a single <code>patient_id</code> being associated with multiple sexes and multiple days of birth).</p>\n\n<p>To refactor the ids so that each patient has a unique one, my plan was to group the data not only by <code>patient_id</code>, but by <code>patient_sex</code> and <code>patient_dob</code> as well. I figure this must be sufficient to separate the data into individual users (and if two patients with the same sex and dob just happened to be assigned the same id, then so be it.</p>\n\n<p>Here is the code I currently use:</p>\n\n<pre><code># I just use first() here as a way to aggregate the groups into a DataFrame.\n# Bonus points if you have a better solution!\nindv_patients = patients.groupby(['patient_id', 'patient_sex', 'patient_dob']).first()\n\n# Create unique ids\nnew_patient_id = 'new_patient_id'\nfor index, row in indv_patients.iterrows():\n    # index is a tuple of the three column values, so this should get me a unique \n    # patient id for each patient\n    indv_patients.loc[index, new_patient_id] = str(hash(index))\n\n# Merge new ids into original patients frame\npatients_with_new_ids = patients.merge(indv_patients, left_on=['patient_id', 'patient_sex', 'patient_dob'], right_index=True)\n\n# Remove byproduct columns, and original id column\ndrop_columns = [col for col in patients_with_new_ids.columns if col not in patients.columns or col == new_patient_id]\ndrop_columns.append('patient_id')\npatients_with_new_ids = patients_with_new_ids.drop(columns=drop_columns)\n\npatients = patients_with_new_ids.rename(columns={new_patient_id : 'patient_id'})\n</code></pre>\n\n<p>The problem is that with over 7 million patients, this is way too slow a solution, the biggest bottleneck being the for-loop. So my question is, is there a better way to fix these overloaded ids? (The actual id doesn't matter, so long as its unique for each patient)</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "arduino"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9667234,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-9f_rwyMVb0M/AAAAAAAAAAI/AAAAAAAAAHo/Oe28GExJCj8/photo.jpg?sz=128",
+                "display_name": "Dan",
+                "link": "https://stackoverflow.com/users/9667234/dan"
+            },
+            "is_answered": false,
+            "view_count": 31,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524161265,
+            "creation_date": 1524102847,
+            "last_edit_date": 1524148510,
+            "question_id": 49911512,
+            "body_markdown": "I am making a project for my university. It is about controlling the lock of the house along with its lighting from your Android phone. Here is the Arduino code.\r\n\r\n&lt;!-- language: c++ --&gt;\r\n\r\n    #include &lt;Servo.h&gt; //Includes servo motor library\r\n    char data = 0; //Variable data of type char we will receive these characters from Android device\r\n    \r\n    Servo myservo; //declaring a servo motor\r\n    int pos = 0; //default position of lock\r\n    int led = 13; //attaching red led for locked position on pin 13\r\n    int led2 = 12; //attaching green led for unlocked position on pin 12\r\n    \r\n    int led3 = 7; //attaching lighting of room1 to digital pin 7\r\n    int led4 = 4; //attaching lighting of room2 to digital pin 4\r\n    int led5 = 8; //attaching lighting of room3 to digital pin 8\r\n    int led6 = 2; //attaching lighting of room4 to digital pin 2\r\n    \r\n    void setup() {\r\n      myservo.attach(9); //attaching servo motor to pin 9\r\n      Serial.begin(9600); //Sets the data rate in bits per second (baud) for serial data transmission.\r\n      pinMode(led, OUTPUT); //The code makes the digital pin 13 OUTPUT and toggles it HIGH and LOW.\r\n      pinMode(led2, OUTPUT); //The code makes the digital pin 12 OUTPUT and toggles it HIGH and LOW.\r\n      pinMode(led3, OUTPUT); //The code makes the digital pin 7 OUTPUT and toggles it HIGH and LOW.\r\n      pinMode(led4, OUTPUT); //The code makes the digital pin 4 OUTPUT and toggles it HIGH and LOW.\r\n      pinMode(led5, OUTPUT); //The code makes the digital pin 8 OUTPUT and toggles it HIGH and LOW.\r\n      pinMode(led6, OUTPUT); //The code makes the digital pin 2 OUTPUT and toggles it HIGH and LOW.\r\n    }\r\n    \r\n    void loop() {\r\n      if (Serial.available() &gt; 0) {\r\n        // Get the number of bytes (characters) available for reading from the serial port.\r\n        data = Serial.read(); //Reads incoming serial data\r\n        Serial.print(data); //Prints data to the serial port as human-readable ASCII text.\r\n        Serial.print(&quot;\\n&quot;); //new line\r\n        if (data == &#39;1&#39;) {\r\n          myservo.write(45);\r\n          digitalWrite(led, HIGH);\r\n          //When data = 1 rotate the motor and turn off green light and turn on red light (LOCK the door)\r\n          digitalWrite(led2, LOW);\r\n          pos = 1;\r\n        }\r\n        if (data == &#39;0&#39;) {\r\n          myservo.write(90);\r\n          digitalWrite(led, LOW);\r\n          //When data = 0 rotate the motor and turn on green light and turn off red light (UNLOCK the door)\r\n          digitalWrite(led2, HIGH);\r\n          pos = 0;\r\n        }\r\n        if (data == &#39;G&#39;)\r\n          digitalWrite(led3, HIGH); //When data = G turn on lighting for room 1\r\n        else  if (data == &#39;R&#39;)\r\n          digitalWrite(led3, LOW); //When data = R turn off lighting for room 1\r\n        if (data == &#39;K&#39;)\r\n          digitalWrite(led4, HIGH); //When data = K turn on lighting for room 2\r\n        else if (data == &#39;L&#39;)\r\n          digitalWrite(led4, LOW);  //When data = L turn off lighting for room 2\r\n        if (data == &#39;M&#39;)\r\n          digitalWrite(led5, HIGH); //When data = M turn on lighting for room 3\r\n        else if (data == &#39;N&#39;)\r\n          digitalWrite(led5, LOW); //When data = N turn off lighting for room 3\r\n        if (data == &#39;O&#39;)\r\n          digitalWrite(led6, HIGH); //When data = O turn on lighting for room 4\r\n        else if (data == &#39;P&#39;)\r\n          digitalWrite(led6, LOW);  //When data = P turn off lighting for room 4\r\n      }\r\n    }\r\n\r\nThe Android app is built using App Inventor and it is working as it should, but one thing though... I want the Arduino to send the pos to the Android app then change a label to lock or unlocked accordingly.",
+            "link": "https://stackoverflow.com/questions/49911512/how-to-send-data-from-arduino-to-android-app-inventor-through-bluetooth",
+            "title": "How to send data from Arduino to Android (App inventor) through Bluetooth",
+            "body": "<p>I am making a project for my university. It is about controlling the lock of the house along with its lighting from your Android phone. Here is the Arduino code.</p>\n\n<pre class=\"lang-cpp prettyprint-override\"><code>#include &lt;Servo.h&gt; //Includes servo motor library\nchar data = 0; //Variable data of type char we will receive these characters from Android device\n\nServo myservo; //declaring a servo motor\nint pos = 0; //default position of lock\nint led = 13; //attaching red led for locked position on pin 13\nint led2 = 12; //attaching green led for unlocked position on pin 12\n\nint led3 = 7; //attaching lighting of room1 to digital pin 7\nint led4 = 4; //attaching lighting of room2 to digital pin 4\nint led5 = 8; //attaching lighting of room3 to digital pin 8\nint led6 = 2; //attaching lighting of room4 to digital pin 2\n\nvoid setup() {\n  myservo.attach(9); //attaching servo motor to pin 9\n  Serial.begin(9600); //Sets the data rate in bits per second (baud) for serial data transmission.\n  pinMode(led, OUTPUT); //The code makes the digital pin 13 OUTPUT and toggles it HIGH and LOW.\n  pinMode(led2, OUTPUT); //The code makes the digital pin 12 OUTPUT and toggles it HIGH and LOW.\n  pinMode(led3, OUTPUT); //The code makes the digital pin 7 OUTPUT and toggles it HIGH and LOW.\n  pinMode(led4, OUTPUT); //The code makes the digital pin 4 OUTPUT and toggles it HIGH and LOW.\n  pinMode(led5, OUTPUT); //The code makes the digital pin 8 OUTPUT and toggles it HIGH and LOW.\n  pinMode(led6, OUTPUT); //The code makes the digital pin 2 OUTPUT and toggles it HIGH and LOW.\n}\n\nvoid loop() {\n  if (Serial.available() &gt; 0) {\n    // Get the number of bytes (characters) available for reading from the serial port.\n    data = Serial.read(); //Reads incoming serial data\n    Serial.print(data); //Prints data to the serial port as human-readable ASCII text.\n    Serial.print(\"\\n\"); //new line\n    if (data == '1') {\n      myservo.write(45);\n      digitalWrite(led, HIGH);\n      //When data = 1 rotate the motor and turn off green light and turn on red light (LOCK the door)\n      digitalWrite(led2, LOW);\n      pos = 1;\n    }\n    if (data == '0') {\n      myservo.write(90);\n      digitalWrite(led, LOW);\n      //When data = 0 rotate the motor and turn on green light and turn off red light (UNLOCK the door)\n      digitalWrite(led2, HIGH);\n      pos = 0;\n    }\n    if (data == 'G')\n      digitalWrite(led3, HIGH); //When data = G turn on lighting for room 1\n    else  if (data == 'R')\n      digitalWrite(led3, LOW); //When data = R turn off lighting for room 1\n    if (data == 'K')\n      digitalWrite(led4, HIGH); //When data = K turn on lighting for room 2\n    else if (data == 'L')\n      digitalWrite(led4, LOW);  //When data = L turn off lighting for room 2\n    if (data == 'M')\n      digitalWrite(led5, HIGH); //When data = M turn on lighting for room 3\n    else if (data == 'N')\n      digitalWrite(led5, LOW); //When data = N turn off lighting for room 3\n    if (data == 'O')\n      digitalWrite(led6, HIGH); //When data = O turn on lighting for room 4\n    else if (data == 'P')\n      digitalWrite(led6, LOW);  //When data = P turn off lighting for room 4\n  }\n}\n</code></pre>\n\n<p>The Android app is built using App Inventor and it is working as it should, but one thing though... I want the Arduino to send the pos to the Android app then change a label to lock or unlocked accordingly.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "selenium"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9671192,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Cedrian",
+                "link": "https://stackoverflow.com/users/9671192/cedrian"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "closed_date": 1524161620,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1524161261,
+            "creation_date": 1524161261,
+            "question_id": 49927525,
+            "body_markdown": "I wanna hide this : [this][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/ffj5X.png\r\n\r\nI hope you understand what I tried to ask!.Thanks for reading &amp; have a good day!",
+            "link": "https://stackoverflow.com/questions/49927525/c-selenium-phantomjs-hiding-the-log",
+            "closed_reason": "unclear what you&#39;re asking",
+            "title": "C# Selenium PhantomJS Hiding the log?",
+            "body": "<p>I wanna hide this : <a href=\"https://i.stack.imgur.com/ffj5X.png\" rel=\"nofollow noreferrer\">this</a></p>\n\n<p>I hope you understand what I tried to ask!.Thanks for reading &amp; have a good day!</p>\n"
+        },
+        {
+            "tags": [
+                "css",
+                "css3",
+                "responsive-design"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 3250386,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/8bbf20c7d37b35cc18a44d6941caa918?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3250386",
+                "link": "https://stackoverflow.com/users/3250386/user3250386"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524161256,
+            "creation_date": 1524161256,
+            "question_id": 49927524,
+            "body_markdown": "https://codepen.io/glen_v/pen/ELaRPW\r\n\r\nIf I view this using the iPhone 6/7/8 setting in Chrome DevTools, it displays exactly how I want it to (screenshot: https://i.imgur.com/gmi4dHo.png). Notice that clientWidth and screen.width are the same.\r\n\r\nBut if I view it on my actual iPhone 6, the page renders larger than the viewport and I have to swipe left to see the rest (screenshot: https://i.imgur.com/TcH3e4E.png).\r\n\r\nNotice that even though the screen width is only 375, the clientWidth is at 569. I have a media query set to change certain styles below 400, and I believe this inflated clientWidth is keeping that media query from firing.\r\n\r\nI&#39;ve already included `&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;` in the header.\r\n\r\nAny idea why this is happening?\r\n\r\n(I only own this one physical phone, so I haven&#39;t been able to test on any others).",
+            "link": "https://stackoverflow.com/questions/49927524/iphone-6-is-giving-a-clientwidth-thats-very-different-than-its-screen-width-and",
+            "title": "iPhone 6 is giving a clientWidth that&#39;s very different than its screen width and causing my media queries not to work right",
+            "body": "<p><a href=\"https://codepen.io/glen_v/pen/ELaRPW\" rel=\"nofollow noreferrer\">https://codepen.io/glen_v/pen/ELaRPW</a></p>\n\n<p>If I view this using the iPhone 6/7/8 setting in Chrome DevTools, it displays exactly how I want it to (screenshot: <a href=\"https://i.imgur.com/gmi4dHo.png\" rel=\"nofollow noreferrer\">https://i.imgur.com/gmi4dHo.png</a>). Notice that clientWidth and screen.width are the same.</p>\n\n<p>But if I view it on my actual iPhone 6, the page renders larger than the viewport and I have to swipe left to see the rest (screenshot: <a href=\"https://i.imgur.com/TcH3e4E.png\" rel=\"nofollow noreferrer\">https://i.imgur.com/TcH3e4E.png</a>).</p>\n\n<p>Notice that even though the screen width is only 375, the clientWidth is at 569. I have a media query set to change certain styles below 400, and I believe this inflated clientWidth is keeping that media query from firing.</p>\n\n<p>I've already included <code>&lt;meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"&gt;</code> in the header.</p>\n\n<p>Any idea why this is happening?</p>\n\n<p>(I only own this one physical phone, so I haven't been able to test on any others).</p>\n"
+        },
+        {
+            "tags": [
+                "r"
+            ],
+            "owner": {
+                "reputation": 47,
+                "user_id": 9522493,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ddffc30b6adba9c402d2f6d8902c47fb?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Nyiannos",
+                "link": "https://stackoverflow.com/users/9522493/nyiannos"
+            },
+            "is_answered": true,
+            "view_count": 19,
+            "accepted_answer_id": 49927451,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524161253,
+            "creation_date": 1524160864,
+            "question_id": 49927419,
+            "body_markdown": "I have a list\r\n\r\n    alist &lt;- list(c(1,2,9),c(4,5,4),c(3,11,19))\r\n\r\nand a constant\r\n\r\n    value &lt;- 4\r\n\r\nI want to return the vector from the list in which the first element of the vector equals the constant (i.e., (4,5,4)).  I&#39;d like to do this in base R.  Can anyone help?\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49927419/return-a-vector-from-a-list-based-on-a-condition",
+            "title": "return a vector from a list based on a condition",
+            "body": "<p>I have a list</p>\n\n<pre><code>alist &lt;- list(c(1,2,9),c(4,5,4),c(3,11,19))\n</code></pre>\n\n<p>and a constant</p>\n\n<pre><code>value &lt;- 4\n</code></pre>\n\n<p>I want to return the vector from the list in which the first element of the vector equals the constant (i.e., (4,5,4)).  I'd like to do this in base R.  Can anyone help?</p>\n"
+        },
+        {
+            "tags": [
+                "odoo",
+                "pos"
+            ],
+            "owner": {
+                "reputation": 26,
+                "user_id": 6586163,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://graph.facebook.com/1034251679993454/picture?type=large",
+                "display_name": "Samoox",
+                "link": "https://stackoverflow.com/users/6586163/samoox"
+            },
+            "is_answered": false,
+            "view_count": 3,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524161252,
+            "creation_date": 1524161252,
+            "question_id": 49927522,
+            "body_markdown": "i want to add some content to kitchen order, and i can&#39;t find the proper file to change from. \r\n\r\n&gt; im using odoo 10 in ubuntu server wich i have access by SSH\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49927522/how-to-change-the-kitchen-order-content-in-odoo-pos",
+            "title": "how to change the kitchen order content in odoo POS",
+            "body": "<p>i want to add some content to kitchen order, and i can't find the proper file to change from. </p>\n\n<blockquote>\n  <p>im using odoo 10 in ubuntu server wich i have access by SSH</p>\n</blockquote>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "vue.js",
+                "vue-component"
+            ],
+            "owner": {
+                "reputation": 2406,
+                "user_id": 9147721,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/6d53900f43dc7cba5dafbd7bb4fc8b1b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "xianshenglu",
+                "link": "https://stackoverflow.com/users/9147721/xianshenglu"
+            },
+            "is_answered": true,
+            "view_count": 24,
+            "accepted_answer_id": 49927520,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1524161239,
+            "creation_date": 1524139853,
+            "question_id": 49920790,
+            "body_markdown": "Please run the worked demo:\r\n\r\n&lt;!-- begin snippet: js hide: false console: false babel: false --&gt;\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    let myCheckbox = Vue.component(&#39;my-checkbox&#39;, {\r\n      template: `&lt;div&gt;\r\n                    &lt;input type=&quot;checkbox&quot; id=&quot;check1&quot; :checked=&quot;checked&quot; @change=&quot;change&quot;&gt;{{checked}}            \r\n                &lt;/div&gt;`,\r\n      props: [&#39;checked&#39;],\r\n      methods: {\r\n        change() {\r\n          this.$emit(&#39;change&#39;, event.target.checked);\r\n        }\r\n      }\r\n    })\r\n\r\n    new Vue({\r\n      el: &#39;#app&#39;,\r\n      data: {\r\n        checked: true,\r\n        count: 1\r\n      },\r\n      methods: {\r\n        change(isChecked) {\r\n          this.count++\r\n            this.checked = isChecked\r\n          if (this.count % 2 === 0) {\r\n            // this.checked = !isChecked\r\n            setTimeout(() =&gt; {\r\n              this.checked = !isChecked\r\n            }, 10);\r\n          }\r\n        }\r\n      },\r\n      components: {\r\n        myCheckbox\r\n      }\r\n    })\r\n\r\n&lt;!-- language: lang-css --&gt;\r\n\r\n    span {\r\n      background: pink;\r\n    }\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;script src=&quot;https://cdn.jsdelivr.net/npm/vue/dist/vue.js&quot;&gt;&lt;/script&gt;\r\n    &lt;div id=&quot;app&quot;&gt;\r\n      &lt;my-checkbox :checked=&quot;checked&quot; @change=&quot;change&quot;&gt;&lt;/my-checkbox&gt;\r\n      When\r\n      &lt;span&gt;{{count}}&lt;/span&gt; is even your check will fail\r\n    &lt;/div&gt;\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\nhowever, if i change the synchronous operation to asynchronous operation in  `change` which means change \r\n\r\n            setTimeout(() =&gt; {\r\n              this.checked = !isChecked\r\n            }, 10);\r\n\r\nto \r\n\r\n             this.checked = !isChecked\r\n\r\nthe demo is not going work because `checked` in the `check1` is not updated. \r\n\r\nMy question is \r\n\r\n**I don&#39;t know why synchronous operation is not work!**\r\n\r\nI guess there is a `promise` after the `change` to do the underlying operation and that&#39;s why `setTimeout` works.However, I am not sure and I didn&#39;t  find any explanation about that.",
+            "link": "https://stackoverflow.com/questions/49920790/change-child-component-checked-state-from-parent-component-synchronously-fail",
+            "title": "change child-component checked state from parent-component synchronously fail",
+            "body": "<p>Please run the worked demo:</p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"false\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-js lang-js prettyprint-override\"><code>let myCheckbox = Vue.component('my-checkbox', {\r\n  template: `&lt;div&gt;\r\n                &lt;input type=\"checkbox\" id=\"check1\" :checked=\"checked\" @change=\"change\"&gt;{{checked}}            \r\n            &lt;/div&gt;`,\r\n  props: ['checked'],\r\n  methods: {\r\n    change() {\r\n      this.$emit('change', event.target.checked);\r\n    }\r\n  }\r\n})\r\n\r\nnew Vue({\r\n  el: '#app',\r\n  data: {\r\n    checked: true,\r\n    count: 1\r\n  },\r\n  methods: {\r\n    change(isChecked) {\r\n      this.count++\r\n        this.checked = isChecked\r\n      if (this.count % 2 === 0) {\r\n        // this.checked = !isChecked\r\n        setTimeout(() =&gt; {\r\n          this.checked = !isChecked\r\n        }, 10);\r\n      }\r\n    }\r\n  },\r\n  components: {\r\n    myCheckbox\r\n  }\r\n})</code></pre>\r\n<pre class=\"snippet-code-css lang-css prettyprint-override\"><code>span {\r\n  background: pink;\r\n}</code></pre>\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>&lt;script src=\"https://cdn.jsdelivr.net/npm/vue/dist/vue.js\"&gt;&lt;/script&gt;\r\n&lt;div id=\"app\"&gt;\r\n  &lt;my-checkbox :checked=\"checked\" @change=\"change\"&gt;&lt;/my-checkbox&gt;\r\n  When\r\n  &lt;span&gt;{{count}}&lt;/span&gt; is even your check will fail\r\n&lt;/div&gt;</code></pre>\r\n</div>\r\n</div>\r\n</p>\n\n<p>however, if i change the synchronous operation to asynchronous operation in  <code>change</code> which means change </p>\n\n<pre><code>        setTimeout(() =&gt; {\n          this.checked = !isChecked\n        }, 10);\n</code></pre>\n\n<p>to </p>\n\n<pre><code>         this.checked = !isChecked\n</code></pre>\n\n<p>the demo is not going work because <code>checked</code> in the <code>check1</code> is not updated. </p>\n\n<p>My question is </p>\n\n<p><strong>I don't know why synchronous operation is not work!</strong></p>\n\n<p>I guess there is a <code>promise</code> after the <code>change</code> to do the underlying operation and that's why <code>setTimeout</code> works.However, I am not sure and I didn't  find any explanation about that.</p>\n"
+        },
+        {
+            "tags": [
+                "regex"
+            ],
+            "owner": {
+                "reputation": 7,
+                "user_id": 9640420,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3248ab1ead3c15630661b6cb84a27f61?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Rosemary1982",
+                "link": "https://stackoverflow.com/users/9640420/rosemary1982"
+            },
+            "is_answered": false,
+            "view_count": 51,
+            "closed_date": 1524161213,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524161237,
+            "creation_date": 1524158062,
+            "last_edit_date": 1524158224,
+            "question_id": 49926681,
+            "body_markdown": "The first two MUST be `KL` and then **optionally** to accept numbers.`^(?:[KL0-9]*)&#163;` doesn&#39;t work for me as it accepts just numbers also. `KL[0-9]+` also does not work because it says that `KL` **must** be followed by a number. I would like a regex that says the code **MUST start with `KL` but the numbers after are *optional***.I know its difficult but any help would be appreciated.",
+            "link": "https://stackoverflow.com/questions/49926681/regex-to-expect-two-specific-letters-and-optionally-numbers",
+            "closed_reason": "duplicate",
+            "title": "Regex to expect two specific letters and optionally numbers",
+            "body": "<p>The first two MUST be <code>KL</code> and then <strong>optionally</strong> to accept numbers.<code>^(?:[KL0-9]*)£</code> doesn't work for me as it accepts just numbers also. <code>KL[0-9]+</code> also does not work because it says that <code>KL</code> <strong>must</strong> be followed by a number. I would like a regex that says the code <strong>MUST start with <code>KL</code> but the numbers after are <em>optional</em></strong>.I know its difficult but any help would be appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "node.js",
+                "angular",
+                "ionic3",
+                "chart.js"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9669920,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3587c98a213c1b09c065330737e38250?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Mounir",
+                "link": "https://stackoverflow.com/users/9669920/mounir"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524161234,
+            "creation_date": 1524145798,
+            "last_edit_date": 1524161234,
+            "question_id": 49922804,
+            "body_markdown": "I can&#39;t get my program to interact with my database.\r\nThe connection is normal, it&#39;s just that I can&#39;t access some data, and I&#39;m sure it&#39;s a code problem that&#39;s why I&#39;m asking for help.\r\nThe data recovery is done via an API that we did.\r\nit contains two functions, one to get the data and one to delete.[the API][1]\r\nNow i want to represent my data on Barchart (using chart.js), to get my data i&#39;m using this function [this function uses theapi to get data][2]\r\nthe variable data is an array: it shows [data infos][3]\r\ni want to use the elements of this array on the labels or data of the bar chart.\r\nand i want to know where i can use request to count for exemple \r\nthe sum of the different types (element of the array)\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/bXKX4.png\r\n  [2]: https://i.stack.imgur.com/iOVFC.png\r\n  [3]: https://i.stack.imgur.com/ZZU9G.png",
+            "link": "https://stackoverflow.com/questions/49922804/ionic-3-angular-4-interaction-with-nosql-database-mongolab-mongoose",
+            "title": "Ionic 3 / Angular 4 interaction with NoSql database (MongoLab/Mongoose)",
+            "body": "<p>I can't get my program to interact with my database.\nThe connection is normal, it's just that I can't access some data, and I'm sure it's a code problem that's why I'm asking for help.\nThe data recovery is done via an API that we did.\nit contains two functions, one to get the data and one to delete.<a href=\"https://i.stack.imgur.com/bXKX4.png\" rel=\"nofollow noreferrer\">the API</a>\nNow i want to represent my data on Barchart (using chart.js), to get my data i'm using this function <a href=\"https://i.stack.imgur.com/iOVFC.png\" rel=\"nofollow noreferrer\">this function uses theapi to get data</a>\nthe variable data is an array: it shows <a href=\"https://i.stack.imgur.com/ZZU9G.png\" rel=\"nofollow noreferrer\">data infos</a>\ni want to use the elements of this array on the labels or data of the bar chart.\nand i want to know where i can use request to count for exemple \nthe sum of the different types (element of the array)</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-3.x"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9661065,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-USQLKQSnCY8/AAAAAAAAAAI/AAAAAAAADT0/H07e4nYJYcQ/photo.jpg?sz=128",
+                "display_name": "Arun ji",
+                "link": "https://stackoverflow.com/users/9661065/arun-ji"
+            },
+            "is_answered": false,
+            "view_count": 9,
+            "closed_date": 1524169089,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1524161225,
+            "creation_date": 1524158579,
+            "last_edit_date": 1524161225,
+            "question_id": 49926821,
+            "body_markdown": "I get the following error\r\n\r\n\r\n    Command &quot;C:\\Users\\gunaarub\\AppData\\Local\\Programs\\Python\\Python36\\python.exe -u -c &quot;import setuptools, tokenize;__file__=&#39;C:\\\\Users\\\\gunaarub\\\\AppData\\\\Local\\\\Temp\\\\pip-install-73bg2ak5\\\\m2crypto\\\\setup.py&#39;;f=getattr(tokenize, &#39;open&#39;, open)(__file__);code=f.read().replace(&#39;\\r\\n&#39;, &#39;\\n&#39;);f.close();exec(compile(code, __file__, &#39;exec&#39;))&quot; install --record C:\\Users\\gunaarub\\AppData\\Local\\Temp\\pip-record-ur8ucggr\\install-record.txt --single-version-externally-managed --compile&quot; failed with error code 1 in C:\\Users\\gunaarub\\AppData\\Local\\Temp\\pip-install-73bg2ak5\\m2crypto\\",
+            "link": "https://stackoverflow.com/questions/49926821/unable-to-install-m2crypto-in-windows-10",
+            "closed_reason": "unclear what you&#39;re asking",
+            "title": "unable to install M2Crypto in windows 10",
+            "body": "<p>I get the following error</p>\n\n<pre><code>Command \"C:\\Users\\gunaarub\\AppData\\Local\\Programs\\Python\\Python36\\python.exe -u -c \"import setuptools, tokenize;__file__='C:\\\\Users\\\\gunaarub\\\\AppData\\\\Local\\\\Temp\\\\pip-install-73bg2ak5\\\\m2crypto\\\\setup.py';f=getattr(tokenize, 'open', open)(__file__);code=f.read().replace('\\r\\n', '\\n');f.close();exec(compile(code, __file__, 'exec'))\" install --record C:\\Users\\gunaarub\\AppData\\Local\\Temp\\pip-record-ur8ucggr\\install-record.txt --single-version-externally-managed --compile\" failed with error code 1 in C:\\Users\\gunaarub\\AppData\\Local\\Temp\\pip-install-73bg2ak5\\m2crypto\\\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "git",
+                "gitlab",
+                "bundle"
+            ],
+            "owner": {
+                "reputation": 699,
+                "user_id": 2762587,
+                "user_type": "registered",
+                "accept_rate": 57,
+                "profile_image": "https://www.gravatar.com/avatar/4bebd782892bf272ec7997b1886a2ac5?s=128&d=identicon&r=PG&f=1",
+                "display_name": "tonka",
+                "link": "https://stackoverflow.com/users/2762587/tonka"
+            },
+            "is_answered": true,
+            "view_count": 19,
+            "accepted_answer_id": 49927517,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524161223,
+            "creation_date": 1524156225,
+            "question_id": 49926203,
+            "body_markdown": "I try to restore a gitlab backup manually (not back to a gitlab instance). My problem is as follow.  \r\nI extract the .bundle file of the project and try\r\n\r\n`git bundle verfiy myproject.bundle`\r\n\r\nbut it always crash. I tried it on mac os x (git 2.16) and on windows (git 2.16.1) and both crash. This happen will all repos from the backup.\r\n\r\nThe exact message from mac os x git is \r\n\r\n`BUG: environment.c:181: git environment hasn&#39;t been setup\r\nAbort trap: 6`\r\n\r\nBackup was created with git 2.14\r\n\r\nDoes anybody know what i can do now?\r\n\r\nGreetings",
+            "link": "https://stackoverflow.com/questions/49926203/git-bundle-verify-crash",
+            "title": "git bundle verify crash",
+            "body": "<p>I try to restore a gitlab backup manually (not back to a gitlab instance). My problem is as follow.<br>\nI extract the .bundle file of the project and try</p>\n\n<p><code>git bundle verfiy myproject.bundle</code></p>\n\n<p>but it always crash. I tried it on mac os x (git 2.16) and on windows (git 2.16.1) and both crash. This happen will all repos from the backup.</p>\n\n<p>The exact message from mac os x git is </p>\n\n<p><code>BUG: environment.c:181: git environment hasn't been setup\nAbort trap: 6</code></p>\n\n<p>Backup was created with git 2.14</p>\n\n<p>Does anybody know what i can do now?</p>\n\n<p>Greetings</p>\n"
+        },
+        {
+            "tags": [
+                "npm",
+                "aurelia",
+                "systemjs",
+                "jspm"
+            ],
+            "owner": {
+                "reputation": 10821,
+                "user_id": 1688441,
+                "user_type": "registered",
+                "accept_rate": 82,
+                "profile_image": "https://www.gravatar.com/avatar/08f4e11a1e4b0d9c41236c50ef777e35?s=128&d=identicon&r=PG",
+                "display_name": "Menelaos Bakopoulos",
+                "link": "https://stackoverflow.com/users/1688441/menelaos-bakopoulos"
+            },
+            "is_answered": true,
+            "view_count": 20,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524161220,
+            "creation_date": 1524131176,
+            "question_id": 49917876,
+            "body_markdown": "I am getting the following error:\r\n\r\n    system.src.js:123 Uncaught (in promise) Error: (SystemJS) XHR error (404 Not Found) loading http://localhost:8000/dist/jquery.js\r\n    \tError: XHR error (404 Not Found) loading http://localhost:8000/dist/jquery.js\r\n    \tError loading http://localhost:8000/dist/jquery.js as &quot;jquery&quot; from http://localhost:8000/jspm_packages/npm/toastr@2.1.2/toastr.js\r\n\r\nHow do I go about fixing this?\r\n\r\nI have done `npm install` and `jspm install`.\r\n\r\nThanks!",
+            "link": "https://stackoverflow.com/questions/49917876/how-to-i-debug-systemjs-error-loading-js-as-from",
+            "title": "How to I debug systemJS error loading js as &quot;&quot; from",
+            "body": "<p>I am getting the following error:</p>\n\n<pre><code>system.src.js:123 Uncaught (in promise) Error: (SystemJS) XHR error (404 Not Found) loading http://localhost:8000/dist/jquery.js\n    Error: XHR error (404 Not Found) loading http://localhost:8000/dist/jquery.js\n    Error loading http://localhost:8000/dist/jquery.js as \"jquery\" from http://localhost:8000/jspm_packages/npm/toastr@2.1.2/toastr.js\n</code></pre>\n\n<p>How do I go about fixing this?</p>\n\n<p>I have done <code>npm install</code> and <code>jspm install</code>.</p>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "swift",
+                "animation",
+                "uikit"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9326319,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a5cf4860be43b982c364366148eb7413?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Roman",
+                "link": "https://stackoverflow.com/users/9326319/roman"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524161219,
+            "creation_date": 1524161219,
+            "question_id": 49927515,
+            "body_markdown": "I have this simple block of keyframe animation code.\r\nWhen I open the VC, executing this block results in loading CPU up to 30% (2-3% without this animation) and also loads +5Mb of RAM (+0.2-0.5Mb without). So I get an irritating freeze while opening the VC. Is there a way to optimize this animation in order to get rid of this awful freeze?\r\n\r\n    UIView.animateKeyframes(withDuration: 3.0, delay: 8.0, options: [.allowUserInteraction, .repeat], animations: {\r\n            UIView.addKeyframe(withRelativeStartTime: 0.0, relativeDuration: 0.04, animations: {self.dontKnowButton.transform = CGAffineTransform.init(scaleX: 1.05, y: 1.05)})\r\n            UIView.addKeyframe(withRelativeStartTime: 0.04, relativeDuration: 0.04, animations: {self.dontKnowButton.transform = CGAffineTransform.identity})\r\n        }, completion: nil)",
+            "link": "https://stackoverflow.com/questions/49927515/keyframe-animation-loads-cpu-significantly",
+            "title": "Keyframe animation loads CPU significantly",
+            "body": "<p>I have this simple block of keyframe animation code.\nWhen I open the VC, executing this block results in loading CPU up to 30% (2-3% without this animation) and also loads +5Mb of RAM (+0.2-0.5Mb without). So I get an irritating freeze while opening the VC. Is there a way to optimize this animation in order to get rid of this awful freeze?</p>\n\n<pre><code>UIView.animateKeyframes(withDuration: 3.0, delay: 8.0, options: [.allowUserInteraction, .repeat], animations: {\n        UIView.addKeyframe(withRelativeStartTime: 0.0, relativeDuration: 0.04, animations: {self.dontKnowButton.transform = CGAffineTransform.init(scaleX: 1.05, y: 1.05)})\n        UIView.addKeyframe(withRelativeStartTime: 0.04, relativeDuration: 0.04, animations: {self.dontKnowButton.transform = CGAffineTransform.identity})\n    }, completion: nil)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "gradle",
+                "kotlin",
+                "profiling",
+                "kapt"
+            ],
+            "owner": {
+                "reputation": 178,
+                "user_id": 3036659,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://i.stack.imgur.com/CNTQF.jpg?s=128&g=1",
+                "display_name": "Buckstabue",
+                "link": "https://stackoverflow.com/users/3036659/buckstabue"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524161218,
+            "creation_date": 1524160322,
+            "last_edit_date": 1524161218,
+            "question_id": 49927268,
+            "body_markdown": "I have an android kotlin project, incremental build time of which is really huge. If I press `Make project`, wait till build complete and press `Make project` again, then it takes ~50 seconds to build, although I didn&#39;t make any change.  \r\nThe --profile gradle option reveals that `:app:kaptDebugKotlin` and `:app:processDebugResources` take the most time(each one takes ~20sec).  \r\nHow can I determine what is the cause of that? Btw. here is my gradle.properties\r\n\r\n    org.gradle.jvmargs=-Xmx4608M\r\n    org.gradle.daemon=true\r\n    kotlin.incremental=true\r\n    org.gradle.parallel=true",
+            "link": "https://stackoverflow.com/questions/49927268/how-to-profile-building-an-android-kotlin-project-verbosely",
+            "title": "How to profile building an android kotlin project verbosely?",
+            "body": "<p>I have an android kotlin project, incremental build time of which is really huge. If I press <code>Make project</code>, wait till build complete and press <code>Make project</code> again, then it takes ~50 seconds to build, although I didn't make any change.<br>\nThe --profile gradle option reveals that <code>:app:kaptDebugKotlin</code> and <code>:app:processDebugResources</code> take the most time(each one takes ~20sec).<br>\nHow can I determine what is the cause of that? Btw. here is my gradle.properties</p>\n\n<pre><code>org.gradle.jvmargs=-Xmx4608M\norg.gradle.daemon=true\nkotlin.incremental=true\norg.gradle.parallel=true\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python-3.x",
+                "word2vec",
+                "gensim",
+                "tensorboard",
+                "enumerate"
+            ],
+            "owner": {
+                "reputation": 41,
+                "user_id": 4104459,
+                "user_type": "registered",
+                "accept_rate": 8,
+                "profile_image": "https://i.stack.imgur.com/KzgdD.png?s=128&g=1",
+                "display_name": "Eduardo Andrade",
+                "link": "https://stackoverflow.com/users/4104459/eduardo-andrade"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524161218,
+            "creation_date": 1524158394,
+            "last_edit_date": 1524160613,
+            "question_id": 49926774,
+            "body_markdown": "I am using python3.5 and trying to repeat the code implemented in this video moment:\r\n\r\n&lt;https://youtu.be/BkeQzJt0f5A?t=73&gt;\r\n&lt;a href=&quot;https://youtu.be/BkeQzJt0f5A?t=73&quot;&gt;&lt;/a&gt;\r\n\r\nIn the piece of code below &quot;TypeError: slice indices must be integers or None or have an index method&quot; is happening:\r\n\r\n    with open(&quot;metadata.tsv&quot;, &quot;w+&quot;) as file_metadata:\r\n        for i,word in enumerate(model.wv.index2word[:max]):\r\n            w2v[i] = model.wv[word]\r\n            file_metadata.write(word + &quot;\\n&quot;)\r\n\r\nHow can I fix this to get the output from w2v like the video?\r\n",
+            "link": "https://stackoverflow.com/questions/49926774/gensim-word2vec-model-wv-index2word-typeerror-slice-indices-must-be-integers-o",
+            "title": "gensim word2vec model.wv.index2word &quot;TypeError: slice indices must be integers or None or have an __index__ method&quot; in enumerate",
+            "body": "<p>I am using python3.5 and trying to repeat the code implemented in this video moment:</p>\n\n<p><a href=\"https://youtu.be/BkeQzJt0f5A?t=73\" rel=\"nofollow noreferrer\">https://youtu.be/BkeQzJt0f5A?t=73</a>\n<a href=\"https://youtu.be/BkeQzJt0f5A?t=73\" rel=\"nofollow noreferrer\"></a></p>\n\n<p>In the piece of code below \"TypeError: slice indices must be integers or None or have an index method\" is happening:</p>\n\n<pre><code>with open(\"metadata.tsv\", \"w+\") as file_metadata:\n    for i,word in enumerate(model.wv.index2word[:max]):\n        w2v[i] = model.wv[word]\n        file_metadata.write(word + \"\\n\")\n</code></pre>\n\n<p>How can I fix this to get the output from w2v like the video?</p>\n"
+        },
+        {
+            "tags": [
+                "vba",
+                "excel-vba"
+            ],
+            "owner": {
+                "reputation": 27,
+                "user_id": 9365000,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/b763ee40a5675eed2b0b425c67c5a37c?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Gamze Ural",
+                "link": "https://stackoverflow.com/users/9365000/gamze-ural"
+            },
+            "is_answered": true,
+            "view_count": 24,
+            "accepted_answer_id": 49926620,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524161206,
+            "creation_date": 1524157032,
+            "last_edit_date": 1524157050,
+            "question_id": 49926431,
+            "body_markdown": "I would like to display the all content in active cell via message box or userform using by double click on active cell.. Is it possible via VBA ? It has to be working dynamically according to the cell because every cell contains different sentences. The reason is the sentences are too long and it is hard to open every time due to format or visual quality.",
+            "link": "https://stackoverflow.com/questions/49926431/display-all-content-in-active-cell-with-double-click",
+            "title": "Display all content in active cell with double click",
+            "body": "<p>I would like to display the all content in active cell via message box or userform using by double click on active cell.. Is it possible via VBA ? It has to be working dynamically according to the cell because every cell contains different sentences. The reason is the sentences are too long and it is hard to open every time due to format or visual quality.</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 184
+}

@@ -17,3 +17,44 @@ Porter: Most commonly used stemmer without a doubt, also one of the most gentle 
 Snowball (=Porter2): Nearly universally regarded as an improvement over porter, and for good reason. Porter himself in fact admits that it is better than his original algorithm. Slightly faster computation time than porter, with a fairly large community around it.
 
 Lancaster: Very aggressive stemming algorithm, sometimes to a fault. With porter and snowball, the stemmed representations are usually fairly intuitive to a reader, not so with Lancaster, as many shorter words will become totally obfuscated. The fastest algorithm here, and will reduce your working set of words hugely, but if you want more distinction, not the tool you would want.
+
+
+
+### Pipeline:
+1- webget.js       ()                  -> #.json[]
+2- merge.js        (#.json[])          -> merge.json                  // one file. contains map qid->q
+3- htmlclean.py    (merge.json)        -> htmlclean.json              // one file. contains map qid->
+4- stemming.py     (htmlclean.json)    -> stemming.json               // 
+5- lemmatizing.py  (stemming.json)     -> lemmatizing.json            // 
+6- tfidf.py        (lemmatizing.json)  -> (itf.json, docvecs.json)    // 
+6- ngram.py        (ngrams.json)       -> (ngramitf.json, docngrams.json)    // 
+
+htmlclean.json:
+{
+    "8800": "So I been poking around with C# a bit"
+}
+
+stemmed.json, lemmatizing.json:
+{
+    "8800": ["So", "I", "been", "poking"]
+}
+
+docvec.json:
+{
+    "8800":{
+        "So":.3, 
+        "I":.4,
+        "been": .3
+    },
+    "3800":{
+        "bla":.3,         
+    }
+}
+
+idf.json:
+{
+    "So":.2, 
+    "I":.14,
+    "been": .23,
+    "bla": .1,
+}

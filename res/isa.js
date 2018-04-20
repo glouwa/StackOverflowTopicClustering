@@ -1,4 +1,4 @@
 var isa={
-    "true": 2471,
-    "false": 4578
+    "true": 6092,
+    "false": 9875
 }

@@ -1,0 +1,830 @@
+{
+    "items": [
+        {
+            "tags": [
+                "crystal-reports",
+                "crystal-reports-2011"
+            ],
+            "owner": {
+                "reputation": 50,
+                "user_id": 1470741,
+                "user_type": "registered",
+                "accept_rate": 86,
+                "profile_image": "https://i.stack.imgur.com/5alpw.jpg?s=128&g=1",
+                "display_name": "Asher Rankin",
+                "link": "https://stackoverflow.com/users/1470741/asher-rankin"
+            },
+            "is_answered": false,
+            "view_count": 23,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524181534,
+            "creation_date": 1522719646,
+            "question_id": 49621006,
+            "body_markdown": "I have a report which I would like to create prompts for both VENUE and DATE RANGE, and after having these prompts bring back the incorrect data, I have deleted both and tried to start again from the beginning.\r\n\r\nTo begin with, I have a Crystal Report based upon the below SQL:\r\n\r\nTo summarise the code - it uses a common table expression broken separating the query out into revenue, space and event, finally joining this together at the end.\r\n\r\nI had to convert the data type of the &#39;booking date&#39; to DATE, because the value is stored as 2018-01-01 12:00:00:00.\r\n\r\n\r\n    WITH Revenue as\r\n    (\r\n    SELECT\tEV200_EVENT_MASTER.EV200_EVT_ID as [Event], \r\n    \t\tRevenue = \r\n    \t\tSUM(Case\r\n    \t\tWhen Orddtl.ER101_PHASE = &#39;1&#39; and ORDDTL.ER101_COMPL_STS = &#39;N&#39;\r\n            then ORDDTL.ER101_EXT_CHRG \r\n    \t\tWhen ORDDTL.ER101_PHASE = &#39;5&#39; and ORDDTL.ER101_COMPL_STS = &#39;N&#39;\r\n            then ORDDTL.ER101_EXT_CHRG \r\n    \t\tElse 0\r\n    \t\tEnd),\r\n    \t\tSM.EV800_SPACE_DESC,\r\n    \t\tSM.EV800_SPACE_CODE\r\n    \t\t\r\n    FROM\tEV200_EVENT_MASTER WITH (NOLOCK) \r\n    \t\tLEFT OUTER JOIN EV870_ACCT_MASTER PrimCoord WITH (NOLOCK) \r\n    \t\tON EV200_EVENT_MASTER.EV200_ORG_CODE = PrimCoord.EV870_ORG_CODE \r\n    \t\tAND EV200_EVENT_MASTER.EV200_COORD_1 = PrimCoord.EV870_ACCT_CODE -- Event manager\r\n    \t\tLEFT OUTER JOIN EV870_ACCT_MASTER FloorMgr WITH (NOLOCK) \r\n    \t\tON EV200_EVENT_MASTER.EV200_ORG_CODE = FloorMgr.EV870_ORG_CODE \r\n    \t\tAND EV200_EVENT_MASTER.EV200_COORD_2 = FloorMgr.EV870_ACCT_CODE --  Floor manager\r\n    \t\tLEFT OUTER JOIN EV870_ACCT_MASTER EventAccount WITH (NOLOCK) \r\n    \t\tON EV200_EVENT_MASTER.EV200_ORG_CODE = EventAccount.EV870_ORG_CODE \r\n    \t\tAND EV200_EVENT_MASTER.EV200_CUST_NBR = EventAccount.EV870_ACCT_CODE -- The person who made the booking \r\n    \t\tLEFT OUTER JOIN EV215_EVT_TYPE WITH (NOLOCK) -- get the event type\r\n    \t\tON EV200_EVENT_MASTER.EV200_ORG_CODE = EV215_EVT_TYPE.EV215_ORG_CODE\r\n    \t\tAND EV200_EVENT_MASTER.EV200_EVT_TYPE = EV215_EVT_TYPE.EV215_EVT_TYPE \r\n    \t\tLEFT OUTER JOIN EV130_STATUS_MASTER WITH (NOLOCK) -- this might not be necessary. Only if we want to show status = completed, etc\r\n    \t\tON EV200_EVENT_MASTER.EV200_EVT_STATUS = EV130_STATUS_MASTER.EV130_STATUS_CODE\r\n    \t\tLEFT OUTER JOIN EV802_SPACE_BKD SPBK \r\n    \t\tON SPBK.EV802_ORG_CODE = EV200_ORG_CODE AND SPBK.EV802_EVT_ID = EV200_EVT_ID\r\n    \t\tLEFT OUTER JOIN ER101_ACCT_ORDER_DTL ORDDTL\r\n    \t\tON ORDDTL.ER101_ORG_CODE = EV200_EVENT_MASTER.EV200_ORG_CODE \r\n    \t\tAND ORDDTL.ER101_EVT_ID = EV200_EVENT_MASTER.EV200_EVT_ID\r\n    \t\tLEFT OUTER JOIN EV800_SPACE_MASTER SM\r\n    \t\tON Sm.EV800_ORG_CODE = EV200_EVENT_MASTER.EV200_ORG_CODE\r\n    \t\tAND SM.EV800_SPACE_CODE = SPBK.EV802_BKD_SPACE\r\n    \r\n    WHERE\tEV200_EVENT_MASTER.EV200_ORG_CODE = &#39;10&#39; \r\n    \t\tAND EV200_EVENT_MASTER.EV200_EVT_STATUS &gt;= 30 /* only confirmed bookings */\r\n    \t\tAND EV200_EVENT_MASTER.EV200_EVT_STATUS &lt;= 52 \r\n    \t\tAND Not(EV200_EVENT_MASTER.EV200_EVT_TYPE = &#39;GB&#39;) -- exclude group bookings\r\n    \t\t\r\n    GROUP BY EV200_EVENT_MASTER.EV200_EVT_ID,SM.EV800_SPACE_DESC,EV800_SPACE_CODE\r\n    \r\n    ), eventdetails as\r\n    (\r\n    SELECT\tEV200_EVENT_MASTER.EV200_EVT_ID as [Event], \r\n            EV215_EVT_TYP_DESC as [Event Type],\r\n    \t\tEV200_event_master.EV200_EVT_DESC,\r\n    \t\tEV200_EVENT_MASTER.EV200_PLN_ATTEND,\r\n    \t\t--EventAccount.EV870_NAME AS [Account], \r\n    \t\tPrimCoord.EV870_FIRST_NAME + &#39; &#39; + PrimCoord.EV870_LAST_NAME AS [Event Manager],\r\n    \t\t--FloorMgr.EV870_FIRST_NAME + &#39; &#39; + FloorMgr.EV870_LAST_NAME AS [Floor Manager]\r\n    \t\tEV130_STATUS_MASTER.EV130_STATUS_DESC AS &#39;Status&#39;\r\n    \r\n    \r\n    FROM\tEV200_EVENT_MASTER WITH (NOLOCK) \r\n    \t\tLEFT OUTER JOIN EV870_ACCT_MASTER PrimCoord WITH (NOLOCK) \r\n    \t\tON EV200_EVENT_MASTER.EV200_ORG_CODE = PrimCoord.EV870_ORG_CODE \r\n    \t\tAND EV200_EVENT_MASTER.EV200_COORD_1 = PrimCoord.EV870_ACCT_CODE -- Event manager\r\n    \t\tLEFT OUTER JOIN EV870_ACCT_MASTER FloorMgr WITH (NOLOCK) \r\n    \t\tON EV200_EVENT_MASTER.EV200_ORG_CODE = FloorMgr.EV870_ORG_CODE \r\n    \t\tAND EV200_EVENT_MASTER.EV200_COORD_2 = FloorMgr.EV870_ACCT_CODE --  Floor manager\r\n    \t\tLEFT OUTER JOIN EV870_ACCT_MASTER EventAccount WITH (NOLOCK) \r\n    \t\tON EV200_EVENT_MASTER.EV200_ORG_CODE = EventAccount.EV870_ORG_CODE \r\n    \t\tAND EV200_EVENT_MASTER.EV200_CUST_NBR = EventAccount.EV870_ACCT_CODE -- The person who made the booking \r\n    \t\tLEFT OUTER JOIN EV215_EVT_TYPE WITH (NOLOCK) -- get the event type\r\n    \t\tON EV200_EVENT_MASTER.EV200_ORG_CODE = EV215_EVT_TYPE.EV215_ORG_CODE\r\n    \t\tAND EV200_EVENT_MASTER.EV200_EVT_TYPE = EV215_EVT_TYPE.EV215_EVT_TYPE \r\n    \t\tLEFT OUTER JOIN EV130_STATUS_MASTER WITH (NOLOCK) -- this might not be necessary. Only if we want to show status = completed, etc\r\n    \t\tON EV200_EVENT_MASTER.EV200_EVT_STATUS = EV130_STATUS_MASTER.EV130_STATUS_CODE\r\n    \t\t\r\n    WHERE\tEV200_EVENT_MASTER.EV200_ORG_CODE = &#39;10&#39; \r\n    \t\tAND EV200_EVENT_MASTER.EV200_EVT_STATUS &gt;= 30 /* only confirmed bookings */\r\n    \t\tAND EV200_EVENT_MASTER.EV200_EVT_STATUS &lt;= 52 \r\n    \t\tAND Not(EV200_EVENT_MASTER.EV200_EVT_TYPE = &#39;GB&#39;) -- exclude group bookings\r\n    \t\t\r\n    \t\t\r\n    ), spacedetails as\r\n    (\r\n    SELECT distinct \r\n    SPDTL.EV803_BKD_SPACE,\r\n    SPDTL.EV803_EVT_ID,\r\n    SM.EV800_SPACE_DESC,\r\n    CONVERT(DATE,SPDTL.EV803_BKG_DATE) as bkg_date,\r\n    spdtl.EV803_START_TIME,\r\n    spdtl.EV803_END_TIME,\r\n    SPDTL.EV803_BKG_START_TIME,\r\n    SPDTL.EV803_BKG_END_TIME,\r\n    SPDTL.EV803_USAGE,\r\n    EV800_NOTE_1 AS [VENUE]\r\n    FROM EV803_SPACE_BKD_DTL SPDTL\r\n    INNER JOIN EV800_SPACE_MASTER SM ON SPDTL.EV803_BKD_SPACE = SM.EV800_SPACE_CODE\r\n    \r\n    )\r\n    \r\n    select distinct eventdetails.Event,\r\n    [Event Type],\r\n    eventdetails.EV200_EVT_DESC as &#39;Description&#39;,\r\n    eventdetails.EV200_PLN_ATTEND as &#39;PAX&#39;,\r\n    eventdetails.[Event Manager],\r\n    ss.EV800_SPACE_DESC as &#39;Space&#39;,\r\n    ss.bkg_date as &#39;Booking Date&#39;,\r\n    ss.VENUE,\r\n    eventdetails.Status,\r\n    /*spacedetails.\r\n    \r\n    (CASE \r\n    \tWHEN spacedetails.EV803_USAGE = &#39;IN&#39; THEN &#39;&#39;\r\n    \tWHEN spacedetails.EV803_USAGE = &#39;ET&#39; THEN &#39;EVENT&#39;\r\n    \tWHEN spacedetails.EV803_USAGE = &#39;OUT&#39; THEN &#39;BUMP OUT&#39;\r\n    END) as &#39;Booking Type&#39;,\r\n    */\r\n    \r\n    /*this doesnt work because it will be evaluated one row at a time, and one row will not satisfy in,et,out \r\n    CAST((CASE WHEN spacedetails.ev803_usage = &#39;IN&#39; THEN spacedetails.EV803_BKG_START_TIME END) as time(0)) as &#39;Bump in Start Time&#39;,\r\n    CAST((CASE WHEN spacedetails.ev803_usage = &#39;IN&#39; THEN spacedetails.EV803_BKG_END_TIME END) as time(0)) as &#39;Bump in End Time&#39;,\r\n    CAST((CASE WHEN spacedetails.ev803_usage = &#39;ET&#39; THEN spacedetails.EV803_BKG_START_TIME  END) as time(0)) as &#39;Event Start Time&#39;,\r\n    CAST((CASE WHEN spacedetails.ev803_usage = &#39;ET&#39; THEN spacedetails.EV803_BKG_END_TIME  END) as time(0)) as &#39;Event End Time&#39;,\r\n    CAST((CASE WHEN spacedetails.ev803_usage = &#39;OUT&#39; THEN spacedetails.EV803_BKG_START_TIME  END) as time(0)) as &#39;Bump Out Start Time&#39;,\r\n    CAST((CASE WHEN spacedetails.ev803_usage = &#39;OUT&#39; THEN spacedetails.EV803_BKG_END_TIME  END) as time(0)) as &#39;Bump Out End Time&#39;,\r\n    */\r\n    (\r\n    SELECT TOP(1) CAST(s.EV803_BKG_START_TIME AS time(0))\r\n    FROM spacedetails s\r\n    WHERE s.EV803_EVT_ID = ss.EV803_EVT_ID\r\n    AND s.EV803_USAGE = &#39;IN&#39;\r\n    AND s.EV803_BKD_SPACE = ss.EV803_BKD_SPACE\r\n    AND s.bkg_date = ss.bkg_date\r\n    ) AS &#39;Bump-in Start Time&#39;,\r\n    (\r\n    SELECT TOP(1) CAST(s.EV803_BKG_END_TIME AS time(0))\r\n    FROM spacedetails s\r\n    WHERE s.EV803_EVT_ID = ss.EV803_EVT_ID\r\n    AND s.EV803_USAGE = &#39;IN&#39;\r\n    AND s.EV803_BKD_SPACE = ss.EV803_BKD_SPACE\r\n    AND s.bkg_date = ss.bkg_date\r\n    ) AS &#39;Bump-in End Time&#39;,\r\n    \r\n    (\r\n    SELECT TOP(1) CAST(s.EV803_BKG_START_TIME AS time(0))\r\n    FROM spacedetails s\r\n    WHERE s.EV803_EVT_ID = ss.EV803_EVT_ID\r\n    AND s.EV803_USAGE = &#39;ET&#39;\r\n    AND s.EV803_BKD_SPACE = ss.EV803_BKD_SPACE\r\n    AND s.bkg_date = ss.bkg_date\r\n    ) AS &#39;Event Start Time&#39;,\r\n    (\r\n    SELECT TOP(1) CAST(s.EV803_BKG_END_TIME AS time(0))\r\n    FROM spacedetails s\r\n    WHERE s.EV803_EVT_ID = ss.EV803_EVT_ID\r\n    AND s.EV803_USAGE = &#39;ET&#39;\r\n    AND s.EV803_BKD_SPACE = ss.EV803_BKD_SPACE\r\n    AND s.bkg_date = ss.bkg_date\r\n    ) AS &#39;Event End Time&#39;,\r\n    \r\n    (\r\n    SELECT TOP(1) CAST(s.EV803_BKG_START_TIME AS time(0))\r\n    FROM spacedetails s\r\n    WHERE s.EV803_EVT_ID = ss.EV803_EVT_ID\r\n    AND s.EV803_USAGE = &#39;OUT&#39;\r\n    AND s.EV803_BKD_SPACE = ss.EV803_BKD_SPACE\r\n    AND s.bkg_date = ss.bkg_date\r\n    ) AS &#39;Bump-out Start Time&#39;,\r\n    (\r\n    SELECT TOP(1) CAST(s.EV803_BKG_END_TIME AS time(0))\r\n    FROM spacedetails s\r\n    WHERE s.EV803_EVT_ID = ss.EV803_EVT_ID\r\n    AND s.EV803_USAGE = &#39;OUT&#39;\r\n    AND s.EV803_BKD_SPACE = ss.EV803_BKD_SPACE\r\n    AND s.bkg_date = ss.bkg_date\r\n    ) AS &#39;Bump-out End Time&#39;,\r\n    revenue.revenue\r\n    from eventdetails \r\n    inner join spacedetails ss on eventdetails.Event = ss.EV803_EVT_ID \r\n    inner join Revenue on ss.EV803_EVT_ID = revenue.Event and ss.EV803_BKD_SPACE = Revenue.EV800_SPACE_CODE\r\n\r\nI created a Dynamic Parameter on the &#39;Booking date&#39; setting allow for &#39;range values&#39;, \r\n[![enter image description here][1]][1]\r\nbut when i try to run the report (it is deployed in Ungerboeck Event Management) I only get the prompt for a non range value.\r\n[![enter image description here][2]][2]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/0h35W.png\r\n  [2]: https://i.stack.imgur.com/Sxts0.png",
+            "link": "https://stackoverflow.com/questions/49621006/prompts-not-working-correctly-in-crystal-reports",
+            "title": "Prompts not working correctly in Crystal Reports",
+            "body": "<p>I have a report which I would like to create prompts for both VENUE and DATE RANGE, and after having these prompts bring back the incorrect data, I have deleted both and tried to start again from the beginning.</p>\n\n<p>To begin with, I have a Crystal Report based upon the below SQL:</p>\n\n<p>To summarise the code - it uses a common table expression broken separating the query out into revenue, space and event, finally joining this together at the end.</p>\n\n<p>I had to convert the data type of the 'booking date' to DATE, because the value is stored as 2018-01-01 12:00:00:00.</p>\n\n<pre><code>WITH Revenue as\n(\nSELECT  EV200_EVENT_MASTER.EV200_EVT_ID as [Event], \n        Revenue = \n        SUM(Case\n        When Orddtl.ER101_PHASE = '1' and ORDDTL.ER101_COMPL_STS = 'N'\n        then ORDDTL.ER101_EXT_CHRG \n        When ORDDTL.ER101_PHASE = '5' and ORDDTL.ER101_COMPL_STS = 'N'\n        then ORDDTL.ER101_EXT_CHRG \n        Else 0\n        End),\n        SM.EV800_SPACE_DESC,\n        SM.EV800_SPACE_CODE\n\nFROM    EV200_EVENT_MASTER WITH (NOLOCK) \n        LEFT OUTER JOIN EV870_ACCT_MASTER PrimCoord WITH (NOLOCK) \n        ON EV200_EVENT_MASTER.EV200_ORG_CODE = PrimCoord.EV870_ORG_CODE \n        AND EV200_EVENT_MASTER.EV200_COORD_1 = PrimCoord.EV870_ACCT_CODE -- Event manager\n        LEFT OUTER JOIN EV870_ACCT_MASTER FloorMgr WITH (NOLOCK) \n        ON EV200_EVENT_MASTER.EV200_ORG_CODE = FloorMgr.EV870_ORG_CODE \n        AND EV200_EVENT_MASTER.EV200_COORD_2 = FloorMgr.EV870_ACCT_CODE --  Floor manager\n        LEFT OUTER JOIN EV870_ACCT_MASTER EventAccount WITH (NOLOCK) \n        ON EV200_EVENT_MASTER.EV200_ORG_CODE = EventAccount.EV870_ORG_CODE \n        AND EV200_EVENT_MASTER.EV200_CUST_NBR = EventAccount.EV870_ACCT_CODE -- The person who made the booking \n        LEFT OUTER JOIN EV215_EVT_TYPE WITH (NOLOCK) -- get the event type\n        ON EV200_EVENT_MASTER.EV200_ORG_CODE = EV215_EVT_TYPE.EV215_ORG_CODE\n        AND EV200_EVENT_MASTER.EV200_EVT_TYPE = EV215_EVT_TYPE.EV215_EVT_TYPE \n        LEFT OUTER JOIN EV130_STATUS_MASTER WITH (NOLOCK) -- this might not be necessary. Only if we want to show status = completed, etc\n        ON EV200_EVENT_MASTER.EV200_EVT_STATUS = EV130_STATUS_MASTER.EV130_STATUS_CODE\n        LEFT OUTER JOIN EV802_SPACE_BKD SPBK \n        ON SPBK.EV802_ORG_CODE = EV200_ORG_CODE AND SPBK.EV802_EVT_ID = EV200_EVT_ID\n        LEFT OUTER JOIN ER101_ACCT_ORDER_DTL ORDDTL\n        ON ORDDTL.ER101_ORG_CODE = EV200_EVENT_MASTER.EV200_ORG_CODE \n        AND ORDDTL.ER101_EVT_ID = EV200_EVENT_MASTER.EV200_EVT_ID\n        LEFT OUTER JOIN EV800_SPACE_MASTER SM\n        ON Sm.EV800_ORG_CODE = EV200_EVENT_MASTER.EV200_ORG_CODE\n        AND SM.EV800_SPACE_CODE = SPBK.EV802_BKD_SPACE\n\nWHERE   EV200_EVENT_MASTER.EV200_ORG_CODE = '10' \n        AND EV200_EVENT_MASTER.EV200_EVT_STATUS &gt;= 30 /* only confirmed bookings */\n        AND EV200_EVENT_MASTER.EV200_EVT_STATUS &lt;= 52 \n        AND Not(EV200_EVENT_MASTER.EV200_EVT_TYPE = 'GB') -- exclude group bookings\n\nGROUP BY EV200_EVENT_MASTER.EV200_EVT_ID,SM.EV800_SPACE_DESC,EV800_SPACE_CODE\n\n), eventdetails as\n(\nSELECT  EV200_EVENT_MASTER.EV200_EVT_ID as [Event], \n        EV215_EVT_TYP_DESC as [Event Type],\n        EV200_event_master.EV200_EVT_DESC,\n        EV200_EVENT_MASTER.EV200_PLN_ATTEND,\n        --EventAccount.EV870_NAME AS [Account], \n        PrimCoord.EV870_FIRST_NAME + ' ' + PrimCoord.EV870_LAST_NAME AS [Event Manager],\n        --FloorMgr.EV870_FIRST_NAME + ' ' + FloorMgr.EV870_LAST_NAME AS [Floor Manager]\n        EV130_STATUS_MASTER.EV130_STATUS_DESC AS 'Status'\n\n\nFROM    EV200_EVENT_MASTER WITH (NOLOCK) \n        LEFT OUTER JOIN EV870_ACCT_MASTER PrimCoord WITH (NOLOCK) \n        ON EV200_EVENT_MASTER.EV200_ORG_CODE = PrimCoord.EV870_ORG_CODE \n        AND EV200_EVENT_MASTER.EV200_COORD_1 = PrimCoord.EV870_ACCT_CODE -- Event manager\n        LEFT OUTER JOIN EV870_ACCT_MASTER FloorMgr WITH (NOLOCK) \n        ON EV200_EVENT_MASTER.EV200_ORG_CODE = FloorMgr.EV870_ORG_CODE \n        AND EV200_EVENT_MASTER.EV200_COORD_2 = FloorMgr.EV870_ACCT_CODE --  Floor manager\n        LEFT OUTER JOIN EV870_ACCT_MASTER EventAccount WITH (NOLOCK) \n        ON EV200_EVENT_MASTER.EV200_ORG_CODE = EventAccount.EV870_ORG_CODE \n        AND EV200_EVENT_MASTER.EV200_CUST_NBR = EventAccount.EV870_ACCT_CODE -- The person who made the booking \n        LEFT OUTER JOIN EV215_EVT_TYPE WITH (NOLOCK) -- get the event type\n        ON EV200_EVENT_MASTER.EV200_ORG_CODE = EV215_EVT_TYPE.EV215_ORG_CODE\n        AND EV200_EVENT_MASTER.EV200_EVT_TYPE = EV215_EVT_TYPE.EV215_EVT_TYPE \n        LEFT OUTER JOIN EV130_STATUS_MASTER WITH (NOLOCK) -- this might not be necessary. Only if we want to show status = completed, etc\n        ON EV200_EVENT_MASTER.EV200_EVT_STATUS = EV130_STATUS_MASTER.EV130_STATUS_CODE\n\nWHERE   EV200_EVENT_MASTER.EV200_ORG_CODE = '10' \n        AND EV200_EVENT_MASTER.EV200_EVT_STATUS &gt;= 30 /* only confirmed bookings */\n        AND EV200_EVENT_MASTER.EV200_EVT_STATUS &lt;= 52 \n        AND Not(EV200_EVENT_MASTER.EV200_EVT_TYPE = 'GB') -- exclude group bookings\n\n\n), spacedetails as\n(\nSELECT distinct \nSPDTL.EV803_BKD_SPACE,\nSPDTL.EV803_EVT_ID,\nSM.EV800_SPACE_DESC,\nCONVERT(DATE,SPDTL.EV803_BKG_DATE) as bkg_date,\nspdtl.EV803_START_TIME,\nspdtl.EV803_END_TIME,\nSPDTL.EV803_BKG_START_TIME,\nSPDTL.EV803_BKG_END_TIME,\nSPDTL.EV803_USAGE,\nEV800_NOTE_1 AS [VENUE]\nFROM EV803_SPACE_BKD_DTL SPDTL\nINNER JOIN EV800_SPACE_MASTER SM ON SPDTL.EV803_BKD_SPACE = SM.EV800_SPACE_CODE\n\n)\n\nselect distinct eventdetails.Event,\n[Event Type],\neventdetails.EV200_EVT_DESC as 'Description',\neventdetails.EV200_PLN_ATTEND as 'PAX',\neventdetails.[Event Manager],\nss.EV800_SPACE_DESC as 'Space',\nss.bkg_date as 'Booking Date',\nss.VENUE,\neventdetails.Status,\n/*spacedetails.\n\n(CASE \n    WHEN spacedetails.EV803_USAGE = 'IN' THEN ''\n    WHEN spacedetails.EV803_USAGE = 'ET' THEN 'EVENT'\n    WHEN spacedetails.EV803_USAGE = 'OUT' THEN 'BUMP OUT'\nEND) as 'Booking Type',\n*/\n\n/*this doesnt work because it will be evaluated one row at a time, and one row will not satisfy in,et,out \nCAST((CASE WHEN spacedetails.ev803_usage = 'IN' THEN spacedetails.EV803_BKG_START_TIME END) as time(0)) as 'Bump in Start Time',\nCAST((CASE WHEN spacedetails.ev803_usage = 'IN' THEN spacedetails.EV803_BKG_END_TIME END) as time(0)) as 'Bump in End Time',\nCAST((CASE WHEN spacedetails.ev803_usage = 'ET' THEN spacedetails.EV803_BKG_START_TIME  END) as time(0)) as 'Event Start Time',\nCAST((CASE WHEN spacedetails.ev803_usage = 'ET' THEN spacedetails.EV803_BKG_END_TIME  END) as time(0)) as 'Event End Time',\nCAST((CASE WHEN spacedetails.ev803_usage = 'OUT' THEN spacedetails.EV803_BKG_START_TIME  END) as time(0)) as 'Bump Out Start Time',\nCAST((CASE WHEN spacedetails.ev803_usage = 'OUT' THEN spacedetails.EV803_BKG_END_TIME  END) as time(0)) as 'Bump Out End Time',\n*/\n(\nSELECT TOP(1) CAST(s.EV803_BKG_START_TIME AS time(0))\nFROM spacedetails s\nWHERE s.EV803_EVT_ID = ss.EV803_EVT_ID\nAND s.EV803_USAGE = 'IN'\nAND s.EV803_BKD_SPACE = ss.EV803_BKD_SPACE\nAND s.bkg_date = ss.bkg_date\n) AS 'Bump-in Start Time',\n(\nSELECT TOP(1) CAST(s.EV803_BKG_END_TIME AS time(0))\nFROM spacedetails s\nWHERE s.EV803_EVT_ID = ss.EV803_EVT_ID\nAND s.EV803_USAGE = 'IN'\nAND s.EV803_BKD_SPACE = ss.EV803_BKD_SPACE\nAND s.bkg_date = ss.bkg_date\n) AS 'Bump-in End Time',\n\n(\nSELECT TOP(1) CAST(s.EV803_BKG_START_TIME AS time(0))\nFROM spacedetails s\nWHERE s.EV803_EVT_ID = ss.EV803_EVT_ID\nAND s.EV803_USAGE = 'ET'\nAND s.EV803_BKD_SPACE = ss.EV803_BKD_SPACE\nAND s.bkg_date = ss.bkg_date\n) AS 'Event Start Time',\n(\nSELECT TOP(1) CAST(s.EV803_BKG_END_TIME AS time(0))\nFROM spacedetails s\nWHERE s.EV803_EVT_ID = ss.EV803_EVT_ID\nAND s.EV803_USAGE = 'ET'\nAND s.EV803_BKD_SPACE = ss.EV803_BKD_SPACE\nAND s.bkg_date = ss.bkg_date\n) AS 'Event End Time',\n\n(\nSELECT TOP(1) CAST(s.EV803_BKG_START_TIME AS time(0))\nFROM spacedetails s\nWHERE s.EV803_EVT_ID = ss.EV803_EVT_ID\nAND s.EV803_USAGE = 'OUT'\nAND s.EV803_BKD_SPACE = ss.EV803_BKD_SPACE\nAND s.bkg_date = ss.bkg_date\n) AS 'Bump-out Start Time',\n(\nSELECT TOP(1) CAST(s.EV803_BKG_END_TIME AS time(0))\nFROM spacedetails s\nWHERE s.EV803_EVT_ID = ss.EV803_EVT_ID\nAND s.EV803_USAGE = 'OUT'\nAND s.EV803_BKD_SPACE = ss.EV803_BKD_SPACE\nAND s.bkg_date = ss.bkg_date\n) AS 'Bump-out End Time',\nrevenue.revenue\nfrom eventdetails \ninner join spacedetails ss on eventdetails.Event = ss.EV803_EVT_ID \ninner join Revenue on ss.EV803_EVT_ID = revenue.Event and ss.EV803_BKD_SPACE = Revenue.EV800_SPACE_CODE\n</code></pre>\n\n<p>I created a Dynamic Parameter on the 'Booking date' setting allow for 'range values', \n<a href=\"https://i.stack.imgur.com/0h35W.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/0h35W.png\" alt=\"enter image description here\"></a>\nbut when i try to run the report (it is deployed in Ungerboeck Event Management) I only get the prompt for a non range value.\n<a href=\"https://i.stack.imgur.com/Sxts0.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/Sxts0.png\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "tcpdump"
+            ],
+            "owner": {
+                "reputation": 30,
+                "user_id": 4298214,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://i.stack.imgur.com/40gZt.png?s=128&g=1",
+                "display_name": "john",
+                "link": "https://stackoverflow.com/users/4298214/john"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524181503,
+            "creation_date": 1524181503,
+            "question_id": 49931832,
+            "body_markdown": "Is there a tcpdump filter to capture, from the NIC&#39;s perspective, egress frames only?\r\n\r\nWe have a MAC flapping situation due to a layer 2 loop, so I need to be able to capture inbound or outbound from a layer 1 perspective, regardless of what the src/dst IP/MAC is.",
+            "link": "https://stackoverflow.com/questions/49931832/tcpdump-filter-to-capture-only-egress-frames-from-a-nic-standpoint",
+            "title": "tcpdump filter to capture only egress frames from a NIC standpoint",
+            "body": "<p>Is there a tcpdump filter to capture, from the NIC's perspective, egress frames only?</p>\n\n<p>We have a MAC flapping situation due to a layer 2 loop, so I need to be able to capture inbound or outbound from a layer 1 perspective, regardless of what the src/dst IP/MAC is.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "string",
+                "replace"
+            ],
+            "owner": {
+                "reputation": 9,
+                "user_id": 9453648,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5a6f3559a5f91743b3e2919f2dd7ed8a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "bmurf17",
+                "link": "https://stackoverflow.com/users/9453648/bmurf17"
+            },
+            "is_answered": false,
+            "view_count": 32,
+            "closed_date": 1524181432,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524181489,
+            "creation_date": 1524181289,
+            "question_id": 49931802,
+            "body_markdown": "How do I remove a ? from a string? Here is my current code and error I get\r\n\r\n    if(word.contains(&quot;?&quot;)) {\r\n\t\tword = word.replaceAll(&quot;?&quot;, &quot;&quot;);\r\n\t}\r\njava.util.regex.PatternSyntaxException: Dangling meta character &#39;?&#39; near index 0\r\n?\r\n^",
+            "link": "https://stackoverflow.com/questions/49931802/how-to-remove-a-in-a-string",
+            "closed_reason": "duplicate",
+            "title": "How to remove a ? in a string?",
+            "body": "<p>How do I remove a ? from a string? Here is my current code and error I get</p>\n\n<pre><code>if(word.contains(\"?\")) {\n    word = word.replaceAll(\"?\", \"\");\n}\n</code></pre>\n\n<p>java.util.regex.PatternSyntaxException: Dangling meta character '?' near index 0\n?\n^</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "html",
+                "dreamweaver"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 1026229,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/74f559136f5fdf42fbce6ba0cc368450?s=128&d=identicon&r=PG",
+                "display_name": "user1026229",
+                "link": "https://stackoverflow.com/users/1026229/user1026229"
+            },
+            "is_answered": false,
+            "view_count": 31,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524181487,
+            "creation_date": 1524180770,
+            "last_edit_date": 1524181487,
+            "question_id": 49931737,
+            "body_markdown": "I am trying to have users use an HTML form to input their email addresses but I would like the addresses to go to a word doc or notepad or a text file on the iPad pro they are entering this all on.\r\n\r\nI&#39;m trying to figure out the best method to do this as I&#39;m not using a hosted server.\r\n\r\nSo far this is what I&#39;ve been using in my HTML file:\r\n\r\n    &lt;form action=&quot;&quot; method=&quot;post&gt;\r\n    Name:\r\n    &lt;input type=&quot;text&quot; name=&quot;name&quot;&gt;\r\n    Email:\r\n    &lt;input type=&quot;email&quot; name=&quot;email&quot;&gt;\r\n    &lt;input type=&quot;submit&quot;&gt;\r\n      &lt;/form&gt;\r\nCan you tell me if I need to incorporate PHP or tell me how to do that?  I&#39;ve tried using POST but kept getting &#39;Post method not allowed&#39; and if I tried to use GET, I would get an internal server error.\r\n\r\nAny help would be greatly appreciated!\r\n",
+            "link": "https://stackoverflow.com/questions/49931737/html-form-for-emails-emails-go-to-text-or-word-file-on-an-ipad",
+            "title": "Html form for emails. Emails go to text or word file on an ipad",
+            "body": "<p>I am trying to have users use an HTML form to input their email addresses but I would like the addresses to go to a word doc or notepad or a text file on the iPad pro they are entering this all on.</p>\n\n<p>I'm trying to figure out the best method to do this as I'm not using a hosted server.</p>\n\n<p>So far this is what I've been using in my HTML file:</p>\n\n<pre><code>&lt;form action=\"\" method=\"post&gt;\nName:\n&lt;input type=\"text\" name=\"name\"&gt;\nEmail:\n&lt;input type=\"email\" name=\"email\"&gt;\n&lt;input type=\"submit\"&gt;\n  &lt;/form&gt;\n</code></pre>\n\n<p>Can you tell me if I need to incorporate PHP or tell me how to do that?  I've tried using POST but kept getting 'Post method not allowed' and if I tried to use GET, I would get an internal server error.</p>\n\n<p>Any help would be greatly appreciated!</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "entity-framework",
+                "linq-to-sql",
+                "automapper",
+                "projection"
+            ],
+            "owner": {
+                "reputation": 2073,
+                "user_id": 1135535,
+                "user_type": "registered",
+                "accept_rate": 73,
+                "profile_image": "https://i.stack.imgur.com/HKd3P.png?s=128&g=1",
+                "display_name": "Chad Richardson",
+                "link": "https://stackoverflow.com/users/1135535/chad-richardson"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524181487,
+            "creation_date": 1524173813,
+            "last_edit_date": 1524181487,
+            "question_id": 49930605,
+            "body_markdown": "In this case, I am using AutoMapper IQueryable extension and ProjectTo, but this question is really for entity framework projection in general I suppose. \r\n\r\nI&#39;ve written the expression to populate `BillOfMaterialHeaderId` as below and typically use this type of checking for the existence of related table entries. But just curious if there is a better way.\r\n\r\n    CreateMap&lt;OrderDetail, ShipOrderDetailViewModel&gt;()       \r\n        .ForMember(vm =&gt; vm.BillOfMaterialHeaderId, opt =&gt; opt.MapFrom(entity =&gt;\r\n            entity.Item != null &amp;&amp; entity.Item.BillOfMaterialHeaders != null\r\n            ? entity.Item.BillOfMaterialHeaders.First().Id \r\n            : (int?)null)\r\n        )\r\n        ;",
+            "link": "https://stackoverflow.com/questions/49930605/entity-framework-checking-for-existing-related-tables-when-creating-dto",
+            "title": "Entity Framework checking for existing related tables when creating DTO",
+            "body": "<p>In this case, I am using AutoMapper IQueryable extension and ProjectTo, but this question is really for entity framework projection in general I suppose. </p>\n\n<p>I've written the expression to populate <code>BillOfMaterialHeaderId</code> as below and typically use this type of checking for the existence of related table entries. But just curious if there is a better way.</p>\n\n<pre><code>CreateMap&lt;OrderDetail, ShipOrderDetailViewModel&gt;()       \n    .ForMember(vm =&gt; vm.BillOfMaterialHeaderId, opt =&gt; opt.MapFrom(entity =&gt;\n        entity.Item != null &amp;&amp; entity.Item.BillOfMaterialHeaders != null\n        ? entity.Item.BillOfMaterialHeaders.First().Id \n        : (int?)null)\n    )\n    ;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "xml",
+                "cheerio"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 9616819,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "AstoranWanderer",
+                "link": "https://stackoverflow.com/users/9616819/astoranwanderer"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524181481,
+            "creation_date": 1524181481,
+            "question_id": 49931829,
+            "body_markdown": "I&#39;ve been parsing XML with Cheerio.js and I&#39;m having issues with when Authors don&#39;t have the &quot;ee&quot; tags, because it will apply the next visible &quot;ee&quot; tag to it, resulting in a title with a mismatched link.\r\n\r\nMy question is, how do I ensure that an &quot;ee&quot; tag exists for only that title (so within that specific &quot;info&quot; or &quot;hit&quot; tag), and if it doesn&#39;t exist use the &quot;url&quot; tag instead (or assigns a dead link)?\r\n\r\nBelow is the Javascript code I&#39;ve been using, with the XML after it. The first entry has an &quot;ee&quot; tag, while the second one only has a &quot;url&quot; tag.\r\n\r\n    \t$(&#39;info&#39;).each(function(i, element) {\r\n\t        var title = $(&#39;title&#39;).eq(i).text();\r\n\t        var year = Number($(&#39;year&#39;).eq(i).text());\r\n\t        if ($(&#39;ee&#39;).eq(i).length)\r\n\t\t        var url = $(&#39;ee&#39;).eq(i).text();\t\r\n\t        //Within this condition we can add each string to their respective cell\r\n\t        if (year &gt;= q.tenure) {\r\n\t\t        //add entry to homepageII, authorFilter, &amp; titleFilter\r\n\t\t        homepage(&quot;#&quot;+year).append(&quot;&lt;tr&gt;&lt;td&gt;&lt;a href=&quot;+url+&quot;&gt;&quot;+title+&quot;&lt;/a&gt;&quot;).text();\r\n\t\t        authorFilter(&quot;#&quot;+q.tag).append(&quot;&lt;tr&gt;&lt;td&gt;&lt;a href=&quot;+url+&quot;&gt;&quot;+title+&quot;&lt;/a&gt;&quot;).text();\r\n\t\t        titleFilter(&quot;#titles&quot;).append(&quot;&lt;tr&gt;&lt;td&gt;&lt;a href=&quot;+url+&quot;&gt;&quot;+title+&quot;&lt;/a&gt;&quot;).text();\r\n\t\t        console.log(title);\r\n\t\t        console.log(year);\r\n\t\t        console.log(url + &#39;\\n&#39;);\r\n\t        }\r\n        });\r\n\r\n    &lt;hit score=&quot;1&quot; id=&quot;111111&quot;&gt;\r\n        &lt;info&gt;\r\n            &lt;authors&gt;\r\n                &lt;author&gt;Not Real Name&lt;/author&gt;\r\n                &lt;author&gt;Not Real Name&lt;/author&gt;\r\n                &lt;author&gt;Not Real Name&lt;/author&gt;\r\n            &lt;/authors&gt;\r\n            &lt;title&gt;\r\n                Not Real Name\r\n            &lt;/title&gt;\r\n            &lt;venue&gt;Not Real Name&lt;/venue&gt;\r\n            &lt;volume&gt;21&lt;/volume&gt;\r\n            &lt;number&gt;3&lt;/number&gt;\r\n            &lt;pages&gt;151-159&lt;/pages&gt;\r\n            &lt;year&gt;2014&lt;/year&gt;\r\n            &lt;type&gt;Journal Articles&lt;/type&gt;\r\n            &lt;key&gt;Not Real Name&lt;/key&gt;\r\n            &lt;ee&gt;The link I usually use&lt;/ee&gt;\r\n            &lt;url&gt;alternative link I could use&lt;/url&gt;\r\n        &lt;/info&gt;\r\n        &lt;url&gt;URL#111111&lt;/url&gt;\r\n    &lt;/hit&gt;\r\n    &lt;hit score=&quot;1&quot; id=&quot;1111111&quot;&gt;\r\n        &lt;info&gt;\r\n            &lt;authors&gt;\r\n                &lt;author&gt;Not Real Name&lt;/author&gt;\r\n                &lt;author&gt;Not Real Name&lt;/author&gt;\r\n                &lt;author&gt;Not Real Name&lt;/author&gt;\r\n                &lt;author&gt;Not Real Name&lt;/author&gt;\r\n                &lt;author&gt;Not Real Name&lt;/author&gt;\r\n            &lt;/authors&gt;\r\n            &lt;title&gt;\r\n            Not Real Name\r\n            &lt;/title&gt;\r\n            &lt;venue&gt;Not Real Name&lt;/venue&gt;\r\n            &lt;volume&gt;20&lt;/volume&gt;\r\n            &lt;number&gt;4&lt;/number&gt;\r\n            &lt;pages&gt;208-220&lt;/pages&gt;\r\n            &lt;year&gt;2013&lt;/year&gt;\r\n            &lt;type&gt;Journal Articles&lt;/type&gt;\r\n            &lt;key&gt;Not Real Name&lt;/key&gt;\r\n            &lt;url&gt;alt link I could use, no ee above&lt;/url&gt;\r\n        &lt;/info&gt;\r\n        &lt;url&gt;URL#11111111&lt;/url&gt;\r\n    &lt;/hit&gt;\r\n\r\n  ",
+            "link": "https://stackoverflow.com/questions/49931829/how-to-see-if-a-tag-exists-within-a-specific-section-when-parsing-xml-with-cheer",
+            "title": "How to see if a tag exists within a specific section when parsing XML with Cheerio.js?",
+            "body": "<p>I've been parsing XML with Cheerio.js and I'm having issues with when Authors don't have the \"ee\" tags, because it will apply the next visible \"ee\" tag to it, resulting in a title with a mismatched link.</p>\n\n<p>My question is, how do I ensure that an \"ee\" tag exists for only that title (so within that specific \"info\" or \"hit\" tag), and if it doesn't exist use the \"url\" tag instead (or assigns a dead link)?</p>\n\n<p>Below is the Javascript code I've been using, with the XML after it. The first entry has an \"ee\" tag, while the second one only has a \"url\" tag.</p>\n\n<pre><code>    $('info').each(function(i, element) {\n        var title = $('title').eq(i).text();\n        var year = Number($('year').eq(i).text());\n        if ($('ee').eq(i).length)\n            var url = $('ee').eq(i).text(); \n        //Within this condition we can add each string to their respective cell\n        if (year &gt;= q.tenure) {\n            //add entry to homepageII, authorFilter, &amp; titleFilter\n            homepage(\"#\"+year).append(\"&lt;tr&gt;&lt;td&gt;&lt;a href=\"+url+\"&gt;\"+title+\"&lt;/a&gt;\").text();\n            authorFilter(\"#\"+q.tag).append(\"&lt;tr&gt;&lt;td&gt;&lt;a href=\"+url+\"&gt;\"+title+\"&lt;/a&gt;\").text();\n            titleFilter(\"#titles\").append(\"&lt;tr&gt;&lt;td&gt;&lt;a href=\"+url+\"&gt;\"+title+\"&lt;/a&gt;\").text();\n            console.log(title);\n            console.log(year);\n            console.log(url + '\\n');\n        }\n    });\n\n&lt;hit score=\"1\" id=\"111111\"&gt;\n    &lt;info&gt;\n        &lt;authors&gt;\n            &lt;author&gt;Not Real Name&lt;/author&gt;\n            &lt;author&gt;Not Real Name&lt;/author&gt;\n            &lt;author&gt;Not Real Name&lt;/author&gt;\n        &lt;/authors&gt;\n        &lt;title&gt;\n            Not Real Name\n        &lt;/title&gt;\n        &lt;venue&gt;Not Real Name&lt;/venue&gt;\n        &lt;volume&gt;21&lt;/volume&gt;\n        &lt;number&gt;3&lt;/number&gt;\n        &lt;pages&gt;151-159&lt;/pages&gt;\n        &lt;year&gt;2014&lt;/year&gt;\n        &lt;type&gt;Journal Articles&lt;/type&gt;\n        &lt;key&gt;Not Real Name&lt;/key&gt;\n        &lt;ee&gt;The link I usually use&lt;/ee&gt;\n        &lt;url&gt;alternative link I could use&lt;/url&gt;\n    &lt;/info&gt;\n    &lt;url&gt;URL#111111&lt;/url&gt;\n&lt;/hit&gt;\n&lt;hit score=\"1\" id=\"1111111\"&gt;\n    &lt;info&gt;\n        &lt;authors&gt;\n            &lt;author&gt;Not Real Name&lt;/author&gt;\n            &lt;author&gt;Not Real Name&lt;/author&gt;\n            &lt;author&gt;Not Real Name&lt;/author&gt;\n            &lt;author&gt;Not Real Name&lt;/author&gt;\n            &lt;author&gt;Not Real Name&lt;/author&gt;\n        &lt;/authors&gt;\n        &lt;title&gt;\n        Not Real Name\n        &lt;/title&gt;\n        &lt;venue&gt;Not Real Name&lt;/venue&gt;\n        &lt;volume&gt;20&lt;/volume&gt;\n        &lt;number&gt;4&lt;/number&gt;\n        &lt;pages&gt;208-220&lt;/pages&gt;\n        &lt;year&gt;2013&lt;/year&gt;\n        &lt;type&gt;Journal Articles&lt;/type&gt;\n        &lt;key&gt;Not Real Name&lt;/key&gt;\n        &lt;url&gt;alt link I could use, no ee above&lt;/url&gt;\n    &lt;/info&gt;\n    &lt;url&gt;URL#11111111&lt;/url&gt;\n&lt;/hit&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "html",
+                "html-table"
+            ],
+            "owner": {
+                "reputation": 1966,
+                "user_id": 3673259,
+                "user_type": "registered",
+                "accept_rate": 94,
+                "profile_image": "https://www.gravatar.com/avatar/63755c46e121f8683d95ee70095e9b1a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Joshua",
+                "link": "https://stackoverflow.com/users/3673259/joshua"
+            },
+            "is_answered": true,
+            "view_count": 413,
+            "accepted_answer_id": 48451104,
+            "answer_count": 1,
+            "score": 9,
+            "last_activity_date": 1524181468,
+            "creation_date": 1516674338,
+            "last_edit_date": 1516994425,
+            "question_id": 48393253,
+            "body_markdown": "First, I have read [Parsing a table with rowspan and colspan][1]. I even answered the question. Please read before you mark this as duplicate.\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;table border=&quot;1&quot;&gt;\r\n      &lt;tr&gt;\r\n        &lt;th&gt;A&lt;/th&gt;\r\n        &lt;th&gt;B&lt;/th&gt;\r\n      &lt;/tr&gt;\r\n      &lt;tr&gt;\r\n        &lt;td rowspan=&quot;2&quot;&gt;C&lt;/td&gt;\r\n        &lt;td rowspan=&quot;1&quot;&gt;D&lt;/td&gt;\r\n      &lt;/tr&gt;\r\n      &lt;tr&gt;\r\n        &lt;td&gt;E&lt;/td&gt;\r\n        &lt;td&gt;F&lt;/td&gt;\r\n      &lt;/tr&gt;\r\n      &lt;tr&gt;\r\n        &lt;td&gt;G&lt;/td&gt;\r\n        &lt;td&gt;H&lt;/td&gt;\r\n      &lt;/tr&gt;\r\n    &lt;/table&gt;\r\n\r\n\r\nIt will render like\r\n\r\n    +---+---+---+\r\n    | A | B |   |\r\n    +---+---+   |\r\n    |   | D |   |\r\n    + C +---+---+\r\n    |   | E | F |\r\n    +---+---+---+\r\n    | G | H |   |\r\n    +---+---+---+\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;table border=&quot;1&quot;&gt;\r\n      &lt;tr&gt;\r\n        &lt;th&gt;A&lt;/th&gt;\r\n        &lt;th&gt;B&lt;/th&gt;\r\n      &lt;/tr&gt;\r\n      &lt;tr&gt;\r\n        &lt;td rowspan=&quot;2&quot;&gt;C&lt;/td&gt;\r\n        &lt;td rowspan=&quot;2&quot;&gt;D&lt;/td&gt;\r\n      &lt;/tr&gt;\r\n      &lt;tr&gt;\r\n        &lt;td&gt;E&lt;/td&gt;\r\n        &lt;td&gt;F&lt;/td&gt;\r\n      &lt;/tr&gt;\r\n      &lt;tr&gt;\r\n        &lt;td&gt;G&lt;/td&gt;\r\n        &lt;td&gt;H&lt;/td&gt;\r\n      &lt;/tr&gt;\r\n    &lt;/table&gt;\r\n\r\nHowever, this will render like this.\r\n\r\n    +---+---+-------+\r\n    | A | B |       |\r\n    +---+---+-------+\r\n    |   |   |       |\r\n    | C | D +---+---+\r\n    |   |   | E | F |\r\n    +---+---+---+---+\r\n    | G | H |       |\r\n    +---+---+---+---+\r\n\r\nMy code from previous answer can only parse table which has all the columns defined in the first row.\r\n\r\n    def table_to_2d(table_tag):\r\n        rows = table_tag(&quot;tr&quot;)\r\n        cols = rows[0]([&quot;td&quot;, &quot;th&quot;])\r\n        table = [[None] * len(cols) for _ in range(len(rows))]\r\n        for row_i, row in enumerate(rows):\r\n            for col_i, col in enumerate(row([&quot;td&quot;, &quot;th&quot;])):\r\n                insert(table, row_i, col_i, col)\r\n        return table\r\n    \r\n    \r\n    def insert(table, row, col, element):\r\n        if row &gt;= len(table) or col &gt;= len(table[row]):\r\n            return\r\n        if table[row][col] is None:\r\n            value = element.get_text()\r\n            table[row][col] = value\r\n            if element.has_attr(&quot;colspan&quot;):\r\n                span = int(element[&quot;colspan&quot;])\r\n                for i in range(1, span):\r\n                    table[row][col+i] = value\r\n            if element.has_attr(&quot;rowspan&quot;):\r\n                span = int(element[&quot;rowspan&quot;])\r\n                for i in range(1, span):\r\n                    table[row+i][col] = value\r\n        else:\r\n            insert(table, row, col + 1, element)\r\n\r\n    soup = BeautifulSoup(&#39;&#39;&#39;\r\n        &lt;table&gt;\r\n            &lt;tr&gt;&lt;th&gt;1&lt;/th&gt;&lt;th&gt;2&lt;/th&gt;&lt;th&gt;5&lt;/th&gt;&lt;/tr&gt;\r\n            &lt;tr&gt;&lt;td rowspan=&quot;2&quot;&gt;3&lt;/td&gt;&lt;td colspan=&quot;2&quot;&gt;4&lt;/td&gt;&lt;/tr&gt;\r\n            &lt;tr&gt;&lt;td&gt;6&lt;/td&gt;&lt;td&gt;7&lt;/td&gt;&lt;/tr&gt;\r\n        &lt;/table&gt;&#39;&#39;&#39;, &#39;html.parser&#39;)\r\n    print(table_to_2d(soup.table))\r\n\r\nMy question is how to parse a table into a 2D array which represent **exactly** how it render in browser. Or someone can explain how the browser renders the table is also fine.\r\n\r\n  [1]: https://stackoverflow.com/questions/9978445/parsing-a-table-with-rowspan-and-colspan/46538366",
+            "link": "https://stackoverflow.com/questions/48393253/how-to-parse-table-with-rowspan-and-colspan",
+            "title": "How to parse table with rowspan and colspan",
+            "body": "<p>First, I have read <a href=\"https://stackoverflow.com/questions/9978445/parsing-a-table-with-rowspan-and-colspan/46538366\">Parsing a table with rowspan and colspan</a>. I even answered the question. Please read before you mark this as duplicate.</p>\n\n<pre class=\"lang-html prettyprint-override\"><code>&lt;table border=\"1\"&gt;\n  &lt;tr&gt;\n    &lt;th&gt;A&lt;/th&gt;\n    &lt;th&gt;B&lt;/th&gt;\n  &lt;/tr&gt;\n  &lt;tr&gt;\n    &lt;td rowspan=\"2\"&gt;C&lt;/td&gt;\n    &lt;td rowspan=\"1\"&gt;D&lt;/td&gt;\n  &lt;/tr&gt;\n  &lt;tr&gt;\n    &lt;td&gt;E&lt;/td&gt;\n    &lt;td&gt;F&lt;/td&gt;\n  &lt;/tr&gt;\n  &lt;tr&gt;\n    &lt;td&gt;G&lt;/td&gt;\n    &lt;td&gt;H&lt;/td&gt;\n  &lt;/tr&gt;\n&lt;/table&gt;\n</code></pre>\n\n<p>It will render like</p>\n\n<pre><code>+---+---+---+\n| A | B |   |\n+---+---+   |\n|   | D |   |\n+ C +---+---+\n|   | E | F |\n+---+---+---+\n| G | H |   |\n+---+---+---+\n</code></pre>\n\n<pre class=\"lang-html prettyprint-override\"><code>&lt;table border=\"1\"&gt;\n  &lt;tr&gt;\n    &lt;th&gt;A&lt;/th&gt;\n    &lt;th&gt;B&lt;/th&gt;\n  &lt;/tr&gt;\n  &lt;tr&gt;\n    &lt;td rowspan=\"2\"&gt;C&lt;/td&gt;\n    &lt;td rowspan=\"2\"&gt;D&lt;/td&gt;\n  &lt;/tr&gt;\n  &lt;tr&gt;\n    &lt;td&gt;E&lt;/td&gt;\n    &lt;td&gt;F&lt;/td&gt;\n  &lt;/tr&gt;\n  &lt;tr&gt;\n    &lt;td&gt;G&lt;/td&gt;\n    &lt;td&gt;H&lt;/td&gt;\n  &lt;/tr&gt;\n&lt;/table&gt;\n</code></pre>\n\n<p>However, this will render like this.</p>\n\n<pre><code>+---+---+-------+\n| A | B |       |\n+---+---+-------+\n|   |   |       |\n| C | D +---+---+\n|   |   | E | F |\n+---+---+---+---+\n| G | H |       |\n+---+---+---+---+\n</code></pre>\n\n<p>My code from previous answer can only parse table which has all the columns defined in the first row.</p>\n\n<pre><code>def table_to_2d(table_tag):\n    rows = table_tag(\"tr\")\n    cols = rows[0]([\"td\", \"th\"])\n    table = [[None] * len(cols) for _ in range(len(rows))]\n    for row_i, row in enumerate(rows):\n        for col_i, col in enumerate(row([\"td\", \"th\"])):\n            insert(table, row_i, col_i, col)\n    return table\n\n\ndef insert(table, row, col, element):\n    if row &gt;= len(table) or col &gt;= len(table[row]):\n        return\n    if table[row][col] is None:\n        value = element.get_text()\n        table[row][col] = value\n        if element.has_attr(\"colspan\"):\n            span = int(element[\"colspan\"])\n            for i in range(1, span):\n                table[row][col+i] = value\n        if element.has_attr(\"rowspan\"):\n            span = int(element[\"rowspan\"])\n            for i in range(1, span):\n                table[row+i][col] = value\n    else:\n        insert(table, row, col + 1, element)\n\nsoup = BeautifulSoup('''\n    &lt;table&gt;\n        &lt;tr&gt;&lt;th&gt;1&lt;/th&gt;&lt;th&gt;2&lt;/th&gt;&lt;th&gt;5&lt;/th&gt;&lt;/tr&gt;\n        &lt;tr&gt;&lt;td rowspan=\"2\"&gt;3&lt;/td&gt;&lt;td colspan=\"2\"&gt;4&lt;/td&gt;&lt;/tr&gt;\n        &lt;tr&gt;&lt;td&gt;6&lt;/td&gt;&lt;td&gt;7&lt;/td&gt;&lt;/tr&gt;\n    &lt;/table&gt;''', 'html.parser')\nprint(table_to_2d(soup.table))\n</code></pre>\n\n<p>My question is how to parse a table into a 2D array which represent <strong>exactly</strong> how it render in browser. Or someone can explain how the browser renders the table is also fine.</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift",
+                "if-statement",
+                "sprite-kit"
+            ],
+            "owner": {
+                "reputation": 34,
+                "user_id": 9611921,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/gI7RY.png?s=128&g=1",
+                "display_name": "snapbackdev",
+                "link": "https://stackoverflow.com/users/9611921/snapbackdev"
+            },
+            "is_answered": true,
+            "view_count": 39,
+            "accepted_answer_id": 49931746,
+            "answer_count": 3,
+            "score": -1,
+            "last_activity_date": 1524181453,
+            "creation_date": 1524180487,
+            "question_id": 49931706,
+            "body_markdown": "I am building a gameOver scene where if you reach a certain amount of Points you either get 1, 2 or 3 Stars.\r\n\r\nI wrote a if Condition block that looks like this:\r\n\r\n    var starImage = SKSpriteNode()\r\n        if gameScore &gt; 500 {\r\n            starImage = SKSpriteNode(imageNamed: &quot;2_stars&quot;)\r\n            print(&quot;You achieved 2 Stars&quot;)\r\n        } else if gameScore &gt; 1000 {\r\n            starImage = SKSpriteNode(imageNamed: &quot;3_stars&quot;)\r\n            print(&quot;You achieved 3 Stars&quot;)\r\n        } else {\r\n            starImage = SKSpriteNode(imageNamed: &quot;1_star&quot;)\r\n            print(&quot;You achieved 1 Star&quot;)\r\n        }\r\n        starImage.setScale(2)\r\n        starImage.position = CGPoint(x: self.size.width / 2, y: self.size.height * 0.9)\r\n        starImage.zPosition = 2\r\n        self.addChild(starImage)\r\n\r\n2_stars and 1_star work fine, but the else if condition doesn&#39;t seem to execute.\r\n\r\nHowever the weird thing is, when I replace the greater than (&gt;) symbols with equals (==) all 3 conditions work.\r\n\r\nI did try using &gt;= but that has the same effect as &gt;.\r\n\r\nAnyone know why this is happening?",
+            "link": "https://stackoverflow.com/questions/49931706/else-if-condition-not-executing-statement",
+            "title": "else if condition not executing statement",
+            "body": "<p>I am building a gameOver scene where if you reach a certain amount of Points you either get 1, 2 or 3 Stars.</p>\n\n<p>I wrote a if Condition block that looks like this:</p>\n\n<pre><code>var starImage = SKSpriteNode()\n    if gameScore &gt; 500 {\n        starImage = SKSpriteNode(imageNamed: \"2_stars\")\n        print(\"You achieved 2 Stars\")\n    } else if gameScore &gt; 1000 {\n        starImage = SKSpriteNode(imageNamed: \"3_stars\")\n        print(\"You achieved 3 Stars\")\n    } else {\n        starImage = SKSpriteNode(imageNamed: \"1_star\")\n        print(\"You achieved 1 Star\")\n    }\n    starImage.setScale(2)\n    starImage.position = CGPoint(x: self.size.width / 2, y: self.size.height * 0.9)\n    starImage.zPosition = 2\n    self.addChild(starImage)\n</code></pre>\n\n<p>2_stars and 1_star work fine, but the else if condition doesn't seem to execute.</p>\n\n<p>However the weird thing is, when I replace the greater than (>) symbols with equals (==) all 3 conditions work.</p>\n\n<p>I did try using >= but that has the same effect as >.</p>\n\n<p>Anyone know why this is happening?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript"
+            ],
+            "owner": {
+                "reputation": 826,
+                "user_id": 1713620,
+                "user_type": "registered",
+                "accept_rate": 82,
+                "profile_image": "https://www.gravatar.com/avatar/befa4b17cf9a58c71b09302bc9ada74f?s=128&d=identicon&r=PG",
+                "display_name": "Michael Ryan Soileau",
+                "link": "https://stackoverflow.com/users/1713620/michael-ryan-soileau"
+            },
+            "is_answered": true,
+            "view_count": 20,
+            "accepted_answer_id": 49931744,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524181445,
+            "creation_date": 1524180531,
+            "question_id": 49931715,
+            "body_markdown": "Suppose I have a series of arrays like this:\r\n\r\n    [{title: &#39;foo&#39;, data: &#39;something here&#39;}, \r\n     {title: &#39;foo&#39;, data: &#39;something else here&#39;}, \r\n     {title: &#39;bar&#39;, data: &#39;something else again&#39;}\r\n    ]\r\n\r\nWhat would be nice is if I could transform them into a series of objects grouped by title as the key.\r\n\r\nSo the transformation would look something like this:\r\n\r\n    {\r\n        &#39;foo&#39;: {data: [&#39;something else&#39;, &#39;something else here&#39;]}\r\n        &#39;bar&#39;: {data: [&#39;something else again&#39;]}\r\n    }\r\n\r\nHow would I go about that in a somewhat elegant manner?  ",
+            "link": "https://stackoverflow.com/questions/49931715/javascript-extracting-out-a-single-element-from-an-array-into-an-object-with-th",
+            "title": "Javascript, extracting out a single element from an array into an object with the new array formed from the matching sets",
+            "body": "<p>Suppose I have a series of arrays like this:</p>\n\n<pre><code>[{title: 'foo', data: 'something here'}, \n {title: 'foo', data: 'something else here'}, \n {title: 'bar', data: 'something else again'}\n]\n</code></pre>\n\n<p>What would be nice is if I could transform them into a series of objects grouped by title as the key.</p>\n\n<p>So the transformation would look something like this:</p>\n\n<pre><code>{\n    'foo': {data: ['something else', 'something else here']}\n    'bar': {data: ['something else again']}\n}\n</code></pre>\n\n<p>How would I go about that in a somewhat elegant manner?  </p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "windows",
+                "git",
+                "ssh"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 4992265,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10205445514150372/picture?type=large",
+                "display_name": "rocrat44",
+                "link": "https://stackoverflow.com/users/4992265/rocrat44"
+            },
+            "is_answered": false,
+            "view_count": 35,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524181435,
+            "creation_date": 1522955671,
+            "last_edit_date": 1524181435,
+            "question_id": 49679874,
+            "body_markdown": "I am trying to execute git commands with a public SSH key using the `system()` function in R (on Windows 7 64 bit).  When I try to execute a git command I get the following error:\r\n\r\n    ssh_askpass: exec(rpostback-askpass): No such file or directory\r\n    Host key verification failed.\r\n    fatal: Could not read from remote repository.\r\n\r\n    Please make sure you have the correct access rights\r\n    and the repository exists.\r\n\r\nI can run the exact same command on the command prompt and it works.  I can also run the exact same command on the git bash shell and it works.  I am not sure why `cmd` can&#39;t find the key when run from R using the `system()` command.  Is there a way to specify the key location for the command prompt used by the `system()` command?  \r\n\r\nUpdate:\r\nAn example call that won&#39;t work:\r\n\r\n    system(&quot;git push --set-upstream git@gitlab.mygit.com:MyGroup/testGitlab.git master&quot;)\r\n\r\nalso\r\n\r\n    system(&quot;git clone git@gitlab.mygit.com:MyGroup/gitLabTest.git&quot;)\r\n\r\nBoth of these calls get the same error above.\r\n\r\n**Update 2:** It appears that the ssh keys are not visible from R using `list.files()`\r\n\r\n    &gt; list.files(&quot;C:/Users/Me/Documents/.ssh/&quot;, all.files = TRUE)\r\n    [1] &quot;.&quot;  &quot;..&quot;\r\n\r\nI have verified that there are multiple ssh keys in this directory which are visible from the git bash shell using `ls -a`.",
+            "link": "https://stackoverflow.com/questions/49679874/ssh-key-not-found-when-using-system-to-send-git-commands-to-command-prompt-in",
+            "title": "SSH key not found when using system() to send git commands to command prompt in windows",
+            "body": "<p>I am trying to execute git commands with a public SSH key using the <code>system()</code> function in R (on Windows 7 64 bit).  When I try to execute a git command I get the following error:</p>\n\n<pre><code>ssh_askpass: exec(rpostback-askpass): No such file or directory\nHost key verification failed.\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\n</code></pre>\n\n<p>I can run the exact same command on the command prompt and it works.  I can also run the exact same command on the git bash shell and it works.  I am not sure why <code>cmd</code> can't find the key when run from R using the <code>system()</code> command.  Is there a way to specify the key location for the command prompt used by the <code>system()</code> command?  </p>\n\n<p>Update:\nAn example call that won't work:</p>\n\n<pre><code>system(\"git push --set-upstream git@gitlab.mygit.com:MyGroup/testGitlab.git master\")\n</code></pre>\n\n<p>also</p>\n\n<pre><code>system(\"git clone git@gitlab.mygit.com:MyGroup/gitLabTest.git\")\n</code></pre>\n\n<p>Both of these calls get the same error above.</p>\n\n<p><strong>Update 2:</strong> It appears that the ssh keys are not visible from R using <code>list.files()</code></p>\n\n<pre><code>&gt; list.files(\"C:/Users/Me/Documents/.ssh/\", all.files = TRUE)\n[1] \".\"  \"..\"\n</code></pre>\n\n<p>I have verified that there are multiple ssh keys in this directory which are visible from the git bash shell using <code>ls -a</code>.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript"
+            ],
+            "owner": {
+                "reputation": 23,
+                "user_id": 9516951,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-MzmO0RlX4WM/AAAAAAAAAAI/AAAAAAAAAAo/ohIBavaI4WE/photo.jpg?sz=128",
+                "display_name": "Lotus",
+                "link": "https://stackoverflow.com/users/9516951/lotus"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524181432,
+            "creation_date": 1524181053,
+            "question_id": 49931766,
+            "body_markdown": "I have an interesting problem for a little program I have been developing. \r\n\r\nBasically what I wish to create is a window which I can resize but still maintain a 16:9 aspect ratio (note this is for a native application using NWJS). I am also using the easelJS libraries to manipulate the canvas. \r\n\r\nThe program below basically resizes the canvas to be the same size as the window and does it&#39;s job perfectly. But I&#39;ve been stuck trying to figure out exactly how to maintain the aspect ratio of the window itself. \r\n\r\n    var stage, w, h;\r\n    \r\n    window.addEventListener(&#39;resize&#39;, resizeCanvas);\r\n    function resizeCanvas() {\r\n    \tw = window.innerWidth;\r\n    \th = window.innerHeight;\r\n    \tstage.canvas.width = w;\r\n    \tstage.canvas.height = h;\r\n\r\nExactly what sort of calculations do I need to do to force this setting? I&#39;m not as knowledgeable when it comes to things such as aspect ratios.",
+            "link": "https://stackoverflow.com/questions/49931766/resizing-window-to-maintain-aspect-ratio",
+            "title": "Resizing window to maintain aspect ratio",
+            "body": "<p>I have an interesting problem for a little program I have been developing. </p>\n\n<p>Basically what I wish to create is a window which I can resize but still maintain a 16:9 aspect ratio (note this is for a native application using NWJS). I am also using the easelJS libraries to manipulate the canvas. </p>\n\n<p>The program below basically resizes the canvas to be the same size as the window and does it's job perfectly. But I've been stuck trying to figure out exactly how to maintain the aspect ratio of the window itself. </p>\n\n<pre><code>var stage, w, h;\n\nwindow.addEventListener('resize', resizeCanvas);\nfunction resizeCanvas() {\n    w = window.innerWidth;\n    h = window.innerHeight;\n    stage.canvas.width = w;\n    stage.canvas.height = h;\n</code></pre>\n\n<p>Exactly what sort of calculations do I need to do to force this setting? I'm not as knowledgeable when it comes to things such as aspect ratios.</p>\n"
+        },
+        {
+            "tags": [
+                "python"
+            ],
+            "owner": {
+                "reputation": 40,
+                "user_id": 8775690,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/49950e9d3182aca53e758e4e14ba2b8f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Fern_2018",
+                "link": "https://stackoverflow.com/users/8775690/fern-2018"
+            },
+            "is_answered": true,
+            "view_count": 32,
+            "accepted_answer_id": 49931634,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1524181416,
+            "creation_date": 1524178453,
+            "last_edit_date": 1524181416,
+            "question_id": 49931418,
+            "body_markdown": "I have a numpy array consisting of \r\n\r\n    [1,3,8,6,0,2,4,5,9,7]\r\n\r\nThis array is a random array consisting of 10 numbers 0-9.\r\n\r\nI also have a 2D numpy array, a 10X10 2D numpy array with numerical values.\r\n\r\nI would like to use my 1D numpy array (above) to access specific instances in my 2D numpy array, by looping through the 1D array\r\n\r\n 1. Loop 1: takes in 1 and 3, and finds the value at [1:3] in my 2D numpy array.\r\n 2. Loop 2: takes in 3 and 8, and finds the value at [3:8] in my 2D numpy array.\r\n\r\n.\r\n\r\n 10. Loop 10: takes in 7 and 1, and finds the value at [7:1] in my 2D numpy array. \r\n\r\n\r\n\r\nI would like to add up these values in my 2D numpy array. \r\n\r\nso far I have :\r\narray=[1,3,8,6,0,2,4,5,9,7]\r\n\r\n    values =0\r\n    for i in range (0, len(array)): #this is 10\r\n        a=array2[i,array[i]+1]  #array2 is the 2D numpy array with the values\r\n        values=values+a\r\n\r\nThis works to some degree but how to I get it to access the last element to the first? i.e. find [7,1]",
+            "link": "https://stackoverflow.com/questions/49931418/extracting-ith-and-ith1-from-random-2d-numpy-array",
+            "title": "extracting ith and ith+1 from random 2D numpy array",
+            "body": "<p>I have a numpy array consisting of </p>\n\n<pre><code>[1,3,8,6,0,2,4,5,9,7]\n</code></pre>\n\n<p>This array is a random array consisting of 10 numbers 0-9.</p>\n\n<p>I also have a 2D numpy array, a 10X10 2D numpy array with numerical values.</p>\n\n<p>I would like to use my 1D numpy array (above) to access specific instances in my 2D numpy array, by looping through the 1D array</p>\n\n<ol>\n<li>Loop 1: takes in 1 and 3, and finds the value at [1:3] in my 2D numpy array.</li>\n<li>Loop 2: takes in 3 and 8, and finds the value at [3:8] in my 2D numpy array.</li>\n</ol>\n\n<p>.</p>\n\n<ol start=\"10\">\n<li>Loop 10: takes in 7 and 1, and finds the value at [7:1] in my 2D numpy array. </li>\n</ol>\n\n<p>I would like to add up these values in my 2D numpy array. </p>\n\n<p>so far I have :\narray=[1,3,8,6,0,2,4,5,9,7]</p>\n\n<pre><code>values =0\nfor i in range (0, len(array)): #this is 10\n    a=array2[i,array[i]+1]  #array2 is the 2D numpy array with the values\n    values=values+a\n</code></pre>\n\n<p>This works to some degree but how to I get it to access the last element to the first? i.e. find [7,1]</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "android-studio",
+                "android-gradle"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9662434,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Ali",
+                "link": "https://stackoverflow.com/users/9662434/ali"
+            },
+            "is_answered": false,
+            "view_count": 67,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1524181383,
+            "creation_date": 1524032115,
+            "last_edit_date": 1524040635,
+            "question_id": 49892430,
+            "body_markdown": "I am be making the final version of an app with the following **Gradle**:\r\n\r\n    apply plugin: &#39;com.android.application&#39;\r\n\r\n\tandroid {\r\n\t\tcompileSdkVersion 26\r\n\t\tdefaultConfig {\r\n\t\t\tapplicationId &quot;ir.garsah.information&quot;\r\n\t\t\tminSdkVersion 14\r\n\t\t\ttargetSdkVersion 26\r\n\t\t\tversionCode 1\r\n\t\t\tversionName &quot;1.0&quot;\r\n\t\t\ttestInstrumentationRunner &quot;android.support.test.runner.AndroidJUnitRunner&quot;\r\n\r\n\t\t}\r\n\t\tbuildTypes {\r\n\t\t\trelease {\r\n\r\n\t\t\t\tminifyEnabled true\r\n\t\t\t\tshrinkResources true\r\n\t\t\t\tproguardFiles getDefaultProguardFile(&#39;proguard-android.txt&#39;),\r\n\t\t\t\t\t\t&#39;proguard-rules.pro&#39;\r\n\t\t\t}\r\n\t\t}\r\n\t\tbuildToolsVersion &#39;27.0.3&#39;\r\n\t}\r\n\r\n\tdependencies {\r\n\r\n\t\timplementation fileTree(include: [&#39;*.jar&#39;], dir: &#39;libs&#39;)\r\n\t\timplementation &#39;com.android.support:appcompat-v7:26.1.0&#39;\r\n\t\timplementation &#39;com.android.support.constraint:constraint-layout:1.1.0&#39;\r\n\t\ttestImplementation &#39;junit:junit:4.12&#39;\r\n\t\tandroidTestImplementation &#39;com.android.support.test:runner:1.0.1&#39;\r\n\t\tandroidTestImplementation &#39;com.android.support.test.espresso:espresso-core:3.0.1&#39;\r\n\t\timplementation &#39;com.android.support:design:26.1.0&#39;\r\n\t\timplementation &#39;com.squareup.retrofit2:retrofit:2.4.0&#39;\r\n\t\timplementation &#39;com.squareup.retrofit2:converter-gson:2.4.0&#39;\r\n\r\n\r\n\t}\r\n\r\nHowever, I get this error:\r\n\r\n    Could not find intellij-core.jar (com.android.tools.external.com-intellij:intellij-core:26.1.1).\r\n\r\nI searched in the following locations:\r\n    https://dl.google.com/dl/android/maven2/com/android/tools/external/com-intellij/intellij-core/26.1.1/intellij-core-26.1.1.jar\r\n\r\n[![img][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/9Z5QK.jpg",
+            "link": "https://stackoverflow.com/questions/49892430/android-studio-error-while-building-apk",
+            "title": "Android Studio Error While Building APK",
+            "body": "<p>I am be making the final version of an app with the following <strong>Gradle</strong>:</p>\n\n<pre><code>apply plugin: 'com.android.application'\n\nandroid {\n    compileSdkVersion 26\n    defaultConfig {\n        applicationId \"ir.garsah.information\"\n        minSdkVersion 14\n        targetSdkVersion 26\n        versionCode 1\n        versionName \"1.0\"\n        testInstrumentationRunner \"android.support.test.runner.AndroidJUnitRunner\"\n\n    }\n    buildTypes {\n        release {\n\n            minifyEnabled true\n            shrinkResources true\n            proguardFiles getDefaultProguardFile('proguard-android.txt'),\n                    'proguard-rules.pro'\n        }\n    }\n    buildToolsVersion '27.0.3'\n}\n\ndependencies {\n\n    implementation fileTree(include: ['*.jar'], dir: 'libs')\n    implementation 'com.android.support:appcompat-v7:26.1.0'\n    implementation 'com.android.support.constraint:constraint-layout:1.1.0'\n    testImplementation 'junit:junit:4.12'\n    androidTestImplementation 'com.android.support.test:runner:1.0.1'\n    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'\n    implementation 'com.android.support:design:26.1.0'\n    implementation 'com.squareup.retrofit2:retrofit:2.4.0'\n    implementation 'com.squareup.retrofit2:converter-gson:2.4.0'\n\n\n}\n</code></pre>\n\n<p>However, I get this error:</p>\n\n<pre><code>Could not find intellij-core.jar (com.android.tools.external.com-intellij:intellij-core:26.1.1).\n</code></pre>\n\n<p>I searched in the following locations:\n    <a href=\"https://dl.google.com/dl/android/maven2/com/android/tools/external/com-intellij/intellij-core/26.1.1/intellij-core-26.1.1.jar\" rel=\"nofollow noreferrer\">https://dl.google.com/dl/android/maven2/com/android/tools/external/com-intellij/intellij-core/26.1.1/intellij-core-26.1.1.jar</a></p>\n\n<p><a href=\"https://i.stack.imgur.com/9Z5QK.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/9Z5QK.jpg\" alt=\"img\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "azure",
+                "visual-studio-code",
+                "azure-powershell"
+            ],
+            "owner": {
+                "reputation": 7925,
+                "user_id": 229949,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://www.gravatar.com/avatar/809d801884711036985af824a0695f34?s=128&d=identicon&r=PG",
+                "display_name": "the_joric",
+                "link": "https://stackoverflow.com/users/229949/the-joric"
+            },
+            "is_answered": true,
+            "view_count": 423,
+            "accepted_answer_id": 45723573,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1524181378,
+            "creation_date": 1502887195,
+            "last_edit_date": 1524181378,
+            "question_id": 45713788,
+            "body_markdown": "When I try to login to Azure RM from VS Code terminal it just hangs. No prompt with login / password is shown. \r\n\r\nIs there any way to get logged in from that terminal? Otherwise running / debugging Azure PS scripts becomes more complicated than it should be :)",
+            "link": "https://stackoverflow.com/questions/45713788/login-azurermaccount-from-vs-code-terminal",
+            "title": "Login-AzureRmAccount from VS Code terminal",
+            "body": "<p>When I try to login to Azure RM from VS Code terminal it just hangs. No prompt with login / password is shown. </p>\n\n<p>Is there any way to get logged in from that terminal? Otherwise running / debugging Azure PS scripts becomes more complicated than it should be :)</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-2.7",
+                "bad-request",
+                "languagetool"
+            ],
+            "owner": {
+                "reputation": 724,
+                "user_id": 3710195,
+                "user_type": "registered",
+                "accept_rate": 90,
+                "profile_image": "https://i.stack.imgur.com/czYXB.png?s=128&g=1",
+                "display_name": "EstevaoLuis",
+                "link": "https://stackoverflow.com/users/3710195/estevaoluis"
+            },
+            "is_answered": true,
+            "view_count": 254,
+            "accepted_answer_id": 45562361,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524181341,
+            "creation_date": 1501495309,
+            "last_edit_date": 1502177885,
+            "question_id": 45412823,
+            "body_markdown": "I am trying to use the `grammar-check 1.3.1` library for Python\r\n\r\nI have installed it using the pip commands\r\n\r\n    $ pip install --upgrade 3to2\r\n\r\n    $ pip install --upgrade language-check\r\n\r\nI also unzipped the LanguageTool file from this [link][1] and moved it to `C:\\Users\\me\\AppData\\Roaming\\Python\\Python27\\site-packages\\grammar_check`\r\n\r\nThen I tried to run a test program\r\n\r\n    import grammar_check\r\n    tool = grammar_check.LanguageTool(&#39;en-GB&#39;)\r\n    text = &#39;This are bad.&#39;\r\n    matches = tool.check(text)\r\n    len(matches)\r\n\r\nBut I got this error:\r\n\r\n    Traceback (most recent call last):\r\n      File &quot;grammar-checker-test.py&quot;, line 2, in &lt;module&gt;\r\n        tool = grammar_check.LanguageTool(&#39;en-GB&#39;)\r\n      File &quot;C:\\Users\\me\\AppData\\Roaming\\Python\\Python27\\site-packages\\grammar_check\\__init__.py&quot;, line 196, in __init__\r\n        self._language = LanguageTag(language)\r\n      File &quot;C:\\Users\\me\\AppData\\Roaming\\Python\\Python27\\site-packages\\grammar_check\\__init__.py&quot;, line 405, in __new__\r\n        return unicode.__new__(cls, cls._normalize(tag))\r\n      File &quot;C:\\Users\\me\\AppData\\Roaming\\Python\\Python27\\site-packages\\grammar_check\\__init__.py&quot;, line 426, in _normalize\r\n        for language in get_languages())\r\n      File &quot;C:\\Users\\me\\AppData\\Roaming\\Python\\Python27\\site-packages\\grammar_check\\__init__.py&quot;, line 485, in get_languages\r\n        languages = LanguageTool._get_languages()\r\n      File &quot;C:\\Users\\me\\AppData\\Roaming\\Python\\Python27\\site-packages\\grammar_check\\__init__.py&quot;, line 286, in _get_languages\r\n        for e in cls._get_root(url, num_tries=1):\r\n      File &quot;C:\\Users\\me\\AppData\\Roaming\\Python\\Python27\\site-packages\\grammar_check\\__init__.py&quot;, line 311, in _get_root\r\n        raise Error(u&#39;{}: {}&#39;.format(cls._url, e))\r\n    grammar_check.Error: http://127.0.0.1:8081: HTTP Error 400: Bad Request\r\n\r\nHow can I solve this error?\r\n\r\n\r\n  [1]: https://github.com/myint/language-check",
+            "link": "https://stackoverflow.com/questions/45412823/python-2-7-grammar-check-1-3-1-library-http-error-400-bad-request",
+            "title": "Python 2.7 - grammar-check 1.3.1 library: HTTP Error 400: Bad Request",
+            "body": "<p>I am trying to use the <code>grammar-check 1.3.1</code> library for Python</p>\n\n<p>I have installed it using the pip commands</p>\n\n<pre><code>$ pip install --upgrade 3to2\n\n$ pip install --upgrade language-check\n</code></pre>\n\n<p>I also unzipped the LanguageTool file from this <a href=\"https://github.com/myint/language-check\" rel=\"nofollow noreferrer\">link</a> and moved it to <code>C:\\Users\\me\\AppData\\Roaming\\Python\\Python27\\site-packages\\grammar_check</code></p>\n\n<p>Then I tried to run a test program</p>\n\n<pre><code>import grammar_check\ntool = grammar_check.LanguageTool('en-GB')\ntext = 'This are bad.'\nmatches = tool.check(text)\nlen(matches)\n</code></pre>\n\n<p>But I got this error:</p>\n\n<pre><code>Traceback (most recent call last):\n  File \"grammar-checker-test.py\", line 2, in &lt;module&gt;\n    tool = grammar_check.LanguageTool('en-GB')\n  File \"C:\\Users\\me\\AppData\\Roaming\\Python\\Python27\\site-packages\\grammar_check\\__init__.py\", line 196, in __init__\n    self._language = LanguageTag(language)\n  File \"C:\\Users\\me\\AppData\\Roaming\\Python\\Python27\\site-packages\\grammar_check\\__init__.py\", line 405, in __new__\n    return unicode.__new__(cls, cls._normalize(tag))\n  File \"C:\\Users\\me\\AppData\\Roaming\\Python\\Python27\\site-packages\\grammar_check\\__init__.py\", line 426, in _normalize\n    for language in get_languages())\n  File \"C:\\Users\\me\\AppData\\Roaming\\Python\\Python27\\site-packages\\grammar_check\\__init__.py\", line 485, in get_languages\n    languages = LanguageTool._get_languages()\n  File \"C:\\Users\\me\\AppData\\Roaming\\Python\\Python27\\site-packages\\grammar_check\\__init__.py\", line 286, in _get_languages\n    for e in cls._get_root(url, num_tries=1):\n  File \"C:\\Users\\me\\AppData\\Roaming\\Python\\Python27\\site-packages\\grammar_check\\__init__.py\", line 311, in _get_root\n    raise Error(u'{}: {}'.format(cls._url, e))\ngrammar_check.Error: http://127.0.0.1:8081: HTTP Error 400: Bad Request\n</code></pre>\n\n<p>How can I solve this error?</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "sql-server",
+                "oracle",
+                "openquery"
+            ],
+            "owner": {
+                "reputation": 462,
+                "user_id": 7733611,
+                "user_type": "registered",
+                "accept_rate": 73,
+                "profile_image": "https://www.gravatar.com/avatar/9ea1b4d846eaa633f06975858f86a23f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user7733611",
+                "link": "https://stackoverflow.com/users/7733611/user7733611"
+            },
+            "is_answered": false,
+            "view_count": 30,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524181336,
+            "creation_date": 1524178887,
+            "last_edit_date": 1524181336,
+            "question_id": 49931488,
+            "body_markdown": "I have a C# program that uses `OPENQUERY()` to select from a linked server. This pass-through query takes in a parameter. To guard against SQL injection, I would like to pass this parameter in a manner similar to `SqlCommand.Parameters.AddWithValue`, however `OPENQUERY()` does not accept variables.\r\n\r\nSo far, I have been using SqlCommand to pass parameters to queries run against tables in a SQL Server. However I also need to access the linked server which is Oracle. Is there any way to add in this parameter without concatenating it as a string?\r\n\r\n    string query = &quot;SELECT * FROM OPENQUERY(linked_server, \r\n    &#39;SELECT * FROM User.Table WHERE col1 = @parameter1 &#39;)&quot;;",
+            "link": "https://stackoverflow.com/questions/49931488/how-can-i-pass-parameters-to-a-pass-through-query-in-c",
+            "title": "How can I pass parameters to a pass-through query in c#?",
+            "body": "<p>I have a C# program that uses <code>OPENQUERY()</code> to select from a linked server. This pass-through query takes in a parameter. To guard against SQL injection, I would like to pass this parameter in a manner similar to <code>SqlCommand.Parameters.AddWithValue</code>, however <code>OPENQUERY()</code> does not accept variables.</p>\n\n<p>So far, I have been using SqlCommand to pass parameters to queries run against tables in a SQL Server. However I also need to access the linked server which is Oracle. Is there any way to add in this parameter without concatenating it as a string?</p>\n\n<pre><code>string query = \"SELECT * FROM OPENQUERY(linked_server, \n'SELECT * FROM User.Table WHERE col1 = @parameter1 ')\";\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "node.js",
+                "tedious"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 1279779,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e1af502b40ed9ca692df2ec0259955a5?s=128&d=identicon&r=PG",
+                "display_name": "user1279779",
+                "link": "https://stackoverflow.com/users/1279779/user1279779"
+            },
+            "is_answered": false,
+            "view_count": 9,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524181330,
+            "creation_date": 1524181330,
+            "question_id": 49931814,
+            "body_markdown": "I can use the following code to call a stored proc and get data from the database:\r\n\r\n    // Set up the call to the stored proc\r\n    var request = new Request(&quot;EXEC songDetails &#39;&quot; + songID + &quot;&#39;&quot;, function(err) \r\n    {  \r\n    if (err) {  \r\n        console.log(err);\r\n        }  \r\n    });  \r\n \r\n    // get the basic song data\r\n\r\n    var title       =   &quot;&quot;;\r\n    var artist      =   &quot;&quot;;\r\n    var dateAdded   =   &quot;&quot;;\r\n\r\n    request.on(&#39;row&#39;, function(columns) {\r\n        title       =   columns.title.value;\r\n        artist      =   columns.cleanArtist.value;\r\n        dateAdded   =   columns.dateAdded.value;\r\n    \r\n        console.log(title);\r\n        \r\n    });\r\n\r\n    connection.execSql(request);\r\n\r\nI want to add a second record set to the stored proc that will return a list of genres to which the song begins-- it will have a single column genreID, but can return either no rows (if genre isn&#39;t defined yet), or multiple rows.\r\n\r\nCurrently, if I add the result set to the proc, it gets processed by the existing request.on(&#39;row&#39;...) code, and an error is thrown when it tries to run columns.title.value, but the row contains genreID, not title.\r\n\r\nI know the doneInProc command exists to deal with this situation, but I haven&#39;t been able to find a single example of how to use it- what do I need to change to get that second record set?",
+            "link": "https://stackoverflow.com/questions/49931814/tedious-node-js-how-to-get-next-recordset-from-stored-proc",
+            "title": "Tedious / node.js: how to get next recordset from stored proc?",
+            "body": "<p>I can use the following code to call a stored proc and get data from the database:</p>\n\n<pre><code>// Set up the call to the stored proc\nvar request = new Request(\"EXEC songDetails '\" + songID + \"'\", function(err) \n{  \nif (err) {  \n    console.log(err);\n    }  \n});  \n\n// get the basic song data\n\nvar title       =   \"\";\nvar artist      =   \"\";\nvar dateAdded   =   \"\";\n\nrequest.on('row', function(columns) {\n    title       =   columns.title.value;\n    artist      =   columns.cleanArtist.value;\n    dateAdded   =   columns.dateAdded.value;\n\n    console.log(title);\n\n});\n\nconnection.execSql(request);\n</code></pre>\n\n<p>I want to add a second record set to the stored proc that will return a list of genres to which the song begins-- it will have a single column genreID, but can return either no rows (if genre isn't defined yet), or multiple rows.</p>\n\n<p>Currently, if I add the result set to the proc, it gets processed by the existing request.on('row'...) code, and an error is thrown when it tries to run columns.title.value, but the row contains genreID, not title.</p>\n\n<p>I know the doneInProc command exists to deal with this situation, but I haven't been able to find a single example of how to use it- what do I need to change to get that second record set?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-3.x",
+                "pandas",
+                "numpy"
+            ],
+            "owner": {
+                "reputation": 825,
+                "user_id": 8682794,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://i.stack.imgur.com/fUICv.jpg?s=128&g=1",
+                "display_name": "Pearly Spencer",
+                "link": "https://stackoverflow.com/users/8682794/pearly-spencer"
+            },
+            "is_answered": false,
+            "view_count": 72,
+            "bounty_amount": 50,
+            "bounty_closes_date": 1524776913,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1524181324,
+            "creation_date": 1523301691,
+            "last_edit_date": 1524171996,
+            "question_id": 49740190,
+            "body_markdown": "The statistical software [Stata][1] allows short text snippets to be saved within a dataset. This is accomplished either using [`notes`][2] and/or [`characteristics`][3].\r\n\r\nThis is a feature of great value to me as it allows me to save a variety of information, ranging from reminders and to-do lists, to information about how i generated the data, or even what the estimation method for a particular variable was. \r\n\r\nI am now trying to come up with a similar functionality in Python 3.6. So far, i have looked online and consulted a number of posts, which however do not exactly address what i want to do. \r\n\r\nA few reference posts include:\r\n\r\n- https://stackoverflow.com/questions/9619199/best-way-to-preserve-numpy-arrays-on-disk\r\n\r\n- https://stackoverflow.com/questions/48770542/what-is-the-difference-between-save-a-pandas-dataframe-to-pickle-and-to-csv\r\n\r\n- https://stackoverflow.com/questions/37010212/what-is-the-fastest-way-to-upload-a-big-csv-file-in-notebook-to-work-with-python\r\n\r\n- https://stackoverflow.com/questions/44289302/how-do-i-view-data-object-contents-within-an-npz-file\r\n\r\nFor a small `NumPy` array, I have concluded that a combination of the function [`numpy.savez()`][4] and a `dictionary` can store adequately all relevant information in a single file.\r\n\r\nFor example:\r\n\r\n    a = np.array([[2,4],[6,8],[10,12]])\r\n    d = {&quot;first&quot;: 1, &quot;second&quot;: &quot;two&quot;, &quot;third&quot;: 3}\r\n\r\n    np.savez(whatever_name.npz, a=a, d=d)\r\n    data = np.load(whatever_name.npz)\r\n\r\n    arr = data[&#39;a&#39;]\r\n    dic = data[&#39;d&#39;].tolist()\r\n\r\n\r\nHowever, the question remains:\r\n\r\n**Are there better ways to potentially incorporate other pieces of information in a file containing  a `NumPy` array or a (large) `Pandas` `DataFrame`?**\r\n\r\nI am particularly interested in hearing about the particular _pros_ and _cons_ of any suggestions you may have with examples. The less dependencies, the better.\r\n\r\nThank you.\r\n\r\n\r\n  [1]: https://www.stata.com/\r\n  [2]: https://www.stata.com/manuals13/dnotes.pdf\r\n  [3]: https://www.stata.com/manuals13/u12.pdf#u12.8Characteristics\r\n  [4]: https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.savez.html#numpy.savez",
+            "link": "https://stackoverflow.com/questions/49740190/saving-in-a-file-an-array-or-dataframe-together-with-other-information",
+            "title": "Saving in a file an array or DataFrame together with other information",
+            "body": "<p>The statistical software <a href=\"https://www.stata.com/\" rel=\"nofollow noreferrer\">Stata</a> allows short text snippets to be saved within a dataset. This is accomplished either using <a href=\"https://www.stata.com/manuals13/dnotes.pdf\" rel=\"nofollow noreferrer\"><code>notes</code></a> and/or <a href=\"https://www.stata.com/manuals13/u12.pdf#u12.8Characteristics\" rel=\"nofollow noreferrer\"><code>characteristics</code></a>.</p>\n\n<p>This is a feature of great value to me as it allows me to save a variety of information, ranging from reminders and to-do lists, to information about how i generated the data, or even what the estimation method for a particular variable was. </p>\n\n<p>I am now trying to come up with a similar functionality in Python 3.6. So far, i have looked online and consulted a number of posts, which however do not exactly address what i want to do. </p>\n\n<p>A few reference posts include:</p>\n\n<ul>\n<li><p><a href=\"https://stackoverflow.com/questions/9619199/best-way-to-preserve-numpy-arrays-on-disk\">best way to preserve numpy arrays on disk</a></p></li>\n<li><p><a href=\"https://stackoverflow.com/questions/48770542/what-is-the-difference-between-save-a-pandas-dataframe-to-pickle-and-to-csv\">What is the difference between save a pandas dataframe to pickle and to csv?</a></p></li>\n<li><p><a href=\"https://stackoverflow.com/questions/37010212/what-is-the-fastest-way-to-upload-a-big-csv-file-in-notebook-to-work-with-python\">What is the fastest way to upload a big csv file in notebook to work with python pandas?</a></p></li>\n<li><p><a href=\"https://stackoverflow.com/questions/44289302/how-do-i-view-data-object-contents-within-an-npz-file\">How do I view data object contents within an npz file?</a></p></li>\n</ul>\n\n<p>For a small <code>NumPy</code> array, I have concluded that a combination of the function <a href=\"https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.savez.html#numpy.savez\" rel=\"nofollow noreferrer\"><code>numpy.savez()</code></a> and a <code>dictionary</code> can store adequately all relevant information in a single file.</p>\n\n<p>For example:</p>\n\n<pre><code>a = np.array([[2,4],[6,8],[10,12]])\nd = {\"first\": 1, \"second\": \"two\", \"third\": 3}\n\nnp.savez(whatever_name.npz, a=a, d=d)\ndata = np.load(whatever_name.npz)\n\narr = data['a']\ndic = data['d'].tolist()\n</code></pre>\n\n<p>However, the question remains:</p>\n\n<p><strong>Are there better ways to potentially incorporate other pieces of information in a file containing  a <code>NumPy</code> array or a (large) <code>Pandas</code> <code>DataFrame</code>?</strong></p>\n\n<p>I am particularly interested in hearing about the particular <em>pros</em> and <em>cons</em> of any suggestions you may have with examples. The less dependencies, the better.</p>\n\n<p>Thank you.</p>\n"
+        },
+        {
+            "tags": [
+                "jquery",
+                "node.js",
+                "express",
+                "ejs"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 7835890,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/WaY5L.jpg?s=128&g=1",
+                "display_name": "sarthak",
+                "link": "https://stackoverflow.com/users/7835890/sarthak"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1524181323,
+            "creation_date": 1524176707,
+            "question_id": 49931108,
+            "body_markdown": "I have comparison.ejs file. I want to parse the response in this file.\r\n\r\nCan I redirect to the comparison.ejs file in WebServer folder from the some.ajax file in public folder.\r\n    \r\n    $(&#39;document&#39;).ready(function()\r\n    {\r\n    $(&quot;.button4&quot;).click(function(){\r\n    var a=&quot;&quot;,b=&quot;&quot;,c=&quot;&quot;,d=&quot;&quot;;\r\n    if(($(&#39;#out1&#39;).css(&#39;display&#39;) == &#39;block&#39;) || ($(&#39;#out2&#39;).css(&#39;display&#39;) == &#39;block&#39;) || ($(&#39;#out3&#39;).css(&#39;display&#39;) == &#39;block&#39;) || ($(&#39;#out4&#39;).css(&#39;display&#39;) == &#39;block&#39;))\r\n    {\r\n      if($(&#39;#out1&#39;).css(&#39;display&#39;) == &#39;block&#39;)\r\n      {\r\n        a = $(&#39;#cd1&#39;).attr(&#39;class&#39;);\r\n        // alert(a);\r\n      }\r\n      if($(&#39;#out2&#39;).css(&#39;display&#39;) == &#39;block&#39;)\r\n      {\r\n        b = $(&#39;#cd2&#39;).attr(&#39;class&#39;);\r\n        // alert(b);\r\n      }\r\n      if($(&#39;#out3&#39;).css(&#39;display&#39;) == &#39;block&#39;)\r\n      {\r\n        c = $(&#39;#cd3&#39;).attr(&#39;class&#39;);\r\n        // alert(c);\r\n      }\r\n      if($(&#39;#out4&#39;).css(&#39;display&#39;) == &#39;block&#39;)\r\n      {\r\n        d = $(&#39;#cd4&#39;).attr(&#39;class&#39;);\r\n        // alert(d);\r\n      }\r\n      // alert(a+&quot; &quot;+b+&quot; &quot;+c+&quot; &quot;+d);\r\n      $.ajax({\r\n        url: &#39;http://localhost:3000/compItems&#39;,\r\n        method: &#39;POST&#39;,\r\n        contentType: &#39;application/json&#39;,\r\n        data: JSON.stringify(\r\n          {\r\n            dat1: a,\r\n            dat2: b,\r\n            dat3: c,\r\n            dat4: d\r\n          }\r\n        ),\r\n        success: function(response)\r\n        {\r\n          // document.write(response);\r\n          var renderedData = new EJS({url:&#39;../../Webserver/views/comparison.ejs&#39;}).render({data:response});\r\n          alert(&quot;Here&quot;);\r\n          document.write(renderedData);\r\n          // $(&#39;.contact&#39;).html(renderedData);\r\n        }\r\n      });\r\n    }\r\n    else {\r\n      alert(&quot;Please select minimum one product&quot;);\r\n    }\r\n    });\r\n    }\r\n\r\nresponse are giving me the desired output. Now I want to rendered this response to the comparison.ejs file.\r\n\r\nis it possible to do that? or I can create ejs through jquery inside success block.\r\n\r\nIn above code I will call this ajax code from index.ejs file in views folder.",
+            "link": "https://stackoverflow.com/questions/49931108/can-i-render-the-response-of-the-success-block-of-ajax-to-the-ejs-file",
+            "title": "Can I render the response of the success block of ajax to the ejs file?",
+            "body": "<p>I have comparison.ejs file. I want to parse the response in this file.</p>\n\n<p>Can I redirect to the comparison.ejs file in WebServer folder from the some.ajax file in public folder.</p>\n\n<pre><code>$('document').ready(function()\n{\n$(\".button4\").click(function(){\nvar a=\"\",b=\"\",c=\"\",d=\"\";\nif(($('#out1').css('display') == 'block') || ($('#out2').css('display') == 'block') || ($('#out3').css('display') == 'block') || ($('#out4').css('display') == 'block'))\n{\n  if($('#out1').css('display') == 'block')\n  {\n    a = $('#cd1').attr('class');\n    // alert(a);\n  }\n  if($('#out2').css('display') == 'block')\n  {\n    b = $('#cd2').attr('class');\n    // alert(b);\n  }\n  if($('#out3').css('display') == 'block')\n  {\n    c = $('#cd3').attr('class');\n    // alert(c);\n  }\n  if($('#out4').css('display') == 'block')\n  {\n    d = $('#cd4').attr('class');\n    // alert(d);\n  }\n  // alert(a+\" \"+b+\" \"+c+\" \"+d);\n  $.ajax({\n    url: 'http://localhost:3000/compItems',\n    method: 'POST',\n    contentType: 'application/json',\n    data: JSON.stringify(\n      {\n        dat1: a,\n        dat2: b,\n        dat3: c,\n        dat4: d\n      }\n    ),\n    success: function(response)\n    {\n      // document.write(response);\n      var renderedData = new EJS({url:'../../Webserver/views/comparison.ejs'}).render({data:response});\n      alert(\"Here\");\n      document.write(renderedData);\n      // $('.contact').html(renderedData);\n    }\n  });\n}\nelse {\n  alert(\"Please select minimum one product\");\n}\n});\n}\n</code></pre>\n\n<p>response are giving me the desired output. Now I want to rendered this response to the comparison.ejs file.</p>\n\n<p>is it possible to do that? or I can create ejs through jquery inside success block.</p>\n\n<p>In above code I will call this ajax code from index.ejs file in views folder.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "gradle",
+                "dependency-management"
+            ],
+            "owner": {
+                "reputation": 56,
+                "user_id": 905660,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/47cc27b27a918d22eb150b40482f51f7?s=128&d=identicon&r=PG",
+                "display_name": "PCL",
+                "link": "https://stackoverflow.com/users/905660/pcl"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524181316,
+            "creation_date": 1524181316,
+            "question_id": 49931809,
+            "body_markdown": "My project structure is as follows:\r\n\r\n    + ProjectA\r\n    + ProjectB\r\n    + ProjectC\r\n    ...\r\n    + ProjectN\r\n\r\n`ProjectA` has a dependency on `ProjectB` of the form `compile project(&#39;:ProjectB&#39;)` and as such, must have an `includeFlat &#39;ProjectB&#39;` in its `settings.gradle` file.\r\n\r\nI have many projects, with dependencies many levels deep, and managing the `settings.gradle` file is cumbersome. \r\n\r\nGiven my flat structure, is there a way that I can dynamically generate the `includeFlat` directives by looking at the project dependencies in the `build.gradle` file?",
+            "link": "https://stackoverflow.com/questions/49931809/dynamically-generated-includeflat-in-settings-gradle",
+            "title": "Dynamically generated includeFlat in settings.gradle",
+            "body": "<p>My project structure is as follows:</p>\n\n<pre><code>+ ProjectA\n+ ProjectB\n+ ProjectC\n...\n+ ProjectN\n</code></pre>\n\n<p><code>ProjectA</code> has a dependency on <code>ProjectB</code> of the form <code>compile project(':ProjectB')</code> and as such, must have an <code>includeFlat 'ProjectB'</code> in its <code>settings.gradle</code> file.</p>\n\n<p>I have many projects, with dependencies many levels deep, and managing the <code>settings.gradle</code> file is cumbersome. </p>\n\n<p>Given my flat structure, is there a way that I can dynamically generate the <code>includeFlat</code> directives by looking at the project dependencies in the <code>build.gradle</code> file?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "android",
+                "android-studio"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9672268,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-B2PXK5ullnU/AAAAAAAAAAI/AAAAAAAAASY/WHtDCXqOBh0/photo.jpg?sz=128",
+                "display_name": "killpwnrang3",
+                "link": "https://stackoverflow.com/users/9672268/killpwnrang3"
+            },
+            "is_answered": false,
+            "view_count": 32,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524181309,
+            "creation_date": 1524180272,
+            "last_edit_date": 1524181309,
+            "question_id": 49931674,
+            "body_markdown": "I tried to add this library: https://github.com/WojciechZankowski/iextrading4j into **android studio**, it is a library to retrieve *realtime stock data* from the **IEXTrading API** but when I did, or atleast I *think* I imported it the right way, I got a bunch of errors like `MultiDex errors` and `findbugs:jsr305:1.3.9`. \r\n\r\nI tried to use the release version `2.1.1`, then `2.0.1`. Can someone please walk me through the process of how to set it up?\r\n\r\n**Error**:\r\n\r\n    Error:Execution failed for task &#39;:app:transformClassesWithMultidexlistForDebug&#39;.\r\n    \r\n    java.io.IOException: Can&#39;t write [C:\\Users\\Ashwin\\AndroidStudioProjects\\sockettesting\\app\\build\\intermediates\\multi-dex\\debug\\componentClasses.jar] (Can&#39;t read [C:\\Users\\USER\\AndroidStudioProjects\\sockettesting\\app\\build\\intermediates\\transforms\\desugar\\debug\\49.jar(;;;;;;**.class)] (Duplicate zip entry [49.jar:javax/inject/Inject.class]))\r\n\r\nI&#39;ve tried searching for answers on how to solve these errors but I got nowhere, I tried `multiDexEnable true` in gradle and more.",
+            "link": "https://stackoverflow.com/questions/49931674/cannot-import-a-library-from-github-into-android-studio",
+            "title": "Cannot import a Library from GitHub into Android Studio",
+            "body": "<p>I tried to add this library: <a href=\"https://github.com/WojciechZankowski/iextrading4j\" rel=\"nofollow noreferrer\">https://github.com/WojciechZankowski/iextrading4j</a> into <strong>android studio</strong>, it is a library to retrieve <em>realtime stock data</em> from the <strong>IEXTrading API</strong> but when I did, or atleast I <em>think</em> I imported it the right way, I got a bunch of errors like <code>MultiDex errors</code> and <code>findbugs:jsr305:1.3.9</code>. </p>\n\n<p>I tried to use the release version <code>2.1.1</code>, then <code>2.0.1</code>. Can someone please walk me through the process of how to set it up?</p>\n\n<p><strong>Error</strong>:</p>\n\n<pre><code>Error:Execution failed for task ':app:transformClassesWithMultidexlistForDebug'.\n\njava.io.IOException: Can't write [C:\\Users\\Ashwin\\AndroidStudioProjects\\sockettesting\\app\\build\\intermediates\\multi-dex\\debug\\componentClasses.jar] (Can't read [C:\\Users\\USER\\AndroidStudioProjects\\sockettesting\\app\\build\\intermediates\\transforms\\desugar\\debug\\49.jar(;;;;;;**.class)] (Duplicate zip entry [49.jar:javax/inject/Inject.class]))\n</code></pre>\n\n<p>I've tried searching for answers on how to solve these errors but I got nowhere, I tried <code>multiDexEnable true</code> in gradle and more.</p>\n"
+        },
+        {
+            "tags": [
+                "bash",
+                "whois",
+                "domainexpiration"
+            ],
+            "owner": {
+                "reputation": 33,
+                "user_id": 6609395,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/035e49a47402961ed26822e43d6f01f4?s=128&d=identicon&r=PG&f=1",
+                "display_name": "ashaneen",
+                "link": "https://stackoverflow.com/users/6609395/ashaneen"
+            },
+            "is_answered": true,
+            "view_count": 24,
+            "accepted_answer_id": 49931807,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524181308,
+            "creation_date": 1524145959,
+            "question_id": 49922860,
+            "body_markdown": "I am trying to implement a solution for automatic mail sending once it finds a domain that expiration date has been exceeded. I am really new to this, therefore I managed to get as far as code below, that shows expiration dates and sends an email containg the output. \r\n\r\nThe kind of help I am looking for is at least a clue how to compare expiration date with the current date and get a result as number of days. I will really appreciate any kind of help.\r\n\r\n\r\n    #!/bin/bash\r\n    DOM=&quot;onet.pl wp.pl&quot;\r\n    for d in $DOM\r\n    do\r\n      echo -n &quot;$d - &quot;\r\n      whois $d | egrep -i &#39;Expiration|Expires on&#39; | head -1\r\n       whois $d | egrep -i &#39;Expiration|Expires on&#39; | head -1 &gt;&gt; /tmp/domain.date\r\n      echo &quot;&quot;\r\n    done\r\n    #[ -f /tmp/domain.date ] &amp;&amp; mail -s &#39;Domain renew / expiration date&#39; myemail@gmail.com &lt; /tmp/domain.date || :",
+            "link": "https://stackoverflow.com/questions/49922860/bash-script-domain-expiration-date-with-email-sending",
+            "title": "Bash script, domain expiration date with email sending",
+            "body": "<p>I am trying to implement a solution for automatic mail sending once it finds a domain that expiration date has been exceeded. I am really new to this, therefore I managed to get as far as code below, that shows expiration dates and sends an email containg the output. </p>\n\n<p>The kind of help I am looking for is at least a clue how to compare expiration date with the current date and get a result as number of days. I will really appreciate any kind of help.</p>\n\n<pre><code>#!/bin/bash\nDOM=\"onet.pl wp.pl\"\nfor d in $DOM\ndo\n  echo -n \"$d - \"\n  whois $d | egrep -i 'Expiration|Expires on' | head -1\n   whois $d | egrep -i 'Expiration|Expires on' | head -1 &gt;&gt; /tmp/domain.date\n  echo \"\"\ndone\n#[ -f /tmp/domain.date ] &amp;&amp; mail -s 'Domain renew / expiration date' myemail@gmail.com &lt; /tmp/domain.date || :\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "string"
+            ],
+            "owner": {
+                "reputation": 353,
+                "user_id": 3583775,
+                "user_type": "registered",
+                "accept_rate": 87,
+                "profile_image": "https://www.gravatar.com/avatar/16390e9953b446cd80715c4d32960c92?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Hound",
+                "link": "https://stackoverflow.com/users/3583775/hound"
+            },
+            "is_answered": true,
+            "view_count": 19,
+            "accepted_answer_id": 49931718,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524181305,
+            "creation_date": 1524179969,
+            "last_edit_date": 1524180376,
+            "question_id": 49931629,
+            "body_markdown": "I have the following string:\r\n\r\n    &quot;paid,paid,paid,paid,unpaid,paid,paid,paid,paid,unpaid,unpaid,unpaid,paid,paid,Pinterest,unpaid,Pinterest,unpaid,unpaid&quot;\r\n\r\nI want to turn it into this:\r\n\r\n    &quot;paid x4, unpaid x1, paid x4, unpaid x3, paid x2, Pinterest x1, unpaid x1, Pinterest x1, unpaid x2&quot;\r\n\r\nBasically, I want to group the items together if the next item is the same as the previous one and get a count of the number of times this holds true. So in the example, four unpaid in a row turn into `paid x4` then one unpaid in a row turns into `unpaid x1` then four paid in a row turns into `unpaid x4`, and so on. \r\n\r\n\r\nI wrote the following function that I think accomplishes what I want. Is there a more pythonic/efficient way to do this?\r\n\r\n    counter = 1\r\n    split_string = string_test.split(&#39;,&#39;)\r\n    len_string = len(split_string)\r\n    new_string = &#39;&#39;\r\n    for num, string in enumerate(split_string):  \r\n        # Edge case: last string in list\r\n        if len_string == num + 1:\r\n            if split_string[num] == split_string[num-1]:\r\n                new_string += split_string[num] + &#39; x&#39; + str(counter)\r\n                #print(&quot;new string:&quot;, new_string)\r\n            else:\r\n                new_string += split_string[num] + &#39; x1 &#39;\r\n            break\r\n            \r\n        else:\r\n            if split_string[num] == split_string[num+1]:\r\n                counter += 1 \r\n                #print(&quot;string match&quot;)\r\n            else:\r\n                new_string += split_string[num] + &#39; x&#39; + str(counter) + &#39;, &#39;\r\n                #print(&quot;new string:&quot;, new_string)\r\n                counter = 1\r\n    print(new_string) ",
+            "link": "https://stackoverflow.com/questions/49931629/grouping-values-in-comma-delimited-string",
+            "title": "Grouping values in comma delimited string",
+            "body": "<p>I have the following string:</p>\n\n<pre><code>\"paid,paid,paid,paid,unpaid,paid,paid,paid,paid,unpaid,unpaid,unpaid,paid,paid,Pinterest,unpaid,Pinterest,unpaid,unpaid\"\n</code></pre>\n\n<p>I want to turn it into this:</p>\n\n<pre><code>\"paid x4, unpaid x1, paid x4, unpaid x3, paid x2, Pinterest x1, unpaid x1, Pinterest x1, unpaid x2\"\n</code></pre>\n\n<p>Basically, I want to group the items together if the next item is the same as the previous one and get a count of the number of times this holds true. So in the example, four unpaid in a row turn into <code>paid x4</code> then one unpaid in a row turns into <code>unpaid x1</code> then four paid in a row turns into <code>unpaid x4</code>, and so on. </p>\n\n<p>I wrote the following function that I think accomplishes what I want. Is there a more pythonic/efficient way to do this?</p>\n\n<pre><code>counter = 1\nsplit_string = string_test.split(',')\nlen_string = len(split_string)\nnew_string = ''\nfor num, string in enumerate(split_string):  \n    # Edge case: last string in list\n    if len_string == num + 1:\n        if split_string[num] == split_string[num-1]:\n            new_string += split_string[num] + ' x' + str(counter)\n            #print(\"new string:\", new_string)\n        else:\n            new_string += split_string[num] + ' x1 '\n        break\n\n    else:\n        if split_string[num] == split_string[num+1]:\n            counter += 1 \n            #print(\"string match\")\n        else:\n            new_string += split_string[num] + ' x' + str(counter) + ', '\n            #print(\"new string:\", new_string)\n            counter = 1\nprint(new_string) \n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "mysql",
+                "mysqli"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 7875676,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/906446c126730137b230124e4f444522?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Omar",
+                "link": "https://stackoverflow.com/users/7875676/omar"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "closed_date": 1524184790,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524181299,
+            "creation_date": 1524181299,
+            "question_id": 49931806,
+            "body_markdown": "First for the navigation bar when i click refresh it aligns The Services and leaves [Contact] in the navbar misaligned. Another thing is when i click on the google inspect element it shows and extra &lt;li&gt;&lt;a href=#&gt; &lt;/a&gt;&lt;/li&gt; which does not show up on my code editor.\r\nFor the mysqli error it shows only when i click live preview in the brackets editor so now i cannot seem to figure out what the problem is. If you need more code to the cms let me know as i have been stuck on this issue for hours\r\n\r\n\r\n\r\n[MySqli Error][1]\r\n\r\n\r\n[Error with Navigation barstrong text][2]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/qZRbj.png\r\n  [2]: https://i.stack.imgur.com/0YAqL.png\r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n      &lt;nav class=&quot;navbar navbar-inverse navbar-fixed-top&quot; role=&quot;navigation&quot;&gt;\r\n            &lt;div class=&quot;container&quot;&gt;\r\n                &lt;!-- Brand and toggle get grouped for better mobile display --&gt;\r\n                &lt;div class=&quot;navbar-header&quot;&gt;\r\n                    &lt;button type=&quot;button&quot; class=&quot;navbar-toggle&quot; data-toggle=&quot;collapse&quot; data-target=&quot;#bs-example-navbar-collapse-1&quot;&gt;\r\n                        &lt;span class=&quot;sr-only&quot;&gt;Toggle navigation&lt;/span&gt;\r\n                        &lt;span class=&quot;icon-bar&quot;&gt;&lt;/span&gt;\r\n                        &lt;span class=&quot;icon-bar&quot;&gt;&lt;/span&gt;\r\n                        &lt;span class=&quot;icon-bar&quot;&gt;&lt;/span&gt;\r\n                    &lt;/button&gt;\r\n                    &lt;a class=&quot;navbar-brand&quot; href=&quot;#&quot;&gt;Start Bootstrap&lt;/a&gt;\r\n                &lt;/div&gt;\r\n                \r\n                \r\n                \r\n                &lt;!-- Collect the nav links, forms, and other content for toggling --&gt;\r\n                &lt;div class=&quot;collapse navbar-collapse&quot; id=&quot;bs-example-navbar-collapse-1&quot;&gt;\r\n                   \r\n                   \r\n                    &lt;ul class=&quot;nav navbar-nav&quot;&gt;\r\n                      &lt;?php\r\n                        \r\n                        \r\n                        $query = &quot;SELECT * FROM categories &quot;;\r\n                        $categories_query = mysqli_query($connection,$query);\r\n\r\n                        while($row = mysqli_fetch_assoc($categories_query)) {\r\n                        $cat_title = $row[&#39;cat_title&#39;];\r\n                        $cat_id = $row[&#39;cat_id&#39;];\r\n                         \r\n                        echo &quot;&lt;li&gt;&lt;a href=&#39;#&#39;&gt;{$cat_title}&lt;/li&gt;&quot;;\r\n                            \r\n                        }\r\n               \r\n                       \r\n                        ?&gt;\r\n     \r\n                        &lt;li&gt;\r\n                            &lt;a href=&quot;#&quot;&gt;Services&lt;/a&gt;\r\n                        &lt;/li&gt;\r\n                        &lt;li&gt;\r\n                            &lt;a href=&quot;#&quot;&gt;Contact&lt;/a&gt;\r\n                        &lt;/li&gt;\r\n                       \r\n                   \r\n                    &lt;/ul&gt;\r\n                &lt;/div&gt;\r\n                &lt;!-- /.navbar-collapse --&gt;\r\n            &lt;/div&gt;\r\n            &lt;!-- /.container --&gt;\r\n        &lt;/nav&gt;\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;?php include(&quot;includes/header.php&quot;); ?&gt;\r\n    &lt;?php include(&quot;includes/db.php&quot;); ?&gt;   \r\n\r\n        &lt;!-- Navigation --&gt;\r\n        \r\n        &lt;?php \r\n\r\n    include(&quot;includes/navigation.php&quot;);\r\n\r\n    ?&gt;\r\n\r\n        &lt;!-- Page Content --&gt;\r\n        &lt;div class=&quot;container&quot;&gt;\r\n\r\n            &lt;div class=&quot;row&quot;&gt;\r\n\r\n                &lt;!-- Blog Entries Column --&gt;\r\n                \r\n                &lt;div class=&quot;col-md-8&quot;&gt;\r\n                    \r\n                    \r\n                &lt;?php\r\n                    \r\n                $query = &quot;SELECT * FROM posts &quot;;\r\n                $posts_query = mysqli_query($connection, $query);\r\n                        \r\n                while($row = mysqli_fetch_assoc($posts_query)){\r\n                            \r\n                $post_title = $row[&#39;post_title&#39;];    //row from db\r\n                $post_author = $row[&#39;post_author&#39;];\r\n                $post_date = $row[&#39;post_date&#39;];\r\n                $post_image = $row[&#39;post_image&#39;];\r\n                $post_content = $row[&#39;post_content&#39;];\r\n                   \r\n                    \r\n                    \r\n                    ?&gt;\r\n                    \r\n                     &lt;h1 class=&quot;page-header&quot;&gt;\r\n                        Page Heading\r\n                        &lt;small&gt;Secondary Text&lt;/small&gt;\r\n                    &lt;/h1&gt;\r\n\r\n                    &lt;!-- First Blog Post --&gt;\r\n                    &lt;h2&gt;\r\n                        &lt;a href=&quot;#&quot;&gt;&lt;?php echo $post_title ?&gt;&lt;/a&gt;\r\n                    &lt;/h2&gt;\r\n                    &lt;p class=&quot;lead&quot;&gt;\r\n                        by &lt;a href=&quot;index.php&quot;&gt;&lt;?php echo $post_author ?&gt;&lt;/a&gt;\r\n                    &lt;/p&gt;\r\n                    &lt;p&gt;&lt;span class=&quot;glyphicon glyphicon-time&quot;&gt;&lt;/span&gt;&lt;?php echo $post_date ?&gt;&lt;/p&gt;\r\n                    &lt;hr&gt;\r\n                    &lt;img class=&quot;img-responsive&quot; src=&quot;images/&lt;?php echo $post_image; ?&gt;&quot; alt=&quot;&quot;&gt;\r\n                    &lt;hr&gt;\r\n                    &lt;p&gt;&lt;?php echo $post_content ?&gt;&lt;/p&gt;\r\n                    &lt;a class=&quot;btn btn-primary&quot; href=&quot;#&quot;&gt;Read More &lt;span class=&quot;glyphicon glyphicon-chevron-right&quot;&gt;&lt;/span&gt;&lt;/a&gt;\r\n\r\n                    &lt;hr&gt;\r\n                    \r\n               &lt;?php } ?&gt;\r\n                    \r\n\r\n                   \r\n\r\n                    \r\n\r\n                &lt;/div&gt;\r\n\r\n                &lt;!-- Blog Sidebar Widgets Column --&gt;\r\n                \r\n                &lt;?php \r\n\r\n                    include(&quot;includes/sidebar.php&quot;);\r\n\r\n                 ?&gt;\r\n                \r\n                \r\n\r\n            &lt;/div&gt;\r\n            &lt;!-- /.row --&gt;\r\n\r\n            &lt;hr&gt;\r\n\r\n           \r\n    &lt;?php \r\n\r\n    include(&quot;includes/footer.php&quot;);\r\n\r\n    ?&gt;\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49931806/cms-errors-in-php",
+            "closed_reason": "duplicate",
+            "title": "CMS Errors in PHP",
+            "body": "<p>First for the navigation bar when i click refresh it aligns The Services and leaves [Contact] in the navbar misaligned. Another thing is when i click on the google inspect element it shows and extra <li> </li> which does not show up on my code editor.\nFor the mysqli error it shows only when i click live preview in the brackets editor so now i cannot seem to figure out what the problem is. If you need more code to the cms let me know as i have been stuck on this issue for hours</p>\n\n<p><a href=\"https://i.stack.imgur.com/qZRbj.png\" rel=\"nofollow noreferrer\">MySqli Error</a></p>\n\n<p><a href=\"https://i.stack.imgur.com/0YAqL.png\" rel=\"nofollow noreferrer\">Error with Navigation barstrong text</a></p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>  &lt;nav class=\"navbar navbar-inverse navbar-fixed-top\" role=\"navigation\"&gt;\r\n        &lt;div class=\"container\"&gt;\r\n            &lt;!-- Brand and toggle get grouped for better mobile display --&gt;\r\n            &lt;div class=\"navbar-header\"&gt;\r\n                &lt;button type=\"button\" class=\"navbar-toggle\" data-toggle=\"collapse\" data-target=\"#bs-example-navbar-collapse-1\"&gt;\r\n                    &lt;span class=\"sr-only\"&gt;Toggle navigation&lt;/span&gt;\r\n                    &lt;span class=\"icon-bar\"&gt;&lt;/span&gt;\r\n                    &lt;span class=\"icon-bar\"&gt;&lt;/span&gt;\r\n                    &lt;span class=\"icon-bar\"&gt;&lt;/span&gt;\r\n                &lt;/button&gt;\r\n                &lt;a class=\"navbar-brand\" href=\"#\"&gt;Start Bootstrap&lt;/a&gt;\r\n            &lt;/div&gt;\r\n            \r\n            \r\n            \r\n            &lt;!-- Collect the nav links, forms, and other content for toggling --&gt;\r\n            &lt;div class=\"collapse navbar-collapse\" id=\"bs-example-navbar-collapse-1\"&gt;\r\n               \r\n               \r\n                &lt;ul class=\"nav navbar-nav\"&gt;\r\n                  &lt;?php\r\n                    \r\n                    \r\n                    $query = \"SELECT * FROM categories \";\r\n                    $categories_query = mysqli_query($connection,$query);\r\n\r\n                    while($row = mysqli_fetch_assoc($categories_query)) {\r\n                    $cat_title = $row['cat_title'];\r\n                    $cat_id = $row['cat_id'];\r\n                     \r\n                    echo \"&lt;li&gt;&lt;a href='#'&gt;{$cat_title}&lt;/li&gt;\";\r\n                        \r\n                    }\r\n           \r\n                   \r\n                    ?&gt;\r\n \r\n                    &lt;li&gt;\r\n                        &lt;a href=\"#\"&gt;Services&lt;/a&gt;\r\n                    &lt;/li&gt;\r\n                    &lt;li&gt;\r\n                        &lt;a href=\"#\"&gt;Contact&lt;/a&gt;\r\n                    &lt;/li&gt;\r\n                   \r\n               \r\n                &lt;/ul&gt;\r\n            &lt;/div&gt;\r\n            &lt;!-- /.navbar-collapse --&gt;\r\n        &lt;/div&gt;\r\n        &lt;!-- /.container --&gt;\r\n    &lt;/nav&gt;</code></pre>\r\n</div>\r\n</div>\r\n</p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>&lt;?php include(\"includes/header.php\"); ?&gt;\r\n&lt;?php include(\"includes/db.php\"); ?&gt;   \r\n\r\n    &lt;!-- Navigation --&gt;\r\n    \r\n    &lt;?php \r\n\r\ninclude(\"includes/navigation.php\");\r\n\r\n?&gt;\r\n\r\n    &lt;!-- Page Content --&gt;\r\n    &lt;div class=\"container\"&gt;\r\n\r\n        &lt;div class=\"row\"&gt;\r\n\r\n            &lt;!-- Blog Entries Column --&gt;\r\n            \r\n            &lt;div class=\"col-md-8\"&gt;\r\n                \r\n                \r\n            &lt;?php\r\n                \r\n            $query = \"SELECT * FROM posts \";\r\n            $posts_query = mysqli_query($connection, $query);\r\n                    \r\n            while($row = mysqli_fetch_assoc($posts_query)){\r\n                        \r\n            $post_title = $row['post_title'];    //row from db\r\n            $post_author = $row['post_author'];\r\n            $post_date = $row['post_date'];\r\n            $post_image = $row['post_image'];\r\n            $post_content = $row['post_content'];\r\n               \r\n                \r\n                \r\n                ?&gt;\r\n                \r\n                 &lt;h1 class=\"page-header\"&gt;\r\n                    Page Heading\r\n                    &lt;small&gt;Secondary Text&lt;/small&gt;\r\n                &lt;/h1&gt;\r\n\r\n                &lt;!-- First Blog Post --&gt;\r\n                &lt;h2&gt;\r\n                    &lt;a href=\"#\"&gt;&lt;?php echo $post_title ?&gt;&lt;/a&gt;\r\n                &lt;/h2&gt;\r\n                &lt;p class=\"lead\"&gt;\r\n                    by &lt;a href=\"index.php\"&gt;&lt;?php echo $post_author ?&gt;&lt;/a&gt;\r\n                &lt;/p&gt;\r\n                &lt;p&gt;&lt;span class=\"glyphicon glyphicon-time\"&gt;&lt;/span&gt;&lt;?php echo $post_date ?&gt;&lt;/p&gt;\r\n                &lt;hr&gt;\r\n                &lt;img class=\"img-responsive\" src=\"images/&lt;?php echo $post_image; ?&gt;\" alt=\"\"&gt;\r\n                &lt;hr&gt;\r\n                &lt;p&gt;&lt;?php echo $post_content ?&gt;&lt;/p&gt;\r\n                &lt;a class=\"btn btn-primary\" href=\"#\"&gt;Read More &lt;span class=\"glyphicon glyphicon-chevron-right\"&gt;&lt;/span&gt;&lt;/a&gt;\r\n\r\n                &lt;hr&gt;\r\n                \r\n           &lt;?php } ?&gt;\r\n                \r\n\r\n               \r\n\r\n                \r\n\r\n            &lt;/div&gt;\r\n\r\n            &lt;!-- Blog Sidebar Widgets Column --&gt;\r\n            \r\n            &lt;?php \r\n\r\n                include(\"includes/sidebar.php\");\r\n\r\n             ?&gt;\r\n            \r\n            \r\n\r\n        &lt;/div&gt;\r\n        &lt;!-- /.row --&gt;\r\n\r\n        &lt;hr&gt;\r\n\r\n       \r\n&lt;?php \r\n\r\ninclude(\"includes/footer.php\");\r\n\r\n?&gt;</code></pre>\r\n</div>\r\n</div>\r\n</p>\n"
+        },
+        {
+            "tags": [
+                "kernel",
+                "ftrace"
+            ],
+            "owner": {
+                "reputation": 135,
+                "user_id": 1852702,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://www.gravatar.com/avatar/b94bb7652e0f9b29f3ae5e5559c64151?s=128&d=identicon&r=PG",
+                "display_name": "Robber Pen",
+                "link": "https://stackoverflow.com/users/1852702/robber-pen"
+            },
+            "is_answered": false,
+            "view_count": 49,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524181296,
+            "creation_date": 1498189171,
+            "question_id": 44712701,
+            "body_markdown": "Is it possible to hook/callback kernel function to my kernel module by ftrace or anyway.\r\n\r\nfor example: I want hook each time the function *net_tx_action()* called to my module, included arguments.\r\n\r\nregards\r\npeter\r\n",
+            "link": "https://stackoverflow.com/questions/44712701/how-can-the-ftrace-support-hook-function",
+            "title": "How can the ftrace support hook function",
+            "body": "<p>Is it possible to hook/callback kernel function to my kernel module by ftrace or anyway.</p>\n\n<p>for example: I want hook each time the function <em>net_tx_action()</em> called to my module, included arguments.</p>\n\n<p>regards\npeter</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "monkey"
+            ],
+            "owner": {
+                "reputation": 645,
+                "user_id": 5556306,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://i.stack.imgur.com/ibhmQ.jpg?s=128&g=1",
+                "display_name": "Giovanni Grano",
+                "link": "https://stackoverflow.com/users/5556306/giovanni-grano"
+            },
+            "is_answered": false,
+            "view_count": 66,
+            "bounty_amount": 100,
+            "bounty_closes_date": 1524765757,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524181291,
+            "creation_date": 1507646296,
+            "question_id": 46669486,
+            "body_markdown": "I ran the Monkey tool (the tool to perform stress testing on Android application) and I got some script file that have this form:\r\n\r\n\r\n    type= raw events\r\n    count= -1\r\n    speed= 1.0\r\n    start data &gt;&gt;\r\n    LaunchActivity(com.amaze.filemanager,com.amaze.filemanager.activities.MainActivity)\r\n    DispatchPointer(6934862,6934862,0,517.0,124.0,0.0,0.0,0,1.0,1.0,0,0)\r\n    DispatchPointer(6934862,6934867,1,520.041,127.07279,0.0,0.0,0,1.0,1.0,0,0)\r\n    GUIGen(3)\r\n    DispatchTrackball(-1,6945789,2,1.0,-3.0,0.0,0.0,0,1.0,1.0,0,0)\r\n    ...\r\n\r\n\r\nI would like to re-execute such sequence of events again, using the produced script.\r\nHow can I do that?",
+            "link": "https://stackoverflow.com/questions/46669486/reproduce-android-monkey-script",
+            "title": "Reproduce Android Monkey Script",
+            "body": "<p>I ran the Monkey tool (the tool to perform stress testing on Android application) and I got some script file that have this form:</p>\n\n<pre><code>type= raw events\ncount= -1\nspeed= 1.0\nstart data &gt;&gt;\nLaunchActivity(com.amaze.filemanager,com.amaze.filemanager.activities.MainActivity)\nDispatchPointer(6934862,6934862,0,517.0,124.0,0.0,0.0,0,1.0,1.0,0,0)\nDispatchPointer(6934862,6934867,1,520.041,127.07279,0.0,0.0,0,1.0,1.0,0,0)\nGUIGen(3)\nDispatchTrackball(-1,6945789,2,1.0,-3.0,0.0,0.0,0,1.0,1.0,0,0)\n...\n</code></pre>\n\n<p>I would like to re-execute such sequence of events again, using the produced script.\nHow can I do that?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html",
+                "css"
+            ],
+            "owner": {
+                "reputation": 165,
+                "user_id": 6141880,
+                "user_type": "registered",
+                "accept_rate": 62,
+                "profile_image": "https://graph.facebook.com/1678541972412107/picture?type=large",
+                "display_name": "Rachel Dockter",
+                "link": "https://stackoverflow.com/users/6141880/rachel-dockter"
+            },
+            "is_answered": true,
+            "view_count": 35,
+            "accepted_answer_id": 49931803,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524181289,
+            "creation_date": 1524180655,
+            "question_id": 49931726,
+            "body_markdown": "i have a fancy checkbox, its not that fancy to cause this much lag but im trying to make it dissaper.\r\n\r\nI do this by making its parent div dissaper which does so instantly but leaves the checkbox there for about 3 seconds.\r\n\r\nHeres the jsfiddle - http://jsfiddle.net/zpun567w/16/\r\n\r\nI have to accompany it by code so heres how im making it dissapere: \r\n\r\n    document.getElementById(&quot;clickHide&quot;).addEventListener(&#39;click&#39;, function (){\r\n\r\n    document.getElementById(&quot;hide&quot;).style.visibility = &#39;hidden&#39;; \r\n\r\n    });\r\n\r\nAlso just to clarify this is part of a bigger project so im not looking for ways to make the individual checkbox dissapere by setting the display to none. It needs to be visibility and prefrably the whole div",
+            "link": "https://stackoverflow.com/questions/49931726/major-lag-3-seconds-when-hiding-check-box",
+            "title": "Major lag (3 seconds) when hiding check box",
+            "body": "<p>i have a fancy checkbox, its not that fancy to cause this much lag but im trying to make it dissaper.</p>\n\n<p>I do this by making its parent div dissaper which does so instantly but leaves the checkbox there for about 3 seconds.</p>\n\n<p>Heres the jsfiddle - <a href=\"http://jsfiddle.net/zpun567w/16/\" rel=\"nofollow noreferrer\">http://jsfiddle.net/zpun567w/16/</a></p>\n\n<p>I have to accompany it by code so heres how im making it dissapere: </p>\n\n<pre><code>document.getElementById(\"clickHide\").addEventListener('click', function (){\n\ndocument.getElementById(\"hide\").style.visibility = 'hidden'; \n\n});\n</code></pre>\n\n<p>Also just to clarify this is part of a bigger project so im not looking for ways to make the individual checkbox dissapere by setting the display to none. It needs to be visibility and prefrably the whole div</p>\n"
+        },
+        {
+            "tags": [
+                "r"
+            ],
+            "owner": {
+                "reputation": 15,
+                "user_id": 9008221,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1724864800877897/picture?type=large",
+                "display_name": "Henry Walsh",
+                "link": "https://stackoverflow.com/users/9008221/henry-walsh"
+            },
+            "is_answered": true,
+            "view_count": 23,
+            "accepted_answer_id": 49931522,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524181278,
+            "creation_date": 1524177855,
+            "question_id": 49931296,
+            "body_markdown": "I have a table df that looks like this (with many more columns and many more rows):\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/iLCWG.png\r\n\r\nI want to create a new table df2 in which each cell in the red box is replaced by percentage change from the value for the previous date (with the top row obviously displaying NA). For example the bottom right cell in the new table should read -.0188\r\n\r\nIs there a function (base or from some package) that can do this? If so, how can I use it?",
+            "link": "https://stackoverflow.com/questions/49931296/how-to-create-a-table-of-percentage-changes-in-r",
+            "title": "How to create a table of percentage changes in R?",
+            "body": "<p>I have a table df that looks like this (with many more columns and many more rows):</p>\n\n<p><a href=\"https://i.stack.imgur.com/iLCWG.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/iLCWG.png\" alt=\"enter image description here\"></a></p>\n\n<p>I want to create a new table df2 in which each cell in the red box is replaced by percentage change from the value for the previous date (with the top row obviously displaying NA). For example the bottom right cell in the new table should read -.0188</p>\n\n<p>Is there a function (base or from some package) that can do this? If so, how can I use it?</p>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "jasmine",
+                "karma-jasmine"
+            ],
+            "owner": {
+                "reputation": 429,
+                "user_id": 4607841,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/71cd701f6826481858ee299f68f3205a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Tom",
+                "link": "https://stackoverflow.com/users/4607841/tom"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524181276,
+            "creation_date": 1524180037,
+            "last_edit_date": 1524181255,
+            "question_id": 49931642,
+            "body_markdown": "I have written Jasmine test using karma load runner for my angular 4 application. I am expecting the method to return false but is returning true for some reason.\r\nNot sure why ?\r\n\r\nTest 1\r\n\r\n&lt;!-- language: typescript --&gt;\r\n\r\n    it(&#39;should return false because the current item max value is less to the current min value&#39;, () =&gt; {\r\n        comp.domicileInfo.taxAssesment.items = [{maxSize: 30000000 , minSize: 30000000 , values: [2 , 2]}];\r\n        let isMax: boolean = comp.isMaxValid(comp.domicileInfo.taxAssesment.items , 1);\r\n        console.log(isMax);\r\n        console.log(comp.domicileInfo.taxAssesment.items);\r\n        expect(isMax).toBe(false);\r\n      });\r\n\r\n\r\nmethod\r\n\r\n&lt;!-- language: typescript --&gt;\r\n\r\n    isMaxValid(currentItem: any, item_IDX: number) {\r\n        if (item_IDX === 0) {\r\n          return true;\r\n        }\r\n    \r\n        if (+currentItem.maxSize &lt;= +currentItem.minSize ) {\r\n          return false;\r\n        }\r\n        return true;\r\n      }\r\n\r\nTest 2\r\n\r\nmethod : Please note the the first element in the array would contain minSize : 0 and maxSize: 20000000\r\n\r\n    isMinValid(currentItem: any, item_IDX: number) {\r\n        if (item_IDX === 0) {\r\n          return true;\r\n        }\r\n    \r\n        let previousItem = this.domicileInfo.taxAssesment.items[item_IDX - 1];\r\n        if (+currentItem.minSize !== +previousItem.maxSize  ) {\r\n          return false;\r\n        }\r\n        return true;\r\n      }\r\n\r\n   \r\n\r\n    fit(&#39;should return true because the current item min value is equal to the previous max value&#39;, () =&gt; {\r\n        comp.domicileInfo.taxAssesment.items = [{maxSize: 30000000 , minSize: 20000000 , values: [2 , 2]}];\r\n        let isMax: boolean = comp.isMinValid(comp.domicileInfo.taxAssesment.items[0] , 1);\r\n        console.log(isMax);\r\n        console.log(comp.domicileInfo.taxAssesment.items);\r\n        expect(isMax).toBe(true);\r\n      });",
+            "link": "https://stackoverflow.com/questions/49931642/jasmine-test-getting-an-unexpected-result-for-angular-application",
+            "title": "Jasmine test getting an unexpected result for angular application",
+            "body": "<p>I have written Jasmine test using karma load runner for my angular 4 application. I am expecting the method to return false but is returning true for some reason.\nNot sure why ?</p>\n\n<p>Test 1</p>\n\n<pre class=\"lang-js prettyprint-override\"><code>it('should return false because the current item max value is less to the current min value', () =&gt; {\n    comp.domicileInfo.taxAssesment.items = [{maxSize: 30000000 , minSize: 30000000 , values: [2 , 2]}];\n    let isMax: boolean = comp.isMaxValid(comp.domicileInfo.taxAssesment.items , 1);\n    console.log(isMax);\n    console.log(comp.domicileInfo.taxAssesment.items);\n    expect(isMax).toBe(false);\n  });\n</code></pre>\n\n<p>method</p>\n\n<pre class=\"lang-js prettyprint-override\"><code>isMaxValid(currentItem: any, item_IDX: number) {\n    if (item_IDX === 0) {\n      return true;\n    }\n\n    if (+currentItem.maxSize &lt;= +currentItem.minSize ) {\n      return false;\n    }\n    return true;\n  }\n</code></pre>\n\n<p>Test 2</p>\n\n<p>method : Please note the the first element in the array would contain minSize : 0 and maxSize: 20000000</p>\n\n<pre><code>isMinValid(currentItem: any, item_IDX: number) {\n    if (item_IDX === 0) {\n      return true;\n    }\n\n    let previousItem = this.domicileInfo.taxAssesment.items[item_IDX - 1];\n    if (+currentItem.minSize !== +previousItem.maxSize  ) {\n      return false;\n    }\n    return true;\n  }\n\n\n\nfit('should return true because the current item min value is equal to the previous max value', () =&gt; {\n    comp.domicileInfo.taxAssesment.items = [{maxSize: 30000000 , minSize: 20000000 , values: [2 , 2]}];\n    let isMax: boolean = comp.isMinValid(comp.domicileInfo.taxAssesment.items[0] , 1);\n    console.log(isMax);\n    console.log(comp.domicileInfo.taxAssesment.items);\n    expect(isMax).toBe(true);\n  });\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "rpc",
+                "grpc"
+            ],
+            "owner": {
+                "reputation": 1248,
+                "user_id": 729294,
+                "user_type": "registered",
+                "accept_rate": 37,
+                "profile_image": "https://www.gravatar.com/avatar/de7b24414ca6c375479bdab7ba824eb0?s=128&d=identicon&r=PG",
+                "display_name": "rajan sthapit",
+                "link": "https://stackoverflow.com/users/729294/rajan-sthapit"
+            },
+            "is_answered": false,
+            "view_count": 9,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524181251,
+            "creation_date": 1524181251,
+            "question_id": 49931795,
+            "body_markdown": "I am trying to do load testing for my rpc application. So I have a client for that rpc application.\r\n\r\nWhat I want to do is use the client to make request to that rpc application. Now how do I do load testing using this client. My load testing means running multiple instance of this client(basically a script that creates the client - a python script that imports and loads the client library which can be used to make the call), and then try to make concurrent requests and see what is the throughput and latency that I can get.\r\n\r\nI have heard Locust could do that, but I can only see the examples for http. Can anyone suggest me how to do that?\r\n\r\nBasically this is how I am using the client\r\n\r\n    from module load stuff\r\n    \r\n    client = init_client()\r\n    data = create_data()\r\n    response = client.send(data)\r\n\r\nHow do I do load testing using this. Basically I want to test this client library and see what&#39;s the throughput and latency I can achieve using this.\r\n    ",
+            "link": "https://stackoverflow.com/questions/49931795/how-to-do-load-testing-for-rpc-applications",
+            "title": "How to do load testing for rpc applications",
+            "body": "<p>I am trying to do load testing for my rpc application. So I have a client for that rpc application.</p>\n\n<p>What I want to do is use the client to make request to that rpc application. Now how do I do load testing using this client. My load testing means running multiple instance of this client(basically a script that creates the client - a python script that imports and loads the client library which can be used to make the call), and then try to make concurrent requests and see what is the throughput and latency that I can get.</p>\n\n<p>I have heard Locust could do that, but I can only see the examples for http. Can anyone suggest me how to do that?</p>\n\n<p>Basically this is how I am using the client</p>\n\n<pre><code>from module load stuff\n\nclient = init_client()\ndata = create_data()\nresponse = client.send(data)\n</code></pre>\n\n<p>How do I do load testing using this. Basically I want to test this client library and see what's the throughput and latency I can achieve using this.</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 104
+}

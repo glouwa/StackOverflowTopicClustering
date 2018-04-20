@@ -1,0 +1,836 @@
+{
+    "items": [
+        {
+            "tags": [
+                "java",
+                "static",
+                "classloader",
+                "legacy"
+            ],
+            "owner": {
+                "reputation": 4711,
+                "user_id": 3280538,
+                "user_type": "registered",
+                "accept_rate": 74,
+                "profile_image": "https://i.stack.imgur.com/pYuGC.jpg?s=128&g=1",
+                "display_name": "flakes",
+                "link": "https://stackoverflow.com/users/3280538/flakes"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524207183,
+            "creation_date": 1524207183,
+            "question_id": 49935733,
+            "body_markdown": "*Disclaimer: This is probably a terrible idea but I&#39;m curious if there exists a clean solution to the following problem.*\r\n\r\n**Problem** I&#39;m trying to deal with some legacy code which has a singleton defined like bellow:\r\n\r\n    public class LegacySingleton {\r\n        private static boolean value;\r\n\r\n        public static void setup(boolean v) {\r\n            if (value != null) {\r\n                throw new RuntimeException(&quot;Already Set up&quot;);\r\n            }\r\n            value = v;\r\n            System.out.println(&quot;Setup complete&quot;);\r\n        }\r\n\r\n        public static void teardown() {\r\n            value = null;\r\n            System.out.println(&quot;Teardown complete&quot;);\r\n        }\r\n        \r\n        public static boolean getValue() {\r\n            return value;\r\n        }\r\n    }\r\n\r\nI do not have the ability to change this design and the class is used heavily throughout the code base. The values returned by this singleton can greatly change the functionality of the code. Eg:\r\n\r\n    public class LegacyRequestHandler {\r\n        public void handleRequest() {\r\n            if (LegacySingleton.getValue()) {\r\n                System.out.println(&quot;Path A&quot;);\r\n            } else {\r\n                System.out.println(&quot;Path B&quot;);\r\n            }\r\n        }\r\n    }\r\n\r\nRight now if I want the code to take `Path A`, then I have to initialize `LegacySingleton` in a particular way. If I then want to take `Path B` I have to re-initialize the `LegacySingleton`. There is no way of handling requests in parallel which take different paths; meaning for each different configuration of `LegacySingleton` required I need to launch a separate JVM instance. \r\n\r\n------------------------------\r\n\r\n**My Question** Is it possible to isolate this singleton using separate class loaders? I&#39;ve been playing around with the `ClassLoader` API, but I cant quite figure it out.\r\n\r\nI&#39;m imagining it would look something along the lines of this:\r\n\r\n    public class LegacyRequestHandlerProvider extends Supplier&lt;LegacyRequestHandler&gt; {\r\n        private final boolean value;\r\n        public LegacyRequestHandlerProvider(boolean value) {\r\n            this.value = value;\r\n        }\r\n        @Override\r\n        public LegacyRequestHandler get() {\r\n            LegacySingleton.setup(value);\r\n            return new LegacyRequestHandler();\r\n        }\r\n    }\r\n\r\n...\r\n\r\n    ClassLoader loader1 = new SomeFunkyClassLoaderMagic();\r\n    Supplier&lt;LegacyRequestHandler&gt; LegacyRequestHandler supplier1 = loader1\r\n        .loadClass(&quot;com.project.LegacyRequestHandlerProvider&quot;)\r\n        .getConstructor(Boolean.TYPE)\r\n        .newInstance(true);\r\n\r\n    ClassLoader loader2 = new SomeFunkyClassLoaderMagic();\r\n    Supplier&lt;LegacyRequestHandler&gt; LegacyRequestHandler supplier2 = loader2\r\n        .loadClass(&quot;com.project.LegacyRequestHandlerProvider&quot;)\r\n        .getConstructor(Boolean.TYPE)\r\n        .newInstance(false);\r\n\r\n    LegacyRequestHandler handler1 = supplier1.get();\r\n    LegacyRequestHandler handler2 = supplier2.get();\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49935733/isolating-a-static-singleton-using-class-loaders",
+            "title": "Isolating a static singleton using class loaders",
+            "body": "<p><em>Disclaimer: This is probably a terrible idea but I'm curious if there exists a clean solution to the following problem.</em></p>\n\n<p><strong>Problem</strong> I'm trying to deal with some legacy code which has a singleton defined like bellow:</p>\n\n<pre><code>public class LegacySingleton {\n    private static boolean value;\n\n    public static void setup(boolean v) {\n        if (value != null) {\n            throw new RuntimeException(\"Already Set up\");\n        }\n        value = v;\n        System.out.println(\"Setup complete\");\n    }\n\n    public static void teardown() {\n        value = null;\n        System.out.println(\"Teardown complete\");\n    }\n\n    public static boolean getValue() {\n        return value;\n    }\n}\n</code></pre>\n\n<p>I do not have the ability to change this design and the class is used heavily throughout the code base. The values returned by this singleton can greatly change the functionality of the code. Eg:</p>\n\n<pre><code>public class LegacyRequestHandler {\n    public void handleRequest() {\n        if (LegacySingleton.getValue()) {\n            System.out.println(\"Path A\");\n        } else {\n            System.out.println(\"Path B\");\n        }\n    }\n}\n</code></pre>\n\n<p>Right now if I want the code to take <code>Path A</code>, then I have to initialize <code>LegacySingleton</code> in a particular way. If I then want to take <code>Path B</code> I have to re-initialize the <code>LegacySingleton</code>. There is no way of handling requests in parallel which take different paths; meaning for each different configuration of <code>LegacySingleton</code> required I need to launch a separate JVM instance. </p>\n\n<hr>\n\n<p><strong>My Question</strong> Is it possible to isolate this singleton using separate class loaders? I've been playing around with the <code>ClassLoader</code> API, but I cant quite figure it out.</p>\n\n<p>I'm imagining it would look something along the lines of this:</p>\n\n<pre><code>public class LegacyRequestHandlerProvider extends Supplier&lt;LegacyRequestHandler&gt; {\n    private final boolean value;\n    public LegacyRequestHandlerProvider(boolean value) {\n        this.value = value;\n    }\n    @Override\n    public LegacyRequestHandler get() {\n        LegacySingleton.setup(value);\n        return new LegacyRequestHandler();\n    }\n}\n</code></pre>\n\n<p>...</p>\n\n<pre><code>ClassLoader loader1 = new SomeFunkyClassLoaderMagic();\nSupplier&lt;LegacyRequestHandler&gt; LegacyRequestHandler supplier1 = loader1\n    .loadClass(\"com.project.LegacyRequestHandlerProvider\")\n    .getConstructor(Boolean.TYPE)\n    .newInstance(true);\n\nClassLoader loader2 = new SomeFunkyClassLoaderMagic();\nSupplier&lt;LegacyRequestHandler&gt; LegacyRequestHandler supplier2 = loader2\n    .loadClass(\"com.project.LegacyRequestHandlerProvider\")\n    .getConstructor(Boolean.TYPE)\n    .newInstance(false);\n\nLegacyRequestHandler handler1 = supplier1.get();\nLegacyRequestHandler handler2 = supplier2.get();\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "typescript",
+                "webpack",
+                "ecmascript-6",
+                "babel",
+                "babel-loader"
+            ],
+            "owner": {
+                "reputation": 52908,
+                "user_id": 145587,
+                "user_type": "registered",
+                "accept_rate": 89,
+                "profile_image": "https://www.gravatar.com/avatar/2ce699e2ec2d8ddb26b6a866191da86d?s=128&d=identicon&r=PG",
+                "display_name": "OneOfOne",
+                "link": "https://stackoverflow.com/users/145587/oneofone"
+            },
+            "is_answered": false,
+            "view_count": 23,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524207182,
+            "creation_date": 1524164123,
+            "question_id": 49928306,
+            "body_markdown": "Right now it translates `class X { ... }` to `var X = function X(...) { ... }`, how do I make it output it as `function X (...) { ... }`?",
+            "link": "https://stackoverflow.com/questions/49928306/how-to-make-babel-output-classes-as-named-functions",
+            "title": "How to make babel output classes as named functions?",
+            "body": "<p>Right now it translates <code>class X { ... }</code> to <code>var X = function X(...) { ... }</code>, how do I make it output it as <code>function X (...) { ... }</code>?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "apache-spark"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 9656398,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/4adb7bac4e849ac97d548018d733a5c5?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Alice",
+                "link": "https://stackoverflow.com/users/9656398/alice"
+            },
+            "is_answered": false,
+            "view_count": 25,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524207176,
+            "creation_date": 1524192760,
+            "last_edit_date": 1524194849,
+            "question_id": 49933176,
+            "body_markdown": "In a spark dataframe (Java API version 2.2), I am trying to get the substring of a column as follow:\r\n\r\n    //aggregationDS is a spark dataset\r\n    aggregationsDS = aggregationsDS.withColumn(&quot;NODE_ID&quot;, aggregationsDS.col(&quot;NODE_ID&quot;).substr(2, [*Lengthofcolumn*]));\r\n\r\nI need to feed the length of the string for that particular column but not sure what is the correct command.",
+            "link": "https://stackoverflow.com/questions/49933176/getting-a-substring-of-a-dataframe-column",
+            "title": "Getting a substring of a dataframe column",
+            "body": "<p>In a spark dataframe (Java API version 2.2), I am trying to get the substring of a column as follow:</p>\n\n<pre><code>//aggregationDS is a spark dataset\naggregationsDS = aggregationsDS.withColumn(\"NODE_ID\", aggregationsDS.col(\"NODE_ID\").substr(2, [*Lengthofcolumn*]));\n</code></pre>\n\n<p>I need to feed the length of the string for that particular column but not sure what is the correct command.</p>\n"
+        },
+        {
+            "tags": [
+                "php"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 2930544,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/30e416b0a75afd7235910ffc64119b83?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Joel M",
+                "link": "https://stackoverflow.com/users/2930544/joel-m"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "closed_date": 1524207374,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1524207163,
+            "creation_date": 1524207163,
+            "question_id": 49935728,
+            "body_markdown": "I have the following code that checks for all scripts with .js and compresses them.\r\n\r\n    if (preg_match(&#39;/\\.js$/i&#39;, $script)) {\r\n    \t$asset = $this[&#39;asset&#39;]-&gt;createFile($script);\r\n    \tif ($asset-&gt;getPath()) {\r\n    \t\t$script = $this[&#39;asset&#39;]-&gt;cache(basename($script), $asset, array(&#39;JsCompressor&#39;), $options)-&gt;getUrl();\r\n    \t}\r\n    }\r\n\r\nHere&#39;s a sample of JS files it&#39;s searching through:\r\n\r\n    media/j2store/js/j2store.namespace.js\r\n    media/j2store/js/j2store.js\r\n    media/j2store/js/jquery-ui.min.js\r\n    media/j2store/js/jquery-ui-timepicker-addon.js\r\n    media/j2store/js/jquery.zoom.js\r\n\r\nThere&#39;s one js file I want it to omit i.e. j2store.js. I&#39;ve tried using the negative lookahead but it doesn&#39;t work.\r\n\r\n    if (preg_match(&#39;/(?!j2store)\\.js$/i&#39;, $script)) {\r\n    \t$asset = $this[&#39;asset&#39;]-&gt;createFile($script);\r\n    \tif ($asset-&gt;getPath()) {\r\n    \t\t$script = $this[&#39;asset&#39;]-&gt;cache(basename($script), $asset, array(&#39;JsCompressor&#39;), $options)-&gt;getUrl();\r\n    \t}\r\n    }\r\n\r\nYour help will be greatly appreciated.",
+            "link": "https://stackoverflow.com/questions/49935728/php-regexp-negative-lookahead-for-file-name",
+            "closed_reason": "duplicate",
+            "title": "PHP Regexp negative lookahead for file name",
+            "body": "<p>I have the following code that checks for all scripts with .js and compresses them.</p>\n\n<pre><code>if (preg_match('/\\.js$/i', $script)) {\n    $asset = $this['asset']-&gt;createFile($script);\n    if ($asset-&gt;getPath()) {\n        $script = $this['asset']-&gt;cache(basename($script), $asset, array('JsCompressor'), $options)-&gt;getUrl();\n    }\n}\n</code></pre>\n\n<p>Here's a sample of JS files it's searching through:</p>\n\n<pre><code>media/j2store/js/j2store.namespace.js\nmedia/j2store/js/j2store.js\nmedia/j2store/js/jquery-ui.min.js\nmedia/j2store/js/jquery-ui-timepicker-addon.js\nmedia/j2store/js/jquery.zoom.js\n</code></pre>\n\n<p>There's one js file I want it to omit i.e. j2store.js. I've tried using the negative lookahead but it doesn't work.</p>\n\n<pre><code>if (preg_match('/(?!j2store)\\.js$/i', $script)) {\n    $asset = $this['asset']-&gt;createFile($script);\n    if ($asset-&gt;getPath()) {\n        $script = $this['asset']-&gt;cache(basename($script), $asset, array('JsCompressor'), $options)-&gt;getUrl();\n    }\n}\n</code></pre>\n\n<p>Your help will be greatly appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "service",
+                "widget",
+                "bind"
+            ],
+            "owner": {
+                "reputation": 4439,
+                "user_id": 248002,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://i.stack.imgur.com/jhh8b.png?s=128&g=1",
+                "display_name": "Wayne",
+                "link": "https://stackoverflow.com/users/248002/wayne"
+            },
+            "is_answered": true,
+            "view_count": 1665,
+            "accepted_answer_id": 8651701,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1524207161,
+            "creation_date": 1324616022,
+            "question_id": 8612367,
+            "body_markdown": "This is my short description about my widget and main application. Sorry because of my English (English is not my mother tongue)\r\n\r\nI have a music player widget. When this widget enabled, I need bind to a music player service (A) of main application. Because we cannot bind a service in AppWidgetProvider so I start a local service (B) in AppWidgetProvider and bind to that music player service (A) from here. Furthermore, I also have a service C to do widget&#39;s button function.\r\n\r\nEverything seems to be working fine but when my main app with service A all forced stop (they will be restating a moment later) I must rebind to A from widget. Problem is when main app was forced stop, I cannot rebind to A because context(I stored Context as a global variable in AppWidgetProvider whenever I receive context from onEnabled, onUpdate) is NULL.\r\n\r\nMy question is how about my above widget structure? Should service B stoped when bind to A done? How can i bind to service A again when main app and service a was forced stop (but they will automatically restart a moment later).\r\n\r\nThanks you!",
+            "link": "https://stackoverflow.com/questions/8612367/android-widget-bind-service-again-when-application-forced-stop",
+            "title": "Android widget - bind service again when application forced stop",
+            "body": "<p>This is my short description about my widget and main application. Sorry because of my English (English is not my mother tongue)</p>\n\n<p>I have a music player widget. When this widget enabled, I need bind to a music player service (A) of main application. Because we cannot bind a service in AppWidgetProvider so I start a local service (B) in AppWidgetProvider and bind to that music player service (A) from here. Furthermore, I also have a service C to do widget's button function.</p>\n\n<p>Everything seems to be working fine but when my main app with service A all forced stop (they will be restating a moment later) I must rebind to A from widget. Problem is when main app was forced stop, I cannot rebind to A because context(I stored Context as a global variable in AppWidgetProvider whenever I receive context from onEnabled, onUpdate) is NULL.</p>\n\n<p>My question is how about my above widget structure? Should service B stoped when bind to A done? How can i bind to service A again when main app and service a was forced stop (but they will automatically restart a moment later).</p>\n\n<p>Thanks you!</p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "psych",
+                "factor-analysis"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 9673290,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Kyle",
+                "link": "https://stackoverflow.com/users/9673290/kyle"
+            },
+            "is_answered": true,
+            "view_count": 14,
+            "accepted_answer_id": 49935723,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524207154,
+            "creation_date": 1524206123,
+            "question_id": 49935450,
+            "body_markdown": "I am using the psych package&#39;s fa command for factor analysis, and so have an object of class fa. I can query the loadings with fac$loadings,but how can I capture the bottom half of the loadings, which gives the SS loadings and the Proportion and cumulative Variance.\r\n\r\nExample code:\r\n\r\n    library(psych)\r\n    data(bfi)\r\n    fac &lt;- fa(r=cor(bfi, use=&quot;complete.obs&quot;), nfactors=5, fm=&quot;ml&quot;, rotate=&quot;none&quot;)\r\n    fac$loadings\r\n\r\nAnd how can I extract the follow information?\r\n\r\n                     ML1   ML2   ML3   ML4   ML5\r\n    SS loadings    4.429 2.423 1.562 1.331 0.966\r\n    Proportion Var 0.158 0.087 0.056 0.048 0.034\r\n    Cumulative Var 0.158 0.245 0.301 0.348 0.383\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49935450/psych-getting-cumulative-variance-from-fa-loadings",
+            "title": "psych - Getting cumulative Variance from fa loadings",
+            "body": "<p>I am using the psych package's fa command for factor analysis, and so have an object of class fa. I can query the loadings with fac$loadings,but how can I capture the bottom half of the loadings, which gives the SS loadings and the Proportion and cumulative Variance.</p>\n\n<p>Example code:</p>\n\n<pre><code>library(psych)\ndata(bfi)\nfac &lt;- fa(r=cor(bfi, use=\"complete.obs\"), nfactors=5, fm=\"ml\", rotate=\"none\")\nfac$loadings\n</code></pre>\n\n<p>And how can I extract the follow information?</p>\n\n<pre><code>                 ML1   ML2   ML3   ML4   ML5\nSS loadings    4.429 2.423 1.562 1.331 0.966\nProportion Var 0.158 0.087 0.056 0.048 0.034\nCumulative Var 0.158 0.245 0.301 0.348 0.383\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "django"
+            ],
+            "owner": {
+                "reputation": 441,
+                "user_id": 4233667,
+                "user_type": "registered",
+                "accept_rate": 81,
+                "profile_image": "https://www.gravatar.com/avatar/e8e5d02be5cf0e8e0afc31561bd1cfdf?s=128&d=identicon&r=PG&f=1",
+                "display_name": "YoYo",
+                "link": "https://stackoverflow.com/users/4233667/yoyo"
+            },
+            "is_answered": true,
+            "view_count": 26,
+            "accepted_answer_id": 49627683,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524207149,
+            "creation_date": 1522748776,
+            "last_edit_date": 1522751049,
+            "question_id": 49627003,
+            "body_markdown": "I want to preview all data submitted by a user before saving the form in the database. I wrote the below code, but it&#39;s not submitting and it&#39;s not showing me an error. Even when I insert print to the code so as to print data inputted, it didn&#39;t print any data.\r\n\r\nSo the logic is this, when a user add the data and click confirm order, he/she will be taken to &#39;preview.html&#39; where the data submitted will be displayed. And when the user is satisfied, he/she will click on save button. The form action in the preview.html is /add_buy_order/&#39;.\r\n\r\nVIEWS\r\n\r\n    @login_required\r\n    def add_buy_order(request):\r\n        newbc = None\r\n        template_name = &#39;ctrade/buycurrency.html&#39;\r\n        if request.method==&quot;POST&quot;:\r\n            form=BuyCurForm(request.POST)\r\n            if form.is_valid():\r\n                data=form.cleaned_data\r\n                requested_amount_needed = request.POST.get(&#39;amount_needed&#39;)\r\n                deck_am_needed = Decimal(requested_amount_needed) \r\n                fixed_amount = Decimal(&#39;999.0&#39;)\r\n                requested_amount_to_pay = request.POST.get(&#39;amount_to_pay&#39;)\r\n                requested_disc_code = request.POST.get(&#39;discount_code&#39;)\r\n                requested_disc_value = request.POST.get(&#39;discount_value&#39;)\r\n                requested_cur_one = request.POST.get(&#39;cur_address&#39;)\r\n                requested_cur_two = request.POST.get(&#39;cur_address_two&#39;)\r\n                requested_bank = request.POST.get(&#39;deaccount&#39;)\r\n                tapde = DEAccount.objects.get(bank_name= requested_bank)\r\n                \r\n    \r\n                if not str(requested_cur_one) == str(requested_cur_two):\r\n                    messages.info(request, &#39;Address to fund mismatch. Cross-check again&#39;)\r\n                    return redirect(&#39;add_buy_order&#39;)\r\n    \r\n                if &#39;_preview&#39; in request.POST:\r\n                    newbc=BuyCur(\r\n                        buyer=request.user,\r\n                        cur_type = data[&#39;cur_type&#39;],\r\n                        amount_needed = data[&#39;amount_needed&#39;],\r\n                        deaccount = tapde, \r\n                        amount_to_pay = data[&#39;amount_to_pay&#39;],\r\n                        cur_address = data[&#39;cur_address&#39;],\r\n                        cur_address_two = data[&#39;cur_address_two&#39;],\r\n                        rate_bought = data[&#39;rate_bought&#39;],\r\n                        cur_note = data[&#39;cur_note&#39;],\r\n                        pub_date=datetime.datetime.now(),\r\n                        modified_date = datetime.datetime.now(),\r\n                        discount_code = data[&#39;discount_code&#39;]\r\n                    )\r\n                    print newbc.buyer, newbc.cur_type, newbc.amount_needed, newbc.deaccount, newbc.amount_to_pay, newbc.cur_address,\r\n                    newbc.cur_address_two, newbc.rate_bought, newbc.cur_note, newbc.pub_date, newbc.modified_date, newbc.discount_code\r\n    \r\n                    return render(request, &#39;ctrade/preview.html&#39;,{&#39;newbc&#39;:newbc})\r\n    \r\n                elif &#39;_save&#39; in request.POST:\r\n                    newbc=BuyCur(\r\n                        buyer=request.user,\r\n                        cur_type = data[&#39;cur_type&#39;],\r\n                        amount_needed = data[&#39;amount_needed&#39;],\r\n                        deaccount = tapde, \r\n                        amount_to_pay = data[&#39;amount_to_pay&#39;],\r\n                        cur_address = data[&#39;cur_address&#39;],\r\n                        cur_address_two = requested_cur_two,\r\n                        rate_bought = data[&#39;rate_bought&#39;],\r\n                        cur_note = data[&#39;cur_note&#39;],\r\n                        pub_date=datetime.datetime.now(),\r\n                        modified_date = datetime.datetime.now(),\r\n                        discount_code = data[&#39;discount_code&#39;])\r\n                    newbc.save()\r\n                    return render(request, &#39;ctrade/afterbuy.html&#39;, {&#39;newbc&#39;:newbc})\r\n        else:\r\n            form=BuyCurForm()\r\n        return render(request, template_name,{&#39;form&#39;:form,&#39;newbc&#39;:newbc})\r\n\r\n\r\nFORM\r\n\r\n    class BuyCurForm(forms.ModelForm):\r\n        cur_type = forms.ModelChoiceField(queryset = CurrencyTrade.objects.all(), to_field_name = &quot;we_sell&quot;)\r\n        deaccount = forms.ModelChoiceField(queryset = DEAccount.objects.all(), to_field_name = &quot;bank_name&quot;)\r\n        amount_needed = forms.DecimalField(widget= forms.TextInput, max_digits=10,  decimal_places=1, initial=0.0 ,required = True)\r\n        amount_to_pay = forms.DecimalField(widget= forms.TextInput, max_digits=10,  decimal_places=2, initial=0.00 ,required = True)\r\n        rate_bought = forms.IntegerField()\r\n        \r\n        def __init__(self, *args, **kwargs):\r\n            super(BuyCurForm, self).__init__(*args, **kwargs)\r\n            self.fields[&#39;amount_to_pay&#39;].widget.attrs[&#39;readonly&#39;] = True\r\n            self.fields[&#39;rate_bought&#39;].widget.attrs[&#39;readonly&#39;] = True\r\n            \r\n        class Meta:\r\n            model = BuyCur\r\n            fields = [&#39;cur_type&#39;,&#39;amount_needed&#39;,&#39;amount_to_pay&#39;,&#39;rate_bought&#39;,&#39;deaccount&#39;,&#39;cur_address&#39;,&#39;cur_address_two&#39;,&#39;cur_note&#39;,&#39;discount_code&#39;]\r\n        \r\n\r\nTemplate\r\n\r\n        &lt;form method=&quot;POST&quot; action=&quot;&quot;&gt;\r\n         {% csrf_token %} \r\n    \t  {% for field in form %}\r\n        &lt;div class=&quot;fieldWrapper&quot;&gt;\r\n            {{ field.errors }}\r\n            {{ field.label_tag }} {{ field }}\r\n            {% if field.help_text %}\r\n            &lt;p class=&quot;help&quot;&gt;{{ field.help_text|safe }}&lt;/p&gt;\r\n            {% endif %}\r\n        &lt;/div&gt;\r\n    {% endfor %}\r\n    &lt;input type=&quot;submit&quot;   name=&quot;_preview&quot;  value=&quot;Confirm Order&quot;&gt;\r\n    &lt;input type=&quot;hidden&quot;  name=&quot;next&quot; value=&quot;{{ next }}&quot;&gt;\r\n    &lt;/form&gt;\r\n\r\nWhat am I missing? or is there a better way to go about this?",
+            "link": "https://stackoverflow.com/questions/49627003/despite-adding-error-tags-form-not-submitted-and-no-error-printed-in-template",
+            "title": "Despite Adding Error Tags, Form Not Submitted and No Error Printed in Template",
+            "body": "<p>I want to preview all data submitted by a user before saving the form in the database. I wrote the below code, but it's not submitting and it's not showing me an error. Even when I insert print to the code so as to print data inputted, it didn't print any data.</p>\n\n<p>So the logic is this, when a user add the data and click confirm order, he/she will be taken to 'preview.html' where the data submitted will be displayed. And when the user is satisfied, he/she will click on save button. The form action in the preview.html is /add_buy_order/'.</p>\n\n<p>VIEWS</p>\n\n<pre><code>@login_required\ndef add_buy_order(request):\n    newbc = None\n    template_name = 'ctrade/buycurrency.html'\n    if request.method==\"POST\":\n        form=BuyCurForm(request.POST)\n        if form.is_valid():\n            data=form.cleaned_data\n            requested_amount_needed = request.POST.get('amount_needed')\n            deck_am_needed = Decimal(requested_amount_needed) \n            fixed_amount = Decimal('999.0')\n            requested_amount_to_pay = request.POST.get('amount_to_pay')\n            requested_disc_code = request.POST.get('discount_code')\n            requested_disc_value = request.POST.get('discount_value')\n            requested_cur_one = request.POST.get('cur_address')\n            requested_cur_two = request.POST.get('cur_address_two')\n            requested_bank = request.POST.get('deaccount')\n            tapde = DEAccount.objects.get(bank_name= requested_bank)\n\n\n            if not str(requested_cur_one) == str(requested_cur_two):\n                messages.info(request, 'Address to fund mismatch. Cross-check again')\n                return redirect('add_buy_order')\n\n            if '_preview' in request.POST:\n                newbc=BuyCur(\n                    buyer=request.user,\n                    cur_type = data['cur_type'],\n                    amount_needed = data['amount_needed'],\n                    deaccount = tapde, \n                    amount_to_pay = data['amount_to_pay'],\n                    cur_address = data['cur_address'],\n                    cur_address_two = data['cur_address_two'],\n                    rate_bought = data['rate_bought'],\n                    cur_note = data['cur_note'],\n                    pub_date=datetime.datetime.now(),\n                    modified_date = datetime.datetime.now(),\n                    discount_code = data['discount_code']\n                )\n                print newbc.buyer, newbc.cur_type, newbc.amount_needed, newbc.deaccount, newbc.amount_to_pay, newbc.cur_address,\n                newbc.cur_address_two, newbc.rate_bought, newbc.cur_note, newbc.pub_date, newbc.modified_date, newbc.discount_code\n\n                return render(request, 'ctrade/preview.html',{'newbc':newbc})\n\n            elif '_save' in request.POST:\n                newbc=BuyCur(\n                    buyer=request.user,\n                    cur_type = data['cur_type'],\n                    amount_needed = data['amount_needed'],\n                    deaccount = tapde, \n                    amount_to_pay = data['amount_to_pay'],\n                    cur_address = data['cur_address'],\n                    cur_address_two = requested_cur_two,\n                    rate_bought = data['rate_bought'],\n                    cur_note = data['cur_note'],\n                    pub_date=datetime.datetime.now(),\n                    modified_date = datetime.datetime.now(),\n                    discount_code = data['discount_code'])\n                newbc.save()\n                return render(request, 'ctrade/afterbuy.html', {'newbc':newbc})\n    else:\n        form=BuyCurForm()\n    return render(request, template_name,{'form':form,'newbc':newbc})\n</code></pre>\n\n<p>FORM</p>\n\n<pre><code>class BuyCurForm(forms.ModelForm):\n    cur_type = forms.ModelChoiceField(queryset = CurrencyTrade.objects.all(), to_field_name = \"we_sell\")\n    deaccount = forms.ModelChoiceField(queryset = DEAccount.objects.all(), to_field_name = \"bank_name\")\n    amount_needed = forms.DecimalField(widget= forms.TextInput, max_digits=10,  decimal_places=1, initial=0.0 ,required = True)\n    amount_to_pay = forms.DecimalField(widget= forms.TextInput, max_digits=10,  decimal_places=2, initial=0.00 ,required = True)\n    rate_bought = forms.IntegerField()\n\n    def __init__(self, *args, **kwargs):\n        super(BuyCurForm, self).__init__(*args, **kwargs)\n        self.fields['amount_to_pay'].widget.attrs['readonly'] = True\n        self.fields['rate_bought'].widget.attrs['readonly'] = True\n\n    class Meta:\n        model = BuyCur\n        fields = ['cur_type','amount_needed','amount_to_pay','rate_bought','deaccount','cur_address','cur_address_two','cur_note','discount_code']\n</code></pre>\n\n<p>Template</p>\n\n<pre><code>    &lt;form method=\"POST\" action=\"\"&gt;\n     {% csrf_token %} \n      {% for field in form %}\n    &lt;div class=\"fieldWrapper\"&gt;\n        {{ field.errors }}\n        {{ field.label_tag }} {{ field }}\n        {% if field.help_text %}\n        &lt;p class=\"help\"&gt;{{ field.help_text|safe }}&lt;/p&gt;\n        {% endif %}\n    &lt;/div&gt;\n{% endfor %}\n&lt;input type=\"submit\"   name=\"_preview\"  value=\"Confirm Order\"&gt;\n&lt;input type=\"hidden\"  name=\"next\" value=\"{{ next }}\"&gt;\n&lt;/form&gt;\n</code></pre>\n\n<p>What am I missing? or is there a better way to go about this?</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "lottie"
+            ],
+            "owner": {
+                "reputation": 54,
+                "user_id": 5868252,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://i.stack.imgur.com/YI1LC.jpg?s=128&g=1",
+                "display_name": "eyeballs",
+                "link": "https://stackoverflow.com/users/5868252/eyeballs"
+            },
+            "is_answered": true,
+            "view_count": 12,
+            "accepted_answer_id": 49935719,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524207145,
+            "creation_date": 1524205898,
+            "question_id": 49935390,
+            "body_markdown": "I&#39;m developing an app with Lottie animations. One of lottie animation needs two image files(img_0.png, img1_.png). \r\n\r\nFor example, \r\n\r\n*lottie json file [ data.json ] : {&quot;v&quot;:&quot;5.1.7&quot;,&quot;fr&quot;:60,&quot;ip&quot;:0,&quot;op&quot;:120,&quot;w&quot;:180,&quot;h&quot;:200,&quot;nm&quot;:&quot;2&quot;,&quot;ddd&quot;:0,&quot;assets&quot;:[{&quot;id&quot;:&quot;image_0&quot;,&quot;w&quot;:96,&quot;h&quot;:96,&quot;u&quot;:&quot;images/&quot;,&quot;p&quot;:&quot;img_0.png&quot;},{&quot;id&quot;:&quot;image_1&quot;,&quot;w&quot;:180,&quot;h&quot;:180,&quot;u&quot;:&quot;images/&quot;,&quot;p&quot;:&quot;img_1.png&quot;}],....*\r\n\r\nI can&#39;t prepare all images for LottieAnimationView in main/assets folder, so I&#39;m using &quot;setImageAssetDelegate&quot; method to get multiple images from urls asynchronously.\r\n\r\nThis is my code.\r\n\r\n            Glide.with(this)\r\n                .asBitmap()\r\n                .load(&quot;https://www.google.co.kr/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png&quot;)\r\n                .into(new SimpleTarget&lt;Bitmap&gt;() {\r\n                    @Override\r\n                    public void onResourceReady(final Bitmap resource, Transition&lt;? super Bitmap&gt; transition) {\r\n\r\n                        LottieAnimationView lottie = findViewById(R.id.lottie);\r\n                        lottie.setImageAssetDelegate(new ImageAssetDelegate() {\r\n                            @Override\r\n                            public Bitmap fetchBitmap(LottieImageAsset asset) {\r\n                                return resource;\r\n                            }\r\n                        });\r\n                        lottie.playAnimation();\r\n                    }\r\n                });\r\n\r\n\r\nBut if i use &quot;setImageAssetDelegate&quot; method, I can put only one image to lottie. I want to put multiple different images in one lottie animation. \r\n\r\n[![not like this][1]][1]\r\nI dont want this. (the code above shows this animation.)\r\n\r\n[![but like this][2]][2]\r\ni need this with &quot;setImageAssetDelegate&quot; method.\r\n\r\nDoes anybody have any idea about this?\r\nThanks.\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/1iM5x.png\r\n  [2]: https://i.stack.imgur.com/FcqJx.png",
+            "link": "https://stackoverflow.com/questions/49935390/how-to-provide-multiple-images-with-lottie-on-android",
+            "title": "How to provide multiple images with Lottie on Android",
+            "body": "<p>I'm developing an app with Lottie animations. One of lottie animation needs two image files(img_0.png, img1_.png). </p>\n\n<p>For example, </p>\n\n<p><em>lottie json file [ data.json ] : {\"v\":\"5.1.7\",\"fr\":60,\"ip\":0,\"op\":120,\"w\":180,\"h\":200,\"nm\":\"2\",\"ddd\":0,\"assets\":[{\"id\":\"image_0\",\"w\":96,\"h\":96,\"u\":\"images/\",\"p\":\"img_0.png\"},{\"id\":\"image_1\",\"w\":180,\"h\":180,\"u\":\"images/\",\"p\":\"img_1.png\"}],....</em></p>\n\n<p>I can't prepare all images for LottieAnimationView in main/assets folder, so I'm using \"setImageAssetDelegate\" method to get multiple images from urls asynchronously.</p>\n\n<p>This is my code.</p>\n\n<pre><code>        Glide.with(this)\n            .asBitmap()\n            .load(\"https://www.google.co.kr/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png\")\n            .into(new SimpleTarget&lt;Bitmap&gt;() {\n                @Override\n                public void onResourceReady(final Bitmap resource, Transition&lt;? super Bitmap&gt; transition) {\n\n                    LottieAnimationView lottie = findViewById(R.id.lottie);\n                    lottie.setImageAssetDelegate(new ImageAssetDelegate() {\n                        @Override\n                        public Bitmap fetchBitmap(LottieImageAsset asset) {\n                            return resource;\n                        }\n                    });\n                    lottie.playAnimation();\n                }\n            });\n</code></pre>\n\n<p>But if i use \"setImageAssetDelegate\" method, I can put only one image to lottie. I want to put multiple different images in one lottie animation. </p>\n\n<p><a href=\"https://i.stack.imgur.com/1iM5x.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/1iM5x.png\" alt=\"not like this\"></a>\nI dont want this. (the code above shows this animation.)</p>\n\n<p><a href=\"https://i.stack.imgur.com/FcqJx.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/FcqJx.png\" alt=\"but like this\"></a>\ni need this with \"setImageAssetDelegate\" method.</p>\n\n<p>Does anybody have any idea about this?\nThanks.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "android",
+                "android-volley"
+            ],
+            "owner": {
+                "reputation": 270,
+                "user_id": 6873608,
+                "user_type": "registered",
+                "accept_rate": 87,
+                "profile_image": "https://www.gravatar.com/avatar/02fcd1776adb818a51c631d64e78c0cc?s=128&d=identicon&r=PG&f=1",
+                "display_name": "DarkFenix",
+                "link": "https://stackoverflow.com/users/6873608/darkfenix"
+            },
+            "is_answered": false,
+            "view_count": 34,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1524207143,
+            "creation_date": 1524199658,
+            "question_id": 49934164,
+            "body_markdown": "I am sending HTTP requests In android with Volley, the point is that when sending the request, the server responds with a Set-Cookie with a certain key and value,\r\n\r\nHow can I get this value? checking the browser network I get the following\r\n\r\n[![enter image description here][1]][1]\r\n\r\nI would like to obtain this numeric value as it is a requirement for subsequent requests.\r\n\r\nThis is my current code.\r\n\r\n\r\n\r\n     StringRequest postRequest = new StringRequest(Request.Method.POST, linklogin,\r\n                new Response.Listener&lt;String&gt;()\r\n                {\r\n                    @Override\r\n                    public void onResponse(String response) {\r\n                        // response\r\n                        Log.d(&quot;Response&quot;, response);\r\n                    }\r\n                },\r\n                new Response.ErrorListener()\r\n                {\r\n                    @Override\r\n                    public void onErrorResponse(VolleyError error) {\r\n                        // error\r\n                        Log.d(&quot;Error.Response&quot;, error.getMessage());\r\n                    }\r\n                }\r\n        ) {\r\n            @Override\r\n            protected Map&lt;String, String&gt; getParams()\r\n            {\r\n                Map&lt;String, String&gt;  params = new HashMap&lt;String, String&gt;();\r\n                params.put(&quot;user&quot;, &quot;&quot;);\r\n                params.put(&quot;pws&quot;, &quot;&quot;);\r\n\r\n                return params;\r\n            }\r\n\r\n        };\r\n        queue.add(postRequest);\r\n\r\n  [1]: https://i.stack.imgur.com/UEG7l.png",
+            "link": "https://stackoverflow.com/questions/49934164/how-can-i-get-response-cookies-with-android-volley",
+            "title": "how can i get response cookies with android volley",
+            "body": "<p>I am sending HTTP requests In android with Volley, the point is that when sending the request, the server responds with a Set-Cookie with a certain key and value,</p>\n\n<p>How can I get this value? checking the browser network I get the following</p>\n\n<p><a href=\"https://i.stack.imgur.com/UEG7l.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/UEG7l.png\" alt=\"enter image description here\"></a></p>\n\n<p>I would like to obtain this numeric value as it is a requirement for subsequent requests.</p>\n\n<p>This is my current code.</p>\n\n<pre><code> StringRequest postRequest = new StringRequest(Request.Method.POST, linklogin,\n            new Response.Listener&lt;String&gt;()\n            {\n                @Override\n                public void onResponse(String response) {\n                    // response\n                    Log.d(\"Response\", response);\n                }\n            },\n            new Response.ErrorListener()\n            {\n                @Override\n                public void onErrorResponse(VolleyError error) {\n                    // error\n                    Log.d(\"Error.Response\", error.getMessage());\n                }\n            }\n    ) {\n        @Override\n        protected Map&lt;String, String&gt; getParams()\n        {\n            Map&lt;String, String&gt;  params = new HashMap&lt;String, String&gt;();\n            params.put(\"user\", \"\");\n            params.put(\"pws\", \"\");\n\n            return params;\n        }\n\n    };\n    queue.add(postRequest);\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "momentjs"
+            ],
+            "owner": {
+                "reputation": 1425,
+                "user_id": 823528,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://i.stack.imgur.com/MZZjv.jpg?s=128&g=1",
+                "display_name": "vini",
+                "link": "https://stackoverflow.com/users/823528/vini"
+            },
+            "is_answered": true,
+            "view_count": 52649,
+            "accepted_answer_id": 24996650,
+            "answer_count": 4,
+            "score": 29,
+            "last_activity_date": 1524207142,
+            "creation_date": 1406554519,
+            "last_edit_date": 1508073926,
+            "question_id": 24996490,
+            "body_markdown": "`2014-07-28` \r\n\r\n\r\n\r\nHow do I find the month, year and day with `moment.js` given the date format above?\r\n\r\n    var check = moment(n.entry.date_entered).format(&quot;YYYY/MM/DD&quot;);\r\n    var month = check.getUTCMonth();\r\n    var day = check.entry.date_entered.getUTCDate();\r\n    var year = check.entry.date_entered.getUTCFullYear();\r\n\r\n\r\n \r\n                    ",
+            "link": "https://stackoverflow.com/questions/24996490/how-to-find-the-day-month-and-yearwith-moment-js",
+            "title": "How to find the day, month and yearwith moment.js",
+            "body": "<p><code>2014-07-28</code> </p>\n\n<p>How do I find the month, year and day with <code>moment.js</code> given the date format above?</p>\n\n<pre><code>var check = moment(n.entry.date_entered).format(\"YYYY/MM/DD\");\nvar month = check.getUTCMonth();\nvar day = check.entry.date_entered.getUTCDate();\nvar year = check.entry.date_entered.getUTCFullYear();\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "botframework"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 7138342,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/2fZd1.jpg?s=128&g=1",
+                "display_name": "Joseph Velliah",
+                "link": "https://stackoverflow.com/users/7138342/joseph-velliah"
+            },
+            "is_answered": true,
+            "view_count": 24,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524207137,
+            "creation_date": 1524144101,
+            "question_id": 49922222,
+            "body_markdown": "## Bot Info\r\n* SDK Platform: .NET \r\n* Active Channels: Direct Line\r\n* Deployment Environment: Azure Bot Service\r\n\r\n## Question\r\nHow to pass user context details from from bot Controller to FormDialog?\r\n\r\n## Code Example\r\n    public virtual async Task &lt; HttpResponseMessage &gt; Post([FromBody] Activity activity) {\r\n     if (activity != null &amp;&amp; activity.GetActivityType() == ActivityTypes.Message) {\r\n      await Conversation.SendAsync(activity, () =&gt; {\r\n       return Chain.From(() =&gt; FormDialog.FromForm(RequestOrder.BuildEnquiryForm));\r\n      });\r\n     } else {\r\n      HandleSystemMessage(activity);\r\n     }\r\n     return new HttpResponseMessage(System.Net.HttpStatusCode.OK);\r\n    }\r\n    public static IForm &lt; RequestOrder &gt; BuildEnquiryForm() {\r\n     return new FormBuilder &lt; RequestOrder &gt; ()\r\n      .Message(&quot;Hello {***Pass current user name?????****}Welcome to request bot!&quot;)\r\n      .Field(nameof(IsTermsAgreed))\r\n      .Field(nameof(ServiceRequired))\r\n      .AddRemainingFields()\r\n      .OnCompletion(ProcessParkingPermitRequest)\r\n      .Message(&quot;Thank you, I have submitted your request.&quot;)\r\n      .Build();\r\n    }",
+            "link": "https://stackoverflow.com/questions/49922222/how-to-pass-the-user-context-details-from-from-bot-controller-to-formdialog",
+            "title": "How to pass the user context details from from bot Controller to FormDialog",
+            "body": "<h2>Bot Info</h2>\n\n<ul>\n<li>SDK Platform: .NET </li>\n<li>Active Channels: Direct Line</li>\n<li>Deployment Environment: Azure Bot Service</li>\n</ul>\n\n<h2>Question</h2>\n\n<p>How to pass user context details from from bot Controller to FormDialog?</p>\n\n<h2>Code Example</h2>\n\n<pre><code>public virtual async Task &lt; HttpResponseMessage &gt; Post([FromBody] Activity activity) {\n if (activity != null &amp;&amp; activity.GetActivityType() == ActivityTypes.Message) {\n  await Conversation.SendAsync(activity, () =&gt; {\n   return Chain.From(() =&gt; FormDialog.FromForm(RequestOrder.BuildEnquiryForm));\n  });\n } else {\n  HandleSystemMessage(activity);\n }\n return new HttpResponseMessage(System.Net.HttpStatusCode.OK);\n}\npublic static IForm &lt; RequestOrder &gt; BuildEnquiryForm() {\n return new FormBuilder &lt; RequestOrder &gt; ()\n  .Message(\"Hello {***Pass current user name?????****}Welcome to request bot!\")\n  .Field(nameof(IsTermsAgreed))\n  .Field(nameof(ServiceRequired))\n  .AddRemainingFields()\n  .OnCompletion(ProcessParkingPermitRequest)\n  .Message(\"Thank you, I have submitted your request.\")\n  .Build();\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "sqlalchemy"
+            ],
+            "owner": {
+                "reputation": 2937,
+                "user_id": 2529583,
+                "user_type": "registered",
+                "accept_rate": 62,
+                "profile_image": "https://www.gravatar.com/avatar/c6be379a1657412d695213c87474ebfa?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Babken Vardanyan",
+                "link": "https://stackoverflow.com/users/2529583/babken-vardanyan"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524207135,
+            "creation_date": 1524207135,
+            "question_id": 49935712,
+            "body_markdown": "I have a basic `Person` table. Each person can have at most 5 friends. I want enforce that check with a database-level constraint.\r\n\r\nI have tried using `func.count` as described here (http://docs.sqlalchemy.org/en/latest/orm/tutorial.html#counting) but with no success, getting this error:\r\n\r\n    sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) misuse of aggregate function count()\r\n\r\nHere&#39;s my code:\r\n\r\n    friend_table = Table(\r\n        &#39;friend&#39;, Base.metadata,\r\n        Column(&#39;left_id&#39;, Integer, ForeignKey(&#39;person.id&#39;)),\r\n        Column(&#39;right_id&#39;, Integer, ForeignKey(&#39;person.id&#39;))\r\n    )\r\n\r\n\r\n    class Person(Base):\r\n        __tablename__ = &#39;person&#39;\r\n        id = Column(Integer, primary_key=True)\r\n        name = Column(String, nullable=False)\r\n        friends = relationship(&#39;Person&#39;,\r\n                               secondary=friend_table,\r\n                               primaryjoin=friend_table.c.left_id == id,\r\n                               secondaryjoin=friend_table.c.right_id == id)\r\n\r\n        __table_args__ = (\r\n            CheckConstraint(func.count(friends) &lt; 5, name=&#39;max_friends_constraint&#39;),\r\n        )\r\n",
+            "link": "https://stackoverflow.com/questions/49935712/how-to-use-checkconstraint-count-on-a-many-to-many-relationship",
+            "title": "How to use CheckConstraint count on a Many-to-Many relationship?",
+            "body": "<p>I have a basic <code>Person</code> table. Each person can have at most 5 friends. I want enforce that check with a database-level constraint.</p>\n\n<p>I have tried using <code>func.count</code> as described here (<a href=\"http://docs.sqlalchemy.org/en/latest/orm/tutorial.html#counting\" rel=\"nofollow noreferrer\">http://docs.sqlalchemy.org/en/latest/orm/tutorial.html#counting</a>) but with no success, getting this error:</p>\n\n<pre><code>sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) misuse of aggregate function count()\n</code></pre>\n\n<p>Here's my code:</p>\n\n<pre><code>friend_table = Table(\n    'friend', Base.metadata,\n    Column('left_id', Integer, ForeignKey('person.id')),\n    Column('right_id', Integer, ForeignKey('person.id'))\n)\n\n\nclass Person(Base):\n    __tablename__ = 'person'\n    id = Column(Integer, primary_key=True)\n    name = Column(String, nullable=False)\n    friends = relationship('Person',\n                           secondary=friend_table,\n                           primaryjoin=friend_table.c.left_id == id,\n                           secondaryjoin=friend_table.c.right_id == id)\n\n    __table_args__ = (\n        CheckConstraint(func.count(friends) &lt; 5, name='max_friends_constraint'),\n    )\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "reactjs",
+                "styled-components"
+            ],
+            "owner": {
+                "reputation": 477,
+                "user_id": 5376187,
+                "user_type": "registered",
+                "accept_rate": 77,
+                "profile_image": "https://www.gravatar.com/avatar/629702de00106da82ec7fd1df0ef273c?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Strahinja Ajvaz",
+                "link": "https://stackoverflow.com/users/5376187/strahinja-ajvaz"
+            },
+            "is_answered": true,
+            "view_count": 26,
+            "accepted_answer_id": 49868602,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524207133,
+            "creation_date": 1523928529,
+            "question_id": 49868495,
+            "body_markdown": "I&#39;ve just started using styled-components and saw that they call what i presume is a function like so:\r\n\r\n    import styled from &quot;styled-components&quot;\r\n\r\n    const Button = sytled.button` &lt;--- this \r\n        // css goes here\r\n    `\r\n\r\nI&#39;ve never seem that syntax before and wanted to know if someone could point me to some docs about what it actually is.\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49868495/what-does-this-syntax-in-styled-components-actually-mean",
+            "title": "what does this syntax in styled-components actually mean?",
+            "body": "<p>I've just started using styled-components and saw that they call what i presume is a function like so:</p>\n\n<pre><code>import styled from \"styled-components\"\n\nconst Button = sytled.button` &lt;--- this \n    // css goes here\n`\n</code></pre>\n\n<p>I've never seem that syntax before and wanted to know if someone could point me to some docs about what it actually is.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "vue.js",
+                "vuejs2",
+                "vue-component",
+                "vuex"
+            ],
+            "owner": {
+                "reputation": 5033,
+                "user_id": 930170,
+                "user_type": "registered",
+                "accept_rate": 85,
+                "profile_image": "https://i.stack.imgur.com/ehN7q.jpg?s=128&g=1",
+                "display_name": "Sergei Panfilov",
+                "link": "https://stackoverflow.com/users/930170/sergei-panfilov"
+            },
+            "is_answered": true,
+            "view_count": 8896,
+            "accepted_answer_id": 40442986,
+            "answer_count": 5,
+            "score": 34,
+            "last_activity_date": 1524207132,
+            "creation_date": 1469630425,
+            "last_edit_date": 1499632978,
+            "question_id": 38616167,
+            "body_markdown": "In vuejs 2.0 `model.sync` will be [deprecated][1].\r\n\r\nSo, what is a proper way to communicate between sibling components in [vuejs 2.0][2]?\r\n\r\nAs I catch **the idea** in Vue 2.0 is to have sibling communication **by using a store or an event bus**. \r\n\r\nAccording to [evan][3]:\r\n\r\n&gt; It&#39;s also worth mentioning &quot;passing data between components&quot; is\r\n&gt; generally a bad idea, because in the end the data flow becomes\r\n&gt; untrackable and very hard to debug.\r\n&gt; \r\n&gt; If a piece of data needs to be shared by multiple components, prefer\r\n&gt; [global stores][4] or [Vuex][5].\r\n\r\n[[Link to discussion][6]]\r\n\r\nAnd:\r\n\r\n&gt; `.once` and `.sync` are deprecated. Props are now always one-way down. To\r\n&gt; produce side effects in the parent scope, a component needs to\r\n&gt; explicitly `emit` an event instead of relying on implicit binding.\r\n\r\n(So, he [suggest][7] is to use `$emit` and `$on`)\r\n\r\nI&#39;m worried because of:\r\n\r\n - Each `store` and `event` has a global visibility (correct me if I&#39;m wrong);\r\n - It&#39;s to much to create a new store for each minor communication;\r\n\r\nWhat I want is to **scope** somehow `events` or `stores` visibility for siblings components. Or perhaps I didn&#39;t catch the idea.\r\n\r\nSo, how communicate in a right way?\r\n\r\n  [1]: https://github.com/vuejs/vue/issues/2873#issuecomment-223759015\r\n  [2]: https://github.com/vuejs/vue/issues/2873\r\n  [3]: http://forum.vuejs.org/user/evan\r\n  [4]: http://vuejs.org/guide/state-management.html\r\n  [5]: https://github.com/vuejs/vuex/\r\n  [6]: http://forum.vuejs.org/topic/1530/pass-data-between-components/4\r\n  [7]: https://github.com/vuejs/vue/issues/2873#issuecomment-223759341",
+            "link": "https://stackoverflow.com/questions/38616167/communication-between-sibling-components-in-vuejs-2-0",
+            "title": "Communication between sibling components in VueJs 2.0",
+            "body": "<p>In vuejs 2.0 <code>model.sync</code> will be <a href=\"https://github.com/vuejs/vue/issues/2873#issuecomment-223759015\" rel=\"noreferrer\">deprecated</a>.</p>\n\n<p>So, what is a proper way to communicate between sibling components in <a href=\"https://github.com/vuejs/vue/issues/2873\" rel=\"noreferrer\">vuejs 2.0</a>?</p>\n\n<p>As I catch <strong>the idea</strong> in Vue 2.0 is to have sibling communication <strong>by using a store or an event bus</strong>. </p>\n\n<p>According to <a href=\"http://forum.vuejs.org/user/evan\" rel=\"noreferrer\">evan</a>:</p>\n\n<blockquote>\n  <p>It's also worth mentioning \"passing data between components\" is\n  generally a bad idea, because in the end the data flow becomes\n  untrackable and very hard to debug.</p>\n  \n  <p>If a piece of data needs to be shared by multiple components, prefer\n  <a href=\"http://vuejs.org/guide/state-management.html\" rel=\"noreferrer\">global stores</a> or <a href=\"https://github.com/vuejs/vuex/\" rel=\"noreferrer\">Vuex</a>.</p>\n</blockquote>\n\n<p>[<a href=\"http://forum.vuejs.org/topic/1530/pass-data-between-components/4\" rel=\"noreferrer\">Link to discussion</a>]</p>\n\n<p>And:</p>\n\n<blockquote>\n  <p><code>.once</code> and <code>.sync</code> are deprecated. Props are now always one-way down. To\n  produce side effects in the parent scope, a component needs to\n  explicitly <code>emit</code> an event instead of relying on implicit binding.</p>\n</blockquote>\n\n<p>(So, he <a href=\"https://github.com/vuejs/vue/issues/2873#issuecomment-223759341\" rel=\"noreferrer\">suggest</a> is to use <code>$emit</code> and <code>$on</code>)</p>\n\n<p>I'm worried because of:</p>\n\n<ul>\n<li>Each <code>store</code> and <code>event</code> has a global visibility (correct me if I'm wrong);</li>\n<li>It's to much to create a new store for each minor communication;</li>\n</ul>\n\n<p>What I want is to <strong>scope</strong> somehow <code>events</code> or <code>stores</code> visibility for siblings components. Or perhaps I didn't catch the idea.</p>\n\n<p>So, how communicate in a right way?</p>\n"
+        },
+        {
+            "tags": [
+                "algorithm",
+                "binary",
+                "multiplication",
+                "karatsuba"
+            ],
+            "owner": {
+                "reputation": 330,
+                "user_id": 1576821,
+                "user_type": "registered",
+                "accept_rate": 29,
+                "profile_image": "https://www.gravatar.com/avatar/0bb03cb083087df83832df8ecaaed3fe?s=128&d=identicon&r=PG",
+                "display_name": "masonc15",
+                "link": "https://stackoverflow.com/users/1576821/masonc15"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1524207124,
+            "creation_date": 1524053628,
+            "last_edit_date": 1524206916,
+            "question_id": 49899456,
+            "body_markdown": "I am trying to figure out a question about Karatsuba&#39;s algorithm when multiplying two binary values.  I am trying to multiply:\r\n\r\n    10110110 * 11001000\r\n\r\nI need to figure out which subproblems are completed when using Karatsuba&#39;s algorithm.  I know that the algorithm is\r\n\r\n    x * y = ((2^n)(xHyH))+(2^(n/2))(xHyL + xLyH) + xLyL\r\n\r\nBut what does each value represent?  How do I go from binary values to `xH,yH,xL,` and `yL`?  Thanks.",
+            "link": "https://stackoverflow.com/questions/49899456/karatsuba-algorithm-subproblems",
+            "title": "Karatsuba algorithm subproblems",
+            "body": "<p>I am trying to figure out a question about Karatsuba's algorithm when multiplying two binary values.  I am trying to multiply:</p>\n\n<pre><code>10110110 * 11001000\n</code></pre>\n\n<p>I need to figure out which subproblems are completed when using Karatsuba's algorithm.  I know that the algorithm is</p>\n\n<pre><code>x * y = ((2^n)(xHyH))+(2^(n/2))(xHyL + xLyH) + xLyL\n</code></pre>\n\n<p>But what does each value represent?  How do I go from binary values to <code>xH,yH,xL,</code> and <code>yL</code>?  Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-unittest",
+                "python-unittest.mock"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 7918911,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/4f080eb85c2794c5d70969ed8bc3a0f3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Alex San",
+                "link": "https://stackoverflow.com/users/7918911/alex-san"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1524207111,
+            "creation_date": 1524199389,
+            "last_edit_date": 1524207111,
+            "question_id": 49934120,
+            "body_markdown": "i want to test the function which contain with global variable:\r\n\r\nmy_module.py\r\n\r\n    def saveToDb(key, message):\r\n        lastSaved = mdb.get(&quot;history&quot;, key)\r\n        if lastSaved:\r\n            return True\r\n        else:\r\n            return False\r\n    .\r\n    .\r\n    .\r\n    if __name__ == &quot;__main__&quot;:\r\n        mdb = mdbHandler(config[&#39;mdb&#39;][&#39;db&#39;], timeoutInMiliSeconds = 100)\r\n\r\nWhen i runt the unit test,  the mdb is always not defined:\r\n\r\n&gt; NameError: name &#39;mdb&#39; is not defined\r\n\r\nHow to mocking the mdb.get() from my unit test?\r\n\r\n\r\nthis quote of my unit test:\r\n\r\n    import json\r\n    import unittest\r\n    import sys\r\n    import os\r\n\r\n    file_dir = os.path.dirname(os.path.realpath(__file__))\r\n    os.chdir(os.path.dirname(file_dir))\r\n\r\n    sys.path.append(&#39;./my_module&#39;)\r\n    import my_module as testClass\r\n    from unittest import mock\r\n\r\n    class my_moduleTesting(unittest.TestCase):\r\n        def setUp(self):\r\n            pass \r\n        \r\n        def testSaveToDb(self):\r\n           retVal = testClass.saveToDb(&quot;alex&quot;, {&quot;activity&quot;: &quot;uploading&quot;})\r\n\r\n           self.assertEqual(True, retVal)\r\n",
+            "link": "https://stackoverflow.com/questions/49934120/python-mocking-global-variable-from-unit-test",
+            "title": "Python mocking global variable from unit test",
+            "body": "<p>i want to test the function which contain with global variable:</p>\n\n<p>my_module.py</p>\n\n<pre><code>def saveToDb(key, message):\n    lastSaved = mdb.get(\"history\", key)\n    if lastSaved:\n        return True\n    else:\n        return False\n.\n.\n.\nif __name__ == \"__main__\":\n    mdb = mdbHandler(config['mdb']['db'], timeoutInMiliSeconds = 100)\n</code></pre>\n\n<p>When i runt the unit test,  the mdb is always not defined:</p>\n\n<blockquote>\n  <p>NameError: name 'mdb' is not defined</p>\n</blockquote>\n\n<p>How to mocking the mdb.get() from my unit test?</p>\n\n<p>this quote of my unit test:</p>\n\n<pre><code>import json\nimport unittest\nimport sys\nimport os\n\nfile_dir = os.path.dirname(os.path.realpath(__file__))\nos.chdir(os.path.dirname(file_dir))\n\nsys.path.append('./my_module')\nimport my_module as testClass\nfrom unittest import mock\n\nclass my_moduleTesting(unittest.TestCase):\n    def setUp(self):\n        pass \n\n    def testSaveToDb(self):\n       retVal = testClass.saveToDb(\"alex\", {\"activity\": \"uploading\"})\n\n       self.assertEqual(True, retVal)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                ".net",
+                "winforms",
+                "events",
+                "windows-forms-designer"
+            ],
+            "owner": {
+                "reputation": 94,
+                "user_id": 2747106,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/89d79f34d260ecb7654dd839ff8c1cb1?s=128&d=identicon&r=PG&f=1",
+                "display_name": "dannyhut",
+                "link": "https://stackoverflow.com/users/2747106/dannyhut"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524207105,
+            "creation_date": 1524207105,
+            "question_id": 49935705,
+            "body_markdown": "I am experimenting with the events is a Complex Property. Basically I have the class\r\n\r\n    [System.ComponentModel.TypeConverter(typeof(System.ComponentModel.ExpandableObjectConverter))]\r\n    public class Pug_NewText\r\n    {\r\n        public string _Text = &quot;Test Stuff&quot;;\r\n\r\n        public event EventHandler Before;\r\n        public event EventHandler After;\r\n\r\n        [Browsable(true)]\r\n        [EditorBrowsable()]\r\n        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]\r\n        public string Text\r\n        {\r\n            get =&gt; _Text;\r\n            set\r\n            {\r\n                Before?.Invoke(this, new EventArgs());\r\n                _Text = value;\r\n                After?.Invoke(this, new EventArgs());\r\n            }\r\n        }\r\n\r\n        public override string ToString()\r\n        {\r\n            return (_Text);\r\n        }\r\n    }\r\n\r\n When I add this as a Property to a class derived from Control say called NewText like so\r\n\r\n    public class TestControl : Control\r\n    {\r\n        private Pug_NewText _NewText = new Pug_NewText();\r\n\r\n        public TestControl()\r\n        {\r\n            _NewText._Text = &quot;TestStuff&quot;;\r\n        }\r\n\r\n        [Browsable(true)]\r\n        [EditorBrowsable()]\r\n        [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]\r\n        public Pug_NewText NewText\r\n        {\r\n            get =&gt; _NewText;\r\n            set =&gt; _NewText = value;\r\n        }\r\n\r\n        public override string ToString()\r\n        {\r\n            return (_NewText._Text);\r\n        }\r\n    }\r\n\r\nI can access and editor the NewText property by expanding the Property in the PropertyGrid and editing the Text Property.\r\n\r\nThis also works for the Events Before and After however when I double click on the Events in the PropertyGrid the usual behavior where the Designer auto-generates an empty method doesn&#39;t happen. \r\n\r\nIs there a way I can get this code to auto-generate, maybe through a Control Designer?\r\n\r\nThanks for any help\r\nDanny\r\n",
+            "link": "https://stackoverflow.com/questions/49935705/designer-support-for-complex-property-with-events",
+            "title": "Designer support for Complex Property with events",
+            "body": "<p>I am experimenting with the events is a Complex Property. Basically I have the class</p>\n\n<pre><code>[System.ComponentModel.TypeConverter(typeof(System.ComponentModel.ExpandableObjectConverter))]\npublic class Pug_NewText\n{\n    public string _Text = \"Test Stuff\";\n\n    public event EventHandler Before;\n    public event EventHandler After;\n\n    [Browsable(true)]\n    [EditorBrowsable()]\n    [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]\n    public string Text\n    {\n        get =&gt; _Text;\n        set\n        {\n            Before?.Invoke(this, new EventArgs());\n            _Text = value;\n            After?.Invoke(this, new EventArgs());\n        }\n    }\n\n    public override string ToString()\n    {\n        return (_Text);\n    }\n}\n</code></pre>\n\n<p>When I add this as a Property to a class derived from Control say called NewText like so</p>\n\n<pre><code>public class TestControl : Control\n{\n    private Pug_NewText _NewText = new Pug_NewText();\n\n    public TestControl()\n    {\n        _NewText._Text = \"TestStuff\";\n    }\n\n    [Browsable(true)]\n    [EditorBrowsable()]\n    [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]\n    public Pug_NewText NewText\n    {\n        get =&gt; _NewText;\n        set =&gt; _NewText = value;\n    }\n\n    public override string ToString()\n    {\n        return (_NewText._Text);\n    }\n}\n</code></pre>\n\n<p>I can access and editor the NewText property by expanding the Property in the PropertyGrid and editing the Text Property.</p>\n\n<p>This also works for the Events Before and After however when I double click on the Events in the PropertyGrid the usual behavior where the Designer auto-generates an empty method doesn't happen. </p>\n\n<p>Is there a way I can get this code to auto-generate, maybe through a Control Designer?</p>\n\n<p>Thanks for any help\nDanny</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "opencv",
+                "opencv3.0",
+                "opencv-contour"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 6361802,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://graph.facebook.com/10155214925372468/picture?type=large",
+                "display_name": "Rueen1963",
+                "link": "https://stackoverflow.com/users/6361802/rueen1963"
+            },
+            "is_answered": true,
+            "view_count": 321,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524207099,
+            "creation_date": 1473088127,
+            "last_edit_date": 1473088781,
+            "question_id": 39333407,
+            "body_markdown": "When using OpenCV `findContours` method, how come the contours are not found in order? \r\n\r\n    inputImage = cv2.imread(&quot;randomImage.jpg&quot;,0)\r\n\r\n    im2, contours, hierarchy = cv2.findContours(inputImage.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)\r\n\r\n    j=1\r\n\t\r\n    for cnt in reversed(contours):\r\n\r\n\t\tletter = inputImage[y:y+h, x:x+w]\r\n\t\tcv2.imwrite(str(j)+&quot;sub/&quot;+str(k)+&#39;.png&#39;, letter) \r\n\t\tk+=1\r\n\r\nThe input image consists of a few letters, for example &quot;abcde&quot;. However, when the contours are saved to file they are saved in a random order like &quot;c&quot;, &quot;e&quot;, &quot;d&quot;, &quot;a&quot;, &quot;b&quot;. Is there any reason for this?\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\n  [1]: http://i.stack.imgur.com/j5ZV8.png\r\n\r\noutput:\r\nt, l, h, b, e, r, g, o, e",
+            "link": "https://stackoverflow.com/questions/39333407/opencv-findcontours-are-not-in-order",
+            "title": "OpenCV findContours are not in order",
+            "body": "<p>When using OpenCV <code>findContours</code> method, how come the contours are not found in order? </p>\n\n<pre><code>inputImage = cv2.imread(\"randomImage.jpg\",0)\n\nim2, contours, hierarchy = cv2.findContours(inputImage.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)\n\nj=1\n\nfor cnt in reversed(contours):\n\n    letter = inputImage[y:y+h, x:x+w]\n    cv2.imwrite(str(j)+\"sub/\"+str(k)+'.png', letter) \n    k+=1\n</code></pre>\n\n<p>The input image consists of a few letters, for example \"abcde\". However, when the contours are saved to file they are saved in a random order like \"c\", \"e\", \"d\", \"a\", \"b\". Is there any reason for this?</p>\n\n<p><a href=\"https://i.stack.imgur.com/j5ZV8.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/j5ZV8.png\" alt=\"enter image description here\"></a></p>\n\n<p>output:\nt, l, h, b, e, r, g, o, e</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "mysql",
+                "docker",
+                "spring-boot",
+                "docker-compose"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 9654475,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/reQAs.png?s=128&g=1",
+                "display_name": "MrADOY",
+                "link": "https://stackoverflow.com/users/9654475/mradoy"
+            },
+            "is_answered": false,
+            "view_count": 33,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1524207099,
+            "creation_date": 1523904727,
+            "last_edit_date": 1524207099,
+            "question_id": 49864333,
+            "body_markdown": "*Hello guys !*\r\n\r\nIt&#39;s my first so I will try to make the best that I can.\r\n\r\nI want to create an app which is running with Springboot framework and I would like to connect it to a docker container which embeds MySQL (but the spring boot app is not running on docker)\r\n\r\nSo I have followed this  [post](https://stackoverflow.com/questions/32360687/connect-to-docker-mysql-container-from-localhost)\r\n\r\nI have made my docker-compose:\r\n\r\n      db:\r\n         image: mysql\r\n      ports:\r\n         - &#39;3306:3306&#39;\r\n      environment:\r\n         - MYSQL_ROOT_PASSWORD=secret\r\n         - MYSQL_DATABASE=users\r\n      volumes:\r\n         - ../data:/var/lib/mysql\r\n\r\nand I run it with this command :\r\n\r\n    docker-compose run --service-ports db\r\n\r\nAll is fine, so now I change my application.properties on spring boot :\r\n\r\n       ## Server Properties \r\n       server.port= 5000\r\n\r\n       ## Spring DATASOURCE (DataSourceAutoConfiguration &amp; DataSourceProperties)\r\n       spring.datasource.url= jdbc:mysql://127.0.0.1:3306/users?useSSL=false&amp;serverTimezone=UTC&amp;useLegacyDatetimeCode=false\r\n       spring.datasource.username= root\r\n       spring.datasource.password= secret\r\n\r\n       ## Hibernate Properties\r\n\r\n       #The SQL dialect makes Hibernate generate better SQL for the chosen database\r\n        \r\n       spring.jpa.properties.hibernate.dialect= org.hibernate.dialect.MySQL5InnoDBDialect\r\n       spring.jpa.hibernate.ddl-auto = update\r\n\r\n       ## Hibernate Logging\r\n       logging.level.org.hibernate.SQL= DEBUG\r\n\r\n       ## Jackson Properties\r\n       spring.jackson.serialization.WRITE_DATES_AS_TIMESTAMPS= false\r\n       spring.jackson.time-zone= UTC\r\n\r\n But When I run my app, I have this error :( :\r\n\r\n&gt; Caused by: org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection; nested exception is com.mysql.jdbc.exceptions.jdbc4.CommunicationsException: Communications link failure\r\n\r\nI&#39;m on MacOS...\r\n\r\nI tried to follow callicoder&#39;s course ...\r\n\r\nhttps://www.callicoder.com/spring-boot-spring-security-jwt-mysql-react-app-part-1/\r\n\r\nThanks for your help :)",
+            "link": "https://stackoverflow.com/questions/49864333/from-springboot-app-connect-to-mysql-container",
+            "title": "From Springboot app connect to mysql container",
+            "body": "<p><em>Hello guys !</em></p>\n\n<p>It's my first so I will try to make the best that I can.</p>\n\n<p>I want to create an app which is running with Springboot framework and I would like to connect it to a docker container which embeds MySQL (but the spring boot app is not running on docker)</p>\n\n<p>So I have followed this  <a href=\"https://stackoverflow.com/questions/32360687/connect-to-docker-mysql-container-from-localhost\">post</a></p>\n\n<p>I have made my docker-compose:</p>\n\n<pre><code>  db:\n     image: mysql\n  ports:\n     - '3306:3306'\n  environment:\n     - MYSQL_ROOT_PASSWORD=secret\n     - MYSQL_DATABASE=users\n  volumes:\n     - ../data:/var/lib/mysql\n</code></pre>\n\n<p>and I run it with this command :</p>\n\n<pre><code>docker-compose run --service-ports db\n</code></pre>\n\n<p>All is fine, so now I change my application.properties on spring boot :</p>\n\n<pre><code>   ## Server Properties \n   server.port= 5000\n\n   ## Spring DATASOURCE (DataSourceAutoConfiguration &amp; DataSourceProperties)\n   spring.datasource.url= jdbc:mysql://127.0.0.1:3306/users?useSSL=false&amp;serverTimezone=UTC&amp;useLegacyDatetimeCode=false\n   spring.datasource.username= root\n   spring.datasource.password= secret\n\n   ## Hibernate Properties\n\n   #The SQL dialect makes Hibernate generate better SQL for the chosen database\n\n   spring.jpa.properties.hibernate.dialect= org.hibernate.dialect.MySQL5InnoDBDialect\n   spring.jpa.hibernate.ddl-auto = update\n\n   ## Hibernate Logging\n   logging.level.org.hibernate.SQL= DEBUG\n\n   ## Jackson Properties\n   spring.jackson.serialization.WRITE_DATES_AS_TIMESTAMPS= false\n   spring.jackson.time-zone= UTC\n</code></pre>\n\n<p>But When I run my app, I have this error :( :</p>\n\n<blockquote>\n  <p>Caused by: org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection; nested exception is com.mysql.jdbc.exceptions.jdbc4.CommunicationsException: Communications link failure</p>\n</blockquote>\n\n<p>I'm on MacOS...</p>\n\n<p>I tried to follow callicoder's course ...</p>\n\n<p><a href=\"https://www.callicoder.com/spring-boot-spring-security-jwt-mysql-react-app-part-1/\" rel=\"nofollow noreferrer\">https://www.callicoder.com/spring-boot-spring-security-jwt-mysql-react-app-part-1/</a></p>\n\n<p>Thanks for your help :)</p>\n"
+        },
+        {
+            "tags": [
+                "arduino",
+                "arduino-uno",
+                "arduino-ide",
+                "arduino-ultra-sonic",
+                "arduino-c++"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8695404,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-meJN6Glbotk/AAAAAAAAAAI/AAAAAAAAAT0/SHoHog7rmrE/photo.jpg?sz=128",
+                "display_name": "Vasuki Vardhan",
+                "link": "https://stackoverflow.com/users/8695404/vasuki-vardhan"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1524207098,
+            "creation_date": 1524072830,
+            "last_edit_date": 1524207098,
+            "question_id": 49905760,
+            "body_markdown": "I&#39;m new to Arduino and this is my problem. I need to track an object in a room. For now I have placed 3 sensors on the edges of each axis (x,y,z), where the x axis will the line between the east and the west walls of the room, the y axis will be the north and south walls of the room, and the z axis will be the ceiling of the room.\r\n\r\nI have written code to get the output as x, y, z coordinates. But since the HC-SR04 has no horizontal range it can only track objects in its line of sight. Due to this I&#39;m not able to fulfil my requirements. So I thought if I could couple up an array of HC-SR04s together to work as one sensor I can get more horizontal range.\r\n\r\nIs this possible using an Arduino Uno R3? If it&#39;s possible, please guide me through it.",
+            "link": "https://stackoverflow.com/questions/49905760/how-to-use-2-or-more-hc-sr04-sensors-as-one-single-sensor",
+            "title": "How to use 2 or more HC-SR04 sensors as one single sensor?",
+            "body": "<p>I'm new to Arduino and this is my problem. I need to track an object in a room. For now I have placed 3 sensors on the edges of each axis (x,y,z), where the x axis will the line between the east and the west walls of the room, the y axis will be the north and south walls of the room, and the z axis will be the ceiling of the room.</p>\n\n<p>I have written code to get the output as x, y, z coordinates. But since the HC-SR04 has no horizontal range it can only track objects in its line of sight. Due to this I'm not able to fulfil my requirements. So I thought if I could couple up an array of HC-SR04s together to work as one sensor I can get more horizontal range.</p>\n\n<p>Is this possible using an Arduino Uno R3? If it's possible, please guide me through it.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "csv",
+                "header",
+                "boto"
+            ],
+            "owner": {
+                "reputation": 60,
+                "user_id": 7495499,
+                "user_type": "registered",
+                "accept_rate": 78,
+                "profile_image": "https://www.gravatar.com/avatar/6477e048326cfddadf77f7a6408c51df?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Bhaskar",
+                "link": "https://stackoverflow.com/users/7495499/bhaskar"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524207094,
+            "creation_date": 1524206481,
+            "last_edit_date": 1524207094,
+            "question_id": 49935547,
+            "body_markdown": "I have a large number of CSV files residing in different directories in an S3 Bucket. I need to check these CSV files and list those CSV files which do not contain a header. I am trying to use boto for s3  connection and Sniffer class from CSV package to detect header. The below code would return true or false depending on the presence of the header in a CSV file.\r\n\r\n    with open(&#39;Book2.csv&#39;, &#39;rb&#39;) as csvfile:\r\n        istrue = csv.Sniffer().has_header(csvfile.read(1024))\r\nBut how do I do the same thing  for all the csv files present in a s3 bucket? Please suggest. If there is any alternative way to detect headers of csv files please suggest as well. Thanks!",
+            "link": "https://stackoverflow.com/questions/49935547/checking-for-headers-in-csv-files-residing-in-amazon-s3-using-python",
+            "title": "Checking for headers in CSV files residing in Amazon S3 using Python",
+            "body": "<p>I have a large number of CSV files residing in different directories in an S3 Bucket. I need to check these CSV files and list those CSV files which do not contain a header. I am trying to use boto for s3  connection and Sniffer class from CSV package to detect header. The below code would return true or false depending on the presence of the header in a CSV file.</p>\n\n<pre><code>with open('Book2.csv', 'rb') as csvfile:\n    istrue = csv.Sniffer().has_header(csvfile.read(1024))\n</code></pre>\n\n<p>But how do I do the same thing  for all the csv files present in a s3 bucket? Please suggest. If there is any alternative way to detect headers of csv files please suggest as well. Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "random"
+            ],
+            "owner": {
+                "reputation": 12107,
+                "user_id": 277696,
+                "user_type": "registered",
+                "accept_rate": 74,
+                "profile_image": "https://www.gravatar.com/avatar/e25f40f6711403073e7da6c33be21eb8?s=128&d=identicon&r=PG",
+                "display_name": "coure2011",
+                "link": "https://stackoverflow.com/users/277696/coure2011"
+            },
+            "is_answered": true,
+            "view_count": 47302,
+            "closed_date": 1283221125,
+            "accepted_answer_id": 3594189,
+            "answer_count": 4,
+            "score": 23,
+            "last_activity_date": 1524207093,
+            "creation_date": 1283073121,
+            "last_edit_date": 1495542854,
+            "question_id": 3594177,
+            "body_markdown": "&gt; **Possible Duplicate:**  \n&gt; [Generating random numbers in Javascript](https://stackoverflow.com/questions/1527803/generating-random-numbers-in-javascript)  \n\n&lt;!-- End of automatically inserted text --&gt;\n\nHow do I get a random number between −10 and 10 in JavaScript?\r\n",
+            "link": "https://stackoverflow.com/questions/3594177/random-number-between-10-and-10-in-javascript",
+            "closed_reason": "exact duplicate",
+            "title": "Random number between -10 and 10 in JavaScript",
+            "body": "<blockquote>\n  <p><strong>Possible Duplicate:</strong><br>\n  <a href=\"https://stackoverflow.com/questions/1527803/generating-random-numbers-in-javascript\">Generating random numbers in Javascript</a>  </p>\n</blockquote>\n\n\n\n<p>How do I get a random number between −10 and 10 in JavaScript?</p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "regex",
+                "str-replace"
+            ],
+            "owner": {
+                "reputation": 34,
+                "user_id": 9672759,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/bd173fe60faa9e92690bc65156b1a6ea?s=128&d=identicon&r=PG&f=1",
+                "display_name": "mrpargeter",
+                "link": "https://stackoverflow.com/users/9672759/mrpargeter"
+            },
+            "is_answered": true,
+            "view_count": 301,
+            "accepted_answer_id": 49933511,
+            "answer_count": 3,
+            "score": 5,
+            "last_activity_date": 1524207089,
+            "creation_date": 1524194339,
+            "last_edit_date": 1524194445,
+            "question_id": 49933410,
+            "body_markdown": "I am trying to use regular expressions in R to remove text - either an &#39;X&#39; or an &#39;X.&#39; - from the front of a number.  I am new to regular expressions and having a hard time getting this to work.  I have tried every combination of X and . with or without the escape character that I could think of, including:\r\n\r\n - `str_replace(&quot;X.4.89294e-05&quot;, &quot;X.&quot;,&#39;&#39;)` Result `&quot;4.89294e-05&quot;` but for fails for `str_replace(&quot;X4.89294e-05&quot;, &quot;X.&quot;,&#39;&#39;)`Result ` &quot;.89294e-05&quot;`\r\n - `str_replace(&quot;X.4.89294e-05&quot;, &quot;[X.]&quot;,&#39;&#39;)` Result `&quot;.4.89294e-05&quot;`\r\n - `str_replace(&quot;X.4.89294e-05&quot;, &quot;[X/.?]&quot;,&#39;&#39;)` Result `&quot;.4.89294e-05&quot;`\r\n - `str_replace(&quot;X.4.89294e-05&quot;, &quot;[X//.?]&quot;,&#39;&#39;)` Result `&quot;.4.89294e-05&quot;`\r\n - `str_replace(&#39;X.4.89294e-0&#39;,&#39;X/.{0,1}&#39;,&#39;&#39;)` Result `&quot;X.4.89294e-0&quot;`\r\n - `str_replace(&#39;X.4.89294e-0&#39;,&#39;[X/.{0,1}]&#39;,&#39;&#39;)` Result `&quot;.4.89294e-0&quot;`\r\n\r\nAny help would be greatly appreciated.    \r\n",
+            "link": "https://stackoverflow.com/questions/49933410/regular-expression-to-remove-a-letter-and-dot-combination",
+            "title": "Regular Expression to remove a letter and dot combination",
+            "body": "<p>I am trying to use regular expressions in R to remove text - either an 'X' or an 'X.' - from the front of a number.  I am new to regular expressions and having a hard time getting this to work.  I have tried every combination of X and . with or without the escape character that I could think of, including:</p>\n\n<ul>\n<li><code>str_replace(\"X.4.89294e-05\", \"X.\",'')</code> Result <code>\"4.89294e-05\"</code> but for fails for <code>str_replace(\"X4.89294e-05\", \"X.\",'')</code>Result <code>\".89294e-05\"</code></li>\n<li><code>str_replace(\"X.4.89294e-05\", \"[X.]\",'')</code> Result <code>\".4.89294e-05\"</code></li>\n<li><code>str_replace(\"X.4.89294e-05\", \"[X/.?]\",'')</code> Result <code>\".4.89294e-05\"</code></li>\n<li><code>str_replace(\"X.4.89294e-05\", \"[X//.?]\",'')</code> Result <code>\".4.89294e-05\"</code></li>\n<li><code>str_replace('X.4.89294e-0','X/.{0,1}','')</code> Result <code>\"X.4.89294e-0\"</code></li>\n<li><code>str_replace('X.4.89294e-0','[X/.{0,1}]','')</code> Result <code>\".4.89294e-0\"</code></li>\n</ul>\n\n<p>Any help would be greatly appreciated.    </p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net-core"
+            ],
+            "owner": {
+                "reputation": 6357,
+                "user_id": 1076786,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9ae65cca65a98d5ed54cc15ad0a2ace3?s=128&d=identicon&r=PG",
+                "display_name": "Eli Algranti",
+                "link": "https://stackoverflow.com/users/1076786/eli-algranti"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524207085,
+            "creation_date": 1524188212,
+            "question_id": 49932596,
+            "body_markdown": "I have an API that sits behind an API Gateway. The API Gateway validates the bearer token before passing the request along to the API.\r\n\r\nMy API the uses the the asp.net core 2.0 native authentication and claims based authorization framework. The grunt work of getting the claims from the JWT token is done by the middleware in `Microsoft.AspNetCore.Authentication.JwtBearer`.\r\n\r\nThis middle ware can be configured to ignore the expiration date on the token and it is also possible to specify a local public key so it is not necessary to contact the token Authority to obtain one, but is it possible to just disable the signature validation on the token?\r\n\r\nThis would allow use of unsigned tokens for ad-hoc testing in development and prevent double validation (gateway and then API) in production. ",
+            "link": "https://stackoverflow.com/questions/49932596/ignore-jwt-bearer-token-signature-i-e-dont-validate-token",
+            "title": "Ignore JWT Bearer token signature (i.e. don&#39;t validate token)",
+            "body": "<p>I have an API that sits behind an API Gateway. The API Gateway validates the bearer token before passing the request along to the API.</p>\n\n<p>My API the uses the the asp.net core 2.0 native authentication and claims based authorization framework. The grunt work of getting the claims from the JWT token is done by the middleware in <code>Microsoft.AspNetCore.Authentication.JwtBearer</code>.</p>\n\n<p>This middle ware can be configured to ignore the expiration date on the token and it is also possible to specify a local public key so it is not necessary to contact the token Authority to obtain one, but is it possible to just disable the signature validation on the token?</p>\n\n<p>This would allow use of unsigned tokens for ad-hoc testing in development and prevent double validation (gateway and then API) in production. </p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "android-studio",
+                "sdk"
+            ],
+            "owner": {
+                "reputation": 53,
+                "user_id": 6751494,
+                "user_type": "registered",
+                "accept_rate": 73,
+                "profile_image": "https://www.gravatar.com/avatar/2fe3487e725813a2449a04be8a34a4e5?s=128&d=identicon&r=PG&f=1",
+                "display_name": "shlezz",
+                "link": "https://stackoverflow.com/users/6751494/shlezz"
+            },
+            "is_answered": true,
+            "view_count": 24,
+            "accepted_answer_id": 49935693,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524207078,
+            "creation_date": 1524145872,
+            "last_edit_date": 1524146551,
+            "question_id": 49922826,
+            "body_markdown": "when i start my emulator on a basic program like &quot;hello world&quot;\r\nit is not starting and keeps loading for a very very long time and not starting at all, and only the progress bar keeps moving.\r\neven when my android studio is installed on my SSD 250 samsung.\r\nplease if someone can help me start this thing. \r\n\r\ni attached my data and the situation that is stuck on:\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\n[![enter image description here][2]][2]\r\n\r\n\r\n[![enter image description here][3]][3]\r\n\r\n\r\n[![enter image description here][4]][4]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/2mwMd.jpg\r\n  [2]: https://i.stack.imgur.com/rAGGn.jpg\r\n  [3]: https://i.stack.imgur.com/1Qs19.jpg\r\n  [4]: https://i.stack.imgur.com/LDIT4.jpg",
+            "link": "https://stackoverflow.com/questions/49922826/android-studio-emulator-is-stuck-and-always-loading",
+            "title": "Android Studio Emulator is stuck and always loading",
+            "body": "<p>when i start my emulator on a basic program like \"hello world\"\nit is not starting and keeps loading for a very very long time and not starting at all, and only the progress bar keeps moving.\neven when my android studio is installed on my SSD 250 samsung.\nplease if someone can help me start this thing. </p>\n\n<p>i attached my data and the situation that is stuck on:</p>\n\n<p><a href=\"https://i.stack.imgur.com/2mwMd.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/2mwMd.jpg\" alt=\"enter image description here\"></a></p>\n\n<p><a href=\"https://i.stack.imgur.com/rAGGn.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/rAGGn.jpg\" alt=\"enter image description here\"></a></p>\n\n<p><a href=\"https://i.stack.imgur.com/1Qs19.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/1Qs19.jpg\" alt=\"enter image description here\"></a></p>\n\n<p><a href=\"https://i.stack.imgur.com/LDIT4.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/LDIT4.jpg\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "node.js"
+            ],
+            "owner": {
+                "reputation": 14983,
+                "user_id": 340688,
+                "user_type": "registered",
+                "accept_rate": 81,
+                "profile_image": "https://www.gravatar.com/avatar/46a6db74ccc3bf4e009f875283401c14?s=128&d=identicon&r=PG",
+                "display_name": "ThomasReggi",
+                "link": "https://stackoverflow.com/users/340688/thomasreggi"
+            },
+            "is_answered": false,
+            "view_count": 30,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524207075,
+            "creation_date": 1524207075,
+            "question_id": 49935692,
+            "body_markdown": "I am testing a node bin script that executes a promise.\r\n\r\nSomething like this:\r\n\r\n    doSomething()\r\n      .then(() =&gt; {\r\n        process.exit(0)\r\n      })\r\n      .catch(() =&gt; {\r\n        process.exit(1)\r\n      })\r\n\r\nIf I require this file from a test\r\n\r\n    require(&#39;./doSomething.js&#39;)\r\n\r\nIt hangs, I have tried `process.on(&#39;exit&#39;, cb)` but it never fires:\r\n\r\n    require(&#39;./doSomething.js&#39;)\r\n    process.on(&#39;exit&#39;, () =&gt; {\r\n     console.log(&#39;done&#39;)\r\n    })\r\n\r\nHow can I test the action of `doSomething()` from another file by someone gaining access to when this function is finished?",
+            "link": "https://stackoverflow.com/questions/49935692/how-can-i-find-out-when-an-executing-node-module-is-finished",
+            "title": "How can I find out when an executing node module is finished?",
+            "body": "<p>I am testing a node bin script that executes a promise.</p>\n\n<p>Something like this:</p>\n\n<pre><code>doSomething()\n  .then(() =&gt; {\n    process.exit(0)\n  })\n  .catch(() =&gt; {\n    process.exit(1)\n  })\n</code></pre>\n\n<p>If I require this file from a test</p>\n\n<pre><code>require('./doSomething.js')\n</code></pre>\n\n<p>It hangs, I have tried <code>process.on('exit', cb)</code> but it never fires:</p>\n\n<pre><code>require('./doSomething.js')\nprocess.on('exit', () =&gt; {\n console.log('done')\n})\n</code></pre>\n\n<p>How can I test the action of <code>doSomething()</code> from another file by someone gaining access to when this function is finished?</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "xcode"
+            ],
+            "owner": {
+                "reputation": 346,
+                "user_id": 6630644,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://lh5.googleusercontent.com/-GhuR3rq5zDM/AAAAAAAAAAI/AAAAAAAAAHk/j6Yp7Jz92pQ/photo.jpg?sz=128",
+                "display_name": "SPatel",
+                "link": "https://stackoverflow.com/users/6630644/spatel"
+            },
+            "is_answered": false,
+            "view_count": 23,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524207067,
+            "creation_date": 1524204042,
+            "last_edit_date": 1524204323,
+            "question_id": 49934979,
+            "body_markdown": "**Xcode** shows group name with red color. \r\n\r\n[![enter image description here][1]][1]\r\n[![enter image description here][2]][2]\r\n\r\n*How to remove this or make it normal*\r\n   \r\nI am using **Xcode** **9**\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/vr7HC.png\r\n  [2]: https://i.stack.imgur.com/bMgQo.png",
+            "link": "https://stackoverflow.com/questions/49934979/xcode-group-name-with-red-color",
+            "title": "Xcode: group name with Red color",
+            "body": "<p><strong>Xcode</strong> shows group name with red color. </p>\n\n<p><a href=\"https://i.stack.imgur.com/vr7HC.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/vr7HC.png\" alt=\"enter image description here\"></a>\n<a href=\"https://i.stack.imgur.com/bMgQo.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/bMgQo.png\" alt=\"enter image description here\"></a></p>\n\n<p><em>How to remove this or make it normal</em></p>\n\n<p>I am using <strong>Xcode</strong> <strong>9</strong></p>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "angular5",
+                "angular4-httpclient"
+            ],
+            "owner": {
+                "reputation": 9,
+                "user_id": 9246099,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1642957015793772/picture?type=large",
+                "display_name": "Dipesh Paudel",
+                "link": "https://stackoverflow.com/users/9246099/dipesh-paudel"
+            },
+            "is_answered": false,
+            "view_count": 25,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524207065,
+            "creation_date": 1524205676,
+            "last_edit_date": 1524206074,
+            "question_id": 49935336,
+            "body_markdown": "As I am going through HTTP and Observables I&#39;ve encountered the problem indicating the supplied parameters do not match any signature of call target. The code is as given below.\r\n\r\n        import { Injectable } from &#39;@angular/core&#39;;\r\n\r\n        import { Http } from &#39;@angular/http&#39;;\r\n\r\n        import { Observable } from &#39;rxjs/Observable&#39;;\r\n\r\n        import { IEmployee } from &#39;./employee&#39;;\r\n\r\n\r\n        @Injectable()\r\n\r\n        export class EmployeeService {\r\n\r\n          private _url: string = &quot;/assets/data/employees.json&quot;;\r\n\r\n          constructor(private http:Http) { }\r\n\r\n          getEmployees(): Observable&lt;IEmployee[]&gt;{\r\n\r\n            return this.http.get&lt;IEmployee[]&gt;(this._url);\r\n\r\n          }\r\n\r\n        }\r\n\r\nThe error occurs at the line \r\n\r\n        return this.http.get&lt;IEmployee[]&gt;(this._url);\r\n\r\nthe json data is in the path located by &quot; _url &quot; string. \r\nAlso I had created the interface named &quot; IEmployee &quot; inside &quot;employee.ts&quot;\r\n\r\nemployee.ts\r\n\r\n       export interface IEmployee {\r\n            id: number,\r\n            name: string,\r\n            age: number\r\n        }\r\n\r\nthe versions I&#39;m using is as below \r\n\r\n        angular-cli: 1.0.0-beta.28.3\r\n        node: 8.11.1\r\n        os: win32 x64\r\n        @angular/common: 2.4.10\r\n        @angular/compiler: 2.4.10\r\n        @angular/core: 2.4.10\r\n        @angular/forms: 2.4.10\r\n        @angular/http: 2.4.10\r\n        @angular/platform-browser: 2.4.10\r\n        @angular/platform-browser-dynamic: 2.4.10\r\n        @angular/router: 3.4.10\r\n        @angular/compiler-cli: 2.4.10\r\n\r\nall other seems right. I need help here thank you.\r\n\r\nI used it in a component called &quot; employee-list&quot; and there I want to show the employee list.\r\n\r\n        import { Component, OnInit } from &#39;@angular/core&#39;;\r\n        import { EmployeeService } from &#39;../employee.service&#39;;\r\n\r\n        @Component({\r\n          selector: &#39;employee-list&#39;,\r\n          template: `\r\n            &lt;h2&gt; Employee List&lt;/h2&gt;\r\n            &lt;ul *ngFor = &quot; let employee of employees &quot; &gt;\r\n              &lt;li&gt; {{ employee.name }} &lt;/li&gt;\r\n            &lt;/ul&gt;\r\n          `,\r\n           styles: []\r\n        })\r\n\r\n        export class EmployeeListComponent implements OnInit {\r\n          public employees = [];\r\n          constructor( private _employeeService: EmployeeService ) { }\r\n\r\n          ngOnInit() {\r\n            this._employeeService.getEmployees()\r\n            .subscribe(data =&gt; this.employees = data);\r\n          }\r\n\r\n        }\r\n",
+            "link": "https://stackoverflow.com/questions/49935336/supplied-parameters-do-not-match-any-signature-of-call-target-in-angular-as-th",
+            "title": "&quot;supplied parameters do not match any signature of call target&quot; in angular as the code is given below",
+            "body": "<p>As I am going through HTTP and Observables I've encountered the problem indicating the supplied parameters do not match any signature of call target. The code is as given below.</p>\n\n<pre><code>    import { Injectable } from '@angular/core';\n\n    import { Http } from '@angular/http';\n\n    import { Observable } from 'rxjs/Observable';\n\n    import { IEmployee } from './employee';\n\n\n    @Injectable()\n\n    export class EmployeeService {\n\n      private _url: string = \"/assets/data/employees.json\";\n\n      constructor(private http:Http) { }\n\n      getEmployees(): Observable&lt;IEmployee[]&gt;{\n\n        return this.http.get&lt;IEmployee[]&gt;(this._url);\n\n      }\n\n    }\n</code></pre>\n\n<p>The error occurs at the line </p>\n\n<pre><code>    return this.http.get&lt;IEmployee[]&gt;(this._url);\n</code></pre>\n\n<p>the json data is in the path located by \" _url \" string. \nAlso I had created the interface named \" IEmployee \" inside \"employee.ts\"</p>\n\n<p>employee.ts</p>\n\n<pre><code>   export interface IEmployee {\n        id: number,\n        name: string,\n        age: number\n    }\n</code></pre>\n\n<p>the versions I'm using is as below </p>\n\n<pre><code>    angular-cli: 1.0.0-beta.28.3\n    node: 8.11.1\n    os: win32 x64\n    @angular/common: 2.4.10\n    @angular/compiler: 2.4.10\n    @angular/core: 2.4.10\n    @angular/forms: 2.4.10\n    @angular/http: 2.4.10\n    @angular/platform-browser: 2.4.10\n    @angular/platform-browser-dynamic: 2.4.10\n    @angular/router: 3.4.10\n    @angular/compiler-cli: 2.4.10\n</code></pre>\n\n<p>all other seems right. I need help here thank you.</p>\n\n<p>I used it in a component called \" employee-list\" and there I want to show the employee list.</p>\n\n<pre><code>    import { Component, OnInit } from '@angular/core';\n    import { EmployeeService } from '../employee.service';\n\n    @Component({\n      selector: 'employee-list',\n      template: `\n        &lt;h2&gt; Employee List&lt;/h2&gt;\n        &lt;ul *ngFor = \" let employee of employees \" &gt;\n          &lt;li&gt; {{ employee.name }} &lt;/li&gt;\n        &lt;/ul&gt;\n      `,\n       styles: []\n    })\n\n    export class EmployeeListComponent implements OnInit {\n      public employees = [];\n      constructor( private _employeeService: EmployeeService ) { }\n\n      ngOnInit() {\n        this._employeeService.getEmployees()\n        .subscribe(data =&gt; this.employees = data);\n      }\n\n    }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "node.js",
+                "azure-functions",
+                "diagnostics",
+                "serverless"
+            ],
+            "owner": {
+                "reputation": 27,
+                "user_id": 3008630,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/590663628/picture?type=large",
+                "display_name": "mattipet",
+                "link": "https://stackoverflow.com/users/3008630/mattipet"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524207063,
+            "creation_date": 1524162213,
+            "question_id": 49927759,
+            "body_markdown": "I&#39;m running Node.js functions on Azure Functions on the v2 of the runtime and quite often running the function ends up in an error. But debugging the errors is really difficult since most of the time only thing I get is something like this:\r\n\r\n    2018-04-19T18:08:51  Welcome, you are now connected to log-streaming service.\r\n    2018-04-19T18:09:37.473 [Information] Executing &#39;Functions.GetAnswer&#39; (Reason=&#39;This function was programmatically called via the host APIs.&#39;, Id=82d8e1df-7bb8-4f08-80c9-1d27d68959e2)\r\n    2018-04-19T18:09:37.788 [Error] System.Private.CoreLib: Exception while executing function: Functions.GetAnswer. System.Private.CoreLib: One or more errors occurred. (Worker process with pid 4736 exited with code 1) (Worker process with pid 5328 exited with code 1) (Worker process with pid 5428 exited with code 1). Worker process with pid 4736 exited with code 1.\r\n    2018-04-19T18:09:37.937 [Error] Executed &#39;Functions.GetAnswer&#39; (Failed, Id=82d8e1df-7bb8-4f08-80c9-1d27d68959e2)\r\n\r\nWhen using App Insights I don&#39;t get much more info:\r\n\r\n    Exception while executing function:\r\n    Functions.GetAnswer One or more errors occurred.\r\n    (Worker process with pid 4736 exited with code 1)\r\n    (Worker process with pid 5328 exited with code 1)\r\n    (Worker process with pid 5428 exited with code 1)\r\n    Worker process with pid 4736 exited with code 1\r\n    Worker process with pid 5328 exited with code 1\r\n    Worker process with pid 5428 exited with code 1\r\n\r\nIs there a way to get an error message that would show more about what is going on? Maybe even a Node.js error?",
+            "link": "https://stackoverflow.com/questions/49927759/how-to-get-more-detailed-error-messages-from-azure-functions-javascript-function",
+            "title": "How to get more detailed error messages from Azure Functions JavaScript functions?",
+            "body": "<p>I'm running Node.js functions on Azure Functions on the v2 of the runtime and quite often running the function ends up in an error. But debugging the errors is really difficult since most of the time only thing I get is something like this:</p>\n\n<pre><code>2018-04-19T18:08:51  Welcome, you are now connected to log-streaming service.\n2018-04-19T18:09:37.473 [Information] Executing 'Functions.GetAnswer' (Reason='This function was programmatically called via the host APIs.', Id=82d8e1df-7bb8-4f08-80c9-1d27d68959e2)\n2018-04-19T18:09:37.788 [Error] System.Private.CoreLib: Exception while executing function: Functions.GetAnswer. System.Private.CoreLib: One or more errors occurred. (Worker process with pid 4736 exited with code 1) (Worker process with pid 5328 exited with code 1) (Worker process with pid 5428 exited with code 1). Worker process with pid 4736 exited with code 1.\n2018-04-19T18:09:37.937 [Error] Executed 'Functions.GetAnswer' (Failed, Id=82d8e1df-7bb8-4f08-80c9-1d27d68959e2)\n</code></pre>\n\n<p>When using App Insights I don't get much more info:</p>\n\n<pre><code>Exception while executing function:\nFunctions.GetAnswer One or more errors occurred.\n(Worker process with pid 4736 exited with code 1)\n(Worker process with pid 5328 exited with code 1)\n(Worker process with pid 5428 exited with code 1)\nWorker process with pid 4736 exited with code 1\nWorker process with pid 5328 exited with code 1\nWorker process with pid 5428 exited with code 1\n</code></pre>\n\n<p>Is there a way to get an error message that would show more about what is going on? Maybe even a Node.js error?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pyqt"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 6838993,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/cb5f7f32921f278f1880b3ef04d800f8?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Pinkpretty",
+                "link": "https://stackoverflow.com/users/6838993/pinkpretty"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524207058,
+            "creation_date": 1524203477,
+            "last_edit_date": 1524207058,
+            "question_id": 49934867,
+            "body_markdown": "I need to select a item from QcomboBox. \r\n\r\n    index = combobox.findText(&quot;D:\\Squisher\\squish\\SQUISH_TESTS_TRUNK_2018x_TNA8\\suite_DeltaGen\\tst_LookAndShadow_2\\testdata\\ref\\SurroundingsCompleted\\Backplates\\coast_backplate_test.tif&quot;)\r\n    if index &gt;= 0:\r\n        combobox.setCurrentIndex(index)\r\n\r\nThis is how i m selecting a value. But Sometime, findText is returning -1 even if the value present in Combobox. so i m thinking to use findData instead of findText.\r\nWhat is the difference between findText and findData ? Which is better and Why?",
+            "link": "https://stackoverflow.com/questions/49934867/qcombobox-which-is-better-to-use-findtext-or-finddata-qt",
+            "title": "QComboBox - Which is better to use? findText or findData - Qt",
+            "body": "<p>I need to select a item from QcomboBox. </p>\n\n<pre><code>index = combobox.findText(\"D:\\Squisher\\squish\\SQUISH_TESTS_TRUNK_2018x_TNA8\\suite_DeltaGen\\tst_LookAndShadow_2\\testdata\\ref\\SurroundingsCompleted\\Backplates\\coast_backplate_test.tif\")\nif index &gt;= 0:\n    combobox.setCurrentIndex(index)\n</code></pre>\n\n<p>This is how i m selecting a value. But Sometime, findText is returning -1 even if the value present in Combobox. so i m thinking to use findData instead of findText.\nWhat is the difference between findText and findData ? Which is better and Why?</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 269
+}

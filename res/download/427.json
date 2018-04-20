@@ -1,0 +1,847 @@
+{
+    "items": [
+        {
+            "tags": [
+                "python",
+                "python-3.x"
+            ],
+            "owner": {
+                "reputation": 169,
+                "user_id": 3696204,
+                "user_type": "registered",
+                "accept_rate": 90,
+                "profile_image": "https://i.stack.imgur.com/fJLCn.jpg?s=128&g=1",
+                "display_name": "rocksNwaves",
+                "link": "https://stackoverflow.com/users/3696204/rocksnwaves"
+            },
+            "is_answered": true,
+            "view_count": 31,
+            "accepted_answer_id": 49929397,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524168480,
+            "creation_date": 1524168012,
+            "question_id": 49929288,
+            "body_markdown": "**Overall question:** How do I know what I am getting from a Queue object when I call Queue.get()? How do I sort it, or identify it? Can you get specific items from the Queue and leave others?\r\n\r\n**Context:**\r\n\r\nI wanted to learn a little about multi-proccessing (threading?) to make solving a matrix equation more efficient. \r\n\r\nTo illustrate, below is my working code for solving the matrix equation Ax = b without taking advantage of multiple cores. The solution is [1,1,1].\r\n \r\n\r\n    def jacobi(A, b, x_k):\r\n    \r\n        N = len(x_k)\r\n        x_kp1 = np.copy(x_k)\r\n        E_rel = 1\r\n        iteration = 0\r\n    \r\n        if (N != A.shape[0] or N != A.shape[1]):\r\n            raise ValueError(&#39;Matrix/vector dimensions do not match.&#39;)\r\n    \r\n        while E_rel &gt; ((10**(-14)) * (N**(1/2))):\r\n            for i in range(N):\r\n    \r\n                sum = 0\r\n    \r\n                for j in range(N):\r\n                    if j != i:\r\n                        sum = sum + A[i,j] * x_k[j]\r\n    \r\n                x_kp1[i] =(1 / A[i,i]) * (b[i] - sum)\r\n    \r\n            E_rel = 0\r\n            for n in range(N):\r\n                E_rel = E_rel + abs(x_kp1[n] - x_k[n]) / ((abs(x_kp1[n]) + abs(x_k[n])) / 2)\r\n    \r\n            iteration += 1\r\n            # print(&quot;relative error for this iteration:&quot;, E_rel)\r\n            if iteration &lt; 11:\r\n                print(&quot;iteration &quot;, iteration, &quot;:&quot;, x_kp1)\r\n    \r\n            x_k = np.copy(x_kp1)\r\n    \r\n        return x_kp1\r\n    \r\n    if __name__ == &#39;__main__&#39;:\r\n    \r\n        A = np.matrix([[12.,7,3],[1,5,1],[2,7,-11]])\r\n        b = np.array([22.,7,-2])\r\n        x = np.array([1.,2,1])\r\n    \r\n        print(&quot;Jacobi Method:&quot;)\r\n        x_1 = jacobi(A, b, x)\r\n        \r\n\r\nOk, so I wanted to convert this code following this nice example: https://p16.praetorian.com/blog/multi-core-and-distributed-programming-in-python\r\n\r\nSo I got some code that runs and converges to the correct solution in the same number of iterations! That&#39;s really great, but what is the guarantee that this happens? It seems like Queue.get() just grabs whatever result from whatever process finished first (or last?). I was actually very surprised when my code ran, as I expected\r\n\r\n      for i in range(N):\r\n            x_update[i] = q.get(True)\r\n\r\nto jumble up the elements of the vector. \r\n\r\nHere is my code updated using the multi-processing library:\r\n\r\n    import numpy as np\r\n    import multiprocessing as mu\r\n    \r\n    np.set_printoptions(precision=15)\r\n    \r\n    def Jacobi_step(index, initial_vector, q):\r\n        N = len(initial_vector)\r\n        sum = 0\r\n        for j in range(N):\r\n            if j != i:\r\n                sum = sum + A[i, j] * initial_vector[j]\r\n    \r\n        # this result is the updated element at given index of our solution vector.\r\n        q.put((1 / A[index, index]) * (b[index] - sum))\r\n    \r\n    \r\n    if __name__ == &#39;__main__&#39;:\r\n    \r\n        A = np.matrix([[12.,7,3],[1,5,1],[2,7,-11]])\r\n        b = np.array([22.,7,-2])\r\n        x = np.array([1.,2,1])\r\n        q = mu.Queue()\r\n        N = len(x)\r\n        x_update = np.copy(x)\r\n        p = []\r\n        error = 1\r\n        iteration = 0\r\n    \r\n        while error &gt; ((10**(-14)) * (N**(1/2))):\r\n            \r\n            # assign a process to each element in the vector x, \r\n            # update one element with a single Jacobi step\r\n            for i in range(N):\r\n                process = mu.Process(target=Jacobi_step(i, x, q))\r\n                p.append(process)\r\n                process.start()\r\n    \r\n            # fill in the updated vector with each new element aquired by the last step\r\n            for i in range(N):\r\n                x_update[i] = q.get(True)\r\n    \r\n            # check for convergence \r\n            error = 0\r\n            for n in range(N):\r\n                error = error + abs(x_update[n] - x[n]) / ((abs(x_update[n]) + abs(x[n])) / 2)\r\n                p[i].join()\r\n    \r\n            x = np.copy(x_update)\r\n    \r\n            iteration += 1\r\n            print(&quot;iteration &quot;, iteration, &quot;:&quot;, x)\r\n            del p[:]\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49929288/what-do-i-get-from-queue-get-python",
+            "title": "What do I get from Queue.get() (Python)",
+            "body": "<p><strong>Overall question:</strong> How do I know what I am getting from a Queue object when I call Queue.get()? How do I sort it, or identify it? Can you get specific items from the Queue and leave others?</p>\n\n<p><strong>Context:</strong></p>\n\n<p>I wanted to learn a little about multi-proccessing (threading?) to make solving a matrix equation more efficient. </p>\n\n<p>To illustrate, below is my working code for solving the matrix equation Ax = b without taking advantage of multiple cores. The solution is [1,1,1].</p>\n\n<pre><code>def jacobi(A, b, x_k):\n\n    N = len(x_k)\n    x_kp1 = np.copy(x_k)\n    E_rel = 1\n    iteration = 0\n\n    if (N != A.shape[0] or N != A.shape[1]):\n        raise ValueError('Matrix/vector dimensions do not match.')\n\n    while E_rel &gt; ((10**(-14)) * (N**(1/2))):\n        for i in range(N):\n\n            sum = 0\n\n            for j in range(N):\n                if j != i:\n                    sum = sum + A[i,j] * x_k[j]\n\n            x_kp1[i] =(1 / A[i,i]) * (b[i] - sum)\n\n        E_rel = 0\n        for n in range(N):\n            E_rel = E_rel + abs(x_kp1[n] - x_k[n]) / ((abs(x_kp1[n]) + abs(x_k[n])) / 2)\n\n        iteration += 1\n        # print(\"relative error for this iteration:\", E_rel)\n        if iteration &lt; 11:\n            print(\"iteration \", iteration, \":\", x_kp1)\n\n        x_k = np.copy(x_kp1)\n\n    return x_kp1\n\nif __name__ == '__main__':\n\n    A = np.matrix([[12.,7,3],[1,5,1],[2,7,-11]])\n    b = np.array([22.,7,-2])\n    x = np.array([1.,2,1])\n\n    print(\"Jacobi Method:\")\n    x_1 = jacobi(A, b, x)\n</code></pre>\n\n<p>Ok, so I wanted to convert this code following this nice example: <a href=\"https://p16.praetorian.com/blog/multi-core-and-distributed-programming-in-python\" rel=\"nofollow noreferrer\">https://p16.praetorian.com/blog/multi-core-and-distributed-programming-in-python</a></p>\n\n<p>So I got some code that runs and converges to the correct solution in the same number of iterations! That's really great, but what is the guarantee that this happens? It seems like Queue.get() just grabs whatever result from whatever process finished first (or last?). I was actually very surprised when my code ran, as I expected</p>\n\n<pre><code>  for i in range(N):\n        x_update[i] = q.get(True)\n</code></pre>\n\n<p>to jumble up the elements of the vector. </p>\n\n<p>Here is my code updated using the multi-processing library:</p>\n\n<pre><code>import numpy as np\nimport multiprocessing as mu\n\nnp.set_printoptions(precision=15)\n\ndef Jacobi_step(index, initial_vector, q):\n    N = len(initial_vector)\n    sum = 0\n    for j in range(N):\n        if j != i:\n            sum = sum + A[i, j] * initial_vector[j]\n\n    # this result is the updated element at given index of our solution vector.\n    q.put((1 / A[index, index]) * (b[index] - sum))\n\n\nif __name__ == '__main__':\n\n    A = np.matrix([[12.,7,3],[1,5,1],[2,7,-11]])\n    b = np.array([22.,7,-2])\n    x = np.array([1.,2,1])\n    q = mu.Queue()\n    N = len(x)\n    x_update = np.copy(x)\n    p = []\n    error = 1\n    iteration = 0\n\n    while error &gt; ((10**(-14)) * (N**(1/2))):\n\n        # assign a process to each element in the vector x, \n        # update one element with a single Jacobi step\n        for i in range(N):\n            process = mu.Process(target=Jacobi_step(i, x, q))\n            p.append(process)\n            process.start()\n\n        # fill in the updated vector with each new element aquired by the last step\n        for i in range(N):\n            x_update[i] = q.get(True)\n\n        # check for convergence \n        error = 0\n        for n in range(N):\n            error = error + abs(x_update[n] - x[n]) / ((abs(x_update[n]) + abs(x[n])) / 2)\n            p[i].join()\n\n        x = np.copy(x_update)\n\n        iteration += 1\n        print(\"iteration \", iteration, \":\", x)\n        del p[:]\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "progress-bar",
+                "indesign",
+                "extendscript"
+            ],
+            "owner": {
+                "reputation": 546,
+                "user_id": 3115317,
+                "user_type": "registered",
+                "accept_rate": 61,
+                "profile_image": "https://i.stack.imgur.com/wY0Jj.jpg?s=128&g=1",
+                "display_name": "Interactive",
+                "link": "https://stackoverflow.com/users/3115317/interactive"
+            },
+            "is_answered": false,
+            "view_count": 31,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524168467,
+            "creation_date": 1524044740,
+            "last_edit_date": 1524054918,
+            "question_id": 49896439,
+            "body_markdown": "I have a script that is working fine but can take a lot of time to complete.\r\nThis is a javascript document and runs several functions.\r\n\r\nThis script runs within InDesign and is javascript based. The ExtendScript Toolkit provides several demoscripts and one of them is `SnpCreateProgressBar.jsx`.\r\n\r\nNow I want to add the progressbar to my current script but I&#39;m not entirely sure how to do this.\r\n\r\nWithout posting the entire code here I&#39;ll do a function. This is repeated throughout the script.\r\n\r\n    var myDoc = app.activeDocument;\r\n    var myTables = myDoc.stories.everyItem().tables.everyItem();\r\n    var myTableElements = myTables.getElements();\r\n\r\n    function basicSearchReplace(findWhat, changeTo){\r\n        app.findGrepPreferences = app.changeGrepPreferences = null;\r\n        app.findChangeGrepOptions = NothingEnum.nothing;\r\n        app.findGrepPreferences.findWhat = findWhat;\r\n        app.changeGrepPreferences.changeTo = changeTo;\r\n        myDoc.changeGrep();\r\n    }    \r\n\r\n    \r\n    basicSearchReplace (&#39;^~8 &#39;, &#39;~8\\\\t&#39;);\r\n    basicSearchReplace (&#39;^&#183;( |\\\\t)&#39;,  &#39;~8\\\\t&#39;);\r\n\r\nThe `SnpCreateProgressBar.jsx` can be found [here][1]\r\n\r\n\r\n  [1]: https://pastebin.com/hfG1RgKF\r\n\r\nMaybe there is another extendscript way to create a progress bar?\r\n\r\n--- Small Update ---  \r\nSo after some Googeling and testing I came up with :\r\n\r\n    function SnpCreateProgressBar () \r\n    {\r\n\t    this.windowRef = null;\r\n    }\r\n\r\n    SnpCreateProgressBar.prototype.run = function() {\r\n    var win = new Window(&quot;palette&quot;, &quot;SnpCreateProgressBar&quot;, [150, 150, 600, 260]);   \r\n    win.pnl = win.add(&quot;panel&quot;, [10, 10, 440, 100], &quot;Script Progress&quot;);  \r\n    win.pnl.progBar = win.pnl.add(&quot;progressbar&quot;, [20, 35, 410, 60], 0, 100);  \r\n    win.pnl.progBarLabel = win.pnl.add(&quot;statictext&quot;, [20, 20, 320, 35], &quot;0%&quot;);  \r\n  \r\n    win.show();  \r\n  \r\n                    while(win.pnl.progBar.value &lt; win.pnl.progBar.maxvalue)  \r\n                    {  \r\n                            \r\n                              // this is what causes the progress bar increase its progress  \r\n                              win.pnl.progBar.value++;   \r\n                                win.pnl.progBarLabel.text = win.pnl.progBar.value+&quot;%&quot;;  \r\n                              $.sleep(10);  \r\n                    }  \r\n  \r\n    alert(&#39;Done!&#39;);   \r\n  \r\n    win.close();  \r\n    };\r\n    if(typeof(SnpCreateProgressBar_unitTest) == &quot;undefined&quot;) {\r\n        new SnpCreateProgressBar().run();\r\n    }\r\n\r\nNow I don&#39;t think I fully understand. \r\nIf I place my &quot;to-run&quot; code in the while loop it just executes that and runs the process bar at the end... Same goes for the if-loop at the bottom\r\n\r\nWhat am I not understanding?",
+            "link": "https://stackoverflow.com/questions/49896439/javascript-run-progress-bar-while-code-is-executed",
+            "title": "Javascript Run progress bar while code is executed",
+            "body": "<p>I have a script that is working fine but can take a lot of time to complete.\nThis is a javascript document and runs several functions.</p>\n\n<p>This script runs within InDesign and is javascript based. The ExtendScript Toolkit provides several demoscripts and one of them is <code>SnpCreateProgressBar.jsx</code>.</p>\n\n<p>Now I want to add the progressbar to my current script but I'm not entirely sure how to do this.</p>\n\n<p>Without posting the entire code here I'll do a function. This is repeated throughout the script.</p>\n\n<pre><code>var myDoc = app.activeDocument;\nvar myTables = myDoc.stories.everyItem().tables.everyItem();\nvar myTableElements = myTables.getElements();\n\nfunction basicSearchReplace(findWhat, changeTo){\n    app.findGrepPreferences = app.changeGrepPreferences = null;\n    app.findChangeGrepOptions = NothingEnum.nothing;\n    app.findGrepPreferences.findWhat = findWhat;\n    app.changeGrepPreferences.changeTo = changeTo;\n    myDoc.changeGrep();\n}    \n\n\nbasicSearchReplace ('^~8 ', '~8\\\\t');\nbasicSearchReplace ('^·( |\\\\t)',  '~8\\\\t');\n</code></pre>\n\n<p>The <code>SnpCreateProgressBar.jsx</code> can be found <a href=\"https://pastebin.com/hfG1RgKF\" rel=\"nofollow noreferrer\">here</a></p>\n\n<p>Maybe there is another extendscript way to create a progress bar?</p>\n\n<p>--- Small Update ---<br>\nSo after some Googeling and testing I came up with :</p>\n\n<pre><code>function SnpCreateProgressBar () \n{\n    this.windowRef = null;\n}\n\nSnpCreateProgressBar.prototype.run = function() {\nvar win = new Window(\"palette\", \"SnpCreateProgressBar\", [150, 150, 600, 260]);   \nwin.pnl = win.add(\"panel\", [10, 10, 440, 100], \"Script Progress\");  \nwin.pnl.progBar = win.pnl.add(\"progressbar\", [20, 35, 410, 60], 0, 100);  \nwin.pnl.progBarLabel = win.pnl.add(\"statictext\", [20, 20, 320, 35], \"0%\");  \n\nwin.show();  \n\n                while(win.pnl.progBar.value &lt; win.pnl.progBar.maxvalue)  \n                {  \n\n                          // this is what causes the progress bar increase its progress  \n                          win.pnl.progBar.value++;   \n                            win.pnl.progBarLabel.text = win.pnl.progBar.value+\"%\";  \n                          $.sleep(10);  \n                }  \n\nalert('Done!');   \n\nwin.close();  \n};\nif(typeof(SnpCreateProgressBar_unitTest) == \"undefined\") {\n    new SnpCreateProgressBar().run();\n}\n</code></pre>\n\n<p>Now I don't think I fully understand. \nIf I place my \"to-run\" code in the while loop it just executes that and runs the process bar at the end... Same goes for the if-loop at the bottom</p>\n\n<p>What am I not understanding?</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "odbc"
+            ],
+            "owner": {
+                "reputation": 325,
+                "user_id": 3212967,
+                "user_type": "registered",
+                "accept_rate": 84,
+                "profile_image": "https://i.stack.imgur.com/K14XW.png?s=128&g=1",
+                "display_name": "Omortis",
+                "link": "https://stackoverflow.com/users/3212967/omortis"
+            },
+            "is_answered": true,
+            "view_count": 16,
+            "accepted_answer_id": 49929287,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524168460,
+            "creation_date": 1524167137,
+            "question_id": 49929084,
+            "body_markdown": "Ive been chasing this CS0246 error for a couple hours and am not sure how to resolve it. Given this simple C# code:\r\n\r\n    using System;\r\n    // using Microsoft.Data.Odbc; \r\n    using System.Data.Odbc; \r\n    \r\n    namespace dotnetdb\r\n    {\r\n        class Program\r\n        {\r\n            static private void SelectRows(string[] args)\r\n            {\r\n                string passWord = &quot;PWD=password&quot;;\r\n                string uName    = &quot;UID=username&quot;;\r\n                string dbServer = &quot;SERVER=server&quot;;\r\n                string dbName   = &quot;DATABASE=db&quot;;\r\n                string driver   = &quot;DRIVER={ODBC Driver 13 for SQL Server}&quot;\r\n                string connString = // assembled from above \r\n    \r\n                string sql = // sql;\r\n    \r\n                OdbcConnection conn = new OdbcConnection(connString);\r\n    \r\n                conn.Open();\r\n                \r\n                OdbcCommand cmd = new OdbcCommand(sql, conn);\r\n    \r\n                // work with cmd\r\n    \r\n                Console.WriteLine(&quot;Didnt kick the bucket!&quot;);\r\n            }\r\n        }\r\n    }\r\n\r\nThe `Microsoft` stanza on line 2 yields a `CS0234` error. The stanza on line 3 (from the Microsoft docs) gives me the CS0246:\r\n\r\n`Program.cs(20,13): error CS0246: The type or namespace name &#39;OdbcConnection&#39; could not be found`\r\n\r\nI use this ODBC connection in go and python all the time but this is my first attempt at using it with C#. Also my first ever C# program. The code above is scraped almost directly from the MS docs - what am I missing? How do I get access to `System.Data.Odbc`?\r\n\r\nAm I trying to run before I learn how to walk with C#?\r\n\r\nNote that applications created with `dotnet build [console|webapi]` build and run just fine.\r\n\r\nThanks!\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49929084/cs0246-error-with-odbcconnection-line-in-c",
+            "title": "CS0246 error with OdbcConnection line in C#",
+            "body": "<p>Ive been chasing this CS0246 error for a couple hours and am not sure how to resolve it. Given this simple C# code:</p>\n\n<pre><code>using System;\n// using Microsoft.Data.Odbc; \nusing System.Data.Odbc; \n\nnamespace dotnetdb\n{\n    class Program\n    {\n        static private void SelectRows(string[] args)\n        {\n            string passWord = \"PWD=password\";\n            string uName    = \"UID=username\";\n            string dbServer = \"SERVER=server\";\n            string dbName   = \"DATABASE=db\";\n            string driver   = \"DRIVER={ODBC Driver 13 for SQL Server}\"\n            string connString = // assembled from above \n\n            string sql = // sql;\n\n            OdbcConnection conn = new OdbcConnection(connString);\n\n            conn.Open();\n\n            OdbcCommand cmd = new OdbcCommand(sql, conn);\n\n            // work with cmd\n\n            Console.WriteLine(\"Didnt kick the bucket!\");\n        }\n    }\n}\n</code></pre>\n\n<p>The <code>Microsoft</code> stanza on line 2 yields a <code>CS0234</code> error. The stanza on line 3 (from the Microsoft docs) gives me the CS0246:</p>\n\n<p><code>Program.cs(20,13): error CS0246: The type or namespace name 'OdbcConnection' could not be found</code></p>\n\n<p>I use this ODBC connection in go and python all the time but this is my first attempt at using it with C#. Also my first ever C# program. The code above is scraped almost directly from the MS docs - what am I missing? How do I get access to <code>System.Data.Odbc</code>?</p>\n\n<p>Am I trying to run before I learn how to walk with C#?</p>\n\n<p>Note that applications created with <code>dotnet build [console|webapi]</code> build and run just fine.</p>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "regex"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9671528,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5dd0ef969ed3c93bf6a27227169df62b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user9671528",
+                "link": "https://stackoverflow.com/users/9671528/user9671528"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1524168460,
+            "creation_date": 1524166291,
+            "last_edit_date": 1524168460,
+            "question_id": 49928879,
+            "body_markdown": "I&#39;m in need of a regex expression that will detect on the same three unique letters each time and then a 9-digit number that follows after.  The letters should be case-insensitive.  \r\n\r\nFor instance, POO123456789 or poo123456789.  \r\n\r\nIt must match the first three letters exactly.\r\n",
+            "link": "https://stackoverflow.com/questions/49928879/regex-exact-match-on-first-three-characters-of-a-purchase-order",
+            "title": "Regex exact match on first three characters of a purchase order",
+            "body": "<p>I'm in need of a regex expression that will detect on the same three unique letters each time and then a 9-digit number that follows after.  The letters should be case-insensitive.  </p>\n\n<p>For instance, POO123456789 or poo123456789.  </p>\n\n<p>It must match the first three letters exactly.</p>\n"
+        },
+        {
+            "tags": [
+                "html",
+                "ios",
+                "css",
+                "forms"
+            ],
+            "owner": {
+                "reputation": 26,
+                "user_id": 7965252,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-Pl_hOnYzgRY/AAAAAAAAAAI/AAAAAAAABWk/2TC60ys7e_4/photo.jpg?sz=128",
+                "display_name": "Antoine Petitot",
+                "link": "https://stackoverflow.com/users/7965252/antoine-petitot"
+            },
+            "is_answered": false,
+            "view_count": 22,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524168453,
+            "creation_date": 1524166425,
+            "last_edit_date": 1524168453,
+            "question_id": 49928913,
+            "body_markdown": "EDIT: without doing anything, after a week it now works... no idea where this came from but it&#39;s all good now !\r\n\r\nlet&#39;s do that short: I have a login form and a register form, both work perfectly on windows and phones, but when an iphone or mac, anything made by apple, is used: they can&#39;t fill the form.\r\n\r\nSo I deleted the CSS of my page, and now they can use it.. I have no clue. Here&#39;s the code, if anyone can help me find where I messed up.. Thank you\r\n\r\n           &lt;div id=&quot;loginform&quot;&gt; \r\n    &lt;!-- there is more code as it is added to the page with PHP or not if you&#39;re \r\n    connected or not, but I&#39;ll only show the HTML form itself, as it is on the page\r\n    when a new user comes on the login page --&gt;\r\n                &lt;center&gt;\r\n                    &lt;form id=&quot;login&quot; action=&quot;login.php&quot; method=&quot;post&quot; accept-charset=&quot;UTF-8&quot;&gt;\r\n                        &lt;input type=&quot;text&quot; name=&quot;username&quot; id=&quot;username&quot; maxlength=&quot;50&quot; placeholder=&quot;Nom d&#39;utilisateur&quot; required autofocus/&gt;\r\n                        &lt;input type=&quot;password&quot; name=&quot;password&quot; id=&quot;password&quot; maxlength=&quot;50&quot; placeholder=&quot;Mot de passe&quot; required/&gt;\r\n                        &lt;input type=&quot;submit&quot; name=&quot;Submit&quot; value=&quot;Se Connecter&quot; style=&quot;background-color: #2980b9;&quot;/&gt;\r\n                    &lt;/form&gt;\r\n                &lt;/center&gt;\r\n            &lt;/div&gt;\r\n\r\nHere&#39;s the CSS:\r\n\r\n    input[type=&quot;password&quot;], input[type=&quot;text&quot;], input[type=&quot;email&quot;],         \r\n        input[type=&quot;tel&quot;], input[type=&quot;number&quot;], select { \r\n        border: 1px solid #a1a3a3; \r\n        border-radius: 4px; \r\n        box-shadow: 0 0 4px 1px rgba(55, 166, 155, 0.3); \r\n        color: #696969; \r\n        height: 39px; margin-top: 4vh; \r\n        padding-left: 1.8vw; \r\n        width: 16.3vw; \r\n        outline: 0; \r\n    }\r\n    body, html, li, ul, div{\r\n        padding: 0;\r\n        margin: 0;\r\n      }\r\n    body{\r\n      background-color: #34495e;\r\n      font-family: YanoneKaffeesatzLight;\r\n    }\r\n    *:focus{\r\n      outline: none;\r\n    }\r\n\r\nalso two JS scripts:\r\n\r\n    var x = document.getElementById(&quot;snackbar&quot;);\r\n    x.className = &quot;show&quot;; setTimeout(function(){\r\n        x.className = x.className.replace(&quot;show&quot;, &quot;&quot;);\r\n    }, 3000);\r\n\r\nand the header script:\r\n\r\n    function myFunction(){\r\n        var x = document.getElementById(&quot;header&quot;);\r\n        if (x.className===&quot;topnav&quot;) {\r\n            x.className += &quot; responsive&quot;;\r\n        }else{\r\n            x.className = &quot;topnav&quot;;\r\n        }\r\n    }  ",
+            "link": "https://stackoverflow.com/questions/49928913/resolved-css-blocking-apple-users-forms",
+            "title": "RESOLVED - CSS blocking apple users forms",
+            "body": "<p>EDIT: without doing anything, after a week it now works... no idea where this came from but it's all good now !</p>\n\n<p>let's do that short: I have a login form and a register form, both work perfectly on windows and phones, but when an iphone or mac, anything made by apple, is used: they can't fill the form.</p>\n\n<p>So I deleted the CSS of my page, and now they can use it.. I have no clue. Here's the code, if anyone can help me find where I messed up.. Thank you</p>\n\n<pre><code>       &lt;div id=\"loginform\"&gt; \n&lt;!-- there is more code as it is added to the page with PHP or not if you're \nconnected or not, but I'll only show the HTML form itself, as it is on the page\nwhen a new user comes on the login page --&gt;\n            &lt;center&gt;\n                &lt;form id=\"login\" action=\"login.php\" method=\"post\" accept-charset=\"UTF-8\"&gt;\n                    &lt;input type=\"text\" name=\"username\" id=\"username\" maxlength=\"50\" placeholder=\"Nom d'utilisateur\" required autofocus/&gt;\n                    &lt;input type=\"password\" name=\"password\" id=\"password\" maxlength=\"50\" placeholder=\"Mot de passe\" required/&gt;\n                    &lt;input type=\"submit\" name=\"Submit\" value=\"Se Connecter\" style=\"background-color: #2980b9;\"/&gt;\n                &lt;/form&gt;\n            &lt;/center&gt;\n        &lt;/div&gt;\n</code></pre>\n\n<p>Here's the CSS:</p>\n\n<pre><code>input[type=\"password\"], input[type=\"text\"], input[type=\"email\"],         \n    input[type=\"tel\"], input[type=\"number\"], select { \n    border: 1px solid #a1a3a3; \n    border-radius: 4px; \n    box-shadow: 0 0 4px 1px rgba(55, 166, 155, 0.3); \n    color: #696969; \n    height: 39px; margin-top: 4vh; \n    padding-left: 1.8vw; \n    width: 16.3vw; \n    outline: 0; \n}\nbody, html, li, ul, div{\n    padding: 0;\n    margin: 0;\n  }\nbody{\n  background-color: #34495e;\n  font-family: YanoneKaffeesatzLight;\n}\n*:focus{\n  outline: none;\n}\n</code></pre>\n\n<p>also two JS scripts:</p>\n\n<pre><code>var x = document.getElementById(\"snackbar\");\nx.className = \"show\"; setTimeout(function(){\n    x.className = x.className.replace(\"show\", \"\");\n}, 3000);\n</code></pre>\n\n<p>and the header script:</p>\n\n<pre><code>function myFunction(){\n    var x = document.getElementById(\"header\");\n    if (x.className===\"topnav\") {\n        x.className += \" responsive\";\n    }else{\n        x.className = \"topnav\";\n    }\n}  \n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "delphi",
+                "delphi-10.2-tokyo"
+            ],
+            "owner": {
+                "reputation": 97,
+                "user_id": 9655359,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/749e3c6a3a0787332a063885901350ae?s=128&d=identicon&r=PG&f=1",
+                "display_name": "vostock",
+                "link": "https://stackoverflow.com/users/9655359/vostock"
+            },
+            "is_answered": true,
+            "view_count": 424,
+            "accepted_answer_id": 49923130,
+            "answer_count": 2,
+            "score": 16,
+            "last_activity_date": 1524168434,
+            "creation_date": 1524145203,
+            "last_edit_date": 1524157392,
+            "question_id": 49922591,
+            "body_markdown": "I don&#39;t understand why this very simple code failed? I&#39;m on Delphi Tokyo release 2.\r\n\r\n    {$APPTYPE CONSOLE}\r\n    \r\n    uses\r\n      System.SysUtils,\r\n      System.Generics.Collections;\r\n    \r\n    procedure Main;\r\n    var\r\n      aQueue: TQueue&lt;TBytes&gt;;\r\n      aBytes: TBytes;\r\n    begin\r\n      aQueue := TQueue&lt;TBytes&gt;.create;\r\n    \r\n      aBytes := TEncoding.UTF8.GetBytes(&#39;abcd&#39;);\r\n      aQueue.Enqueue(aBytes);\r\n      aBytes := aQueue.Dequeue;\r\n      Writeln(Length(aBytes)); // outputs 4 as expected\r\n    \r\n      aBytes := TEncoding.UTF8.GetBytes(&#39;abcd&#39;);\r\n      aQueue.Enqueue(aBytes);\r\n      aBytes := aQueue.Dequeue;\r\n      Writeln(Length(aBytes)); // outputs 0\r\n    end;\r\n    \r\n    begin\r\n      Main;\r\n      Readln;\r\n    end.\r\n\r\nIs this a bug?\r\n\r\n**NOTE:** The code works correctly on XE4, but fails also on Berlin.\r\n",
+            "link": "https://stackoverflow.com/questions/49922591/is-delphi-tqueue-buggy-using-tqueuetbytes-return-nil-with-dequeue",
+            "title": "Is delphi TQueue buggy? Using TQueue&lt;Tbytes&gt; return nil with dequeue",
+            "body": "<p>I don't understand why this very simple code failed? I'm on Delphi Tokyo release 2.</p>\n\n<pre><code>{$APPTYPE CONSOLE}\n\nuses\n  System.SysUtils,\n  System.Generics.Collections;\n\nprocedure Main;\nvar\n  aQueue: TQueue&lt;TBytes&gt;;\n  aBytes: TBytes;\nbegin\n  aQueue := TQueue&lt;TBytes&gt;.create;\n\n  aBytes := TEncoding.UTF8.GetBytes('abcd');\n  aQueue.Enqueue(aBytes);\n  aBytes := aQueue.Dequeue;\n  Writeln(Length(aBytes)); // outputs 4 as expected\n\n  aBytes := TEncoding.UTF8.GetBytes('abcd');\n  aQueue.Enqueue(aBytes);\n  aBytes := aQueue.Dequeue;\n  Writeln(Length(aBytes)); // outputs 0\nend;\n\nbegin\n  Main;\n  Readln;\nend.\n</code></pre>\n\n<p>Is this a bug?</p>\n\n<p><strong>NOTE:</strong> The code works correctly on XE4, but fails also on Berlin.</p>\n"
+        },
+        {
+            "tags": [
+                "sql"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9565850,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Kendall O&#39;Connor",
+                "link": "https://stackoverflow.com/users/9565850/kendall-oconnor"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524168429,
+            "creation_date": 1524167007,
+            "last_edit_date": 1524167855,
+            "question_id": 49929052,
+            "body_markdown": "I am trying to get a list of all the employee names and their managers and I cannot figure out how to do it. I have attached the relational model. \r\nIn DEPT we know the department number (dept_nbr) which is attached to EMPLOYEE through emp_dept and we know the department manager (dept_mgr) which is attached to EMPLOYEE through emp_nbr \r\n\r\n![image][1]\r\n\r\n  [1]: https://i.stack.imgur.com/Ni6no.png",
+            "link": "https://stackoverflow.com/questions/49929052/how-get-the-right-information-from-these-tables",
+            "title": "How get the right information from these tables",
+            "body": "<p>I am trying to get a list of all the employee names and their managers and I cannot figure out how to do it. I have attached the relational model. \nIn DEPT we know the department number (dept_nbr) which is attached to EMPLOYEE through emp_dept and we know the department manager (dept_mgr) which is attached to EMPLOYEE through emp_nbr </p>\n\n<p><img src=\"https://i.stack.imgur.com/Ni6no.png\" alt=\"image\"></p>\n"
+        },
+        {
+            "tags": [
+                "javascript"
+            ],
+            "owner": {
+                "reputation": 14,
+                "user_id": 7693078,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/eec2c3a8a02708aa6a8837a3c71c3aba?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Isaac",
+                "link": "https://stackoverflow.com/users/7693078/isaac"
+            },
+            "is_answered": false,
+            "view_count": 28,
+            "closed_date": 1524167263,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524168428,
+            "creation_date": 1524166613,
+            "last_edit_date": 1524167663,
+            "question_id": 49928958,
+            "body_markdown": "I&#39;m trying to figure out, how can I generate non-repetitive random numbers.\r\n Here is my code:\r\n\r\n    \r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    const numItemsToGenerate = 21; \r\n        const numImagesAvailable = 161;\r\n\r\n        for (let i=0;i&lt;numItemsToGenerate;i++){\r\n              let randomImageIndex = Math.floor(Math.random() * numImagesAvailable);\r\n              console.log(randomImageIndex);\r\n            }\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49928958/generate-non-repetitive-random-numbers",
+            "closed_reason": "duplicate",
+            "title": "Generate non-repetitive random numbers",
+            "body": "<p>I'm trying to figure out, how can I generate non-repetitive random numbers.\n Here is my code:</p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-js lang-js prettyprint-override\"><code>const numItemsToGenerate = 21;\r\nconst numImagesAvailable = 161;\r\n\r\nfor (let i = 0; i &lt; numItemsToGenerate; i++) {\r\n  let randomImageIndex = Math.floor(Math.random() * numImagesAvailable);\r\n  console.log(randomImageIndex);\r\n}</code></pre>\r\n</div>\r\n</div>\r\n</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "oop",
+                "javascript-objects",
+                "nativescript"
+            ],
+            "owner": {
+                "reputation": 35,
+                "user_id": 6381089,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/137224acd9024a679f719a0cec594453?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Stefan",
+                "link": "https://stackoverflow.com/users/6381089/stefan"
+            },
+            "is_answered": true,
+            "view_count": 49,
+            "bounty_amount": 50,
+            "bounty_closes_date": 1524758096,
+            "accepted_answer_id": 49929383,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524168428,
+            "creation_date": 1523972119,
+            "question_id": 49879591,
+            "body_markdown": "I am trying to move some common logic from multiple of my models in NativeScript to one seperate file that I want to require in my models. I don&#39;t have any Javascript experience and wanted to make a class like you&#39;d do in Java however this appearantly doesn&#39;t work.\r\n\r\nCan anybody explain what goes wrong and how I&#39;d have to go about this?\r\n\r\nThis is what I currently have (example code):\r\n\r\nCommonLogic.js\r\n\r\n    function Person(lastName, firstName)\r\n    {\r\n       this.firstName = firstName;\r\n       this.lastName = lastName;\r\n    }\r\n\r\nModel1.js \r\n\r\n    var Person = require(&quot;~/CommonLogic&quot;);\r\n    \r\n    exports.loaded = function(args) {  \r\n        var person = new Person(&#39;Clouseau&#39;, &#39;Jacques&#39;);\r\n        console.log(&#39;The person is &#39; + person);\r\n    }\r\n\r\nError:\r\n\r\n    System.err: Calling js method onCreateView failed\r\n    System.err:\r\n    System.err: TypeError: Person is not a constructor",
+            "link": "https://stackoverflow.com/questions/49879591/javascript-class-function-in-nativescript",
+            "title": "Javascript class/ function in Nativescript",
+            "body": "<p>I am trying to move some common logic from multiple of my models in NativeScript to one seperate file that I want to require in my models. I don't have any Javascript experience and wanted to make a class like you'd do in Java however this appearantly doesn't work.</p>\n\n<p>Can anybody explain what goes wrong and how I'd have to go about this?</p>\n\n<p>This is what I currently have (example code):</p>\n\n<p>CommonLogic.js</p>\n\n<pre><code>function Person(lastName, firstName)\n{\n   this.firstName = firstName;\n   this.lastName = lastName;\n}\n</code></pre>\n\n<p>Model1.js </p>\n\n<pre><code>var Person = require(\"~/CommonLogic\");\n\nexports.loaded = function(args) {  \n    var person = new Person('Clouseau', 'Jacques');\n    console.log('The person is ' + person);\n}\n</code></pre>\n\n<p>Error:</p>\n\n<pre><code>System.err: Calling js method onCreateView failed\nSystem.err:\nSystem.err: TypeError: Person is not a constructor\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "oauth-2.0",
+                "jwt",
+                "openid"
+            ],
+            "owner": {
+                "reputation": 23,
+                "user_id": 3580586,
+                "user_type": "registered",
+                "accept_rate": 40,
+                "profile_image": "https://www.gravatar.com/avatar/c3d915b3ebc101c5f95713023117d3e5?s=128&d=identicon&r=PG&f=1",
+                "display_name": "lyzz",
+                "link": "https://stackoverflow.com/users/3580586/lyzz"
+            },
+            "is_answered": false,
+            "view_count": 29,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524168424,
+            "creation_date": 1524090201,
+            "last_edit_date": 1524168424,
+            "question_id": 49909894,
+            "body_markdown": "As I was working on a blog series about OpenID connect with Angular I was working with an Angular library for OpenID connect called angular-auth-oidc-client. This library is used for implementing OpenID connect implicit flow and does client validation of both the ID token and access token.\r\n\r\nMy questions are:\r\n\r\n 1. Since Angular apps lives in the browser, which contains javascript files that can be tampered with, by a mallicous user who has eg. sniffed another users access token, to disable ID token validation, **isn’t it pointless to do ID token validation in a browser**? I know the ID token is used by the client for verifying authentication, **but does it provide any security when this is done in the browser**?\r\n\r\n2. Would it be a better implementation **to not validate the ID token in the browser and instead use a front End server for validating ID token** before requesting a resource API?\r\n\r\nMy question is NOT about the specification of OpenID connect, but about using a browser for id token validation. I have created a blog post [here](https://blog.christianlydemann.com/post/openid-connect-part1-openid-connect-overview/), where im explaining OpenID connect on a practical level.\r\n\r\nThank you.\r\n",
+            "link": "https://stackoverflow.com/questions/49909894/should-openid-connect-id-tokens-be-validated-in-the-browser",
+            "title": "Should OpenID connect ID tokens be validated in the browser?",
+            "body": "<p>As I was working on a blog series about OpenID connect with Angular I was working with an Angular library for OpenID connect called angular-auth-oidc-client. This library is used for implementing OpenID connect implicit flow and does client validation of both the ID token and access token.</p>\n\n<p>My questions are:</p>\n\n<ol>\n<li><p>Since Angular apps lives in the browser, which contains javascript files that can be tampered with, by a mallicous user who has eg. sniffed another users access token, to disable ID token validation, <strong>isn’t it pointless to do ID token validation in a browser</strong>? I know the ID token is used by the client for verifying authentication, <strong>but does it provide any security when this is done in the browser</strong>?</p>\n\n<ol start=\"2\">\n<li>Would it be a better implementation <strong>to not validate the ID token in the browser and instead use a front End server for validating ID token</strong> before requesting a resource API?</li>\n</ol></li>\n</ol>\n\n<p>My question is NOT about the specification of OpenID connect, but about using a browser for id token validation. I have created a blog post <a href=\"https://blog.christianlydemann.com/post/openid-connect-part1-openid-connect-overview/\" rel=\"nofollow noreferrer\">here</a>, where im explaining OpenID connect on a practical level.</p>\n\n<p>Thank you.</p>\n"
+        },
+        {
+            "tags": [
+                "swift",
+                "runtime",
+                "foundation"
+            ],
+            "owner": {
+                "reputation": 1758,
+                "user_id": 1328838,
+                "user_type": "registered",
+                "accept_rate": 72,
+                "profile_image": "https://www.gravatar.com/avatar/2f0f5c709b341741b330175b68a6b7c4?s=128&d=identicon&r=PG",
+                "display_name": "Paul T.",
+                "link": "https://stackoverflow.com/users/1328838/paul-t"
+            },
+            "is_answered": true,
+            "view_count": 51,
+            "accepted_answer_id": 49906637,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524168404,
+            "creation_date": 1511801981,
+            "last_edit_date": 1511802412,
+            "question_id": 47516163,
+            "body_markdown": "I have a generic response serializer:\r\n\r\n    class ResponseArraySerializer&lt;Element: Ball&gt; {\r\n    \r\n    }\r\n\r\nIs there any way to convert that to string, so I will store that string in Core Data database, and then to convert back? Typically I use it like this:\r\n\r\n    let redBallSerializer = ResponseArraySerializer&lt;RedBall&gt;()\r\n    requestInfo.responseSerializer = redBallSerializer\r\n\r\nSo I what to do the same after initialization from a string (so I can initialize the object when I have only string description of the class). Is it possible?",
+            "link": "https://stackoverflow.com/questions/47516163/convert-from-type-to-string-and-vice-versa-in-swift",
+            "title": "Convert from Type to String and vice versa in swift",
+            "body": "<p>I have a generic response serializer:</p>\n\n<pre><code>class ResponseArraySerializer&lt;Element: Ball&gt; {\n\n}\n</code></pre>\n\n<p>Is there any way to convert that to string, so I will store that string in Core Data database, and then to convert back? Typically I use it like this:</p>\n\n<pre><code>let redBallSerializer = ResponseArraySerializer&lt;RedBall&gt;()\nrequestInfo.responseSerializer = redBallSerializer\n</code></pre>\n\n<p>So I what to do the same after initialization from a string (so I can initialize the object when I have only string description of the class). Is it possible?</p>\n"
+        },
+        {
+            "tags": [
+                "json",
+                "mongodb",
+                "mongodb-update"
+            ],
+            "owner": {
+                "reputation": 31,
+                "user_id": 7467115,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://i.stack.imgur.com/AMRhS.jpg?s=128&g=1",
+                "display_name": "Roc47HS",
+                "link": "https://stackoverflow.com/users/7467115/roc47hs"
+            },
+            "is_answered": true,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524168402,
+            "creation_date": 1524166854,
+            "last_edit_date": 1524168402,
+            "question_id": 49929010,
+            "body_markdown": "I need to update a document by inserting a bid into the Bid array which is part of Bid. An example document is below:\r\n\r\n    {\r\n\t  &quot;_id&quot; : &quot;1044300051&quot;,\r\n\t  &quot;Bids&quot; : {\r\n\t\t&quot;Bid&quot; : [\r\n\t\t\t{\r\n\t\t\t\t&quot;Bidder&quot; : {\r\n\t\t\t\t\t&quot;_id&quot; : &quot;pickford25&quot;,\r\n\t\t\t\t\t&quot;_Rating&quot; : 255,\r\n\t\t\t\t\t&quot;Location&quot; : &quot;ANIME PARADISE&quot;,\r\n\t\t\t\t\t&quot;Country&quot; : &quot;USA&quot;\r\n\t\t\t\t},\r\n\t\t\t\t&quot;Time&quot; : &quot;Dec-07-01 15:02:54&quot;,\r\n\t\t\t\t&quot;Amount&quot; : 1.12\r\n\t\t\t},\r\n\t\t\t{\r\n\t\t\t\t&quot;Bidder&quot; : {\r\n\t\t\t\t\t&quot;_id&quot; : &quot;arlnwtkwsk@aol.com&quot;,\r\n\t\t\t\t\t&quot;_Rating&quot; : 61,\r\n\t\t\t\t\t&quot;Location&quot; : &quot;ARCADE, NEW YORK&quot;,\r\n\t\t\t\t\t&quot;Country&quot; : &quot;USA&quot;\r\n\t\t\t\t},\r\n\t\t\t\t&quot;Time&quot; : &quot;Dec-09-01 15:02:54&quot;,\r\n\t\t\t\t&quot;Amount&quot; : 1.25\r\n\t\t\t}\r\n\t\t]\r\n\t  }\r\n    }\r\n\r\nHere are some of the queries I have attempted:\r\n\r\n    db.items.update({_id: &quot;1678348584&quot;}, {$set: {Bids: &quot;Bid[]&quot;}},{$push: {&quot;Bids.Bid&quot;: {&quot;Amount&quot;:1000}}});\r\n    db.items.update({_id: &quot;1678348584&quot;}, {$push: {&quot;Bids&quot;: [{&quot;Amount&quot;:1000}]}});\r\n\r\nThe specific _id I am trying to update in the above examples has &quot;Bids&quot; set to null initially",
+            "link": "https://stackoverflow.com/questions/49929010/mongodb-insert-object-into-an-array-which-is-inside-another-attribute",
+            "title": "Mongodb insert object into an array which is inside another attribute",
+            "body": "<p>I need to update a document by inserting a bid into the Bid array which is part of Bid. An example document is below:</p>\n\n<pre><code>{\n  \"_id\" : \"1044300051\",\n  \"Bids\" : {\n    \"Bid\" : [\n        {\n            \"Bidder\" : {\n                \"_id\" : \"pickford25\",\n                \"_Rating\" : 255,\n                \"Location\" : \"ANIME PARADISE\",\n                \"Country\" : \"USA\"\n            },\n            \"Time\" : \"Dec-07-01 15:02:54\",\n            \"Amount\" : 1.12\n        },\n        {\n            \"Bidder\" : {\n                \"_id\" : \"arlnwtkwsk@aol.com\",\n                \"_Rating\" : 61,\n                \"Location\" : \"ARCADE, NEW YORK\",\n                \"Country\" : \"USA\"\n            },\n            \"Time\" : \"Dec-09-01 15:02:54\",\n            \"Amount\" : 1.25\n        }\n    ]\n  }\n}\n</code></pre>\n\n<p>Here are some of the queries I have attempted:</p>\n\n<pre><code>db.items.update({_id: \"1678348584\"}, {$set: {Bids: \"Bid[]\"}},{$push: {\"Bids.Bid\": {\"Amount\":1000}}});\ndb.items.update({_id: \"1678348584\"}, {$push: {\"Bids\": [{\"Amount\":1000}]}});\n</code></pre>\n\n<p>The specific _id I am trying to update in the above examples has \"Bids\" set to null initially</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "android",
+                "web-applications",
+                "application-server"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 1762438,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9c4abbb9f3b3c8ebf81ea1d440d87aab?s=128&d=identicon&r=PG",
+                "display_name": "user1762438",
+                "link": "https://stackoverflow.com/users/1762438/user1762438"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "closed_date": 1524162450,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1524168397,
+            "creation_date": 1524160583,
+            "last_edit_date": 1524168397,
+            "question_id": 49927350,
+            "body_markdown": "We have a JavaScript file on the server. Its target is to deliver standard text to the android app. Each user should send his own requests for the server &amp; get a text response from the server according to his own request.\r\n\r\nWhat is the best way for sending text from the JavaScript file (sitting on the server) to the android app in terms of battery usage, efficiency (fastest way of getting the massage) &amp; other mobile considerations?",
+            "link": "https://stackoverflow.com/questions/49927350/what-is-the-best-way-for-sending-text-from-a-server-via-javascript-to-an-android",
+            "closed_reason": "too broad",
+            "title": "what is the best way for sending text from a server via javascript to an android app?",
+            "body": "<p>We have a JavaScript file on the server. Its target is to deliver standard text to the android app. Each user should send his own requests for the server &amp; get a text response from the server according to his own request.</p>\n\n<p>What is the best way for sending text from the JavaScript file (sitting on the server) to the android app in terms of battery usage, efficiency (fastest way of getting the massage) &amp; other mobile considerations?</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                ".net",
+                "sql-server",
+                "winforms"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9441259,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-M0UxJlPTE5E/AAAAAAAAAAI/AAAAAAAADT0/a76eTEa4k_A/photo.jpg?sz=128",
+                "display_name": "Arslan Ali",
+                "link": "https://stackoverflow.com/users/9441259/arslan-ali"
+            },
+            "is_answered": false,
+            "view_count": 35,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524168395,
+            "creation_date": 1524164737,
+            "last_edit_date": 1524166925,
+            "question_id": 49928473,
+            "body_markdown": "I currently have one table in SQL Server 2017 Express, I am using SSMS, can anyone explain how to relate my tables to other tables like orders, products, or you can have an unrelated table in the database? \r\n\r\nLike a separate login table with no relation just to authenticate my Windows Forms application?",
+            "link": "https://stackoverflow.com/questions/49928473/how-can-i-relate-my-login-tables-to-other-tables-in-my-sql-server-database",
+            "title": "How can I relate my login tables to other tables in my SQL Server database?",
+            "body": "<p>I currently have one table in SQL Server 2017 Express, I am using SSMS, can anyone explain how to relate my tables to other tables like orders, products, or you can have an unrelated table in the database? </p>\n\n<p>Like a separate login table with no relation just to authenticate my Windows Forms application?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "keras",
+                "convolutional-neural-network"
+            ],
+            "owner": {
+                "reputation": 857,
+                "user_id": 4406532,
+                "user_type": "registered",
+                "accept_rate": 95,
+                "profile_image": "https://www.gravatar.com/avatar/d8e5fa94663fafdef7f93fcac9aedb0a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Avi",
+                "link": "https://stackoverflow.com/users/4406532/avi"
+            },
+            "is_answered": false,
+            "view_count": 33,
+            "answer_count": 0,
+            "score": 2,
+            "last_activity_date": 1524168378,
+            "creation_date": 1523598854,
+            "last_edit_date": 1524168378,
+            "question_id": 49810175,
+            "body_markdown": "I have a Convolution Network (CNN) as followed. I would like to add  visualization for every layer activation layer as in the [![imageere][1]][1]\r\n\r\nThere are several layer of the CNN that are doing the required task. I only want to probe the output of each layer.\r\n\r\n    def get_model():\r\n    \tinput_shape = (IMG_MODE, img_rows, img_cols)\r\n    \tmodel = Sequential()\r\n    \r\n    \tmodel.add(ZeroPadding2D(padding=(1,1), input_shape=input_shape))\r\n    \tmodel.add(Conv2D(32, (3, 3), padding = &#39;valid&#39;))\r\n    \tmodel.add(LeakyReLU(alpha=0.01))\r\n    \tmodel.add(MaxPooling2D(pool_size=pool_size2))\r\n    \r\n    \t....\r\n    \r\n    \tmodel.add(Dense(nb_classes))\r\n    \tmodel.add(Activation(&#39;softmax&#39;))\r\n    \r\n    \tprint(model.summary())\r\n    \treturn model\r\n\r\nThe code output: \r\n\r\n    _________________________________________________________________\r\n \r\n\r\n       Layer (type)                 Output Shape              Param #   \r\n        =================================================================\r\n        zero_padding2d_1 (ZeroPaddin (None, 1, 114, 94)        0         \r\n        _________________________________________________________________\r\n        conv2d_1 (Conv2D)            (None, 32, 112, 92)       320       \r\n        _________________________________________________________________\r\n        leaky_re_lu_1 (LeakyReLU)    (None, 32, 112, 92)       0         \r\n        _________________________________________________________________\r\n        max_pooling2d_1 (MaxPooling2 (None, 32, 56, 46)        0         \r\n        _________________________________________________________________\r\n        ....        \r\n        _________________________________________________________________\r\n        dense_1 (Dense)              (None, 1024)              8258560   \r\n        _________________________________________________________________\r\n        leaky_re_lu_4 (LeakyReLU)    (None, 1024)              0         \r\n        _________________________________________________________________\r\n        dropout_1 (Dropout)          (None, 1024)              0         \r\n        _________________________________________________________________\r\n        dense_2 (Dense)              (None, 40)                41000     \r\n        _________________________________________________________________\r\n        activation_1 (Activation)    (None, 40)                0         \r\n        =================================================================\r\n        Total params: 8,392,232\r\n        Trainable params: 8,392,232\r\n        Non-trainable params: 0\r\n        _________________________________________________________________\r\n        None\r\n        Train on 320 samples, validate on 80 samples\r\n        Epoch 1/20\r\n         - 18s - loss: 3.7036 - acc: 0.0187 - val_loss: 3.6824 - val_acc: 0.0250\r\n        Epoch 2/20\r\n         - 17s - loss: 3.6903 - acc: 0.0250 - val_loss: 3.6786 - val_acc: 0.0250\r\n        ...\r\n        Epoch 20/20\r\n         - 17s - loss: 0.2067 - acc: 0.9312 - val_loss: 0.9892 - val_acc: 0.7625\r\n        Test score: 0.9891735315322876\r\n        Test accuracy: 0.7625\r\n        \r\n\r\nI tried to use the following code to do my task:\r\n\r\n   \r\n\r\n     import matplotlib.pyplot as plt\r\n        from keras import models\r\n        layer_outputs = [layer.output for layer in model.layers[:8]]\r\n        activation_model = models.Model(inputs=model.input, outputs=layer_outputs)\r\n        \r\n        activations = activation_model.predict(img_tensor)\r\n        \r\n        import matplotlib.pyplot as plt\r\n        plt.matshow(first_layer_activation[0, :, :, 7], cmap=&#39;viridis&#39;)\r\n        layer_names = []\r\n        for layer in model.layers[:8]:\r\n        layer_names.append(layer.name)\r\n        images_per_row = 16\r\n        for layer_name, layer_activation in zip(layer_names, activations):\r\n        n_features = layer_activation.shape[-1]\r\n        size = layer_activation.shape[1]\r\n        n_cols = n_features // images_per_row\r\n        display_grid = np.zeros((size * n_cols, images_per_row * size))\r\n        for col in range(n_cols):\r\n        for row in range(images_per_row):\r\n        channel_image = layer_activation[0,\r\n        :, :,\r\n        col * images_per_row + row]\r\n        channel_image -= channel_image.mean()\r\n        channel_image /= channel_image.std()\r\n        channel_image *= 64\r\n        channel_image += 128\r\n        channel_image = np.clip(channel_image, 0, 255).astype(&#39;uint8&#39;)\r\n        display_grid[col * size : (col + 1) * size,\r\n        row * size : (row + 1) * size] = channel_image\r\n        scale = 1. / size\r\n        plt.figure(figsize=(scale * display_grid.shape[1],\r\n        scale * display_grid.shape[0]))\r\n        plt.title(layer_name)\r\n        plt.grid(False)\r\n        plt.imshow(display_grid, aspect=&#39;auto&#39;, cmap=&#39;viridis&#39;)\r\n\t\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/Yz9XZ.gif",
+            "link": "https://stackoverflow.com/questions/49810175/adding-visualization-for-every-layer-activation-layer-of-convolution-network-k",
+            "title": "Adding visualization for every layer activation layer of Convolution Network - Keras",
+            "body": "<p>I have a Convolution Network (CNN) as followed. I would like to add  visualization for every layer activation layer as in the <a href=\"https://i.stack.imgur.com/Yz9XZ.gif\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/Yz9XZ.gif\" alt=\"imageere\"></a></p>\n\n<p>There are several layer of the CNN that are doing the required task. I only want to probe the output of each layer.</p>\n\n<pre><code>def get_model():\n    input_shape = (IMG_MODE, img_rows, img_cols)\n    model = Sequential()\n\n    model.add(ZeroPadding2D(padding=(1,1), input_shape=input_shape))\n    model.add(Conv2D(32, (3, 3), padding = 'valid'))\n    model.add(LeakyReLU(alpha=0.01))\n    model.add(MaxPooling2D(pool_size=pool_size2))\n\n    ....\n\n    model.add(Dense(nb_classes))\n    model.add(Activation('softmax'))\n\n    print(model.summary())\n    return model\n</code></pre>\n\n<p>The code output: </p>\n\n<pre><code>_________________________________________________________________\n\n\n   Layer (type)                 Output Shape              Param #   \n    =================================================================\n    zero_padding2d_1 (ZeroPaddin (None, 1, 114, 94)        0         \n    _________________________________________________________________\n    conv2d_1 (Conv2D)            (None, 32, 112, 92)       320       \n    _________________________________________________________________\n    leaky_re_lu_1 (LeakyReLU)    (None, 32, 112, 92)       0         \n    _________________________________________________________________\n    max_pooling2d_1 (MaxPooling2 (None, 32, 56, 46)        0         \n    _________________________________________________________________\n    ....        \n    _________________________________________________________________\n    dense_1 (Dense)              (None, 1024)              8258560   \n    _________________________________________________________________\n    leaky_re_lu_4 (LeakyReLU)    (None, 1024)              0         \n    _________________________________________________________________\n    dropout_1 (Dropout)          (None, 1024)              0         \n    _________________________________________________________________\n    dense_2 (Dense)              (None, 40)                41000     \n    _________________________________________________________________\n    activation_1 (Activation)    (None, 40)                0         \n    =================================================================\n    Total params: 8,392,232\n    Trainable params: 8,392,232\n    Non-trainable params: 0\n    _________________________________________________________________\n    None\n    Train on 320 samples, validate on 80 samples\n    Epoch 1/20\n     - 18s - loss: 3.7036 - acc: 0.0187 - val_loss: 3.6824 - val_acc: 0.0250\n    Epoch 2/20\n     - 17s - loss: 3.6903 - acc: 0.0250 - val_loss: 3.6786 - val_acc: 0.0250\n    ...\n    Epoch 20/20\n     - 17s - loss: 0.2067 - acc: 0.9312 - val_loss: 0.9892 - val_acc: 0.7625\n    Test score: 0.9891735315322876\n    Test accuracy: 0.7625\n</code></pre>\n\n<p>I tried to use the following code to do my task:</p>\n\n<pre><code> import matplotlib.pyplot as plt\n    from keras import models\n    layer_outputs = [layer.output for layer in model.layers[:8]]\n    activation_model = models.Model(inputs=model.input, outputs=layer_outputs)\n\n    activations = activation_model.predict(img_tensor)\n\n    import matplotlib.pyplot as plt\n    plt.matshow(first_layer_activation[0, :, :, 7], cmap='viridis')\n    layer_names = []\n    for layer in model.layers[:8]:\n    layer_names.append(layer.name)\n    images_per_row = 16\n    for layer_name, layer_activation in zip(layer_names, activations):\n    n_features = layer_activation.shape[-1]\n    size = layer_activation.shape[1]\n    n_cols = n_features // images_per_row\n    display_grid = np.zeros((size * n_cols, images_per_row * size))\n    for col in range(n_cols):\n    for row in range(images_per_row):\n    channel_image = layer_activation[0,\n    :, :,\n    col * images_per_row + row]\n    channel_image -= channel_image.mean()\n    channel_image /= channel_image.std()\n    channel_image *= 64\n    channel_image += 128\n    channel_image = np.clip(channel_image, 0, 255).astype('uint8')\n    display_grid[col * size : (col + 1) * size,\n    row * size : (row + 1) * size] = channel_image\n    scale = 1. / size\n    plt.figure(figsize=(scale * display_grid.shape[1],\n    scale * display_grid.shape[0]))\n    plt.title(layer_name)\n    plt.grid(False)\n    plt.imshow(display_grid, aspect='auto', cmap='viridis')\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pillow"
+            ],
+            "owner": {
+                "reputation": 397,
+                "user_id": 3541631,
+                "user_type": "registered",
+                "accept_rate": 90,
+                "profile_image": "https://www.gravatar.com/avatar/b87850e77cc19ea9c2dd61efbee3032e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3541631",
+                "link": "https://stackoverflow.com/users/3541631/user3541631"
+            },
+            "is_answered": true,
+            "view_count": 15,
+            "accepted_answer_id": 49929373,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524168372,
+            "creation_date": 1524075267,
+            "last_edit_date": 1524075476,
+            "question_id": 49906414,
+            "body_markdown": "I need to crop something using Pillow, by keeping the ratio, and max_height or max_width.\r\n\r\nSome images can have a bigger width or a bigger height. \r\n\r\nI tried:\r\n\r\n            image_clone = image.copy()\r\n            width_percent = (size[&#39;width&#39;] / float(image_clone.size[0]))\r\n            height = int((float(image_clone.size[1]) * float(width_percent)))\r\n            image_clone.thumbnail((size[&#39;width&#39;], height), Image.LANCZOS)\r\n\r\nDoesn&#39;t work well for images that have a bigger width because the height will be small, and the image not very visible.",
+            "link": "https://stackoverflow.com/questions/49906414/pillow-crop-images-keeping-the-ratio-having-a-max-width-and-max-height",
+            "title": "Pillow crop images keeping the ratio having a max width and max height",
+            "body": "<p>I need to crop something using Pillow, by keeping the ratio, and max_height or max_width.</p>\n\n<p>Some images can have a bigger width or a bigger height. </p>\n\n<p>I tried:</p>\n\n<pre><code>        image_clone = image.copy()\n        width_percent = (size['width'] / float(image_clone.size[0]))\n        height = int((float(image_clone.size[1]) * float(width_percent)))\n        image_clone.thumbnail((size['width'], height), Image.LANCZOS)\n</code></pre>\n\n<p>Doesn't work well for images that have a bigger width because the height will be small, and the image not very visible.</p>\n"
+        },
+        {
+            "tags": [
+                "batch-file",
+                "imagemagick",
+                "image-resizing",
+                "mogrify"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 4565244,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2194ae12a40c1d962e0761589d4fb666?s=128&d=identicon&r=PG&f=1",
+                "display_name": "JamesA",
+                "link": "https://stackoverflow.com/users/4565244/jamesa"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524168368,
+            "creation_date": 1524159832,
+            "question_id": 49927155,
+            "body_markdown": "I&#39;m trying to create a resized copy of a very large number of photos while retaining the directory structure that they came from. Here&#39;s what I have so far:\r\n\r\n    cd /d J:\\Photos_test\r\n    for /r /d %%a in (*) do magick mogrify -path &quot;J:\\Resized_test&quot; -resize 1920x1080^&gt; &quot;%%~a\\*.jpg&quot;\r\n\r\nThis takes any JPGs found in the subdirectories of `J:\\Photos_test` and creates a resized copy in `J:\\Resized_test`.\r\n\r\nWhat I want to do is recreate the source directories while doing the resize operation. So, `J:\\Photos_test\\2018-04-19\\133_PANA\\P12345.JPG` would be resized and placed in `J:\\Resized_test\\2018-04-19\\133_PANA\\P12345.JPG`\r\n\r\nHow can I do this?",
+            "link": "https://stackoverflow.com/questions/49927155/trying-to-use-mogrify-to-batch-resize-jpgs-while-retaining-cloning-original-dire",
+            "title": "Trying to use Mogrify to batch resize JPGs while retaining/cloning original directories",
+            "body": "<p>I'm trying to create a resized copy of a very large number of photos while retaining the directory structure that they came from. Here's what I have so far:</p>\n\n<pre><code>cd /d J:\\Photos_test\nfor /r /d %%a in (*) do magick mogrify -path \"J:\\Resized_test\" -resize 1920x1080^&gt; \"%%~a\\*.jpg\"\n</code></pre>\n\n<p>This takes any JPGs found in the subdirectories of <code>J:\\Photos_test</code> and creates a resized copy in <code>J:\\Resized_test</code>.</p>\n\n<p>What I want to do is recreate the source directories while doing the resize operation. So, <code>J:\\Photos_test\\2018-04-19\\133_PANA\\P12345.JPG</code> would be resized and placed in <code>J:\\Resized_test\\2018-04-19\\133_PANA\\P12345.JPG</code></p>\n\n<p>How can I do this?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html",
+                "dom",
+                "styling"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9590505,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-pPbcc54ij_s/AAAAAAAAAAI/AAAAAAAAADA/JbcpFJZCo1Q/photo.jpg?sz=128",
+                "display_name": "Jonathan Sexton",
+                "link": "https://stackoverflow.com/users/9590505/jonathan-sexton"
+            },
+            "is_answered": true,
+            "view_count": 32,
+            "closed_date": 1524168752,
+            "accepted_answer_id": 49929337,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1524168365,
+            "creation_date": 1524167797,
+            "question_id": 49929233,
+            "body_markdown": "Apologies if this has been answered, I searched for about 30 mins and did not find the answer I was looking for.\r\n\r\nI want to select multiple HTML divs into one variable and then apply styling to them upon an event.  I&#39;ve tried setting variables like `boxes[i].style.backgroundColor = pickedColor;` but that throws an error of `i is not defined` and then I tried the code below and neither seem to work.\r\n  \r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    const boxes = document.querySelectorAll(&quot;.box&quot;);\r\n    for (i in boxes) {\r\n        boxes[i].style.backgroundColor = &quot;lightblue&quot;;\r\n    }\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;div class=&quot;header box&quot;&gt;&lt;/div&gt;\r\n    &lt;div class=&quot;footer box&quot;&gt;&lt;/div&gt;\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\nAny ideas, articles, or information will be greatly appreciated.  Thank you all very much and happy coding!",
+            "link": "https://stackoverflow.com/questions/49929233/applying-style-to-multiple-divs-in-javascript",
+            "closed_reason": "duplicate",
+            "title": "Applying Style to Multiple Div&#39;s in JavaScript",
+            "body": "<p>Apologies if this has been answered, I searched for about 30 mins and did not find the answer I was looking for.</p>\n\n<p>I want to select multiple HTML divs into one variable and then apply styling to them upon an event.  I've tried setting variables like <code>boxes[i].style.backgroundColor = pickedColor;</code> but that throws an error of <code>i is not defined</code> and then I tried the code below and neither seem to work.</p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-js lang-js prettyprint-override\"><code>const boxes = document.querySelectorAll(\".box\");\r\nfor (i in boxes) {\r\n    boxes[i].style.backgroundColor = \"lightblue\";\r\n}</code></pre>\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>&lt;div class=\"header box\"&gt;&lt;/div&gt;\r\n&lt;div class=\"footer box\"&gt;&lt;/div&gt;</code></pre>\r\n</div>\r\n</div>\r\n</p>\n\n<p>Any ideas, articles, or information will be greatly appreciated.  Thank you all very much and happy coding!</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "java-8",
+                "java-time"
+            ],
+            "owner": {
+                "reputation": 991,
+                "user_id": 3509494,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://i.stack.imgur.com/C369q.jpg?s=128&g=1",
+                "display_name": "Kavinda Gehan",
+                "link": "https://stackoverflow.com/users/3509494/kavinda-gehan"
+            },
+            "is_answered": true,
+            "view_count": 185833,
+            "accepted_answer_id": 22929420,
+            "answer_count": 10,
+            "score": 193,
+            "last_activity_date": 1524168350,
+            "creation_date": 1396938586,
+            "last_edit_date": 1468942299,
+            "question_id": 22929237,
+            "body_markdown": "I want to convert [`java.time.LocalDate`][1] into [`java.util.Date`][2] type. Because I want to set the date into `JDateChooser`. Or is there any date chooser that supports [`java.time`][3] dates?\r\n\r\n\r\n  [1]: http://docs.oracle.com/javase/8/docs/api/java/time/LocalDate.html\r\n  [2]: http://docs.oracle.com/javase/8/docs/api/java/util/Date.html\r\n  [3]: http://docs.oracle.com/javase/8/docs/api/java/time/package-summary.html",
+            "link": "https://stackoverflow.com/questions/22929237/convert-java-time-localdate-into-java-util-date-type",
+            "title": "Convert java.time.LocalDate into java.util.Date type",
+            "body": "<p>I want to convert <a href=\"http://docs.oracle.com/javase/8/docs/api/java/time/LocalDate.html\"><code>java.time.LocalDate</code></a> into <a href=\"http://docs.oracle.com/javase/8/docs/api/java/util/Date.html\"><code>java.util.Date</code></a> type. Because I want to set the date into <code>JDateChooser</code>. Or is there any date chooser that supports <a href=\"http://docs.oracle.com/javase/8/docs/api/java/time/package-summary.html\"><code>java.time</code></a> dates?</p>\n"
+        },
+        {
+            "tags": [
+                "wordpress",
+                "design-patterns",
+                "content-management-system",
+                "database-schema"
+            ],
+            "owner": {
+                "reputation": 685,
+                "user_id": 39939,
+                "user_type": "registered",
+                "accept_rate": 84,
+                "profile_image": "https://i.stack.imgur.com/XEYik.jpg?s=128&g=1",
+                "display_name": "yigal",
+                "link": "https://stackoverflow.com/users/39939/yigal"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524168342,
+            "creation_date": 1524154379,
+            "last_edit_date": 1524168342,
+            "question_id": 49925694,
+            "body_markdown": "Wordpress have a very nifty feature to add custom types: the field post_type in wp_posts. to create a new post type, plugin auothor needs to come up with a new value to put in the field and more tables that links to the wm_post table.\r\n\r\nthis feature repeats itself in many other cms systems.\r\n\r\nMy question is: is there a name for this design pattern?",
+            "link": "https://stackoverflow.com/questions/49925694/wordpress-design-pattern-name",
+            "title": "wordpress design pattern name",
+            "body": "<p>Wordpress have a very nifty feature to add custom types: the field post_type in wp_posts. to create a new post type, plugin auothor needs to come up with a new value to put in the field and more tables that links to the wm_post table.</p>\n\n<p>this feature repeats itself in many other cms systems.</p>\n\n<p>My question is: is there a name for this design pattern?</p>\n"
+        },
+        {
+            "tags": [
+                "pycharm",
+                "keyboard-shortcuts"
+            ],
+            "owner": {
+                "reputation": 467,
+                "user_id": 625919,
+                "user_type": "registered",
+                "accept_rate": 90,
+                "profile_image": "https://www.gravatar.com/avatar/cd3e4c5aa36a70cdf0482e972d180360?s=128&d=identicon&r=PG",
+                "display_name": "DharmaTurtle",
+                "link": "https://stackoverflow.com/users/625919/dharmaturtle"
+            },
+            "is_answered": true,
+            "view_count": 8195,
+            "accepted_answer_id": 20526855,
+            "answer_count": 1,
+            "score": 20,
+            "last_activity_date": 1524168340,
+            "creation_date": 1386733453,
+            "last_edit_date": 1524168340,
+            "question_id": 20510108,
+            "body_markdown": "Is it possible to select text vertically/in a column in PyCharm? You can do it in Visual Studio and Notepad++ by holding down alt+arrow keys.\r\n\r\nThe documentation describes how to do it with the mouse, but there&#39;s no mention of keyboard options.\r\n\r\nhttp://www.jetbrains.com/pycharm/webhelp/selecting-text-in-the-editor.html#d306531e464",
+            "link": "https://stackoverflow.com/questions/20510108/vertical-column-text-select-in-pycharm",
+            "title": "Vertical/Column text select in PyCharm?",
+            "body": "<p>Is it possible to select text vertically/in a column in PyCharm? You can do it in Visual Studio and Notepad++ by holding down alt+arrow keys.</p>\n\n<p>The documentation describes how to do it with the mouse, but there's no mention of keyboard options.</p>\n\n<p><a href=\"http://www.jetbrains.com/pycharm/webhelp/selecting-text-in-the-editor.html#d306531e464\" rel=\"noreferrer\">http://www.jetbrains.com/pycharm/webhelp/selecting-text-in-the-editor.html#d306531e464</a></p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "django",
+                "query-optimization"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 7537018,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-Dstp9_j2bHk/AAAAAAAAAAI/AAAAAAAAAAA/z5g6SIs5vR0/photo.jpg?sz=128",
+                "display_name": "Thomas Martres",
+                "link": "https://stackoverflow.com/users/7537018/thomas-martres"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1524168337,
+            "creation_date": 1524168045,
+            "last_edit_date": 1524168337,
+            "question_id": 49929305,
+            "body_markdown": "Using Django 11 with PostgreSQL db. I have the models as shown below. I&#39;m trying to prefetch a related queryset, using the `Prefetch` object and `prefetch_related` without assigning it to an attribute.\r\n\r\n    class Person(Model):\r\n        name = Charfield()\r\n    \r\n        @property\r\n        def latest_photo(self):\r\n            return self.photos.order_by(&#39;created_at&#39;)[-1]\r\n    \r\n    class Photo(Model):\r\n        person = ForeignKey(Person, related_name=&#39;photos&#39;)\r\n        created_at = models.DateTimeField(auto_now_add=True)\r\n    \r\n    \r\n    first_person = Person.objects.prefetch_related(Prefetch(&#39;photos&#39;, queryset=Photo.objects.order_by(&#39;created_at&#39;))).first()\r\n    \r\n    first_person.photos.order_by(&#39;created_at&#39;) # still hits the database\r\n    first_person.latest_photo # still hits the database\r\n\r\nIn the ideal case, calling `person.latest_photo` will not hit the database again. This will allow me to use that property safely in a list display. \r\nHowever, as noted in the comments in the code, the prefetched queryset is not being used when I try to get the latest photo. Why is that?\r\n\r\n**Note:** I&#39;ve tried using the `to_attr` argument of `Prefetch` and that seems to work, however, it&#39;s not ideal since it means I would have to edit `latest_photo` to try to use the prefetched attribute.",
+            "link": "https://stackoverflow.com/questions/49929305/prefetch-object-not-working-with-order-by-queryset",
+            "title": "Prefetch object not working with order_by queryset",
+            "body": "<p>Using Django 11 with PostgreSQL db. I have the models as shown below. I'm trying to prefetch a related queryset, using the <code>Prefetch</code> object and <code>prefetch_related</code> without assigning it to an attribute.</p>\n\n<pre><code>class Person(Model):\n    name = Charfield()\n\n    @property\n    def latest_photo(self):\n        return self.photos.order_by('created_at')[-1]\n\nclass Photo(Model):\n    person = ForeignKey(Person, related_name='photos')\n    created_at = models.DateTimeField(auto_now_add=True)\n\n\nfirst_person = Person.objects.prefetch_related(Prefetch('photos', queryset=Photo.objects.order_by('created_at'))).first()\n\nfirst_person.photos.order_by('created_at') # still hits the database\nfirst_person.latest_photo # still hits the database\n</code></pre>\n\n<p>In the ideal case, calling <code>person.latest_photo</code> will not hit the database again. This will allow me to use that property safely in a list display. \nHowever, as noted in the comments in the code, the prefetched queryset is not being used when I try to get the latest photo. Why is that?</p>\n\n<p><strong>Note:</strong> I've tried using the <code>to_attr</code> argument of <code>Prefetch</code> and that seems to work, however, it's not ideal since it means I would have to edit <code>latest_photo</code> to try to use the prefetched attribute.</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "crash"
+            ],
+            "owner": {
+                "reputation": 103,
+                "user_id": 6534005,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://i.stack.imgur.com/Lf7y8.jpg?s=128&g=1",
+                "display_name": "Mohammed Amin AIMEUR",
+                "link": "https://stackoverflow.com/users/6534005/mohammed-amin-aimeur"
+            },
+            "is_answered": true,
+            "view_count": 36,
+            "closed_date": 1511468320,
+            "accepted_answer_id": 47462264,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1524168336,
+            "creation_date": 1511464750,
+            "last_edit_date": 1524168336,
+            "question_id": 47462178,
+            "body_markdown": "My application works perfectly on my phone, but on other phones it crashes with the following errors:\r\n\r\n&gt; Caused by: java.lang.OutOfMemoryError: Failed to allocate a 132710412 byte allocation with 1048576 free bytes and 94MB until OOM\r\n\r\n**XML file:**\r\n\r\n    &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;\r\n    &lt;RelativeLayout xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;\r\n        xmlns:tools=&quot;http://schemas.android.com/tools&quot;\r\n        xmlns:app=&quot;http://schemas.android.com/apk/res-auto&quot;\r\n        android:id=&quot;@+id/activity_main&quot;\r\n        android:layout_width=&quot;match_parent&quot;\r\n        android:layout_height=&quot;match_parent&quot;\r\n        android:background=&quot;@drawable/background_splash&quot;\r\n        tools:context=&quot;molfix.dev.molfix.Activities.MainActivity&quot;&gt;\r\n    \r\n    \r\n        &lt;ImageView\r\n            android:layout_width=&quot;165dp&quot;\r\n            android:layout_height=&quot;30dp&quot;\r\n            android:src=&quot;#fff&quot;\r\n            android:layout_marginTop=&quot;155dp&quot;\r\n            android:layout_alignParentTop=&quot;true&quot;\r\n            android:layout_centerHorizontal=&quot;true&quot; /&gt;\r\n    \r\n        &lt;ImageView\r\n            android:layout_width=&quot;165dp&quot;\r\n            android:layout_height=&quot;30dp&quot;\r\n            android:src=&quot;#90d5fc&quot;\r\n            android:id=&quot;@+id/load_progress&quot;\r\n            android:layout_marginTop=&quot;155dp&quot;\r\n            android:layout_alignParentTop=&quot;true&quot;\r\n            android:layout_centerHorizontal=&quot;true&quot; /&gt;\r\n    \r\n        &lt;ImageView\r\n            android:layout_width=&quot;185dp&quot;\r\n            android:layout_height=&quot;50dp&quot;\r\n            android:src=&quot;@drawable/splash_test&quot;\r\n            android:id=&quot;@+id/load&quot;\r\n            android:layout_marginTop=&quot;145dp&quot;\r\n            android:layout_alignParentTop=&quot;true&quot;\r\n            android:layout_centerHorizontal=&quot;true&quot; /&gt;\r\n    \r\n        &lt;Button\r\n            android:layout_width=&quot;190dp&quot;\r\n            android:layout_height=&quot;70dp&quot;\r\n            android:id=&quot;@+id/home&quot;\r\n            android:layout_centerHorizontal=&quot;true&quot;\r\n            android:layout_alignParentBottom=&quot;true&quot;\r\n            android:visibility=&quot;invisible&quot;\r\n            android:layout_marginBottom=&quot;11dp&quot;/&gt;\r\n    \r\n    &lt;/RelativeLayout&gt;\r\n\r\n\r\nAny help on this?",
+            "link": "https://stackoverflow.com/questions/47462178/app-crashes-causse-of-outofmemory",
+            "closed_reason": "off-topic",
+            "title": "app crashes causse of outOfMemory",
+            "body": "<p>My application works perfectly on my phone, but on other phones it crashes with the following errors:</p>\n\n<blockquote>\n  <p>Caused by: java.lang.OutOfMemoryError: Failed to allocate a 132710412 byte allocation with 1048576 free bytes and 94MB until OOM</p>\n</blockquote>\n\n<p><strong>XML file:</strong></p>\n\n<pre><code>&lt;?xml version=\"1.0\" encoding=\"utf-8\"?&gt;\n&lt;RelativeLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    xmlns:app=\"http://schemas.android.com/apk/res-auto\"\n    android:id=\"@+id/activity_main\"\n    android:layout_width=\"match_parent\"\n    android:layout_height=\"match_parent\"\n    android:background=\"@drawable/background_splash\"\n    tools:context=\"molfix.dev.molfix.Activities.MainActivity\"&gt;\n\n\n    &lt;ImageView\n        android:layout_width=\"165dp\"\n        android:layout_height=\"30dp\"\n        android:src=\"#fff\"\n        android:layout_marginTop=\"155dp\"\n        android:layout_alignParentTop=\"true\"\n        android:layout_centerHorizontal=\"true\" /&gt;\n\n    &lt;ImageView\n        android:layout_width=\"165dp\"\n        android:layout_height=\"30dp\"\n        android:src=\"#90d5fc\"\n        android:id=\"@+id/load_progress\"\n        android:layout_marginTop=\"155dp\"\n        android:layout_alignParentTop=\"true\"\n        android:layout_centerHorizontal=\"true\" /&gt;\n\n    &lt;ImageView\n        android:layout_width=\"185dp\"\n        android:layout_height=\"50dp\"\n        android:src=\"@drawable/splash_test\"\n        android:id=\"@+id/load\"\n        android:layout_marginTop=\"145dp\"\n        android:layout_alignParentTop=\"true\"\n        android:layout_centerHorizontal=\"true\" /&gt;\n\n    &lt;Button\n        android:layout_width=\"190dp\"\n        android:layout_height=\"70dp\"\n        android:id=\"@+id/home\"\n        android:layout_centerHorizontal=\"true\"\n        android:layout_alignParentBottom=\"true\"\n        android:visibility=\"invisible\"\n        android:layout_marginBottom=\"11dp\"/&gt;\n\n&lt;/RelativeLayout&gt;\n</code></pre>\n\n<p>Any help on this?</p>\n"
+        },
+        {
+            "tags": [
+                "azure",
+                "azure-web-sites",
+                "azure-active-directory",
+                "azure-storage"
+            ],
+            "owner": {
+                "reputation": 238,
+                "user_id": 5334814,
+                "user_type": "registered",
+                "accept_rate": 12,
+                "profile_image": "https://lh5.googleusercontent.com/-LkXO5_6CS9s/AAAAAAAAAAI/AAAAAAAAAuU/gfEVTrogcLc/photo.jpg?sz=128",
+                "display_name": "Miroslav Siska",
+                "link": "https://stackoverflow.com/users/5334814/miroslav-siska"
+            },
+            "is_answered": false,
+            "view_count": 28,
+            "answer_count": 1,
+            "score": -3,
+            "last_activity_date": 1524168334,
+            "creation_date": 1522762082,
+            "question_id": 49631344,
+            "body_markdown": "Please, what about &quot;data residency&quot; in Azure? Need I for user data like phones, emails, credit cards information separated database located in specific country or region?\r\nAnd if yes, what e-commerce systems? Sample: If you have online shop in EU and customer’s from United States… Where can I store online shop customer’s data…? \r\nDo you have please some experience with this…?\r\n",
+            "link": "https://stackoverflow.com/questions/49631344/data-residency-cloud-applications-saas",
+            "title": "Data residency - Cloud applications (SaaS)",
+            "body": "<p>Please, what about \"data residency\" in Azure? Need I for user data like phones, emails, credit cards information separated database located in specific country or region?\nAnd if yes, what e-commerce systems? Sample: If you have online shop in EU and customer’s from United States… Where can I store online shop customer’s data…? \nDo you have please some experience with this…?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "mysql",
+                "eclipse",
+                "hibernate"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9670977,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "park shin ",
+                "link": "https://stackoverflow.com/users/9670977/park-shin"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1524168332,
+            "creation_date": 1524156303,
+            "last_edit_date": 1524163077,
+            "question_id": 49926225,
+            "body_markdown": "I want to connect Hibernate with MySQL. I tried all methods, but I&#39;m still getting this error. I&#39;m using Hibernate the version.\r\n\r\n    avr. 19, 2018 1:55:21 PM org.hibernate.Version logVersion\r\n    INFO: HHH000412: Hibernate Core {5.2.16.Final}\r\n    avr. 19, 2018 1:55:21 PM org.hibernate.cfg.Environment &lt;clinit&gt;\r\n    INFO: HHH000206: hibernate.properties not found\r\n    avr. 19, 2018 1:55:22 PM org.hibernate.boot.jaxb.internal.stax.LocalXmlResourceResolver resolveEntity\r\n    WARN: HHH90000012: Recognized obsolete hibernate namespace http://hibernate.sourceforge.net/hibernate-mapping. Use namespace http://www.hibernate.org/dtd/hibernate-mapping instead.  Support for obsolete DTD/XSD namespaces may be removed at any time.\r\n    avr. 19, 2018 1:55:24 PM org.hibernate.annotations.common.reflection.java.JavaReflectionManager &lt;clinit&gt;\r\n    INFO: HCANN000001: Hibernate Commons Annotations {5.0.1.Final}\r\n    avr. 19, 2018 1:55:24 PM org.hibernate.engine.jdbc.connections.internal.ConnectionProviderInitiator initiateService\r\n    WARN: HHH000181: No appropriate connection provider encountered, assuming application will be supplying connections\r\n    avr. 19, 2018 1:55:24 PM org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator initiateService\r\n    WARN: HHH000342: Could not obtain connection to query metadata : The application must supply JDBC connections\r\n    Exception in thread &quot;main&quot; org.hibernate.service.spi.ServiceException: Unable to create requested service [org.hibernate.engine.jdbc.env.spi.JdbcEnvironment]\r\n    \tat org.hibernate.service.internal.AbstractServiceRegistryImpl.createService(AbstractServiceRegistryImpl.java:271)\r\n    \tat org.hibernate.service.internal.AbstractServiceRegistryImpl.initializeService(AbstractServiceRegistryImpl.java:233)\r\n    \tat org.hibernate.service.internal.AbstractServiceRegistryImpl.getService(AbstractServiceRegistryImpl.java:210)\r\n    \tat org.hibernate.engine.jdbc.internal.JdbcServicesImpl.configure(JdbcServicesImpl.java:51)\r\n    \tat org.hibernate.boot.registry.internal.StandardServiceRegistryImpl.configureService(StandardServiceRegistryImpl.java:94)\r\n    \tat org.hibernate.service.internal.AbstractServiceRegistryImpl.initializeService(AbstractServiceRegistryImpl.java:242)\r\n    \tat org.hibernate.service.internal.AbstractServiceRegistryImpl.getService(AbstractServiceRegistryImpl.java:210)\r\n    \tat org.hibernate.boot.model.process.spi.MetadataBuildingProcess.handleTypes(MetadataBuildingProcess.java:352)\r\n    \tat org.hibernate.boot.model.process.spi.MetadataBuildingProcess.complete(MetadataBuildingProcess.java:111)\r\n    \tat org.hibernate.boot.model.process.spi.MetadataBuildingProcess.build(MetadataBuildingProcess.java:83)\r\n    \tat org.hibernate.boot.internal.MetadataBuilderImpl.build(MetadataBuilderImpl.java:418)\r\n    \tat org.hibernate.boot.internal.MetadataBuilderImpl.build(MetadataBuilderImpl.java:87)\r\n    \tat org.hibernate.cfg.Configuration.buildSessionFactory(Configuration.java:691)\r\n    \tat org.hibernate.cfg.Configuration.buildSessionFactory(Configuration.java:726)\r\n    \tat TestHibernate1.main(TestHibernate1.java:14)\r\n    Caused by: org.hibernate.HibernateException: Access to DialectResolutionInfo cannot be null when &#39;hibernate.dialect&#39; not set\r\n    \tat org.hibernate.engine.jdbc.dialect.internal.DialectFactoryImpl.determineDialect(DialectFactoryImpl.java:100)\r\n    \tat org.hibernate.engine.jdbc.dialect.internal.DialectFactoryImpl.buildDialect(DialectFactoryImpl.java:54)\r\n    \tat org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.initiateService(JdbcEnvironmentInitiator.java:137)\r\n    \tat org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.initiateService(JdbcEnvironmentInitiator.java:35)\r\n    \tat org.hibernate.boot.registry.internal.StandardServiceRegistryImpl.initiateService(StandardServiceRegistryImpl.java:88)\r\n    \tat org.hibernate.service.internal.AbstractServiceRegistryImpl.createService(AbstractServiceRegistryImpl.java:259)\r\n\r\n\r\n===========================================================================\r\n\r\n =&gt; this is my hibernate.cfg.xml\r\n\r\n\r\n    &lt;?xml version=&#39;1.0&#39; encoding=&#39;utf-8&#39;?&gt; \r\n    &lt;!DOCTYPE hibernate-configuration PUBLIC\r\n            &quot;-//Hibernate/Hibernate Configuration DTD//EN&quot;\r\n            &quot;http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd&quot;&gt;\r\n    &lt;hibernate-configuration&gt;\r\n      &lt;session-factory&gt;\r\n        &lt;property name=&quot;hibernate.dialect&quot;&gt;net.sf.hibernate.dialect.MySQLDialect&lt;/property&gt;\r\n        &lt;property name=&quot;hibernate.connection.driver_class&quot;&gt;com.mysql.jdbc.Driver&lt;/property&gt;\r\n        &lt;property name=&quot;hibernate.connection.url&quot;&gt;jdbc:mysql://localhost/bd_per&lt;/property&gt;\r\n        &lt;property name=&quot;hibernate.connection.username&quot;&gt;root&lt;/property&gt;\r\n        &lt;property name=&quot;hibernate.connection.password&quot;&gt;&lt;/property&gt;\r\n        &lt;property name=&quot;dialect&quot;&gt;net.sf.hibernate.dialect.MySQLDialect&lt;/property&gt;\r\n        &lt;property name=&quot;show_sql&quot;&gt;true&lt;/property&gt;\r\n        &lt;mapping resource=&quot;Personnes.hbm.xml&quot;/&gt;\r\n      &lt;/session-factory&gt;\r\n    &lt;/hibernate-configuration&gt;\r\n\r\n=&gt; this is my hibernate-mapping \r\n\r\n    &lt;?xml version=&quot;1.0&quot;?&gt;&lt;!DOCTYPE hibernate-mapping PUBLIC\r\n    &quot;-//Hibernate/Hibernate Mapping DTD 3.0//EN&quot;\r\n    &quot;http://hibernate.sourceforge.net/hibernate-mapping&quot;&gt;&lt;hibernate-mapping&gt;\r\n      &lt;class name=&quot;Personnes&quot; table=&quot;personnes&quot;&gt;\r\n        &lt;id name=&quot;idPersonne&quot; type=&quot;int&quot; column=&quot;idpersonne&quot;&gt;\r\n          &lt;generator class=&quot;native&quot;/&gt;\r\n        &lt;/id&gt;\r\n        &lt;property name=&quot;nomPersonne&quot; type=&quot;string&quot; not-null=&quot;true&quot; /&gt;\r\n        &lt;property name=&quot;prenomPersonne&quot; type=&quot;string&quot; not-null=&quot;true&quot; /&gt;\r\n        \r\n        \r\n      &lt;/class&gt;\r\n    &lt;/hibernate-mapping&gt;\r\n\r\n=&gt; finaly my classe Personnes\r\n \r\n\r\n    public class Personnes {\r\n    \r\n      private Integer idPersonne;\r\n      private String nomPersonne;\r\n      private String prenomPersonne;\r\n      \r\n    \r\n      public Personnes(String nomPersonne, String prenomPersonne) {\r\n        this.nomPersonne = nomPersonne;\r\n        this.prenomPersonne = prenomPersonne;\r\n        \r\n      }\r\n    \r\n      public Personnes() {\r\n      }\r\n    \r\n      \r\n      public Integer getIdPersonne() {\r\n        return idPersonne;\r\n      }\r\n    \r\n      public String getNomPersonne() {\r\n        return nomPersonne;\r\n      }\r\n    \r\n      public String getPrenomPersonne() {\r\n        return prenomPersonne;\r\n      }\r\n    \r\n     \r\n    \r\n      public void setIdPersonne(Integer integer) {\r\n        idPersonne = integer;\r\n      }\r\n    \r\n     And,thanks for responding as quickly as possible.\r\n    \r\n      public void setPrenomPersonne(String string) {\r\n        prenomPersonne = string;\r\n      }\r\n    \r\n    public void setNomPersonne(String string) {\r\n    \t// TODO Auto-generated method stub\r\n    \t\r\n    }\r\n    \r\n    }\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49926225/how-to-connect-hibernate-with-mysql",
+            "title": "How to connect Hibernate with MySQL",
+            "body": "<p>I want to connect Hibernate with MySQL. I tried all methods, but I'm still getting this error. I'm using Hibernate the version.</p>\n\n<pre><code>avr. 19, 2018 1:55:21 PM org.hibernate.Version logVersion\nINFO: HHH000412: Hibernate Core {5.2.16.Final}\navr. 19, 2018 1:55:21 PM org.hibernate.cfg.Environment &lt;clinit&gt;\nINFO: HHH000206: hibernate.properties not found\navr. 19, 2018 1:55:22 PM org.hibernate.boot.jaxb.internal.stax.LocalXmlResourceResolver resolveEntity\nWARN: HHH90000012: Recognized obsolete hibernate namespace http://hibernate.sourceforge.net/hibernate-mapping. Use namespace http://www.hibernate.org/dtd/hibernate-mapping instead.  Support for obsolete DTD/XSD namespaces may be removed at any time.\navr. 19, 2018 1:55:24 PM org.hibernate.annotations.common.reflection.java.JavaReflectionManager &lt;clinit&gt;\nINFO: HCANN000001: Hibernate Commons Annotations {5.0.1.Final}\navr. 19, 2018 1:55:24 PM org.hibernate.engine.jdbc.connections.internal.ConnectionProviderInitiator initiateService\nWARN: HHH000181: No appropriate connection provider encountered, assuming application will be supplying connections\navr. 19, 2018 1:55:24 PM org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator initiateService\nWARN: HHH000342: Could not obtain connection to query metadata : The application must supply JDBC connections\nException in thread \"main\" org.hibernate.service.spi.ServiceException: Unable to create requested service [org.hibernate.engine.jdbc.env.spi.JdbcEnvironment]\n    at org.hibernate.service.internal.AbstractServiceRegistryImpl.createService(AbstractServiceRegistryImpl.java:271)\n    at org.hibernate.service.internal.AbstractServiceRegistryImpl.initializeService(AbstractServiceRegistryImpl.java:233)\n    at org.hibernate.service.internal.AbstractServiceRegistryImpl.getService(AbstractServiceRegistryImpl.java:210)\n    at org.hibernate.engine.jdbc.internal.JdbcServicesImpl.configure(JdbcServicesImpl.java:51)\n    at org.hibernate.boot.registry.internal.StandardServiceRegistryImpl.configureService(StandardServiceRegistryImpl.java:94)\n    at org.hibernate.service.internal.AbstractServiceRegistryImpl.initializeService(AbstractServiceRegistryImpl.java:242)\n    at org.hibernate.service.internal.AbstractServiceRegistryImpl.getService(AbstractServiceRegistryImpl.java:210)\n    at org.hibernate.boot.model.process.spi.MetadataBuildingProcess.handleTypes(MetadataBuildingProcess.java:352)\n    at org.hibernate.boot.model.process.spi.MetadataBuildingProcess.complete(MetadataBuildingProcess.java:111)\n    at org.hibernate.boot.model.process.spi.MetadataBuildingProcess.build(MetadataBuildingProcess.java:83)\n    at org.hibernate.boot.internal.MetadataBuilderImpl.build(MetadataBuilderImpl.java:418)\n    at org.hibernate.boot.internal.MetadataBuilderImpl.build(MetadataBuilderImpl.java:87)\n    at org.hibernate.cfg.Configuration.buildSessionFactory(Configuration.java:691)\n    at org.hibernate.cfg.Configuration.buildSessionFactory(Configuration.java:726)\n    at TestHibernate1.main(TestHibernate1.java:14)\nCaused by: org.hibernate.HibernateException: Access to DialectResolutionInfo cannot be null when 'hibernate.dialect' not set\n    at org.hibernate.engine.jdbc.dialect.internal.DialectFactoryImpl.determineDialect(DialectFactoryImpl.java:100)\n    at org.hibernate.engine.jdbc.dialect.internal.DialectFactoryImpl.buildDialect(DialectFactoryImpl.java:54)\n    at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.initiateService(JdbcEnvironmentInitiator.java:137)\n    at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.initiateService(JdbcEnvironmentInitiator.java:35)\n    at org.hibernate.boot.registry.internal.StandardServiceRegistryImpl.initiateService(StandardServiceRegistryImpl.java:88)\n    at org.hibernate.service.internal.AbstractServiceRegistryImpl.createService(AbstractServiceRegistryImpl.java:259)\n</code></pre>\n\n<p>===========================================================================</p>\n\n<p>=> this is my hibernate.cfg.xml</p>\n\n<pre><code>&lt;?xml version='1.0' encoding='utf-8'?&gt; \n&lt;!DOCTYPE hibernate-configuration PUBLIC\n        \"-//Hibernate/Hibernate Configuration DTD//EN\"\n        \"http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd\"&gt;\n&lt;hibernate-configuration&gt;\n  &lt;session-factory&gt;\n    &lt;property name=\"hibernate.dialect\"&gt;net.sf.hibernate.dialect.MySQLDialect&lt;/property&gt;\n    &lt;property name=\"hibernate.connection.driver_class\"&gt;com.mysql.jdbc.Driver&lt;/property&gt;\n    &lt;property name=\"hibernate.connection.url\"&gt;jdbc:mysql://localhost/bd_per&lt;/property&gt;\n    &lt;property name=\"hibernate.connection.username\"&gt;root&lt;/property&gt;\n    &lt;property name=\"hibernate.connection.password\"&gt;&lt;/property&gt;\n    &lt;property name=\"dialect\"&gt;net.sf.hibernate.dialect.MySQLDialect&lt;/property&gt;\n    &lt;property name=\"show_sql\"&gt;true&lt;/property&gt;\n    &lt;mapping resource=\"Personnes.hbm.xml\"/&gt;\n  &lt;/session-factory&gt;\n&lt;/hibernate-configuration&gt;\n</code></pre>\n\n<p>=> this is my hibernate-mapping </p>\n\n<pre><code>&lt;?xml version=\"1.0\"?&gt;&lt;!DOCTYPE hibernate-mapping PUBLIC\n\"-//Hibernate/Hibernate Mapping DTD 3.0//EN\"\n\"http://hibernate.sourceforge.net/hibernate-mapping\"&gt;&lt;hibernate-mapping&gt;\n  &lt;class name=\"Personnes\" table=\"personnes\"&gt;\n    &lt;id name=\"idPersonne\" type=\"int\" column=\"idpersonne\"&gt;\n      &lt;generator class=\"native\"/&gt;\n    &lt;/id&gt;\n    &lt;property name=\"nomPersonne\" type=\"string\" not-null=\"true\" /&gt;\n    &lt;property name=\"prenomPersonne\" type=\"string\" not-null=\"true\" /&gt;\n\n\n  &lt;/class&gt;\n&lt;/hibernate-mapping&gt;\n</code></pre>\n\n<p>=> finaly my classe Personnes</p>\n\n<pre><code>public class Personnes {\n\n  private Integer idPersonne;\n  private String nomPersonne;\n  private String prenomPersonne;\n\n\n  public Personnes(String nomPersonne, String prenomPersonne) {\n    this.nomPersonne = nomPersonne;\n    this.prenomPersonne = prenomPersonne;\n\n  }\n\n  public Personnes() {\n  }\n\n\n  public Integer getIdPersonne() {\n    return idPersonne;\n  }\n\n  public String getNomPersonne() {\n    return nomPersonne;\n  }\n\n  public String getPrenomPersonne() {\n    return prenomPersonne;\n  }\n\n\n\n  public void setIdPersonne(Integer integer) {\n    idPersonne = integer;\n  }\n\n And,thanks for responding as quickly as possible.\n\n  public void setPrenomPersonne(String string) {\n    prenomPersonne = string;\n  }\n\npublic void setNomPersonne(String string) {\n    // TODO Auto-generated method stub\n\n}\n\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "mysql",
+                "database",
+                "java-8"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 9671122,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/702f3aefd7d4be8e56e0510ef0b16539?s=128&d=identicon&r=PG&f=1",
+                "display_name": "ankuru10",
+                "link": "https://stackoverflow.com/users/9671122/ankuru10"
+            },
+            "is_answered": true,
+            "view_count": 20,
+            "accepted_answer_id": 49929367,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1524168323,
+            "creation_date": 1524158375,
+            "question_id": 49926761,
+            "body_markdown": "*I have Problem when i write some message &#39;abc&#39; i have value into database &#39;UDHG&amp;*#BDlDd&#39; but when i red and decode this messaage i have &#39;???&#39;*\r\n\r\n    @Entity\r\n    public class Message {\r\n    \r\n        @Id\r\n        private Integer id;\r\n    \r\n        @Column\r\n        private String message;\r\n        \r\n        @Column(name = &quot;message&quot;)\r\n        public String getMessage() {\r\n            return String(Base64.encodeBase64(message.getBytes())) : null;\r\n        }\r\n    \r\n        @JsonIgnore\r\n        public void setMessage(String message) {\r\n            byte[] base64 = message.getBytes();\r\n            this.body = new String(Base64.decodeBase64(base64));\r\n        }\r\n    }",
+            "link": "https://stackoverflow.com/questions/49926761/put-encodebase64-message-in-mysql-when-i-get-this-message-i-have-different-resul",
+            "title": "Put encodeBase64 message in Mysql when I get this message I have different result",
+            "body": "<p><em>I have Problem when i write some message 'abc' i have value into database 'UDHG&amp;</em>#BDlDd' but when i red and decode this messaage i have '???'*</p>\n\n<pre><code>@Entity\npublic class Message {\n\n    @Id\n    private Integer id;\n\n    @Column\n    private String message;\n\n    @Column(name = \"message\")\n    public String getMessage() {\n        return String(Base64.encodeBase64(message.getBytes())) : null;\n    }\n\n    @JsonIgnore\n    public void setMessage(String message) {\n        byte[] base64 = message.getBytes();\n        this.body = new String(Base64.decodeBase64(base64));\n    }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "compiler-construction",
+                "yacc",
+                "bnf",
+                "ebnf",
+                "cfg"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 6478070,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10154270237829695/picture?type=large",
+                "display_name": "Altuğ Bozkurt",
+                "link": "https://stackoverflow.com/users/6478070/altu%c4%9f-bozkurt"
+            },
+            "is_answered": false,
+            "view_count": 41,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524168322,
+            "creation_date": 1524133623,
+            "last_edit_date": 1524168322,
+            "question_id": 49918758,
+            "body_markdown": "So, title pretty much explains it,language that i am dealing with looks like this\r\n\r\n    program xyz is\r\n    \r\n    begin\r\n    \r\n    var a, b;\r\n    \r\n    a = 2;\r\n    \r\n    b = 3;\r\n    \r\n    var c;\r\n    \r\n    c = a + b;\r\n    \r\n    print c\r\n    \r\n    end\r\n\r\n\r\ni have posted a link to the syntax diagram at the end of this post and here is what i came up with using that diagram.\r\n\r\nyacc file\r\n\r\n    %{\r\n    #include &lt;stdio.h&gt;\r\n    int yyline, yycolumn;\r\n    char string_table[20000];\r\n    int regs[26];\r\n    int base;\r\n    %}\r\n    \r\n    %union{\r\n            int sv; /* integer value */\r\n    }\r\n    \r\n    %token &lt;sv&gt; ICONSTnumber\r\n    %token  PRINTnumber PROGRAMnumber ISnumber BEGINnumber ENDnumber VARnumber DIVnumber SEMInumber LPARENnumber MINUSnumber TIMESnumber COMMAnumber RPARENnumber PLUSnumber EQnumber IDnumber\r\n    \r\n    \r\n    %left PLUSnumber MINUSnumber\r\n    %left TIMESnumber DIVnumber\r\n    %left UMINUS\r\n    %left POWER\r\n    %left LPARENnumber RPARENnumber\r\n    \r\n    %%\r\n    \r\n    Program: PROGRAMnumber IDnumber ISnumber compoundStatement {printf(&quot;accepted&quot;);}\r\n           | {printf(&quot;not correct syntax&quot;);}\r\n           ;\r\n    \r\n    compoundStatement: BEGINnumber statement SEMInumber ENDnumber\r\n             | {printf(&quot;not correct syntax&quot;);}      \r\n             ;\r\n    \r\n    statement: IDnumber EQnumber exp\r\n         | PRINTnumber exp\r\n             | declaration\r\n             | {printf(&quot;not correct syntax&quot;);}\r\n             ;\r\n    \r\n    declaration: VARnumber declaration\r\n           | IDnumber COMMAnumber declaration\r\n               | IDnumber COMMAnumber \r\n           ;\r\n    \r\n    exp: exp MINUSnumber term\r\n       | exp PLUSnumber term\r\n       | term\r\n       ;\r\n    \r\n    term: term TIMESnumber factor \r\n        | term DIVnumber factor \r\n        | factor\r\n        ;\r\n    \r\n    factor: ICONSTnumber\r\n          | IDnumber\r\n          | LPARENnumber exp RPARENnumber\r\n          ;\r\n    \r\n    %%\r\n    main() {\r\n      return yyparse();\r\n    }\r\n    \r\n    yyerror( char *s ) { fprintf( stderr, &quot;%s\\n&quot;, s); };\r\n\r\nlex file\r\n\r\n \r\n\r\n    %{\r\n       #include &lt;string.h&gt;\r\n       #include &lt;stdio.h&gt;\r\n       #include &quot;y.tab.h&quot;\r\n    \r\n       int put_string(char *str, int len);\r\n       extern int yyline, yycolumn;\r\n       int string_table_index = 0;\r\n       extern char string_table[20000];\r\n    %}\r\n    \r\n    %%\r\n    \\n      {yyline++; yycolumn=1;}\r\n    [0-9]+  {yylval.sv = atoi(yytext); yycolumn += yyleng; return(ICONSTnumber);}\r\n    print   {yycolumn += yyleng; return(PRINTnumber);}\r\n    program {yycolumn += yyleng; return(PROGRAMnumber);}\r\n    is      {yycolumn += yyleng; return(ISnumber);}\r\n    begin   {yycolumn += yyleng; return(BEGINnumber);}\r\n    end     {yycolumn += yyleng; return(ENDnumber);}\r\n    var     {yycolumn += yyleng; return(VARnumber);}\r\n    [ \\t]   {yycolumn += yyleng;}\r\n    div     {yycolumn += yyleng; return(DIVnumber);}\r\n    &quot;;&quot;       { yycolumn += yyleng; return(SEMInumber);}\r\n    &quot;(&quot;     {yycolumn += yyleng; return(LPARENnumber);}\r\n    &quot;-&quot;     {yycolumn += yyleng; return(MINUSnumber);}\r\n    &quot;*&quot;     {yycolumn += yyleng; return(TIMESnumber);}\r\n    &quot;,&quot;     {yycolumn += yyleng; return(COMMAnumber);}\r\n    &quot;)&quot;     {yycolumn += yyleng; return(RPARENnumber);}\r\n    &quot;+&quot;     {yycolumn += yyleng; return(PLUSnumber);}\r\n    &quot;=&quot;     {yycolumn += yyleng; return(EQnumber);}\r\n    &quot;(*&quot;.*&quot;*)&quot; {yycolumn += yyleng;}\r\n    [a-zA-Z]+[0-9]* {yycolumn += yyleng; yylval.sv = put_string(yytext, yyleng);return(IDnumber);}\r\n    .       {printf(&quot;Unknown character %s, line = %d, column = %d\\n&quot;, yytext, yyline, yycolumn); yycolumn += yyleng;}\r\n    %%\r\n    \r\n    int put_string(char *str, int len)\r\n    {\r\n        char buf[2000];\r\n        strncpy(buf, str, len);\r\n        buf[len] = &#39;\\0&#39;;\r\n        sprintf(string_table+string_table_index, &quot;%s&quot;, buf);\r\n        string_table_index += strlen(buf)+1;\r\n        string_table[string_table_index-1] = &#39;\\0&#39;;\r\n        return (string_table_index-strlen(buf)-1);\r\n    }\r\n\r\nmy problem in particular is with defining the syntax rules as shown in the diagram.\r\n\r\nMy compiler reads the source code but always outputs the same thing which is &quot;syntax error&quot; even if its syntactically correct.\r\n\r\nhere is a simple example code written in the specified custom language:\r\n\r\n    program xyz is \r\n    begin\r\n      print 2*10 div (1+4)\r\n    end\r\n\r\nCan u help me figure out what my mistake is in my implementation, i am new to yacc and lex, so sorry in advance for any inconvenience.\r\n\r\nthis is the syntax diagram which i use to make those syntax rules.\r\n\r\n https://i.stack.imgur.com/Cz7Of.png",
+            "link": "https://stackoverflow.com/questions/49918758/trying-to-make-a-simple-compiler-for-a-custom-language-and-need-some-help-on-imp",
+            "title": "Trying to make a simple compiler for a custom language and need some help on implementing syntax rules for it, based on a syntax diagram",
+            "body": "<p>So, title pretty much explains it,language that i am dealing with looks like this</p>\n\n<pre><code>program xyz is\n\nbegin\n\nvar a, b;\n\na = 2;\n\nb = 3;\n\nvar c;\n\nc = a + b;\n\nprint c\n\nend\n</code></pre>\n\n<p>i have posted a link to the syntax diagram at the end of this post and here is what i came up with using that diagram.</p>\n\n<p>yacc file</p>\n\n<pre><code>%{\n#include &lt;stdio.h&gt;\nint yyline, yycolumn;\nchar string_table[20000];\nint regs[26];\nint base;\n%}\n\n%union{\n        int sv; /* integer value */\n}\n\n%token &lt;sv&gt; ICONSTnumber\n%token  PRINTnumber PROGRAMnumber ISnumber BEGINnumber ENDnumber VARnumber DIVnumber SEMInumber LPARENnumber MINUSnumber TIMESnumber COMMAnumber RPARENnumber PLUSnumber EQnumber IDnumber\n\n\n%left PLUSnumber MINUSnumber\n%left TIMESnumber DIVnumber\n%left UMINUS\n%left POWER\n%left LPARENnumber RPARENnumber\n\n%%\n\nProgram: PROGRAMnumber IDnumber ISnumber compoundStatement {printf(\"accepted\");}\n       | {printf(\"not correct syntax\");}\n       ;\n\ncompoundStatement: BEGINnumber statement SEMInumber ENDnumber\n         | {printf(\"not correct syntax\");}      \n         ;\n\nstatement: IDnumber EQnumber exp\n     | PRINTnumber exp\n         | declaration\n         | {printf(\"not correct syntax\");}\n         ;\n\ndeclaration: VARnumber declaration\n       | IDnumber COMMAnumber declaration\n           | IDnumber COMMAnumber \n       ;\n\nexp: exp MINUSnumber term\n   | exp PLUSnumber term\n   | term\n   ;\n\nterm: term TIMESnumber factor \n    | term DIVnumber factor \n    | factor\n    ;\n\nfactor: ICONSTnumber\n      | IDnumber\n      | LPARENnumber exp RPARENnumber\n      ;\n\n%%\nmain() {\n  return yyparse();\n}\n\nyyerror( char *s ) { fprintf( stderr, \"%s\\n\", s); };\n</code></pre>\n\n<p>lex file</p>\n\n<pre><code>%{\n   #include &lt;string.h&gt;\n   #include &lt;stdio.h&gt;\n   #include \"y.tab.h\"\n\n   int put_string(char *str, int len);\n   extern int yyline, yycolumn;\n   int string_table_index = 0;\n   extern char string_table[20000];\n%}\n\n%%\n\\n      {yyline++; yycolumn=1;}\n[0-9]+  {yylval.sv = atoi(yytext); yycolumn += yyleng; return(ICONSTnumber);}\nprint   {yycolumn += yyleng; return(PRINTnumber);}\nprogram {yycolumn += yyleng; return(PROGRAMnumber);}\nis      {yycolumn += yyleng; return(ISnumber);}\nbegin   {yycolumn += yyleng; return(BEGINnumber);}\nend     {yycolumn += yyleng; return(ENDnumber);}\nvar     {yycolumn += yyleng; return(VARnumber);}\n[ \\t]   {yycolumn += yyleng;}\ndiv     {yycolumn += yyleng; return(DIVnumber);}\n\";\"       { yycolumn += yyleng; return(SEMInumber);}\n\"(\"     {yycolumn += yyleng; return(LPARENnumber);}\n\"-\"     {yycolumn += yyleng; return(MINUSnumber);}\n\"*\"     {yycolumn += yyleng; return(TIMESnumber);}\n\",\"     {yycolumn += yyleng; return(COMMAnumber);}\n\")\"     {yycolumn += yyleng; return(RPARENnumber);}\n\"+\"     {yycolumn += yyleng; return(PLUSnumber);}\n\"=\"     {yycolumn += yyleng; return(EQnumber);}\n\"(*\".*\"*)\" {yycolumn += yyleng;}\n[a-zA-Z]+[0-9]* {yycolumn += yyleng; yylval.sv = put_string(yytext, yyleng);return(IDnumber);}\n.       {printf(\"Unknown character %s, line = %d, column = %d\\n\", yytext, yyline, yycolumn); yycolumn += yyleng;}\n%%\n\nint put_string(char *str, int len)\n{\n    char buf[2000];\n    strncpy(buf, str, len);\n    buf[len] = '\\0';\n    sprintf(string_table+string_table_index, \"%s\", buf);\n    string_table_index += strlen(buf)+1;\n    string_table[string_table_index-1] = '\\0';\n    return (string_table_index-strlen(buf)-1);\n}\n</code></pre>\n\n<p>my problem in particular is with defining the syntax rules as shown in the diagram.</p>\n\n<p>My compiler reads the source code but always outputs the same thing which is \"syntax error\" even if its syntactically correct.</p>\n\n<p>here is a simple example code written in the specified custom language:</p>\n\n<pre><code>program xyz is \nbegin\n  print 2*10 div (1+4)\nend\n</code></pre>\n\n<p>Can u help me figure out what my mistake is in my implementation, i am new to yacc and lex, so sorry in advance for any inconvenience.</p>\n\n<p>this is the syntax diagram which i use to make those syntax rules.</p>\n\n<p><a href=\"https://i.stack.imgur.com/Cz7Of.png\" rel=\"nofollow noreferrer\">https://i.stack.imgur.com/Cz7Of.png</a></p>\n"
+        },
+        {
+            "tags": [
+                "google-maps",
+                "geolocation",
+                "location",
+                "gsm",
+                "tracker"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8098279,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-kr4i_N4pmmY/AAAAAAAAAAI/AAAAAAAAbgg/nK3KaOooVj0/photo.jpg?sz=128",
+                "display_name": "Ahnaf Hamid",
+                "link": "https://stackoverflow.com/users/8098279/ahnaf-hamid"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524168318,
+            "creation_date": 1524168318,
+            "question_id": 49929366,
+            "body_markdown": "I want to make a tracker device, which will have a gsm chip(containing a sim).\r\nIt will send it&#39;s coordinates to a web server using mobile data. And it&#39;s real time location will show on a website through google maps. I am not familiar with these. I want to know that how can I get the coordinates from the gsm chip to my web server and make it show up on my website?\r\n",
+            "link": "https://stackoverflow.com/questions/49929366/how-can-i-get-gps-coordinates-to-my-web-server",
+            "title": "How can I get gps coordinates to my web server?",
+            "body": "<p>I want to make a tracker device, which will have a gsm chip(containing a sim).\nIt will send it's coordinates to a web server using mobile data. And it's real time location will show on a website through google maps. I am not familiar with these. I want to know that how can I get the coordinates from the gsm chip to my web server and make it show up on my website?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html"
+            ],
+            "owner": {
+                "reputation": 126,
+                "user_id": 6225298,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://graph.facebook.com/512749592246211/picture?type=large",
+                "display_name": "Gregory",
+                "link": "https://stackoverflow.com/users/6225298/gregory"
+            },
+            "is_answered": false,
+            "view_count": 45,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524168312,
+            "creation_date": 1524152289,
+            "last_edit_date": 1524153424,
+            "question_id": 49925039,
+            "body_markdown": "Let&#39;s say that I have an img tag with a base64 src like :\r\n\r\n    &lt;img src=&quot;data:image/jpeg;base64,/9j/4AAQS...&quot; id=&quot;id&quot;&gt;\r\n\r\nHow can I create a File object (containing the data of the img tag) alike an object I would get after an user chose a file from a file input ? In order to upload it to a server later.\r\n\r\nLike that one : \r\n\r\n    File { name: &quot;a22919a70cf8458d654642e0bc2cd881.jpg&quot;, lastModified: 1521393615000, lastModifiedDate: Date 2018-03-18T17:20:15.000Z, webkitRelativePath: &quot;&quot;, size: 40635, type: &quot;image/jpeg&quot; }\r\n\r\nI&#39;m not looking for getting a BLOB.",
+            "link": "https://stackoverflow.com/questions/49925039/create-a-file-object-from-an-img-tag",
+            "title": "Create a file object from an img tag",
+            "body": "<p>Let's say that I have an img tag with a base64 src like :</p>\n\n<pre><code>&lt;img src=\"data:image/jpeg;base64,/9j/4AAQS...\" id=\"id\"&gt;\n</code></pre>\n\n<p>How can I create a File object (containing the data of the img tag) alike an object I would get after an user chose a file from a file input ? In order to upload it to a server later.</p>\n\n<p>Like that one : </p>\n\n<pre><code>File { name: \"a22919a70cf8458d654642e0bc2cd881.jpg\", lastModified: 1521393615000, lastModifiedDate: Date 2018-03-18T17:20:15.000Z, webkitRelativePath: \"\", size: 40635, type: \"image/jpeg\" }\n</code></pre>\n\n<p>I'm not looking for getting a BLOB.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "web-scraping"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9671738,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/b9d07fac4e30c206bf8a6cf0df2ddcac?s=128&d=identicon&r=PG&f=1",
+                "display_name": "fantaghiro",
+                "link": "https://stackoverflow.com/users/9671738/fantaghiro"
+            },
+            "is_answered": false,
+            "view_count": 30,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524168298,
+            "creation_date": 1524167598,
+            "last_edit_date": 1524167724,
+            "question_id": 49929187,
+            "body_markdown": "I want get the html source of this site: `https://www.whoscored.com/`, so I wrote this simple code:\r\n\r\n    class Program\r\n    {\r\n        static void Main(string[] args)\r\n        {\r\n            string data = GetData(&quot;https://www.whoscored.com/&quot;);\r\n            HtmlDocument doc = new HtmlDocument();\r\n            doc.LoadHtml(data);\r\n\r\n            var script = doc.DocumentNode.Descendants()\r\n                .Where(c =&gt; c.Name == &quot;script&quot;)\r\n                .First().InnerText;\r\n\r\n            Console.ReadLine();\r\n        }\r\n\r\n        private static string GetData(string url)\r\n        {\r\n            using (WebClient client = new WebClient())\r\n            {\r\n                client.Headers[HttpRequestHeader.UserAgent] = &quot;Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.2 (KHTML, like Gecko) Chrome/15.0.874.121 Safari/535.2&quot;;\r\n                return client.DownloadString(url);\r\n            }\r\n        }\r\n    }\r\n\r\nthe problem is I get in `data` this:\r\n\r\n\t&lt;html style=&quot;height:100%&quot;&gt;\r\n\t\t&lt;head&gt;\r\n\t\t\t&lt;META NAME=&quot;ROBOTS&quot; CONTENT=&quot;NOINDEX, NOFOLLOW&quot;&gt;\r\n\t\t\t&lt;meta name=&quot;format-detection&quot; content=&quot;telephone=no&quot;&gt;\r\n\t\t\t&lt;meta name=&quot;viewport&quot; content=&quot;initial-scale=1.0&quot;&gt;\r\n\t\t\t&lt;meta http-equiv=&quot;X-UA-Compatible&quot; content=&quot;IE=edge,chrome=1&quot;&gt;\r\n\t\t&lt;/head&gt;\r\n\t\t&lt;body style=&quot;margin:0px;height:100%&quot;&gt;\r\n\t\t\t&lt;iframe src=&quot;/_Incapsula_Resource?CWUDNSAI=27&amp;xinfo=5-80611267-0%200NNN%20RT%281524167518380%2069%29%20q%280%20-1%20-1%20-1%29%20r%280%20-1%29%20B12%284%2c315%2c0%29%20U2&amp;incident_id=476000310134279812-522738974978736629&amp;edet=12&amp;cinfo=04000000&quot; frameborder=0 width=&quot;100%&quot; height=&quot;100%&quot; marginheight=&quot;0px&quot; marginwidth=&quot;0px&quot;&gt;Request unsuccessful. Incapsula incident ID: 476000310134279812-522738974978736629&lt;/iframe&gt;\r\n\t\t&lt;/body&gt;\r\n\t&lt;/html&gt;\r\n\r\nWhat is that?",
+            "link": "https://stackoverflow.com/questions/49929187/cannot-get-web-page-html",
+            "title": "Cannot get web page html",
+            "body": "<p>I want get the html source of this site: <code>https://www.whoscored.com/</code>, so I wrote this simple code:</p>\n\n<pre><code>class Program\n{\n    static void Main(string[] args)\n    {\n        string data = GetData(\"https://www.whoscored.com/\");\n        HtmlDocument doc = new HtmlDocument();\n        doc.LoadHtml(data);\n\n        var script = doc.DocumentNode.Descendants()\n            .Where(c =&gt; c.Name == \"script\")\n            .First().InnerText;\n\n        Console.ReadLine();\n    }\n\n    private static string GetData(string url)\n    {\n        using (WebClient client = new WebClient())\n        {\n            client.Headers[HttpRequestHeader.UserAgent] = \"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.2 (KHTML, like Gecko) Chrome/15.0.874.121 Safari/535.2\";\n            return client.DownloadString(url);\n        }\n    }\n}\n</code></pre>\n\n<p>the problem is I get in <code>data</code> this:</p>\n\n<pre><code>&lt;html style=\"height:100%\"&gt;\n    &lt;head&gt;\n        &lt;META NAME=\"ROBOTS\" CONTENT=\"NOINDEX, NOFOLLOW\"&gt;\n        &lt;meta name=\"format-detection\" content=\"telephone=no\"&gt;\n        &lt;meta name=\"viewport\" content=\"initial-scale=1.0\"&gt;\n        &lt;meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\"&gt;\n    &lt;/head&gt;\n    &lt;body style=\"margin:0px;height:100%\"&gt;\n        &lt;iframe src=\"/_Incapsula_Resource?CWUDNSAI=27&amp;xinfo=5-80611267-0%200NNN%20RT%281524167518380%2069%29%20q%280%20-1%20-1%20-1%29%20r%280%20-1%29%20B12%284%2c315%2c0%29%20U2&amp;incident_id=476000310134279812-522738974978736629&amp;edet=12&amp;cinfo=04000000\" frameborder=0 width=\"100%\" height=\"100%\" marginheight=\"0px\" marginwidth=\"0px\"&gt;Request unsuccessful. Incapsula incident ID: 476000310134279812-522738974978736629&lt;/iframe&gt;\n    &lt;/body&gt;\n&lt;/html&gt;\n</code></pre>\n\n<p>What is that?</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 220
+}
