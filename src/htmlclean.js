@@ -1,10 +1,12 @@
 const jsdom = require("jsdom")
 const { JSDOM } = jsdom;
 const fs = require('fs')
-const merge = JSON.parse(fs.readFileSync(`./res/merge.json`))
 const extract = require('./tools/ttf-extract')
 
-const cleaned = {}
+
+const merge = JSON.parse(fs.readFileSync(`./res/merge.json`))
+const cleaned = JSON.parse(fs.readFileSync(`./res/htmlcleaned.json`))
+
 const meta = {
     termcount: 0,
     termdist: {}
@@ -22,18 +24,24 @@ function clean(html)
     return sentences
 }
 
-for (var qid in merge) {
+const qids = Object.keys(merge)
+const begin = 15000
+const batch = qids.slice(begin, begin+5000)
+
+for (var qid of batch) {    
     cleaned[qid] = clean(merge[qid].body)
-    const count = Object.keys(cleaned).length
-    if (count % 100 === 1) console.log(count)
-    if (count > 5000) break;
+
+    const count = Object.keys(cleaned).length    
+    if (count % 1000 === 1)
+        console.log(count)    
 }
 
-fs.writeFileSync(`./res/htmlcleaned.json`, JSON.stringify(cleaned, null, 4))
+const outfile = 'htmlcleaned'
+fs.writeFileSync(`./res/${outfile}.json`, JSON.stringify(cleaned, null, 4))
 meta.termdist = extract.bodyterm_dist(cleaned)
 meta.termcount = Object.keys(meta.termdist).length
 const metajson = JSON.stringify(meta)
-fs.writeFileSync(`./res/htmlcleaned-meta.json`, metajson)
-fs.writeFileSync(`./res/htmlcleaned-meta.js`, 'var htmlcleanedmeta = ' + metajson)
+fs.writeFileSync(`./res/${outfile}-meta.json`, metajson)
+fs.writeFileSync(`./res/${outfile}-meta.js`, 'var htmlcleanedmeta = ' + metajson)
 
 
