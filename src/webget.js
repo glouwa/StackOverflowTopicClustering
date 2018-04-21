@@ -13,7 +13,7 @@ const access_token = 'ss7QVLkuuRE6NZ77M(3B(A))'
 
 //scope: no_expiry
 //redirect_uri: site
-
+let result = { written:0, err:0 }
 function requestone(page)
 {    
     request({
@@ -24,12 +24,22 @@ function requestone(page)
         }
     }, 
     (err, res)=> {
-        console.log('got response')
-        const formated_body = JSON.stringify(JSON.parse(res.body), null, 4)                 
-        fs.writeFileSync(`./res/download/${page}.json`, formated_body)
+        if (!res.body.error_id) {
+            result.written++
+            const formated_body = JSON.stringify(JSON.parse(res.body), null, 4)                 
+            fs.writeFileSync(`./res/download/${page}.json`, formated_body)
+        }
+        else {
+            result.err++
+        }
+
+        if (result.err + result.written === amount - 1)
+            console.log(`${result.written} OK, ${result.err} failed`)
     })
 }
 
-var begin = 270
-for (var page = begin; page < begin+270; ++page)
+var begin = 650
+var amount = 10
+for (var page = begin; page < begin+amount; ++page)
     requestone(page)
+

@@ -1,0 +1,833 @@
+{
+    "items": [
+        {
+            "tags": [
+                "python",
+                "django",
+                "django-rest-framework"
+            ],
+            "owner": {
+                "reputation": 25,
+                "user_id": 4613907,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://i.stack.imgur.com/Gichx.png?s=128&g=1",
+                "display_name": "chronox",
+                "link": "https://stackoverflow.com/users/4613907/chronox"
+            },
+            "is_answered": true,
+            "view_count": 194,
+            "accepted_answer_id": 45316413,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1524203927,
+            "creation_date": 1500968630,
+            "last_edit_date": 1500974176,
+            "question_id": 45296942,
+            "body_markdown": "I am currently working on a django rest framework api which involves displaying a list of campaigns and allowing user to create new campaign.\r\n\r\nOn the browsable api, I managed to display the list of campaigns that I wanted as well as have a form for the user to create new campaign.\r\n\r\nThis is a screenshot of the form that the user is using for creating new campaign.\r\n\r\n[A screenshot of the form on browsable API][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/f2bpC.png\r\n\r\nWhile everything is working, I faced an issue that I do not have any idea how to solve even after reading the documentation.\r\n\r\nAs you can see on the screenshot, there is a clist field that allows user to select the contact list he/she want the campaign invitations to be sent to. However, I want to make sure only the contact lists created by the user&#39;s company are shown in that field (currently, all the contact lists from different companies can be selected).\r\n\r\nHere is the codes in the api.py:\r\n\r\n    class EditCampaignViewSet(ModelViewSet):\r\n        queryset = Campaign.objects.all()\r\n        serializer_class = EditCampaignSerializer\r\n        parser_classes = (MultiPartParser, FormParser)\r\n\r\n        def get_serializer_context(self):\r\n            return {&#39;request&#39;: self.request}\r\n\r\n        def list(self, request, p_uuid=None, type=None, *args, **kwargs):\r\n            company = request.user.profile.company\r\n            queryset = Campaign.objects.filter(company=company,\r\n                                               product__uuid=p_uuid,\r\n                                               deleted=False,\r\n                                               campaign_type=type)\\\r\n                                       .order_by(&#39;-created&#39;)\\\r\n                                       .prefetch_related(&#39;user__profile&#39;)\r\n            serializer = EditCampaignSerializer(queryset, many=True)\r\n            return Response(serializer.data)\r\n\r\nThis is the serializers.py\r\n\r\n    class EditCampaignSerializer(serializers.ModelSerializer):\r\n        class Meta:\r\n            model = Campaign\r\n            fields = (&#39;id&#39;, &#39;campaign_id&#39;, &#39;campaign_type&#39;, &#39;name&#39;, &#39;product&#39;, &#39;description&#39;, &#39;status&#39;, &#39;actual_file_name&#39;,\r\n                  &#39;pdf_file&#39;, &#39;download&#39;, &#39;header&#39;, &#39;body&#39;, &#39;footer&#39;, &#39;company&#39;, &#39;created&#39;, &#39;updated&#39;, &#39;deleted&#39;,\r\n                  &#39;clist&#39;, &#39;user&#39;)\r\n            read_only_fields = (&#39;id&#39;, &#39;campaign_id&#39;, &#39;campaign_type&#39;, &#39;product&#39;, &#39;status&#39;, &#39;actual_file_name&#39;, &#39;company&#39;, &#39;created&#39;,\r\n                            &#39;updated&#39;, &#39;deleted&#39;, &#39;user&#39;)\r\n\r\n        def __init__(self, *args, **kwargs):\r\n            super(EditCampaignSerializer, self).__init__(*args, **kwargs)\r\n            user = self.context[&#39;request&#39;].user\r\n            self.fields[&#39;clist&#39;] = ChoiceField(choices=CList.objects.filter(company=user.profile.company))\r\n\r\nI am still pretty new to django rest framework, so please pardon me if the answer is obvious.",
+            "link": "https://stackoverflow.com/questions/45296942/django-rest-api-filter-fields-select-options-based-on-request-user",
+            "title": "Django Rest Api filter field&#39;s select options based on request.user",
+            "body": "<p>I am currently working on a django rest framework api which involves displaying a list of campaigns and allowing user to create new campaign.</p>\n\n<p>On the browsable api, I managed to display the list of campaigns that I wanted as well as have a form for the user to create new campaign.</p>\n\n<p>This is a screenshot of the form that the user is using for creating new campaign.</p>\n\n<p><a href=\"https://i.stack.imgur.com/f2bpC.png\" rel=\"nofollow noreferrer\">A screenshot of the form on browsable API</a></p>\n\n<p>While everything is working, I faced an issue that I do not have any idea how to solve even after reading the documentation.</p>\n\n<p>As you can see on the screenshot, there is a clist field that allows user to select the contact list he/she want the campaign invitations to be sent to. However, I want to make sure only the contact lists created by the user's company are shown in that field (currently, all the contact lists from different companies can be selected).</p>\n\n<p>Here is the codes in the api.py:</p>\n\n<pre><code>class EditCampaignViewSet(ModelViewSet):\n    queryset = Campaign.objects.all()\n    serializer_class = EditCampaignSerializer\n    parser_classes = (MultiPartParser, FormParser)\n\n    def get_serializer_context(self):\n        return {'request': self.request}\n\n    def list(self, request, p_uuid=None, type=None, *args, **kwargs):\n        company = request.user.profile.company\n        queryset = Campaign.objects.filter(company=company,\n                                           product__uuid=p_uuid,\n                                           deleted=False,\n                                           campaign_type=type)\\\n                                   .order_by('-created')\\\n                                   .prefetch_related('user__profile')\n        serializer = EditCampaignSerializer(queryset, many=True)\n        return Response(serializer.data)\n</code></pre>\n\n<p>This is the serializers.py</p>\n\n<pre><code>class EditCampaignSerializer(serializers.ModelSerializer):\n    class Meta:\n        model = Campaign\n        fields = ('id', 'campaign_id', 'campaign_type', 'name', 'product', 'description', 'status', 'actual_file_name',\n              'pdf_file', 'download', 'header', 'body', 'footer', 'company', 'created', 'updated', 'deleted',\n              'clist', 'user')\n        read_only_fields = ('id', 'campaign_id', 'campaign_type', 'product', 'status', 'actual_file_name', 'company', 'created',\n                        'updated', 'deleted', 'user')\n\n    def __init__(self, *args, **kwargs):\n        super(EditCampaignSerializer, self).__init__(*args, **kwargs)\n        user = self.context['request'].user\n        self.fields['clist'] = ChoiceField(choices=CList.objects.filter(company=user.profile.company))\n</code></pre>\n\n<p>I am still pretty new to django rest framework, so please pardon me if the answer is obvious.</p>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "rxjs"
+            ],
+            "owner": {
+                "reputation": 28,
+                "user_id": 5903172,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10153434809643437/picture?type=large",
+                "display_name": "Cristoffer Holm",
+                "link": "https://stackoverflow.com/users/5903172/cristoffer-holm"
+            },
+            "is_answered": true,
+            "view_count": 48,
+            "accepted_answer_id": 49934957,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524203915,
+            "creation_date": 1524201116,
+            "last_edit_date": 1524203059,
+            "question_id": 49934416,
+            "body_markdown": "I&#39;m building an Angular 5 application that let&#39;s you track the score of an ongoing martial arts match. The score is input into the DB from a desktop application.\r\nThe webapp then gets the score as a single scoreboard object from a Angular service that calls an API with the Id for the match and uses the retrieved object in the component to display the score for the two fighters. \r\nThe user will refreshes the score by a button click (or maybe on a timer.)\r\n\r\nI&#39;m very new to both Angular and RxJs, and the trouble I&#39;m having is finding a examples of how to do this WELL.\r\n\r\nRight now I&#39;ve got it working by getting scoreboards for ALL matches and then using map and find to filter out the one I want. It feels very crude.\r\n\r\nTo summarize what I need to do.\r\nMake a call to a service method with a unique Id.\r\nGet a single object from the API with the Id.\r\nreturn that object to the component and assign it to a property.\r\n\r\nAny and all advice is greatly appreciated!\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49934416/angular-5-best-practice-for-updating-a-single-object-with-rxjs",
+            "title": "Angular 5 best practice for updating a single object with RxJS",
+            "body": "<p>I'm building an Angular 5 application that let's you track the score of an ongoing martial arts match. The score is input into the DB from a desktop application.\nThe webapp then gets the score as a single scoreboard object from a Angular service that calls an API with the Id for the match and uses the retrieved object in the component to display the score for the two fighters. \nThe user will refreshes the score by a button click (or maybe on a timer.)</p>\n\n<p>I'm very new to both Angular and RxJs, and the trouble I'm having is finding a examples of how to do this WELL.</p>\n\n<p>Right now I've got it working by getting scoreboards for ALL matches and then using map and find to filter out the one I want. It feels very crude.</p>\n\n<p>To summarize what I need to do.\nMake a call to a service method with a unique Id.\nGet a single object from the API with the Id.\nreturn that object to the component and assign it to a property.</p>\n\n<p>Any and all advice is greatly appreciated!</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "hashmap",
+                "kotlin",
+                "hashset"
+            ],
+            "owner": {
+                "reputation": 115,
+                "user_id": 8763097,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/07748010c90ca48d262a588483d84367?s=128&d=identicon&r=PG&f=1",
+                "display_name": "PeptideWitch",
+                "link": "https://stackoverflow.com/users/8763097/peptidewitch"
+            },
+            "is_answered": true,
+            "view_count": 42,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1524203913,
+            "creation_date": 1524202038,
+            "question_id": 49934576,
+            "body_markdown": "I have a data class:\r\n\r\n    data class UniqueProtein(var id: String, var spc: Int, var r: DoubleArray)\r\n\r\nI&#39;ve created a `HashMap&lt;UniqueProtein, UniqueProtein&gt;` that I want to convert to a HashSet so I can find overlapping values between two HashMaps, like so:\r\n\r\n    dottest(control: HashMap&lt;UniqueProtein, UniqueProtein&gt;, treatment: HashMap&lt;UniqueProtein, UniqueProtein&gt;) \r\n\r\n    var combineddata:HashSet&lt;UniqueProtein&gt; = control.keySet().retainAll(treatment.keySet())\r\n\r\nIntelliJ is throwing the following in-line error under both keySet() calls:\r\n    \r\n    is public /*package*/ in &#39;HashMap&#39;\r\n\r\nBut since I&#39;ve declared the object as a data class, I&#39;m not sure what&#39;s going on...",
+            "link": "https://stackoverflow.com/questions/49934576/hashmapdata-class-data-class-object-keyset-function-throws-error-relating-t",
+            "title": "HashMap&lt;data class, data class&gt; object.keySet() function throws error relating to a public call",
+            "body": "<p>I have a data class:</p>\n\n<pre><code>data class UniqueProtein(var id: String, var spc: Int, var r: DoubleArray)\n</code></pre>\n\n<p>I've created a <code>HashMap&lt;UniqueProtein, UniqueProtein&gt;</code> that I want to convert to a HashSet so I can find overlapping values between two HashMaps, like so:</p>\n\n<pre><code>dottest(control: HashMap&lt;UniqueProtein, UniqueProtein&gt;, treatment: HashMap&lt;UniqueProtein, UniqueProtein&gt;) \n\nvar combineddata:HashSet&lt;UniqueProtein&gt; = control.keySet().retainAll(treatment.keySet())\n</code></pre>\n\n<p>IntelliJ is throwing the following in-line error under both keySet() calls:</p>\n\n<pre><code>is public /*package*/ in 'HashMap'\n</code></pre>\n\n<p>But since I've declared the object as a data class, I'm not sure what's going on...</p>\n"
+        },
+        {
+            "tags": [
+                "mdm"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9673175,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-wBZj_wyS_o8/AAAAAAAAAAI/AAAAAAAAAAA/QZGYIccm0k8/photo.jpg?sz=128",
+                "display_name": "Chetan Sharma",
+                "link": "https://stackoverflow.com/users/9673175/chetan-sharma"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1524203903,
+            "creation_date": 1524203903,
+            "question_id": 49934950,
+            "body_markdown": "As a tester currently i&#39;m start testing of **mdm**. i want know is there any third party apps or any thing else to break or stop *mdm* \r\n\r\ncurrently my mdm setting is stop using &#39;playstore&#39;, &#39;youtube&#39; and other app\r\n\r\ncheck link regarding mdm\r\nhttps://www.manageengine.com/mobile-device-management/?gclid=EAIaIQobChMI1-Ky6JXI2gIViTUrCh0Z7QWFEAAYASAAEgLTn_D_BwE\r\n\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49934950/how-to-break-mdm-functionality",
+            "title": "how to break mdm functionality",
+            "body": "<p>As a tester currently i'm start testing of <strong>mdm</strong>. i want know is there any third party apps or any thing else to break or stop <em>mdm</em> </p>\n\n<p>currently my mdm setting is stop using 'playstore', 'youtube' and other app</p>\n\n<p>check link regarding mdm\n<a href=\"https://www.manageengine.com/mobile-device-management/?gclid=EAIaIQobChMI1-Ky6JXI2gIViTUrCh0Z7QWFEAAYASAAEgLTn_D_BwE\" rel=\"nofollow noreferrer\">https://www.manageengine.com/mobile-device-management/?gclid=EAIaIQobChMI1-Ky6JXI2gIViTUrCh0Z7QWFEAAYASAAEgLTn_D_BwE</a></p>\n"
+        },
+        {
+            "tags": [
+                "kendo-grid"
+            ],
+            "owner": {
+                "reputation": 1118,
+                "user_id": 796709,
+                "user_type": "registered",
+                "accept_rate": 58,
+                "profile_image": "https://www.gravatar.com/avatar/28cd359d7f1d76855fc927da52cd48ac?s=128&d=identicon&r=PG",
+                "display_name": "Bryan Schmiedeler",
+                "link": "https://stackoverflow.com/users/796709/bryan-schmiedeler"
+            },
+            "is_answered": false,
+            "view_count": 1027,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524203887,
+            "creation_date": 1485976439,
+            "question_id": 41987788,
+            "body_markdown": "I have been using filters to successfully search on my KendoUI grids. However a new application has some fields that are multi-valued and my filtering doesn&#39;t work - it actually just seems to spin forever. \r\n\r\nAn example of a multi-value field:\r\n\r\n    field   : &quot;rspPersons&quot;,\r\n    title   : &quot;Responsible Persons&quot;,\r\n    type    : &quot;Text&quot;,\r\n    template: &quot;# var t=rspPersons.join(&#39;, &#39;);data.tagsString=t; # #=t #&quot;\r\n\r\nAn example of my filter:\r\n\r\n\r\n\t\t\t\t\t\t\torfilter.filters.push( {\r\n\t\t\t\t\t\t\t\tfield : &quot;chgDescription&quot;,\r\n\t\t\t\t\t\t\t\toperator : &quot;contains&quot;,\r\n\t\t\t\t\t\t\t\tvalue : v1\r\n\t\t\t\t\t\t\t},\r\n\t\t\t\t\t\t\torfilter.filters.push( {\r\n\t\t\t\t\t\t\t\tfield : &quot;rspPersons&quot;,\r\n\t\t\t\t\t\t\t\toperator : &quot;contains&quot;,\r\n\t\t\t\t\t\t\t\tvalue : v1\r\n\t\t\t\t\t\t\t} \r\n\r\nThe second filter will make the entire search break down. If I take it out, then the search/filter works just fine.\r\n\r\nSo how can I filter/search on multi-value fields?",
+            "link": "https://stackoverflow.com/questions/41987788/kendo-ui-grid-filtering-column-with-multiple-values",
+            "title": "Kendo UI Grid Filtering column with multiple values",
+            "body": "<p>I have been using filters to successfully search on my KendoUI grids. However a new application has some fields that are multi-valued and my filtering doesn't work - it actually just seems to spin forever. </p>\n\n<p>An example of a multi-value field:</p>\n\n<pre><code>field   : \"rspPersons\",\ntitle   : \"Responsible Persons\",\ntype    : \"Text\",\ntemplate: \"# var t=rspPersons.join(', ');data.tagsString=t; # #=t #\"\n</code></pre>\n\n<p>An example of my filter:</p>\n\n<pre><code>                        orfilter.filters.push( {\n                            field : \"chgDescription\",\n                            operator : \"contains\",\n                            value : v1\n                        },\n                        orfilter.filters.push( {\n                            field : \"rspPersons\",\n                            operator : \"contains\",\n                            value : v1\n                        } \n</code></pre>\n\n<p>The second filter will make the entire search break down. If I take it out, then the search/filter works just fine.</p>\n\n<p>So how can I filter/search on multi-value fields?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "jquery",
+                "reactjs",
+                "froala"
+            ],
+            "owner": {
+                "reputation": 68,
+                "user_id": 8373644,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/585621a7946edc29c9b238474ae5ac1e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Dinesh Kumar",
+                "link": "https://stackoverflow.com/users/8373644/dinesh-kumar"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524203887,
+            "creation_date": 1524203887,
+            "question_id": 49934948,
+            "body_markdown": "I have implemented the https://github.com/froala/react-froala-wysiwyg module and Froala works awesome.\r\nI added a custom button in the toolar and implemented the checkbox functionality.\r\n\r\n    import &#39;froala-editor/js/froala_editor.pkgd.min&#39;;\r\n    import &#39;froala-editor/css/froala_style.min.css&#39;;\r\n    import &#39;froala-editor/css/froala_editor.pkgd.min.css&#39;;\r\n    import &#39;font-awesome/css/font-awesome.css&#39;;\r\n    import FroalaEditor from &#39;react-froala-wysiwyg&#39;;\r\n    \r\n      componentDidMount() {\r\n        $.FroalaEditor.DefineIcon(&#39;check&#39;, { NAME: &#39;check-square&#39; });\r\n        $.FroalaEditor.RegisterCommand(&#39;check&#39;, {\r\n          title: &#39;check-box&#39;,\r\n          focus: true,\r\n          undo: true,\r\n          refreshAfterCallback: false,\r\n          callback: () =&gt; {\r\n            this.setState({ model: this.state.model + &#39;&lt;input type=&quot;checkbox&quot; /&gt;&#39; });\r\n          },\r\n        });\r\n      }\r\n    \r\n      config = {\r\n        placeholderText: &#39;Your notes here....&#39;,\r\n        heightMin: 250,\r\n        heightMax: 400,\r\n        colorsHEXInput: false,\r\n        autoFocus: true,\r\n        toolbarBottom: true,\r\n        linkAlwaysBlank: true,\r\n        fontFamilySelection: true,\r\n        fontSizeSelection: true,\r\n        paragraphFormatSelection: true,\r\n        htmlExecuteScripts: true,\r\n        iframe: true,\r\n        tabSpaces: 4,\r\n        pluginsEnabled: [&#39;align&#39;, &#39;charCounter&#39;, &#39;codeBeautifier&#39;, &#39;codeView&#39;, &#39;colors&#39;, &#39;draggable&#39;, &#39;embedly&#39;, &#39;emoticons&#39;, &#39;entities&#39;, &#39;file&#39;, &#39;fontFamily&#39;, &#39;fontSize&#39;, &#39;fullscreen&#39;, &#39;image&#39;, &#39;imageManager&#39;, &#39;inlineStyle&#39;, &#39;lineBreaker&#39;, &#39;link&#39;, &#39;lists&#39;, &#39;paragraphFormat&#39;, &#39;paragraphStyle&#39;, &#39;quickInsert&#39;, &#39;quote&#39;, &#39;save&#39;, &#39;table&#39;, &#39;url&#39;, &#39;video&#39;, &#39;wordPaste&#39;],\r\n        toolbarButtons: [&#39;bold&#39;, &#39;italic&#39;, &#39;underline&#39;, &#39;strikeThrough&#39;, &#39;subscript&#39;, &#39;superscript&#39;, &#39;|&#39;, &#39;fontFamily&#39;, &#39;fontSize&#39;, &#39;color&#39;, &#39;inlineStyle&#39;, &#39;paragraphStyle&#39;, &#39;|&#39;, &#39;paragraphFormat&#39;, &#39;align&#39;, &#39;formatOL&#39;, &#39;formatUL&#39;, &#39;outdent&#39;, &#39;indent&#39;, &#39;quote&#39;, &#39;check&#39;, &#39;|&#39;, &#39;insertLink&#39;, &#39;insertImage&#39;, &#39;insertVideo&#39;, &#39;embedly&#39;, &#39;insertFile&#39;, &#39;insertTable&#39;, &#39;|&#39;, &#39;emoticons&#39;, &#39;specialCharacters&#39;, &#39;insertHR&#39;, &#39;selectAll&#39;, &#39;clearFormatting&#39;, &#39;|&#39;, &#39;spellChecker&#39;, &#39;help&#39;, &#39;html&#39;, &#39;|&#39;, &#39;undo&#39;, &#39;redo&#39;],\r\n        toolbarButtonsMD: [&#39;bold&#39;, &#39;italic&#39;, &#39;underline&#39;, &#39;strikeThrough&#39;, &#39;subscript&#39;, &#39;superscript&#39;, &#39;|&#39;, &#39;fontFamily&#39;, &#39;fontSize&#39;, &#39;color&#39;, &#39;inlineStyle&#39;, &#39;paragraphStyle&#39;, &#39;|&#39;, &#39;paragraphFormat&#39;, &#39;align&#39;, &#39;formatOL&#39;, &#39;formatUL&#39;, &#39;outdent&#39;, &#39;indent&#39;, &#39;quote&#39;, &#39;check&#39;, &#39;|&#39;, &#39;insertLink&#39;, &#39;insertImage&#39;, &#39;insertVideo&#39;, &#39;embedly&#39;, &#39;insertFile&#39;, &#39;insertTable&#39;, &#39;|&#39;, &#39;emoticons&#39;, &#39;specialCharacters&#39;, &#39;insertHR&#39;, &#39;selectAll&#39;, &#39;clearFormatting&#39;, &#39;|&#39;, &#39;spellChecker&#39;, &#39;help&#39;, &#39;html&#39;, &#39;|&#39;, &#39;undo&#39;, &#39;redo&#39;],\r\n        toolbarButtonsSM: [&#39;bold&#39;, &#39;italic&#39;, &#39;underline&#39;, &#39;strikeThrough&#39;, &#39;|&#39;, &#39;fontFamily&#39;, &#39;fontSize&#39;, &#39;color&#39;, &#39;|&#39;, &#39;align&#39;, &#39;formatOL&#39;, &#39;formatUL&#39;, &#39;outdent&#39;, &#39;indent&#39;, &#39;quote&#39;, &#39;check&#39;, &#39;|&#39;, &#39;insertLink&#39;, &#39;insertImage&#39;, &#39;insertVideo&#39;, &#39;embedly&#39;, &#39;insertFile&#39;, &#39;insertTable&#39;, &#39;|&#39;, &#39;emoticons&#39;, &#39;specialCharacters&#39;, &#39;insertHR&#39;, &#39;selectAll&#39;, &#39;clearFormatting&#39;, &#39;|&#39;, &#39;spellChecker&#39;, &#39;help&#39;, &#39;html&#39;, &#39;|&#39;, &#39;undo&#39;, &#39;redo&#39;],\r\n        toolbarButtonsXS: [&#39;bold&#39;, &#39;italic&#39;, &#39;underline&#39;, &#39;|&#39;, &#39;fontFamily&#39;, &#39;fontSize&#39;, &#39;color&#39;, &#39;|&#39;, &#39;align&#39;, &#39;formatOL&#39;, &#39;formatUL&#39;, &#39;outdent&#39;, &#39;indent&#39;, &#39;check&#39;, &#39;|&#39;, &#39;insertLink&#39;, &#39;insertImage&#39;, &#39;insertVideo&#39;, &#39;insertFile&#39;, &#39;insertTable&#39;, &#39;|&#39;, &#39;insertHR&#39;, &#39;selectAll&#39;, &#39;clearFormatting&#39;, &#39;|&#39;, &#39;spellChecker&#39;, &#39;|&#39;, &#39;undo&#39;, &#39;redo&#39;],\r\n      };\r\n    \r\n    \r\n      handleModelChange = (data) =&gt; {\r\n        this.setState({\r\n          model: data,\r\n        });\r\n        this.saveEvent();\r\n      }\r\n    \r\n      &lt;FroalaEditor\r\n             config={this.config}\r\n             model={this.state.model}\r\n             onModelChange={this.handleModelChange}\r\n       /&gt;\r\n\r\n  Implementing the above code added a custom checkbox button in the toolbar and on click of the button rendered the checkbox in the editor.\r\n\r\n**Issues which I am facing:**\r\n\r\n - Eventhough, I added undo property as true, the undo and redo doesn&#39;t\r\n   work for adding the checkbox from the custom button. \r\n - The checkbox state change i.e the checking and unchecking of the\r\n   checkbox doesn&#39;t call the onModelChange method.\r\n\r\nCould anyone throw a light on what&#39;s happening? I researched but I was not able to find the working solution.",
+            "link": "https://stackoverflow.com/questions/49934948/react-froala-default-on-model-change-method-cannot-capture-the-checking-and-unch",
+            "title": "React Froala default on model change method cannot capture the checking and unchecking of the checkbox",
+            "body": "<p>I have implemented the <a href=\"https://github.com/froala/react-froala-wysiwyg\" rel=\"nofollow noreferrer\">https://github.com/froala/react-froala-wysiwyg</a> module and Froala works awesome.\nI added a custom button in the toolar and implemented the checkbox functionality.</p>\n\n<pre><code>import 'froala-editor/js/froala_editor.pkgd.min';\nimport 'froala-editor/css/froala_style.min.css';\nimport 'froala-editor/css/froala_editor.pkgd.min.css';\nimport 'font-awesome/css/font-awesome.css';\nimport FroalaEditor from 'react-froala-wysiwyg';\n\n  componentDidMount() {\n    $.FroalaEditor.DefineIcon('check', { NAME: 'check-square' });\n    $.FroalaEditor.RegisterCommand('check', {\n      title: 'check-box',\n      focus: true,\n      undo: true,\n      refreshAfterCallback: false,\n      callback: () =&gt; {\n        this.setState({ model: this.state.model + '&lt;input type=\"checkbox\" /&gt;' });\n      },\n    });\n  }\n\n  config = {\n    placeholderText: 'Your notes here....',\n    heightMin: 250,\n    heightMax: 400,\n    colorsHEXInput: false,\n    autoFocus: true,\n    toolbarBottom: true,\n    linkAlwaysBlank: true,\n    fontFamilySelection: true,\n    fontSizeSelection: true,\n    paragraphFormatSelection: true,\n    htmlExecuteScripts: true,\n    iframe: true,\n    tabSpaces: 4,\n    pluginsEnabled: ['align', 'charCounter', 'codeBeautifier', 'codeView', 'colors', 'draggable', 'embedly', 'emoticons', 'entities', 'file', 'fontFamily', 'fontSize', 'fullscreen', 'image', 'imageManager', 'inlineStyle', 'lineBreaker', 'link', 'lists', 'paragraphFormat', 'paragraphStyle', 'quickInsert', 'quote', 'save', 'table', 'url', 'video', 'wordPaste'],\n    toolbarButtons: ['bold', 'italic', 'underline', 'strikeThrough', 'subscript', 'superscript', '|', 'fontFamily', 'fontSize', 'color', 'inlineStyle', 'paragraphStyle', '|', 'paragraphFormat', 'align', 'formatOL', 'formatUL', 'outdent', 'indent', 'quote', 'check', '|', 'insertLink', 'insertImage', 'insertVideo', 'embedly', 'insertFile', 'insertTable', '|', 'emoticons', 'specialCharacters', 'insertHR', 'selectAll', 'clearFormatting', '|', 'spellChecker', 'help', 'html', '|', 'undo', 'redo'],\n    toolbarButtonsMD: ['bold', 'italic', 'underline', 'strikeThrough', 'subscript', 'superscript', '|', 'fontFamily', 'fontSize', 'color', 'inlineStyle', 'paragraphStyle', '|', 'paragraphFormat', 'align', 'formatOL', 'formatUL', 'outdent', 'indent', 'quote', 'check', '|', 'insertLink', 'insertImage', 'insertVideo', 'embedly', 'insertFile', 'insertTable', '|', 'emoticons', 'specialCharacters', 'insertHR', 'selectAll', 'clearFormatting', '|', 'spellChecker', 'help', 'html', '|', 'undo', 'redo'],\n    toolbarButtonsSM: ['bold', 'italic', 'underline', 'strikeThrough', '|', 'fontFamily', 'fontSize', 'color', '|', 'align', 'formatOL', 'formatUL', 'outdent', 'indent', 'quote', 'check', '|', 'insertLink', 'insertImage', 'insertVideo', 'embedly', 'insertFile', 'insertTable', '|', 'emoticons', 'specialCharacters', 'insertHR', 'selectAll', 'clearFormatting', '|', 'spellChecker', 'help', 'html', '|', 'undo', 'redo'],\n    toolbarButtonsXS: ['bold', 'italic', 'underline', '|', 'fontFamily', 'fontSize', 'color', '|', 'align', 'formatOL', 'formatUL', 'outdent', 'indent', 'check', '|', 'insertLink', 'insertImage', 'insertVideo', 'insertFile', 'insertTable', '|', 'insertHR', 'selectAll', 'clearFormatting', '|', 'spellChecker', '|', 'undo', 'redo'],\n  };\n\n\n  handleModelChange = (data) =&gt; {\n    this.setState({\n      model: data,\n    });\n    this.saveEvent();\n  }\n\n  &lt;FroalaEditor\n         config={this.config}\n         model={this.state.model}\n         onModelChange={this.handleModelChange}\n   /&gt;\n</code></pre>\n\n<p>Implementing the above code added a custom checkbox button in the toolbar and on click of the button rendered the checkbox in the editor.</p>\n\n<p><strong>Issues which I am facing:</strong></p>\n\n<ul>\n<li>Eventhough, I added undo property as true, the undo and redo doesn't\nwork for adding the checkbox from the custom button. </li>\n<li>The checkbox state change i.e the checking and unchecking of the\ncheckbox doesn't call the onModelChange method.</li>\n</ul>\n\n<p>Could anyone throw a light on what's happening? I researched but I was not able to find the working solution.</p>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "arrays",
+                "aspen"
+            ],
+            "owner": {
+                "reputation": 363,
+                "user_id": 4412610,
+                "user_type": "registered",
+                "accept_rate": 46,
+                "profile_image": "https://www.gravatar.com/avatar/de9ba9338d342841ada0d83532f52bd1?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Maxime",
+                "link": "https://stackoverflow.com/users/4412610/maxime"
+            },
+            "is_answered": false,
+            "view_count": 54,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524203854,
+            "creation_date": 1523963005,
+            "last_edit_date": 1524203854,
+            "question_id": 49876411,
+            "body_markdown": "I have a table with three columns, that can be represented as follows:\r\n\r\n    |---|---|---|\r\n    | 1 | 2 | 3 |\r\n    |---|---|---|\r\n    | A | B | C |    \r\n    | B | C | A |\r\n    | C | A | B |\r\n\r\nAnd a 2D-Array, like this:\r\n\r\n    [\r\n     [A,B,C],\r\n     [C,A,B],\r\n     [B,A,C]\r\n            ]\r\nI would like to select only the rows in the table matching one of the rows in the 2D array.\r\n\r\nThe obvious solution is to loop through the and make 3 queries, but I am wondering if there is any way to make this in a single `SELECT`\r\n\r\n---\r\n\r\nEdit: A working example for the &#39;loop method&#39;.\r\n\r\n    SET LOG_ROWS = 0;\r\n    DECLARE LOCAL TEMPORARY TABLE MODULE.X(col1 char(1), col2 char(1), col3 char(1));\r\n    \r\n    local array, i integer;\r\n    \r\n    REDIM(array,3,3);\r\n    array[0,0] = &#39;A&#39;;\r\n    array[0,1] = &#39;B&#39;;\r\n    array[0,2] = &#39;C&#39;;\r\n    array[1,0] = &#39;C&#39;;\r\n    array[1,1] = &#39;A&#39;;\r\n    array[1,2] = &#39;B&#39;;\r\n    array[2,0] = &#39;B&#39;;\r\n    array[2,1] = &#39;A&#39;;\r\n    array[2,2] = &#39;C&#39;;\r\n    \r\n    \r\n    INSERT INTO MODULE.X VALUES(&#39;A&#39;,&#39;B&#39;,&#39;C&#39;);\r\n    INSERT INTO MODULE.X VALUES(&#39;B&#39;,&#39;C&#39;,&#39;A&#39;);\r\n    INSERT INTO MODULE.X VALUES(&#39;C&#39;,&#39;A&#39;,&#39;B&#39;);\r\n    \r\n    FOR i = 0 TO UBound(array) DO\r\n    \tSELECT * FROM MODULE.X WHERE col1 = array[i,0] AND col2 = array[i,1] AND col3 = array[i,2];\r\n    END \r\n\r\nResult:\r\n\r\n    col1 col2 col3\r\n    ---- ---- ----\r\n    A    B    C\r\n    col1 col2 col3\r\n    ---- ---- ----\r\n    C    A    B",
+            "link": "https://stackoverflow.com/questions/49876411/is-it-possible-to-filter-values-using-a-2d-array-in-sql",
+            "title": "Is it possible to filter values using a 2D array in SQL?",
+            "body": "<p>I have a table with three columns, that can be represented as follows:</p>\n\n<pre><code>|---|---|---|\n| 1 | 2 | 3 |\n|---|---|---|\n| A | B | C |    \n| B | C | A |\n| C | A | B |\n</code></pre>\n\n<p>And a 2D-Array, like this:</p>\n\n<pre><code>[\n [A,B,C],\n [C,A,B],\n [B,A,C]\n        ]\n</code></pre>\n\n<p>I would like to select only the rows in the table matching one of the rows in the 2D array.</p>\n\n<p>The obvious solution is to loop through the and make 3 queries, but I am wondering if there is any way to make this in a single <code>SELECT</code></p>\n\n<hr>\n\n<p>Edit: A working example for the 'loop method'.</p>\n\n<pre><code>SET LOG_ROWS = 0;\nDECLARE LOCAL TEMPORARY TABLE MODULE.X(col1 char(1), col2 char(1), col3 char(1));\n\nlocal array, i integer;\n\nREDIM(array,3,3);\narray[0,0] = 'A';\narray[0,1] = 'B';\narray[0,2] = 'C';\narray[1,0] = 'C';\narray[1,1] = 'A';\narray[1,2] = 'B';\narray[2,0] = 'B';\narray[2,1] = 'A';\narray[2,2] = 'C';\n\n\nINSERT INTO MODULE.X VALUES('A','B','C');\nINSERT INTO MODULE.X VALUES('B','C','A');\nINSERT INTO MODULE.X VALUES('C','A','B');\n\nFOR i = 0 TO UBound(array) DO\n    SELECT * FROM MODULE.X WHERE col1 = array[i,0] AND col2 = array[i,1] AND col3 = array[i,2];\nEND \n</code></pre>\n\n<p>Result:</p>\n\n<pre><code>col1 col2 col3\n---- ---- ----\nA    B    C\ncol1 col2 col3\n---- ---- ----\nC    A    B\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "firebase",
+                "service",
+                "playback"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 9582529,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/b90ed775d3fe51fc8b12ea8ffb49a1aa?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Jacky Lim",
+                "link": "https://stackoverflow.com/users/9582529/jacky-lim"
+            },
+            "is_answered": false,
+            "view_count": 32,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524203847,
+            "creation_date": 1524164716,
+            "last_edit_date": 1524203847,
+            "question_id": 49928467,
+            "body_markdown": "Currently created a form that store user into Firebase server. However the app not responding due to an error named\r\n &gt;Firebase wont work unless you update google play services. \r\n\r\nI have follow every step mentioned in the Firebase tutorial and yet it is still not working due to the google play services issue. May i know how to solve the google play services issue? The Firebase version is 15.0.0. Thanks",
+            "link": "https://stackoverflow.com/questions/49928467/firebase-wont-work-unless-you-update-google-play-services",
+            "title": "Firebase wont work unless you update google play services",
+            "body": "<p>Currently created a form that store user into Firebase server. However the app not responding due to an error named</p>\n\n<blockquote>\n  <p>Firebase wont work unless you update google play services. </p>\n</blockquote>\n\n<p>I have follow every step mentioned in the Firebase tutorial and yet it is still not working due to the google play services issue. May i know how to solve the google play services issue? The Firebase version is 15.0.0. Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "azure-service-fabric",
+                "service-fabric-stateless"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9670392,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/22aed99fe83074df90ac7b6d8d01bfd6?s=128&d=identicon&r=PG&f=1",
+                "display_name": "not_you",
+                "link": "https://stackoverflow.com/users/9670392/not-you"
+            },
+            "is_answered": false,
+            "view_count": 36,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524203845,
+            "creation_date": 1524152179,
+            "question_id": 49925006,
+            "body_markdown": "I&#39;m trying to create instances of stateless services on demand at runtime without additonal entries about types at manifest file.\r\n\r\nAt the begging I thought, that I can use \r\n\r\n    using (FabricRuntime fabricRuntime = FabricRuntime.Create())\r\n          {\r\n              fabricRuntime.RegisterServiceType(&quot;ServiceType&quot;, typeof(Service));\r\n          }\r\n\r\nand\r\n\r\n    ServiceRuntime.RegisterServiceAsync(&quot;ServiceType&quot;, context =&gt; new Service(context)).GetAwaiter().GetResult();\r\n\r\nHowerver I still have to register service type or service template at manifest file, but that&#39;s beside the point.\r\n\r\nNow, I wonder if it is possible to create instance of stateless service without metadata at manifest or powershell scripts? Just write services programmatically?\r\n",
+            "link": "https://stackoverflow.com/questions/49925006/how-to-create-a-stateless-service-at-runtime-on-local-service-fabric-server",
+            "title": "how to create a stateless service at runtime on local service fabric server",
+            "body": "<p>I'm trying to create instances of stateless services on demand at runtime without additonal entries about types at manifest file.</p>\n\n<p>At the begging I thought, that I can use </p>\n\n<pre><code>using (FabricRuntime fabricRuntime = FabricRuntime.Create())\n      {\n          fabricRuntime.RegisterServiceType(\"ServiceType\", typeof(Service));\n      }\n</code></pre>\n\n<p>and</p>\n\n<pre><code>ServiceRuntime.RegisterServiceAsync(\"ServiceType\", context =&gt; new Service(context)).GetAwaiter().GetResult();\n</code></pre>\n\n<p>Howerver I still have to register service type or service template at manifest file, but that's beside the point.</p>\n\n<p>Now, I wonder if it is possible to create instance of stateless service without metadata at manifest or powershell scripts? Just write services programmatically?</p>\n"
+        },
+        {
+            "tags": [
+                "django",
+                "http-post",
+                "httprequest"
+            ],
+            "owner": {
+                "reputation": 75,
+                "user_id": 2715898,
+                "user_type": "registered",
+                "accept_rate": 58,
+                "profile_image": "https://www.gravatar.com/avatar/fb3ebfd4f8fdaf8d3af2dfc12b4571c2?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user2715898",
+                "link": "https://stackoverflow.com/users/2715898/user2715898"
+            },
+            "is_answered": true,
+            "view_count": 51,
+            "accepted_answer_id": 49934727,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524203840,
+            "creation_date": 1524201780,
+            "question_id": 49934531,
+            "body_markdown": "I want to make some decision based on the contents of request.payload-\r\n\r\n    XPKHmxbGVRRE9kUz5K6MtwL15NDedDHDb9IcTohZH7Vnrd0k5D4I0zjD4YR6yjhb\r\n    ------WebKitFormBoundaryVL2R7CYuDDjkPX51\r\n    Content-Disposition: form-data; name=&quot;filename&quot;; filename=&quot;abc.pdf&quot;\r\n    Content-Type: application/pdf\r\n\r\nBasically want to read if filename exists in this? How can I do this?\r\n`if &quot;filenanme&quot; in request.POST` seems incorrect.\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49934531/how-to-read-the-request-payload-contents-in-django",
+            "title": "how to read the request.payload contents in django?",
+            "body": "<p>I want to make some decision based on the contents of request.payload-</p>\n\n<pre><code>XPKHmxbGVRRE9kUz5K6MtwL15NDedDHDb9IcTohZH7Vnrd0k5D4I0zjD4YR6yjhb\n------WebKitFormBoundaryVL2R7CYuDDjkPX51\nContent-Disposition: form-data; name=\"filename\"; filename=\"abc.pdf\"\nContent-Type: application/pdf\n</code></pre>\n\n<p>Basically want to read if filename exists in this? How can I do this?\n<code>if \"filenanme\" in request.POST</code> seems incorrect.</p>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "angular-material"
+            ],
+            "owner": {
+                "reputation": 74,
+                "user_id": 5659141,
+                "user_type": "registered",
+                "accept_rate": 10,
+                "profile_image": "https://www.gravatar.com/avatar/bc7aa129f998c43635f1d343eea9f17f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Tanvi Shah",
+                "link": "https://stackoverflow.com/users/5659141/tanvi-shah"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524203819,
+            "creation_date": 1524203819,
+            "question_id": 49934934,
+            "body_markdown": "I am using MatTableDataSource for displaying data in tabular format. My table should support two functionality 1.Row expansion 2.filtering. I am able to develop row expansion functionality but not able to develop a filter. However, before developing row expansion I am able to create filter using [Angular Material Table][1] but after adding row expansion, the filter is not working because of my DataSource object refers to my custom class and filter method is not present in custom class. How would I implement both in one class? Your help is valuable Thanks in advance.\r\n\r\n\r\n  [1]: https://material.angular.io/components/table/overview",
+            "link": "https://stackoverflow.com/questions/49934934/how-to-use-filter-and-expanded-row-feature-using-mattabledatasource-in-angular-m",
+            "title": "How to use filter and expanded row feature using MatTableDataSource in angular-material?",
+            "body": "<p>I am using MatTableDataSource for displaying data in tabular format. My table should support two functionality 1.Row expansion 2.filtering. I am able to develop row expansion functionality but not able to develop a filter. However, before developing row expansion I am able to create filter using <a href=\"https://material.angular.io/components/table/overview\" rel=\"nofollow noreferrer\">Angular Material Table</a> but after adding row expansion, the filter is not working because of my DataSource object refers to my custom class and filter method is not present in custom class. How would I implement both in one class? Your help is valuable Thanks in advance.</p>\n"
+        },
+        {
+            "tags": [
+                "reporting-services",
+                "powerbi"
+            ],
+            "owner": {
+                "reputation": 34,
+                "user_id": 5567491,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://graph.facebook.com/10206167001752037/picture?type=large",
+                "display_name": "Johnathan Li",
+                "link": "https://stackoverflow.com/users/5567491/johnathan-li"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524203818,
+            "creation_date": 1524203818,
+            "question_id": 49934933,
+            "body_markdown": "I have a few questions about Microsoft power BI.\r\n\r\nI have a dotnet core 2.0 web application. Now I want to build a report system for my clients. So i am looking for a good service to help me to build the report system. I Found Power BI. But I do not know if it could achieve my goal or not. So basically I need some head start information from anyone who has used this to the same task That i am going to describe.\r\n\r\n1. Does it fully compatible with dot.net core 2.0 web application?\r\n2. If I want to build a front-end page to let my clients to customize their own report template e.g. moving content, writing text, ajust font-size, can I do it with power BI?or anthing like iFrame can export the &#39;template builder&#39; from power BI to my application\r\n\r\nThanks\r\n",
+            "link": "https://stackoverflow.com/questions/49934933/microsoft-power-bi-embed-with-our-application",
+            "title": "Microsoft power BI embed with our application",
+            "body": "<p>I have a few questions about Microsoft power BI.</p>\n\n<p>I have a dotnet core 2.0 web application. Now I want to build a report system for my clients. So i am looking for a good service to help me to build the report system. I Found Power BI. But I do not know if it could achieve my goal or not. So basically I need some head start information from anyone who has used this to the same task That i am going to describe.</p>\n\n<ol>\n<li>Does it fully compatible with dot.net core 2.0 web application?</li>\n<li>If I want to build a front-end page to let my clients to customize their own report template e.g. moving content, writing text, ajust font-size, can I do it with power BI?or anthing like iFrame can export the 'template builder' from power BI to my application</li>\n</ol>\n\n<p>Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "azure",
+                "azure-active-directory",
+                "microsoft-graph",
+                "asp.net-core-2.0",
+                "hello.js"
+            ],
+            "owner": {
+                "reputation": 79,
+                "user_id": 4499750,
+                "user_type": "registered",
+                "accept_rate": 29,
+                "profile_image": "https://lh5.googleusercontent.com/-UkakXd1KoUk/AAAAAAAAAAI/AAAAAAAAEks/TRxBsLXnkTc/photo.jpg?sz=128",
+                "display_name": "CKS",
+                "link": "https://stackoverflow.com/users/4499750/cks"
+            },
+            "is_answered": true,
+            "view_count": 37,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524203812,
+            "creation_date": 1524193006,
+            "last_edit_date": 1524203278,
+            "question_id": 49933215,
+            "body_markdown": "Scenario:\r\n\r\nI have an angular5 client application, which uses hello.js to authenticate users using their office 365 credentials. \r\n\r\nClient Code:\r\n\r\n      hello.init({\r\n          msft: {\r\n            id: configuration.AppID,\r\n            oauth: {\r\n              version: 2,\r\n              auth: &#39;https://login.microsoftonline.com/&#39; + configuration.TenantID + &#39;/oauth2/v2.0/authorize&#39;\r\n            },\r\n            scope_delim: &#39; &#39;,\r\n            form: false\r\n          },\r\n        },\r\n          { redirect_uri: configuration.redirecturl }\r\n        );\r\n      }\r\n    \r\n    \r\n      login() {\r\n    \r\n        hello(&#39;msft&#39;).login({ scope: &#39;User.Read People.Read&#39;, display: &#39;popup&#39; })\r\n          .then((authData: any) =&gt; {  // console.log(authData);\r\n    \r\n            this.zone.run(() =&gt; {\r\n    \r\n              // get profile\r\n    }\r\n\r\nA successful response is (Manipulated for security reasons)\r\n\r\n    {  \r\n       &quot;msft&quot;:{  \r\n          &quot;access_token&quot;:&quot;REMOVED TOKEN HERE&quot;,\r\n          &quot;token_type&quot;:&quot;Bearer&quot;,\r\n          &quot;expires_in&quot;:3599,\r\n          &quot;scope&quot;:&quot;basic,User.Read,People.Read&quot;,\r\n          &quot;state&quot;:&quot;&quot;,\r\n          &quot;session_state&quot;:&quot;3b82898a-2b3f-445363f-89ae-d9696gg64ad3&quot;,\r\n          &quot;client_id&quot;:&quot;672330148-2bb43-3080-9eee-1f46311f789c&quot;,\r\n          &quot;network&quot;:&quot;msft&quot;,\r\n          &quot;display&quot;:&quot;popup&quot;,\r\n          &quot;redirect_uri&quot;:&quot;http://localhost:5653/&quot;,\r\n          &quot;expires&quot;:15245366.218\r\n       }\r\n    }\r\n\r\nThe decoded access_token has these few keys:\r\n\r\nHeader:\r\n\r\n**1. nonce (requires some special processing, I couldn&#39;t find any documentation regarding special processing)**\r\n\r\n **2. typ: JWT**\r\n\r\nPayLoad:\r\n\r\n**&quot;aud&quot;: &quot;https://graph.microsoft.com&quot;,**\r\n\r\nOnce the access_token is received, I am sending the access_token in authorization header of every call to my backend API. The goal is to validate the token and only send a successful response if the access_token is validated and authorized. If unsuccessful, 401 Unauthorized is the response.\r\n\r\nAPI Code to validate access_token, ASP .NET CORE 2, Following (https://auth0.com/blog/securing-asp-dot-net-core-2-applications-with-jwts/)\r\n    \r\n    namespace JWT\r\n    {\r\n      public class Startup\r\n      {\r\n        public Startup(IConfiguration configuration)\r\n        {\r\n            Configuration = configuration;\r\n        }\r\n    \r\n        public IConfiguration Configuration { get; }\r\n    \r\n        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.\r\n        public void ConfigureServices(IServiceCollection services)\r\n        {\r\n          services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)\r\n            .AddJwtBearer(options =&gt;\r\n            {\r\n              options.TokenValidationParameters = new TokenValidationParameters\r\n              {\r\n                ValidateIssuer = true,\r\n                ValidateAudience = true,\r\n                ValidateLifetime = true,\r\n                ValidateIssuerSigningKey = true,\r\n                ValidIssuer = Configuration[&quot;Jwt:Issuer&quot;],\r\n                ValidAudience = Configuration[&quot;Jwt:Issuer&quot;],\r\n                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration[&quot;Jwt:Key&quot;]))\r\n              };\r\n            });\r\n    \r\n          services.AddMvc();\r\n        }\r\n      }\r\n    }\r\n    \r\n    // other methods\r\n    public void Configure(IApplicationBuilder app, IHostingEnvironment env)\r\n    {\r\n        if (env.IsDevelopment())\r\n        {\r\n            app.UseDeveloperExceptionPage();\r\n        }\r\n    \r\n        app.UseAuthentication();\r\n    \r\n        app.UseMvc();\r\n    }\r\n\r\n\r\nIn appsettings.json I have:\r\n\r\n    {   &quot;Jwt&quot;: {\r\n        &quot;Key&quot;: &quot;verySecretKey&quot;, **(I got the key from https://login.microsoftonline.com/common/discovery/keys with the kid value in access_token header)**\r\n        &quot;Issuer&quot;: &quot;https://sts.windows.net/49bcf059-afa8-4bf9-8470-fad0c9cce27d/&quot;,   } }\r\n\r\n\r\nFinally, the error I receive is : \r\n**&quot;WWW-Authenticate →Bearer error=&quot;invalid_token&quot;, error_description=&quot;The signature key was not found&quot;&quot;**\r\n\r\n***I have been stuck here since past few days, any help will be life savior.***\r\n\r\nKey Points:\r\n\r\n1. I tried to validate the access_token in jwt.io (https://nicksnettravels.builttoroam.com/post/2017/01/24/Verifying-Azure-Active-Directory-JWT-Tokens.aspx) but I was not able to.\r\n\r\n2. The aud here is https://graph.microsoft.com, I am not sure if I need to and why do I need to change aud to my client id. how do I do that?\r\n\r\n3. Is there something wrong in the code or do i need to tweak the way I am requesting header tokens.\r\n\r\nPlease let me know if you need more information.\r\n\r\n\r\n \r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49933215/how-to-validate-microsoft-graph-api-jwt-access-token-and-secure-your-api",
+            "title": "How to validate Microsoft Graph API jwt access_token and secure your API?",
+            "body": "<p>Scenario:</p>\n\n<p>I have an angular5 client application, which uses hello.js to authenticate users using their office 365 credentials. </p>\n\n<p>Client Code:</p>\n\n<pre><code>  hello.init({\n      msft: {\n        id: configuration.AppID,\n        oauth: {\n          version: 2,\n          auth: 'https://login.microsoftonline.com/' + configuration.TenantID + '/oauth2/v2.0/authorize'\n        },\n        scope_delim: ' ',\n        form: false\n      },\n    },\n      { redirect_uri: configuration.redirecturl }\n    );\n  }\n\n\n  login() {\n\n    hello('msft').login({ scope: 'User.Read People.Read', display: 'popup' })\n      .then((authData: any) =&gt; {  // console.log(authData);\n\n        this.zone.run(() =&gt; {\n\n          // get profile\n}\n</code></pre>\n\n<p>A successful response is (Manipulated for security reasons)</p>\n\n<pre><code>{  \n   \"msft\":{  \n      \"access_token\":\"REMOVED TOKEN HERE\",\n      \"token_type\":\"Bearer\",\n      \"expires_in\":3599,\n      \"scope\":\"basic,User.Read,People.Read\",\n      \"state\":\"\",\n      \"session_state\":\"3b82898a-2b3f-445363f-89ae-d9696gg64ad3\",\n      \"client_id\":\"672330148-2bb43-3080-9eee-1f46311f789c\",\n      \"network\":\"msft\",\n      \"display\":\"popup\",\n      \"redirect_uri\":\"http://localhost:5653/\",\n      \"expires\":15245366.218\n   }\n}\n</code></pre>\n\n<p>The decoded access_token has these few keys:</p>\n\n<p>Header:</p>\n\n<p><strong>1. nonce (requires some special processing, I couldn't find any documentation regarding special processing)</strong></p>\n\n<p><strong>2. typ: JWT</strong></p>\n\n<p>PayLoad:</p>\n\n<p><strong>\"aud\": \"<a href=\"https://graph.microsoft.com\" rel=\"nofollow noreferrer\">https://graph.microsoft.com</a>\",</strong></p>\n\n<p>Once the access_token is received, I am sending the access_token in authorization header of every call to my backend API. The goal is to validate the token and only send a successful response if the access_token is validated and authorized. If unsuccessful, 401 Unauthorized is the response.</p>\n\n<p>API Code to validate access_token, ASP .NET CORE 2, Following (<a href=\"https://auth0.com/blog/securing-asp-dot-net-core-2-applications-with-jwts/\" rel=\"nofollow noreferrer\">https://auth0.com/blog/securing-asp-dot-net-core-2-applications-with-jwts/</a>)</p>\n\n<pre><code>namespace JWT\n{\n  public class Startup\n  {\n    public Startup(IConfiguration configuration)\n    {\n        Configuration = configuration;\n    }\n\n    public IConfiguration Configuration { get; }\n\n    // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.\n    public void ConfigureServices(IServiceCollection services)\n    {\n      services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)\n        .AddJwtBearer(options =&gt;\n        {\n          options.TokenValidationParameters = new TokenValidationParameters\n          {\n            ValidateIssuer = true,\n            ValidateAudience = true,\n            ValidateLifetime = true,\n            ValidateIssuerSigningKey = true,\n            ValidIssuer = Configuration[\"Jwt:Issuer\"],\n            ValidAudience = Configuration[\"Jwt:Issuer\"],\n            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration[\"Jwt:Key\"]))\n          };\n        });\n\n      services.AddMvc();\n    }\n  }\n}\n\n// other methods\npublic void Configure(IApplicationBuilder app, IHostingEnvironment env)\n{\n    if (env.IsDevelopment())\n    {\n        app.UseDeveloperExceptionPage();\n    }\n\n    app.UseAuthentication();\n\n    app.UseMvc();\n}\n</code></pre>\n\n<p>In appsettings.json I have:</p>\n\n<pre><code>{   \"Jwt\": {\n    \"Key\": \"verySecretKey\", **(I got the key from https://login.microsoftonline.com/common/discovery/keys with the kid value in access_token header)**\n    \"Issuer\": \"https://sts.windows.net/49bcf059-afa8-4bf9-8470-fad0c9cce27d/\",   } }\n</code></pre>\n\n<p>Finally, the error I receive is : \n<strong>\"WWW-Authenticate →Bearer error=\"invalid_token\", error_description=\"The signature key was not found\"\"</strong></p>\n\n<p><strong><em>I have been stuck here since past few days, any help will be life savior.</em></strong></p>\n\n<p>Key Points:</p>\n\n<ol>\n<li><p>I tried to validate the access_token in jwt.io (<a href=\"https://nicksnettravels.builttoroam.com/post/2017/01/24/Verifying-Azure-Active-Directory-JWT-Tokens.aspx\" rel=\"nofollow noreferrer\">https://nicksnettravels.builttoroam.com/post/2017/01/24/Verifying-Azure-Active-Directory-JWT-Tokens.aspx</a>) but I was not able to.</p></li>\n<li><p>The aud here is <a href=\"https://graph.microsoft.com\" rel=\"nofollow noreferrer\">https://graph.microsoft.com</a>, I am not sure if I need to and why do I need to change aud to my client id. how do I do that?</p></li>\n<li><p>Is there something wrong in the code or do i need to tweak the way I am requesting header tokens.</p></li>\n</ol>\n\n<p>Please let me know if you need more information.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "string"
+            ],
+            "owner": {
+                "reputation": 61,
+                "user_id": 7855290,
+                "user_type": "registered",
+                "accept_rate": 38,
+                "profile_image": "https://www.gravatar.com/avatar/81386fcc57047a68f727625dedd176e4?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Joseph",
+                "link": "https://stackoverflow.com/users/7855290/joseph"
+            },
+            "is_answered": true,
+            "view_count": 47,
+            "closed_date": 1524203258,
+            "answer_count": 4,
+            "score": 0,
+            "last_activity_date": 1524203805,
+            "creation_date": 1524200676,
+            "question_id": 49934344,
+            "body_markdown": "I have the following code:\r\n\r\n    string group = &quot;1,2,3,4,5&quot;;\r\n\r\nAnd I need to find the last comma in the group (which in this case is between 4 and 5) and replace it with the word &quot;AND&quot;. Do I need to use LINQ for this? If so, how?",
+            "link": "https://stackoverflow.com/questions/49934344/append-word-in-middle-of-string",
+            "closed_reason": "duplicate",
+            "title": "append word in middle of string",
+            "body": "<p>I have the following code:</p>\n\n<pre><code>string group = \"1,2,3,4,5\";\n</code></pre>\n\n<p>And I need to find the last comma in the group (which in this case is between 4 and 5) and replace it with the word \"AND\". Do I need to use LINQ for this? If so, how?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "eclipse",
+                "spring",
+                "class",
+                "package"
+            ],
+            "owner": {
+                "reputation": 692,
+                "user_id": 2664815,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://i.stack.imgur.com/mmDaY.jpg?s=128&g=1",
+                "display_name": "aCarella",
+                "link": "https://stackoverflow.com/users/2664815/acarella"
+            },
+            "is_answered": true,
+            "view_count": 4350,
+            "accepted_answer_id": 37464370,
+            "answer_count": 4,
+            "score": 1,
+            "last_activity_date": 1524203804,
+            "creation_date": 1464210793,
+            "last_edit_date": 1464273976,
+            "question_id": 37447721,
+            "body_markdown": "I have a main method in a package in one of my projects. Say, the package is `com.ant.car`. I am trying to run and/or debug this main method, and I keep getting the error `Could not find or load main class com.ant.car`.\r\n\r\nI&#39;ve searched this problem, and it seems like I can&#39;t figure out what is wrong.\r\n\r\n1) I&#39;ve checked run configurations. In Run-&gt;Run Configurations, I&#39;ve checked that the Main class is com.ant.car.\r\n\r\n2) I&#39;ve checked build path. If I right click on the project, I select Build-&gt;Build Path, and under the Libraries tab I make sure there are no missing folders with red Xs next to them.\r\n\r\nNot really sure what else to do. Any suggestions?\r\n\r\n&lt;b&gt;SOLUTION&lt;/b&gt;\r\n\r\nI closed Eclipse, deleted my .metadata directory, which is located in my workspace, and restarted Eclipse. I read somewhere else that the issue I was having may be related to corrupted a .metadata directory, and this somehow worked for me. Not sure if I should feel accomplished or confused.\r\n ",
+            "link": "https://stackoverflow.com/questions/37447721/could-not-find-or-load-main-class-in-sts-eclipse",
+            "title": "Could not find or load main class in STS/Eclipse",
+            "body": "<p>I have a main method in a package in one of my projects. Say, the package is <code>com.ant.car</code>. I am trying to run and/or debug this main method, and I keep getting the error <code>Could not find or load main class com.ant.car</code>.</p>\n\n<p>I've searched this problem, and it seems like I can't figure out what is wrong.</p>\n\n<p>1) I've checked run configurations. In Run->Run Configurations, I've checked that the Main class is com.ant.car.</p>\n\n<p>2) I've checked build path. If I right click on the project, I select Build->Build Path, and under the Libraries tab I make sure there are no missing folders with red Xs next to them.</p>\n\n<p>Not really sure what else to do. Any suggestions?</p>\n\n<p><b>SOLUTION</b></p>\n\n<p>I closed Eclipse, deleted my .metadata directory, which is located in my workspace, and restarted Eclipse. I read somewhere else that the issue I was having may be related to corrupted a .metadata directory, and this somehow worked for me. Not sure if I should feel accomplished or confused.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "angular",
+                "amazon-web-services",
+                "amazon-cognito"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9673110,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Shardul Sane",
+                "link": "https://stackoverflow.com/users/9673110/shardul-sane"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1524203799,
+            "creation_date": 1524203183,
+            "last_edit_date": 1524203799,
+            "question_id": 49934800,
+            "body_markdown": "I have created a user in Cognito user pool, using the create user option as shown in the image, and want that user to set a new password on first Log In. For this I am using below given method, as given in the AWS documents\r\n[Create User from AWS][1]\r\n&gt; cognitouser.completeNewPasswordChallenge()\r\n\r\nBelow is my code \r\n\r\n    //Start: setNewPasswordForAdmin\r\n        setNewPasswordForAdmin(username: string, password: string) {\r\n            \r\n            //Start: Creating new user with username and pool data\r\n            const adminUserdata = {\r\n                Username: username,\r\n                Pool: userpoolAdmin\r\n            }\r\n            const adminuser = new CognitoUser(adminUserdata);\r\n            //End: Creating new user with username and pool data\r\n    \r\n    \r\n            //create attributelist array which will contain all the attributes requried for signing in\r\n            //these attributes are those attributes, which are selected while creating user pool on aws\r\n            const attributeList : CognitoUserAttribute[] = [];\r\n            \r\n            //form a json object containing Name and Value of attribute used\r\n            const usernameattribute = {\r\n                Name:&#39;username&#39;,\r\n                Value: username\r\n            }\r\n    \r\n            //Push list of attributes in the attributeList array\r\n            attributeList.push(new CognitoUserAttribute(usernameattribute));\r\n            console.log(attributeList);\r\n            const that = this;\r\n\r\n            adminuser.completeNewPasswordChallenge(password, attributeList ,{\r\n                onFailure(err){\r\n                    \r\n                    console.log(err);\r\n                },\r\n                onSuccess(result){\r\n                    console.log(&quot;:::::::: Password change successfull &quot;);\r\n                    \r\n                    that.router.navigate([&#39;&#39;]);\r\n                }\r\n            });\r\n        }\r\n        //End: setNewPasswordForAdmin\r\n\r\nAfter executing this I get an error saying,\r\n\r\n&gt; {code: &quot;SerializationException&quot;, name: &quot;SerializationException&quot;,\r\n&gt; message: &quot;Start of structure or map found where not expected.&quot;}\r\n\r\nThese are the attributes which I have selected in User Pool\r\n\r\n[List Of Attributes and permissions in user pool][2]\r\n\r\n\r\nPlease help me to this.\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/b8Ote.png\r\n  [2]: https://i.stack.imgur.com/sG6eB.png",
+            "link": "https://stackoverflow.com/questions/49934800/aws-cognito-serializationexception-start-of-structure-or-map-found-where-not",
+            "title": "AWS Cognito - SerializationException (Start of structure or map found where not expected)",
+            "body": "<p>I have created a user in Cognito user pool, using the create user option as shown in the image, and want that user to set a new password on first Log In. For this I am using below given method, as given in the AWS documents\n<a href=\"https://i.stack.imgur.com/b8Ote.png\" rel=\"nofollow noreferrer\">Create User from AWS</a></p>\n\n<blockquote>\n  <p>cognitouser.completeNewPasswordChallenge()</p>\n</blockquote>\n\n<p>Below is my code </p>\n\n<pre><code>//Start: setNewPasswordForAdmin\n    setNewPasswordForAdmin(username: string, password: string) {\n\n        //Start: Creating new user with username and pool data\n        const adminUserdata = {\n            Username: username,\n            Pool: userpoolAdmin\n        }\n        const adminuser = new CognitoUser(adminUserdata);\n        //End: Creating new user with username and pool data\n\n\n        //create attributelist array which will contain all the attributes requried for signing in\n        //these attributes are those attributes, which are selected while creating user pool on aws\n        const attributeList : CognitoUserAttribute[] = [];\n\n        //form a json object containing Name and Value of attribute used\n        const usernameattribute = {\n            Name:'username',\n            Value: username\n        }\n\n        //Push list of attributes in the attributeList array\n        attributeList.push(new CognitoUserAttribute(usernameattribute));\n        console.log(attributeList);\n        const that = this;\n\n        adminuser.completeNewPasswordChallenge(password, attributeList ,{\n            onFailure(err){\n\n                console.log(err);\n            },\n            onSuccess(result){\n                console.log(\":::::::: Password change successfull \");\n\n                that.router.navigate(['']);\n            }\n        });\n    }\n    //End: setNewPasswordForAdmin\n</code></pre>\n\n<p>After executing this I get an error saying,</p>\n\n<blockquote>\n  <p>{code: \"SerializationException\", name: \"SerializationException\",\n  message: \"Start of structure or map found where not expected.\"}</p>\n</blockquote>\n\n<p>These are the attributes which I have selected in User Pool</p>\n\n<p><a href=\"https://i.stack.imgur.com/sG6eB.png\" rel=\"nofollow noreferrer\">List Of Attributes and permissions in user pool</a></p>\n\n<p>Please help me to solve this.</p>\n"
+        },
+        {
+            "tags": [
+                "java"
+            ],
+            "owner": {
+                "reputation": 747,
+                "user_id": 402070,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/c6851203940f29ccd573eadf9783c737?s=128&d=identicon&r=PG",
+                "display_name": "Daniel Sopel",
+                "link": "https://stackoverflow.com/users/402070/daniel-sopel"
+            },
+            "is_answered": true,
+            "view_count": 114052,
+            "accepted_answer_id": 4047836,
+            "answer_count": 8,
+            "score": 51,
+            "last_activity_date": 1524203798,
+            "creation_date": 1288306886,
+            "last_edit_date": 1501865229,
+            "question_id": 4047808,
+            "body_markdown": "What is the best and/or easiest way to recognize if a string.charAt(index) is an A-z letter or a number in Java without using regular expressions? Thanks.",
+            "link": "https://stackoverflow.com/questions/4047808/what-is-the-best-way-to-tell-if-a-character-is-a-letter-or-number-in-java-withou",
+            "title": "What is the best way to tell if a character is a letter or number in Java without using regexes?",
+            "body": "<p>What is the best and/or easiest way to recognize if a string.charAt(index) is an A-z letter or a number in Java without using regular expressions? Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "apache-spark",
+                "pyspark",
+                "spark-dataframe"
+            ],
+            "owner": {
+                "reputation": 36,
+                "user_id": 7026390,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/wC6FL.jpg?s=128&g=1",
+                "display_name": "Ayush Soni",
+                "link": "https://stackoverflow.com/users/7026390/ayush-soni"
+            },
+            "is_answered": false,
+            "view_count": 29,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524203794,
+            "creation_date": 1524199307,
+            "last_edit_date": 1524203794,
+            "question_id": 49934109,
+            "body_markdown": "I have a df as shown below:\r\n\r\n    id date(%Y-%m-%d) list-items\r\n    1   2018-01-01     salt-pepper-tea\r\n    1   2018-01-05     milk-eggs-..-salt\r\n    1   2018-02-03     car-scooty\r\n    1   2018-03-01     detergent-soap\r\n    1   2018-02-05     juice-eggs\r\n    1   2018-02-09     curd-ice\r\n    ...\r\n    2   2018-01-01     shirt-shoes\r\n    2   2018-02-03     spoon-plates-bowl\r\n    ...\r\n\r\nI want to aggregate **list-items** for each **id**.\r\n\r\nBut this aggregate of list-items should **only include those things that the id bought in last 30 days from the date under consideration**. Such should be the result in this case: (Do notice how for id=2 the items are not cumulated as the date is more than 1 month away from each other)\r\n\r\n\r\n    id date(%Y-%m-%d) cumulative-list-items\r\n    1   2018-01-01     salt-pepper-tea\r\n    1   2018-01-02     milk-eggs-..-salt-salt-pepper-tea\r\n    1   2018-02-03     car-scooty-milk-eggs-..-salt\r\n    1   2018-03-01     detergent-soap-car-scooty\r\n    1   2018-02-05     juice-eggs\r\n    1   2018-02-09     curd-ice-juice-eggs\r\n    ...\r\n    2   2018-01-01     shirt-shoes\r\n    2   2018-02-03     spoon-plates-bowl\r\n    ...\r\n\r\n\r\nHow should I do this in pyspark? The data is too huge to use Pandas.",
+            "link": "https://stackoverflow.com/questions/49934109/finding-aggregate-data-for-a-date-range-in-pyspark-dataframe",
+            "title": "Finding aggregate data for a date range in pyspark dataframe",
+            "body": "<p>I have a df as shown below:</p>\n\n<pre><code>id date(%Y-%m-%d) list-items\n1   2018-01-01     salt-pepper-tea\n1   2018-01-05     milk-eggs-..-salt\n1   2018-02-03     car-scooty\n1   2018-03-01     detergent-soap\n1   2018-02-05     juice-eggs\n1   2018-02-09     curd-ice\n...\n2   2018-01-01     shirt-shoes\n2   2018-02-03     spoon-plates-bowl\n...\n</code></pre>\n\n<p>I want to aggregate <strong>list-items</strong> for each <strong>id</strong>.</p>\n\n<p>But this aggregate of list-items should <strong>only include those things that the id bought in last 30 days from the date under consideration</strong>. Such should be the result in this case: (Do notice how for id=2 the items are not cumulated as the date is more than 1 month away from each other)</p>\n\n<pre><code>id date(%Y-%m-%d) cumulative-list-items\n1   2018-01-01     salt-pepper-tea\n1   2018-01-02     milk-eggs-..-salt-salt-pepper-tea\n1   2018-02-03     car-scooty-milk-eggs-..-salt\n1   2018-03-01     detergent-soap-car-scooty\n1   2018-02-05     juice-eggs\n1   2018-02-09     curd-ice-juice-eggs\n...\n2   2018-01-01     shirt-shoes\n2   2018-02-03     spoon-plates-bowl\n...\n</code></pre>\n\n<p>How should I do this in pyspark? The data is too huge to use Pandas.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "arrays",
+                "optimization"
+            ],
+            "owner": {
+                "reputation": 1266,
+                "user_id": 1165499,
+                "user_type": "registered",
+                "accept_rate": 76,
+                "profile_image": "https://www.gravatar.com/avatar/64bccb96953928310e2b9056c75dffb5?s=128&d=identicon&r=PG&f=1",
+                "display_name": "ashur",
+                "link": "https://stackoverflow.com/users/1165499/ashur"
+            },
+            "is_answered": true,
+            "view_count": 250787,
+            "protected_date": 1479459485,
+            "accepted_answer_id": 32689754,
+            "answer_count": 37,
+            "score": 30,
+            "last_activity_date": 1524203780,
+            "creation_date": 1375264229,
+            "last_edit_date": 1495542877,
+            "question_id": 17967114,
+            "body_markdown": "I was asked to write my own implementation to remove duplicated values in an array. Here is what I have created. But after tests with 1,000,000 elements it took very long time to finish. Is there something that I can do to improve my algorithm or any bugs to remove ? \r\n\r\n**I need to write my own implementation - not to [use `Set`](https://stackoverflow.com/questions/10056729/java-remove-duplicates-from-an-array), `HashSet` etc. Or any other tools such as iterators. Simply an array to remove duplicates.**\r\n\r\n\r\n    public static int[] removeDuplicates(int[] arr) {\r\n    \r\n        int end = arr.length;\r\n    \r\n        for (int i = 0; i &lt; end; i++) {\r\n            for (int j = i + 1; j &lt; end; j++) {\r\n                if (arr[i] == arr[j]) {                  \r\n                    int shiftLeft = j;\r\n                    for (int k = j+1; k &lt; end; k++, shiftLeft++) {\r\n                        arr[shiftLeft] = arr[k];\r\n                    }\r\n                    end--;\r\n                    j--;\r\n                }\r\n            }\r\n        }\r\n    \r\n        int[] whitelist = new int[end];\r\n        for(int i = 0; i &lt; end; i++){\r\n            whitelist[i] = arr[i];\r\n        }\r\n        return whitelist;\r\n    }",
+            "link": "https://stackoverflow.com/questions/17967114/how-to-efficiently-remove-duplicates-from-an-array-without-using-set",
+            "title": "How to efficiently remove duplicates from an array without using Set",
+            "body": "<p>I was asked to write my own implementation to remove duplicated values in an array. Here is what I have created. But after tests with 1,000,000 elements it took very long time to finish. Is there something that I can do to improve my algorithm or any bugs to remove ? </p>\n\n<p><strong>I need to write my own implementation - not to <a href=\"https://stackoverflow.com/questions/10056729/java-remove-duplicates-from-an-array\">use <code>Set</code></a>, <code>HashSet</code> etc. Or any other tools such as iterators. Simply an array to remove duplicates.</strong></p>\n\n<pre><code>public static int[] removeDuplicates(int[] arr) {\n\n    int end = arr.length;\n\n    for (int i = 0; i &lt; end; i++) {\n        for (int j = i + 1; j &lt; end; j++) {\n            if (arr[i] == arr[j]) {                  \n                int shiftLeft = j;\n                for (int k = j+1; k &lt; end; k++, shiftLeft++) {\n                    arr[shiftLeft] = arr[k];\n                }\n                end--;\n                j--;\n            }\n        }\n    }\n\n    int[] whitelist = new int[end];\n    for(int i = 0; i &lt; end; i++){\n        whitelist[i] = arr[i];\n    }\n    return whitelist;\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "spring",
+                "spring-security"
+            ],
+            "owner": {
+                "reputation": 19,
+                "user_id": 3468178,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/dceb3c22c90c212c0e49bd30f3f36a80?s=128&d=identicon&r=PG&f=1",
+                "display_name": "odedravijay",
+                "link": "https://stackoverflow.com/users/3468178/odedravijay"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524203772,
+            "creation_date": 1524203772,
+            "question_id": 49934925,
+            "body_markdown": "Is it possible to apply spring security for individual content?\r\nI have Document management systems, where I can set read/update/delete rights for individual file.\r\nWith spring security I can set rights like ROLE_NORMAL_USER can have access to &quot;view&quot; controller. But can I set, normal user can view only xyz.doc file?",
+            "link": "https://stackoverflow.com/questions/49934925/spring-security-for-individual-content",
+            "title": "Spring security for individual content",
+            "body": "<p>Is it possible to apply spring security for individual content?\nI have Document management systems, where I can set read/update/delete rights for individual file.\nWith spring security I can set rights like ROLE_NORMAL_USER can have access to \"view\" controller. But can I set, normal user can view only xyz.doc file?</p>\n"
+        },
+        {
+            "tags": [
+                "openssl",
+                "ssl-certificate",
+                "client-certificates"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 3015111,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/YwTRh.png?s=128&g=1",
+                "display_name": "Tsuixa",
+                "link": "https://stackoverflow.com/users/3015111/tsuixa"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524203759,
+            "creation_date": 1524186990,
+            "last_edit_date": 1524203759,
+            "question_id": 49932436,
+            "body_markdown": "I am using openssl to generate client certificate and key which will be used in mutual authentication later with cUrl. \r\n\r\nI am using the following command to generate client certificate.\r\n\r\n&gt; openssl pkcs12 -in keystore.p12 -out client-certificate.pem -clcerts -nokeys\r\n\r\nAccording to the [documentation](https://www.openssl.org/docs/man1.0.2/apps/pkcs12.html):\r\n\r\n&gt; -clcerts      only output client certificates.\r\n\r\nMy question is since `-clcerts` is `only output client certificates` why do we need to put `nokeys` again? Thanks",
+            "link": "https://stackoverflow.com/questions/49932436/why-openssl-pkcs12-in-keystore-p12-out-client-certificate-pem-clcerts-nokey",
+            "title": "why &quot;openssl pkcs12 -in keystore.p12 -out client-certificate.pem -clcerts -nokeys&quot; need -nokeys",
+            "body": "<p>I am using openssl to generate client certificate and key which will be used in mutual authentication later with cUrl. </p>\n\n<p>I am using the following command to generate client certificate.</p>\n\n<blockquote>\n  <p>openssl pkcs12 -in keystore.p12 -out client-certificate.pem -clcerts -nokeys</p>\n</blockquote>\n\n<p>According to the <a href=\"https://www.openssl.org/docs/man1.0.2/apps/pkcs12.html\" rel=\"nofollow noreferrer\">documentation</a>:</p>\n\n<blockquote>\n  <p>-clcerts      only output client certificates.</p>\n</blockquote>\n\n<p>My question is since <code>-clcerts</code> is <code>only output client certificates</code> why do we need to put <code>nokeys</code> again? Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "django",
+                "django-models",
+                "django-rest-framework",
+                "django-uploads"
+            ],
+            "owner": {
+                "reputation": 92,
+                "user_id": 8034975,
+                "user_type": "registered",
+                "accept_rate": 44,
+                "profile_image": "https://www.gravatar.com/avatar/225b6b0d9e487e5e920880ee83801379?s=128&d=identicon&r=PG&f=1",
+                "display_name": "sorryMike",
+                "link": "https://stackoverflow.com/users/8034975/sorrymike"
+            },
+            "is_answered": false,
+            "view_count": 49,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524203757,
+            "creation_date": 1500359850,
+            "last_edit_date": 1524203757,
+            "question_id": 45159266,
+            "body_markdown": "I want to set up in my rest service upload_to method in ImageField dynamically for creating sub-folders in /MEDIA/, that will be called &quot;{0}_{1}&quot;.format(user_id, task_id).\r\n\r\nFile and task_id are going from POST request. For now those variables needed to create sub-folders are empty. I&#39;m quessing that I can not utilize task_id while instance is not saved.\r\n\r\nQuestion is how can I create my sub-folders?\r\n\r\nExample request looks like that:\r\n\r\n    {\r\n        file_location: binary_file,\r\n        task_id: 15\r\n    }\r\n\r\nserializers.py\r\n\r\n    class PostProcessingRawFilesSerializer(serializers.ModelSerializer):\r\n        class Meta:\r\n            model = ProcessingRawFilesItem\r\n            fields = (\r\n                &#39;id&#39;,\r\n                &#39;file_location&#39;,\r\n                &#39;task_id&#39;\r\n            )\r\n\r\n            def create(self, validated_data):\r\n\r\n                task_id_data = validated_data.pop(&#39;task_id&#39;)\r\n                task = Task.objects.get(pk=task_id_data)\r\n                raw_image = ProcessingRawFilesItem(task_id=task, **validated_data)\r\n\r\n                return raw_image\r\nmodels.py\r\n\r\n    def user_directory_path(instance, filename):\r\n        task_id = instance.task_id\r\n        user_id = Task.objets.get(pk=task_id).owner_id\r\n        return &#39;{0}_{1}/{2}&#39;.format(user_id, task_id, filename)\r\n\r\n    class ProcessingRawFilesItem(models.Model):\r\n        id = models.AutoField(primary_key=True)\r\n        file_location = models.ImageField(upload_to=user_directory_path)\r\n        task_id = models.ForeignKey(Task, related_name=&#39;processing_raw_files&#39;, on_delete=models.CASCADE, null=True, blank=True)\r\n\r\n\r\nThanks in advance!",
+            "link": "https://stackoverflow.com/questions/45159266/modify-imagefield-upload-to-method-to-work-dynamically",
+            "title": "Modify ImageField upload_to method to work dynamically",
+            "body": "<p>I want to set up in my rest service upload_to method in ImageField dynamically for creating sub-folders in /MEDIA/, that will be called \"{0}_{1}\".format(user_id, task_id).</p>\n\n<p>File and task_id are going from POST request. For now those variables needed to create sub-folders are empty. I'm quessing that I can not utilize task_id while instance is not saved.</p>\n\n<p>Question is how can I create my sub-folders?</p>\n\n<p>Example request looks like that:</p>\n\n<pre><code>{\n    file_location: binary_file,\n    task_id: 15\n}\n</code></pre>\n\n<p>serializers.py</p>\n\n<pre><code>class PostProcessingRawFilesSerializer(serializers.ModelSerializer):\n    class Meta:\n        model = ProcessingRawFilesItem\n        fields = (\n            'id',\n            'file_location',\n            'task_id'\n        )\n\n        def create(self, validated_data):\n\n            task_id_data = validated_data.pop('task_id')\n            task = Task.objects.get(pk=task_id_data)\n            raw_image = ProcessingRawFilesItem(task_id=task, **validated_data)\n\n            return raw_image\n</code></pre>\n\n<p>models.py</p>\n\n<pre><code>def user_directory_path(instance, filename):\n    task_id = instance.task_id\n    user_id = Task.objets.get(pk=task_id).owner_id\n    return '{0}_{1}/{2}'.format(user_id, task_id, filename)\n\nclass ProcessingRawFilesItem(models.Model):\n    id = models.AutoField(primary_key=True)\n    file_location = models.ImageField(upload_to=user_directory_path)\n    task_id = models.ForeignKey(Task, related_name='processing_raw_files', on_delete=models.CASCADE, null=True, blank=True)\n</code></pre>\n\n<p>Thanks in advance!</p>\n"
+        },
+        {
+            "tags": [
+                "vue.js"
+            ],
+            "owner": {
+                "reputation": 371,
+                "user_id": 90506,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/a4bffdc2e88202aa1c2b74e165355199?s=128&d=identicon&r=PG",
+                "display_name": "farhany",
+                "link": "https://stackoverflow.com/users/90506/farhany"
+            },
+            "is_answered": true,
+            "view_count": 26,
+            "accepted_answer_id": 49934919,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524203735,
+            "creation_date": 1524006713,
+            "question_id": 49888811,
+            "body_markdown": "I have a Go program written that has a form which checks for the existence of a file by calling a fetch on a route inside the Go code. If the file exists or not, a boolean is return inside of a JSON as fileExists. I&#39;m having trouble with the fetch call&#39;s JSON updating this.found boolean immediately. \r\n\r\nWhat happens is that when I press enter or click the buttons, the form is submitted via call to onSubmit where the checkFile() is called which does the fetch. Somehow, I have to press enter twice to see the value returned by the fetch as it is not updating the this.found immediately. I am probably thinking about this the wrong way, but I figure it wouldn&#39;t to ask. Here&#39;s the code, if anyone can help so that clicking or submitting will be based on the correct value returned by the checkFile call:\r\n\r\n    &lt;div class=&quot;jumbotron&quot;&gt;\r\n      &lt;div class=&quot;container&quot;&gt;\r\n        &lt;div class=&quot;alert alert-dark&quot; role=&quot;alert&quot;&gt;\r\n        &lt;/div&gt;\r\n        &lt;h1 class=&quot;display-3&quot;&gt;Title&lt;/h1&gt;\r\n        &lt;div id=&quot;app&quot;&gt;\r\n          &lt;form ref=&quot;myForm&quot; method=&quot;POST&quot; v-on:submit.prevent=&quot;onSubmit&quot; action=&quot;/push&quot; class=&quot;needs-validation&quot; id=&quot;myForm&quot; novalidate=&quot;true&quot;&gt;\r\n            &lt;div class=&quot;form-group&quot;&gt;\r\n              Canned List:\r\n              &lt;input v-model=&quot;cannedlist&quot; ref=&quot;cannedlist&quot; type=&quot;text&quot; class=&quot;form-control&quot; name=&quot;fileListFile&quot; id=&quot;filelist&quot;\r\n              aria-describedby=&quot;fileListFileHelp&quot;\r\n              autocomplete=&quot;off&quot; :disabled=&quot;!!individuallist&quot; v-on:submit.prevent=&quot;onSubmit&quot; /&gt;\r\n            &lt;/div&gt;\r\n            &lt;div class=&quot;form-group&quot;&gt;\r\n              Path List:\r\n              &lt;textarea v-model=&quot;individuallist&quot; ref=&quot;cannedlist&quot; :disabled=&quot;!!cannedlist&quot; class=&quot;form-control&quot; rows=10 name=&quot;fileListRaw&quot; id=&quot;files&quot; autocomplete=&quot;off&quot;&gt;&lt;/textarea&gt;\r\n            &lt;/div&gt;\r\n            &lt;div class=&quot;form-group&quot;&gt;\r\n              &lt;button v-on:submit.prevent=&quot;onSubmit&quot; type=&quot;submit&quot; name=&quot;button&quot; value=&quot;submit&quot; id=&quot;submitButton&quot; class=&quot;btn btn-primary&quot; :disabled=&quot;isDisabled&quot;&gt;Submit&lt;/button&gt;\r\n              &lt;button v-on:submit.prevent=&quot;onSubmit&quot; type=&quot;submit&quot; name=&quot;button&quot; value=&quot;checkOnly&quot; id=&quot;checkOnlyButton&quot; class=&quot;btn btn-primary&quot; :disabled=&quot;isDisabled&quot;&gt;Submit 2&lt;/button&gt;\r\n            &lt;/div&gt;\r\n          &lt;/form&gt;\r\n        &lt;/div&gt;\r\n      &lt;/div&gt;\r\n    &lt;/div&gt;\r\n\r\n    &lt;script src=&quot;/static/js/vue.min.js&quot;&gt;&lt;/script&gt;\r\n    &lt;script&gt;\r\n        const app = new Vue({\r\n          el: &#39;#app&#39;,\r\n          data: {\r\n            // cannedlist: &quot;filelist.txt&quot;,\r\n            individuallist: &quot;&quot;,\r\n            found: false,\r\n          },\r\n          computed: {\r\n            isDisabled: function() {\r\n              //found = !found;\r\n              return (this.cannedlist.length &lt;= 0 &amp;&amp; this.individuallist.length &lt;= 0);\r\n            },\r\n          },\r\n          methods: {\r\n            isDisabledNew: function() {\r\n              alert((this.cannedlist.length &lt;= 0 &amp;&amp; this.individuallist.length &lt;= 0));\r\n              // return (this.cannedlist.length &lt;= 0 &amp;&amp; this.individuallist.length &lt;= 0);\r\n              return false;\r\n            },\r\n            isFieldDisabled: function(e) {\r\n              //console.log(app.$refs.individuallist.disabled);\r\n              return false;\r\n            },\r\n            onSubmit: function() {\r\n              if (this.cannedlist.length &gt; 0) {\r\n                this.checkFile();\r\n                if (this.found == true) {\r\n                  this.$refs.myForm.submit();\r\n                  return;\r\n                }\r\n              } else if (this.individuallist.length &gt; 0) {\r\n                this.$refs.myForm.submit(); \r\n                return;\r\n              }\r\n            },\r\n            checkFile: function() {\r\n              var url = &#39;http://localhost:9000/CheckIfFileExists?name=&#39; + this.cannedlist;\r\n              return fetch(url)\r\n                .then(response =&gt; {\r\n                  if (response.ok) {\r\n                    var v = response.json().then( response =&gt; { this.found = response.fileExists; } );\r\n                    return this.found;\r\n                  }\r\n\r\n                  return response.json().then(error =&gt; ({ error }));\r\n                });\r\n                return this.found;\r\n            },\r\n          }\r\n          });\r\n    &lt;/script&gt;\r\n&lt;script&gt;\r\n",
+            "link": "https://stackoverflow.com/questions/49888811/making-a-value-from-a-fetch-call-available-immediately",
+            "title": "Making a value from a fetch call available immediately",
+            "body": "<p>I have a Go program written that has a form which checks for the existence of a file by calling a fetch on a route inside the Go code. If the file exists or not, a boolean is return inside of a JSON as fileExists. I'm having trouble with the fetch call's JSON updating this.found boolean immediately. </p>\n\n<p>What happens is that when I press enter or click the buttons, the form is submitted via call to onSubmit where the checkFile() is called which does the fetch. Somehow, I have to press enter twice to see the value returned by the fetch as it is not updating the this.found immediately. I am probably thinking about this the wrong way, but I figure it wouldn't to ask. Here's the code, if anyone can help so that clicking or submitting will be based on the correct value returned by the checkFile call:</p>\n\n<pre><code>&lt;div class=\"jumbotron\"&gt;\n  &lt;div class=\"container\"&gt;\n    &lt;div class=\"alert alert-dark\" role=\"alert\"&gt;\n    &lt;/div&gt;\n    &lt;h1 class=\"display-3\"&gt;Title&lt;/h1&gt;\n    &lt;div id=\"app\"&gt;\n      &lt;form ref=\"myForm\" method=\"POST\" v-on:submit.prevent=\"onSubmit\" action=\"/push\" class=\"needs-validation\" id=\"myForm\" novalidate=\"true\"&gt;\n        &lt;div class=\"form-group\"&gt;\n          Canned List:\n          &lt;input v-model=\"cannedlist\" ref=\"cannedlist\" type=\"text\" class=\"form-control\" name=\"fileListFile\" id=\"filelist\"\n          aria-describedby=\"fileListFileHelp\"\n          autocomplete=\"off\" :disabled=\"!!individuallist\" v-on:submit.prevent=\"onSubmit\" /&gt;\n        &lt;/div&gt;\n        &lt;div class=\"form-group\"&gt;\n          Path List:\n          &lt;textarea v-model=\"individuallist\" ref=\"cannedlist\" :disabled=\"!!cannedlist\" class=\"form-control\" rows=10 name=\"fileListRaw\" id=\"files\" autocomplete=\"off\"&gt;&lt;/textarea&gt;\n        &lt;/div&gt;\n        &lt;div class=\"form-group\"&gt;\n          &lt;button v-on:submit.prevent=\"onSubmit\" type=\"submit\" name=\"button\" value=\"submit\" id=\"submitButton\" class=\"btn btn-primary\" :disabled=\"isDisabled\"&gt;Submit&lt;/button&gt;\n          &lt;button v-on:submit.prevent=\"onSubmit\" type=\"submit\" name=\"button\" value=\"checkOnly\" id=\"checkOnlyButton\" class=\"btn btn-primary\" :disabled=\"isDisabled\"&gt;Submit 2&lt;/button&gt;\n        &lt;/div&gt;\n      &lt;/form&gt;\n    &lt;/div&gt;\n  &lt;/div&gt;\n&lt;/div&gt;\n\n&lt;script src=\"/static/js/vue.min.js\"&gt;&lt;/script&gt;\n&lt;script&gt;\n    const app = new Vue({\n      el: '#app',\n      data: {\n        // cannedlist: \"filelist.txt\",\n        individuallist: \"\",\n        found: false,\n      },\n      computed: {\n        isDisabled: function() {\n          //found = !found;\n          return (this.cannedlist.length &lt;= 0 &amp;&amp; this.individuallist.length &lt;= 0);\n        },\n      },\n      methods: {\n        isDisabledNew: function() {\n          alert((this.cannedlist.length &lt;= 0 &amp;&amp; this.individuallist.length &lt;= 0));\n          // return (this.cannedlist.length &lt;= 0 &amp;&amp; this.individuallist.length &lt;= 0);\n          return false;\n        },\n        isFieldDisabled: function(e) {\n          //console.log(app.$refs.individuallist.disabled);\n          return false;\n        },\n        onSubmit: function() {\n          if (this.cannedlist.length &gt; 0) {\n            this.checkFile();\n            if (this.found == true) {\n              this.$refs.myForm.submit();\n              return;\n            }\n          } else if (this.individuallist.length &gt; 0) {\n            this.$refs.myForm.submit(); \n            return;\n          }\n        },\n        checkFile: function() {\n          var url = 'http://localhost:9000/CheckIfFileExists?name=' + this.cannedlist;\n          return fetch(url)\n            .then(response =&gt; {\n              if (response.ok) {\n                var v = response.json().then( response =&gt; { this.found = response.fileExists; } );\n                return this.found;\n              }\n\n              return response.json().then(error =&gt; ({ error }));\n            });\n            return this.found;\n        },\n      }\n      });\n&lt;/script&gt;\n</code></pre>\n\n<p></p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pandas",
+                "dataframe"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9276708,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e9403d1032cc648306ca8d12fee3a308?s=128&d=identicon&r=PG&f=1",
+                "display_name": "rosefun",
+                "link": "https://stackoverflow.com/users/9276708/rosefun"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "closed_date": 1524203816,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524203729,
+            "creation_date": 1524203729,
+            "question_id": 49934917,
+            "body_markdown": "For example, I have a dataframe:\r\n\r\n      id    Click_time  \r\n    0  a           3         \r\n    1  b           1         \r\n    2  a           4         \r\n    3  b           6         \r\n    4  a           8         \r\n    5  b           8         \r\n\r\nI want to get each id&#39;s interval between two clicks.  What I want to get is as follows:\r\n\r\n          id    Click_time  interval\r\n    0  a           3         nan\r\n    1  b           1         nan\r\n    2  a           4         1\r\n    3  b           6         5\r\n    4  a           8         4\r\n    5  b           8         2\r\n\r\nHow can I achieve it ?\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49934917/pandas-dataframe-how-to-achieve-that-two-rows-are-subtracted-according-to-the-ke",
+            "closed_reason": "duplicate",
+            "title": "Pandas dataframe：how to achieve that two rows are subtracted according to the keys?",
+            "body": "<p>For example, I have a dataframe:</p>\n\n<pre><code>  id    Click_time  \n0  a           3         \n1  b           1         \n2  a           4         \n3  b           6         \n4  a           8         \n5  b           8         \n</code></pre>\n\n<p>I want to get each id's interval between two clicks.  What I want to get is as follows:</p>\n\n<pre><code>      id    Click_time  interval\n0  a           3         nan\n1  b           1         nan\n2  a           4         1\n3  b           6         5\n4  a           8         4\n5  b           8         2\n</code></pre>\n\n<p>How can I achieve it ?</p>\n"
+        },
+        {
+            "tags": [
+                "mongodb",
+                "mongoose"
+            ],
+            "owner": {
+                "reputation": 45,
+                "user_id": 5284523,
+                "user_type": "registered",
+                "accept_rate": 19,
+                "profile_image": "https://lh4.googleusercontent.com/-rTlTsw9l0k4/AAAAAAAAAAI/AAAAAAAAARw/NtFz4tjgBMM/photo.jpg?sz=128",
+                "display_name": "tolyan",
+                "link": "https://stackoverflow.com/users/5284523/tolyan"
+            },
+            "is_answered": false,
+            "view_count": 40,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524203727,
+            "creation_date": 1523994175,
+            "question_id": 49886279,
+            "body_markdown": "I use mongoose driver in node js. My schema:\r\n\r\n    let sendResultSchema = mongoose.Schema({\r\n\t  emailId: String,\t\temail: String,\t\t\t\t\r\n      letterId: String,\t\tsendedFrom: String,\r\n\t  resultMsg: String,\towner: String,\t\t\t\t\r\n      created: Date,  \t\tresult: Boolean,\r\n\t  tag: String,\t\t\ttryNum: Number,\r\n\t  clickHash: String,\tlinks: [String]\r\n    })\r\n    sendResultSchema.index({emailId: 1, letterId: 1, result: 1, owner: 1, tag: 1, clickHash: 1})\r\n    let sendResultModel = mongoose.model(&#39;sendresult&#39;, sendResultSchema)\r\n\r\nsendresult collection have a 641000 documents.\r\n\r\nthis query executing ~0.5 seconds.\r\n\r\n     db.sendresults.find({&quot;tag&quot; : &quot;tagValue&quot;, &quot;letterId&quot; : &quot;5ad630b5949bb02ea07d15d1&quot;}).sort({emailId: -1}).limit(1)\r\n\r\nI think it must execute more fast. You can see explain of this query [here][1]\r\n\r\nHow make this query more fast? \r\n\r\n\r\n  [1]: https://gist.github.com/tolyanor/64360d648f3fc89f73648aed1e16f230",
+            "link": "https://stackoverflow.com/questions/49886279/mongo-query-take-a-long-time-how-make-it-more-fast",
+            "title": "Mongo query take a long time. How make it more fast?",
+            "body": "<p>I use mongoose driver in node js. My schema:</p>\n\n<pre><code>let sendResultSchema = mongoose.Schema({\n  emailId: String,      email: String,              \n  letterId: String,     sendedFrom: String,\n  resultMsg: String,    owner: String,              \n  created: Date,        result: Boolean,\n  tag: String,          tryNum: Number,\n  clickHash: String,    links: [String]\n})\nsendResultSchema.index({emailId: 1, letterId: 1, result: 1, owner: 1, tag: 1, clickHash: 1})\nlet sendResultModel = mongoose.model('sendresult', sendResultSchema)\n</code></pre>\n\n<p>sendresult collection have a 641000 documents.</p>\n\n<p>this query executing ~0.5 seconds.</p>\n\n<pre><code> db.sendresults.find({\"tag\" : \"tagValue\", \"letterId\" : \"5ad630b5949bb02ea07d15d1\"}).sort({emailId: -1}).limit(1)\n</code></pre>\n\n<p>I think it must execute more fast. You can see explain of this query <a href=\"https://gist.github.com/tolyanor/64360d648f3fc89f73648aed1e16f230\" rel=\"nofollow noreferrer\">here</a></p>\n\n<p>How make this query more fast? </p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "mpandroidchart",
+                "renderer",
+                "radar-chart"
+            ],
+            "owner": {
+                "reputation": 20,
+                "user_id": 4731634,
+                "user_type": "registered",
+                "accept_rate": 33,
+                "profile_image": "https://www.gravatar.com/avatar/7cf393f854ff4fedc04eb607454028fd?s=128&d=identicon&r=PG",
+                "display_name": "STEP",
+                "link": "https://stackoverflow.com/users/4731634/step"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524203713,
+            "creation_date": 1523950407,
+            "last_edit_date": 1524203713,
+            "question_id": 49872316,
+            "body_markdown": "I&#39;ve extended the `XaxisRendererRadarChart` class to create my own renderer that shows images instead of labels. But I&#39;m unable to set it as the `XaxisRenderer` of the radarchart.",
+            "link": "https://stackoverflow.com/questions/49872316/mpandroidchart-how-to-set-a-custom-xaxisrenderer-for-a-radarchart",
+            "title": "MPAndroidChart: How to set a custom XaxisRenderer for a RadarChart?",
+            "body": "<p>I've extended the <code>XaxisRendererRadarChart</code> class to create my own renderer that shows images instead of labels. But I'm unable to set it as the <code>XaxisRenderer</code> of the radarchart.</p>\n"
+        },
+        {
+            "tags": [
+                "mysql",
+                "sql",
+                "phpmyadmin"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9292723,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/dc13815000a7df15e360f26a6ad605ea?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Red_wolf1998",
+                "link": "https://stackoverflow.com/users/9292723/red-wolf1998"
+            },
+            "is_answered": false,
+            "view_count": 23,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524203713,
+            "creation_date": 1524203300,
+            "last_edit_date": 1524203713,
+            "question_id": 49934824,
+            "body_markdown": "I have a MySQL database that stores survey results. In the database, I wish to have a cell that calculates scores from the survey being inputted into the database. \r\nTo attempt to achieve this, I have my cell&#39;s default value set to:\r\n\r\n    SELECT SUM((Q1 + Q2 + Q3) * 2) FROM scores;\r\n\r\nHowever, this returns an error in PHPMyAdmin, stating that the cell&#39;s default value is not valid.\r\n\r\nAlso, I assume that (should this work) it will calculate the sum of EVERY Q1, Q2 and Q3 field in the table. How would I go about making sure the cell only calculates the sum for the row that it exists in?",
+            "link": "https://stackoverflow.com/questions/49934824/performing-a-mathematical-function-as-a-default-value-mysql",
+            "title": "Performing a mathematical function as a default value MySQL",
+            "body": "<p>I have a MySQL database that stores survey results. In the database, I wish to have a cell that calculates scores from the survey being inputted into the database. \nTo attempt to achieve this, I have my cell's default value set to:</p>\n\n<pre><code>SELECT SUM((Q1 + Q2 + Q3) * 2) FROM scores;\n</code></pre>\n\n<p>However, this returns an error in PHPMyAdmin, stating that the cell's default value is not valid.</p>\n\n<p>Also, I assume that (should this work) it will calculate the sum of EVERY Q1, Q2 and Q3 field in the table. How would I go about making sure the cell only calculates the sum for the row that it exists in?</p>\n"
+        },
+        {
+            "tags": [
+                "nuget",
+                "vsts",
+                "continuous-deployment",
+                "vsts-release",
+                "artifact"
+            ],
+            "owner": {
+                "reputation": 23,
+                "user_id": 2685729,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/6jQgk.jpg?s=128&g=1",
+                "display_name": "Anders J&#246;nsson",
+                "link": "https://stackoverflow.com/users/2685729/anders-j%c3%b6nsson"
+            },
+            "is_answered": true,
+            "view_count": 52,
+            "accepted_answer_id": 49732277,
+            "answer_count": 1,
+            "score": 4,
+            "last_activity_date": 1524203713,
+            "creation_date": 1523266689,
+            "last_edit_date": 1524203713,
+            "question_id": 49729862,
+            "body_markdown": "I have a VSTS release definition that I want to use for publishing nuget packages for multiple artifacts. The artifacts for the different nuget packages are supplied to the release definition from different build definitions. Only artifacts from the build that triggered the release shall be downloaded and published. The pipeline is setup according to the picture below.\r\n\r\n![Release definition][1]\r\n\r\nThat is, when a build triggers a new release, only artifacts from that build should be published in the release. All artifacts from the other build definitions should be ignored since the version number on those nuget packages are not updated and will fail to push.\r\n\r\nCan this be accomplished?\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/X31s8.png",
+            "link": "https://stackoverflow.com/questions/49729862/release-definition-to-publish-nuget-packages-for-multiple-artifacts",
+            "title": "Release definition to publish nuget packages for multiple artifacts",
+            "body": "<p>I have a VSTS release definition that I want to use for publishing nuget packages for multiple artifacts. The artifacts for the different nuget packages are supplied to the release definition from different build definitions. Only artifacts from the build that triggered the release shall be downloaded and published. The pipeline is setup according to the picture below.</p>\n\n<p><img src=\"https://i.stack.imgur.com/X31s8.png\" alt=\"Release definition\"></p>\n\n<p>That is, when a build triggers a new release, only artifacts from that build should be published in the release. All artifacts from the other build definitions should be ignored since the version number on those nuget packages are not updated and will fail to push.</p>\n\n<p>Can this be accomplished?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "django",
+                "django-rest-framework"
+            ],
+            "owner": {
+                "reputation": 26,
+                "user_id": 7747887,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5c2bcccbc9d1b9943cdadcc651069eed?s=128&d=identicon&r=PG",
+                "display_name": "Michael",
+                "link": "https://stackoverflow.com/users/7747887/michael"
+            },
+            "is_answered": false,
+            "view_count": 47,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524203711,
+            "creation_date": 1500409871,
+            "last_edit_date": 1524203711,
+            "question_id": 45176518,
+            "body_markdown": "Had a problem with rest framework:\r\nbuilding api with a viewset and router.\r\n\r\nI want api to serialize the user&#39;s posts by url like that: \r\n/api/users/*user id*/posts/*page*, \r\nbut router can`t stand it. \r\nIt suggest me that regexp in patterns:\r\n\r\n`^api/ ^ ^users/posts\\.(?P&lt;format&gt;[a-z0-9]+)/?$ [name=&#39;user-posts&#39;]`\r\n\r\n    class UserViewSet(viewsets.ReadOnlyModelViewSet):\r\n        queryset = User.objects.all()\r\n        serializer_class = UserSerializer\r\n\r\n         @list_route()\r\n         def posts(self, page):\r\n             user = self.get_object()\r\n             post_set = Post.objects.filter(owner=user)\r\n             paginator = Paginator(post_set, 16)\r\n             serializer = PostSerializer(paginator.page(page), many=True)\r\n             return Response(serializer.data)\r\n\r\nHave any ideas how to compel this work correctly? Thanks in advance!",
+            "link": "https://stackoverflow.com/questions/45176518/viewset-and-router-in-rest-framework",
+            "title": "ViewSet and Router in rest framework",
+            "body": "<p>Had a problem with rest framework:\nbuilding api with a viewset and router.</p>\n\n<p>I want api to serialize the user's posts by url like that: \n/api/users/<em>user id</em>/posts/<em>page</em>, \nbut router can`t stand it. \nIt suggest me that regexp in patterns:</p>\n\n<p><code>^api/ ^ ^users/posts\\.(?P&lt;format&gt;[a-z0-9]+)/?$ [name='user-posts']</code></p>\n\n<pre><code>class UserViewSet(viewsets.ReadOnlyModelViewSet):\n    queryset = User.objects.all()\n    serializer_class = UserSerializer\n\n     @list_route()\n     def posts(self, page):\n         user = self.get_object()\n         post_set = Post.objects.filter(owner=user)\n         paginator = Paginator(post_set, 16)\n         serializer = PostSerializer(paginator.page(page), many=True)\n         return Response(serializer.data)\n</code></pre>\n\n<p>Have any ideas how to compel this work correctly? Thanks in advance!</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "mysql"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9666042,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/2063651280568352/picture?type=large",
+                "display_name": "Brian",
+                "link": "https://stackoverflow.com/users/9666042/brian"
+            },
+            "is_answered": false,
+            "view_count": 34,
+            "closed_date": 1524210549,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524203705,
+            "creation_date": 1524199700,
+            "question_id": 49934172,
+            "body_markdown": "I have a folder full of images (200), I want a php script to select 1 image every 24 hours and display it on the page (using true randomness, example not display the same image more than once until all images have been displayed)\r\n\r\nI would like to use a mysql db for this script to store the id, image path, and the image link (example: id: 1, us.png, http://www.website.com/us.html)\r\n\r\nNote: The link will be dynamic in nature, such as http://www.website.com/cms/united-states/\r\n\r\nAlso note: I need help with the entire script, as in the creation of the db, and the script itself as I am just now starting out...I learn best visually, I need to see the script function before I can fully grasp the concept. I appreciate all who contribute to helping learn php+mysql!\r\n\r\nThank you in advance!\r\nBrian",
+            "link": "https://stackoverflow.com/questions/49934172/creating-a-php-script-to-display-a-random-image-using-mysql-database",
+            "closed_reason": "duplicate",
+            "title": "Creating a php script to display a random image using Mysql database",
+            "body": "<p>I have a folder full of images (200), I want a php script to select 1 image every 24 hours and display it on the page (using true randomness, example not display the same image more than once until all images have been displayed)</p>\n\n<p>I would like to use a mysql db for this script to store the id, image path, and the image link (example: id: 1, us.png, <a href=\"http://www.website.com/us.html\" rel=\"nofollow noreferrer\">http://www.website.com/us.html</a>)</p>\n\n<p>Note: The link will be dynamic in nature, such as <a href=\"http://www.website.com/cms/united-states/\" rel=\"nofollow noreferrer\">http://www.website.com/cms/united-states/</a></p>\n\n<p>Also note: I need help with the entire script, as in the creation of the db, and the script itself as I am just now starting out...I learn best visually, I need to see the script function before I can fully grasp the concept. I appreciate all who contribute to helping learn php+mysql!</p>\n\n<p>Thank you in advance!\nBrian</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 228
+}

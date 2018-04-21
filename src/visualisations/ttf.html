@@ -1,28 +1,69 @@
 <head>
-    <link href="../node_modules/billboard.js/dist/billboard.css" rel="stylesheet">
-    <script src="../node_modules/billboard.js/dist/billboard.pkgd.js"></script>
-    <script src="../res/ttf.js"></script>
-    <script src="../res/anc.js"></script>
-    <script src="../res/isa.js"></script>
-    <script src="../res/sco.js"></script>
+    <link href="../../node_modules/billboard.js/dist/billboard.css" rel="stylesheet">
+    <script src="../../node_modules/billboard.js/dist/billboard.pkgd.js"></script>
+    <script src="../../res/merge-meta.js"></script>    
+    <script src="../../res/htmlcleaned-meta.js"></script>    
 </head>
 <body>
-    <div id="TTFChart"></div>    
-    <div id="BTFChart"></div> 
-    <div id="ANCChart"></div>    
-    <div id="ISAChart"></div>    
-    <div id="SCOChart"></div>
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+            font-family: "Roboto";
+            font-size: 1.4em;
+            font-weight: 200;
+        }
+        body > div:not(.bb){
+            background-color: #eee;
+            padding: .2em 70;
+        }
+        .bb path {
+            stroke: #f3f3f3;
+        }
+    </style>
+
+    <div id="downloadheader"></div>    
+    <div id="mergeheader"></div>    
+    <br>        
+    <div id="SCOChart" style="width:42%;float:left;"></div>
+    <div id="ANCChart" style="width:42%;float:left;"></div>    
+    <div id="ISAChart" style="width:16%;float:left;"></div>    
+    <div id="TTFChart" style="clear:both;"></div>        
+    <br>
+
+    <div id="cleanedheader"></div>    
+    <br>
+    
+    <div id="BTFChart"></div>
+    <br>
+
+    <div id="stemmedheader"></div><br>    
+    <div id="STFChart"></div>
+    <br>
+
+    <div id="lemmatizedheader"></div><br>    
+    <div id="LTFChart"></div>
+    <br>
+
+    <div>Precicino</div> 
+    <div>Recall</div>     
     
     <script>       
-        function plot(data, divid, xlabel) {
+        function write(divid, text){
+            document.querySelector(divid).innerText = text
+        }
+        function plot(divid, data, xlabel, min) {
             var entries = Object.entries(data)
             entries = entries.sort((a, b)=> b[1] - a[1])
-            entries = entries.filter(e=> e[1] > 15)
+            entries = entries.filter(e=> e[1] > min)
 
             var numbers = entries.map(e=> e[1])
             var labels = entries.map(e=> e[0])
 
             var chart = bb.generate({
+                size: {
+                    height: 100,                    
+                },
                 data: {
                     columns: [[xlabel].concat(numbers)],
                     type: "bar"
@@ -31,18 +72,31 @@
                 axis: {
                     x: {
                         type: "category",
-                        categories: labels,
-                        show: false,
-
+                        categories: labels,                       
+                        tick: { count:2 },                       
+                    },
+                    y: {
+                        tick: { count:2, format:x=> x.toFixed(0) }
                     }
                 },
+                padding: {    
+                    left: 70,
+                    right: 70,
+                },                
                 bindto: divid
             })
-        }
-        plot(ttf, "#TTFChart", "TTF")
-        plot(ttf, "#BTFChart", "BTF")
-        plot(anc, "#ANCChart", "Answer Count")
-        plot(isa, "#ISAChart", "Is Answered")
-        plot(sco, "#SCOChart", "Question Score")
+        }        
+        write("#downloadheader", `Downloaded: ${mergemeta.files} Files, ${mergemeta.rawquestions} Raw-Questions, ${mergemeta.dupquestions} duplicate, ${mergemeta.errquestions} invalid`)
+        write("#mergeheader", `Merged: ${(mergemeta.size/1024/1024).toFixed(0)}MB, ${mergemeta.questions} Valid-Questions, ${mergemeta.tagcount} Tags`)
+        write("#cleanedheader", `Cleaned: ${htmlcleanedmeta.termcount} Terms`)
+        write("#stemmedheader", `Stemmed: ${htmlcleanedmeta.termcount-20000} stemmed Terms`)
+        write("#lemmatizedheader", `Lemmatized: ${htmlcleanedmeta.termcount-30000} lemmed Terms`)
+        plot("#SCOChart", mergemeta.scodist, "Question Score distribution", 0)
+        plot("#ANCChart", mergemeta.ancdist, "Answer Count distribution", 0)
+        plot("#ISAChart", mergemeta.isadist, "Is Answered distribution", 0)
+        plot("#TTFChart", mergemeta.tagdist, "Tag frequenzy", 10)        
+        plot("#BTFChart", htmlcleanedmeta.termdist, "Body terms frequenzy (cleaned)", 50)        
+        plot("#STFChart", htmlcleanedmeta.termdist, "Body terms frequenzy (stemmed)", 50)        
+        plot("#LTFChart", htmlcleanedmeta.termdist, "Body terms frequenzy (lemmed)", 50)
     </script>
 </body>

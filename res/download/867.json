@@ -1,0 +1,842 @@
+{
+    "items": [
+        {
+            "tags": [
+                "swift",
+                "in-app-purchase",
+                "app-store",
+                "storekit",
+                "notificationcenter"
+            ],
+            "owner": {
+                "reputation": 178,
+                "user_id": 4303258,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/tVTi4.jpg?s=128&g=1",
+                "display_name": "Zyntx",
+                "link": "https://stackoverflow.com/users/4303258/zyntx"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524146275,
+            "creation_date": 1524066989,
+            "last_edit_date": 1524146275,
+            "question_id": 49904095,
+            "body_markdown": "**Question 1: How should failed transactions form the iTunes Store be managed with NotificationCenter?** I&#39;m able to have a working system with a call back but is this the recommended implementation.\r\n\r\nI have implemented an iTunes Purchasing view using the IAPHelper class (see notes). However, I felt that the purchasing process needed to provide feedback during the requests to Store. Particularly:\r\n\r\n 1. requestProducts (Getting the product list)\r\n 2. Restore (Restore prior Purchases)\r\n 3. buyProduct (buying and success or buying and failure due to user action or inability to reach the iTunes store)\r\n\r\nTo do this, I created a simple IUView with a spinner and a message.\r\n\r\n**Implementation**\r\n\r\n1. Prior to requesting the Product list, the SpinnerUIView is shown and hidden after success or failure. (trivial)\r\n\r\n        showSpinner()\r\n        Products.store.requestProducts{success, products in\r\n            if success { \r\n               self.hideSpinner()\r\n               ...\r\n            } else {\r\n               self.hideSpinner()\r\n              ...\r\n            }\r\n        }\r\n   \r\n\r\n2. For the Restore, I used the NotificationCenter as implemented in the IAPHelper. The Restore call function is simply \r\n\r\n        @IBAction func touchRestore(_ sender: Any) {\r\n            hideall() //hides open items will data is fetched\r\n            showSpinner()\r\n            Products.store.restorePurchases()\r\n         }\r\n  \r\nand use the handlePurchaseNotifications both to manage restored and new purchased and to hide the spinner.\r\n\r\n3. For the failed transaction, I implemented a Callback function. First, the call back (see point 3, too) is defined in IAPHelper class and assigned in viewdidLoad. \r\n\r\n    in IAPHelper class\r\n \r\n        public var onFail: ((String) -&gt; ())? \r\n        \r\n    in viewdidLoad\r\n\r\n        Products.store.onFail = onFail   \r\n    \r\n    which hides the spinner, provides an error pop-up message to the user and tries to load the available items from the Store.\r\n\r\n        func onFail (errMsg: String) {\r\n            hideSpinner()\r\n            if errMsg.count &gt; 0 {\r\n                let alert = UIAlertController(title: NSLocalizedString(&quot;App Store&quot;, comment: &quot;&quot;), message:\r\n                NSLocalizedString(errMsg, comment: &quot;&quot;), preferredStyle: UIAlertControllerStyle.alert)\r\n                alert.addAction(UIAlertAction(title: NSLocalizedString(&quot;OK&quot;, comment: &quot;&quot;), style: UIAlertActionStyle.default,handler: nil))\r\n                self.present(alert, animated: true, completion: nil)\r\n            }\r\n            reload() //reload items in PurchaseViewController\r\n        }\r\n\r\n    \r\nThis solution work, was &#39;somewhat&#39; easy to implement (when the Sandbox environment works).\r\n\r\nQuestion 2: I&#39;ve implemented what seems to be a clean-set for managing purchasing, restore, and failures due to either unavailability of the app store or cancelled transactions by the user. However, testing with the Sandbox environment is extremely slow and difficult. What are the &#39;best practice&#39; for the sandbox testing of purchases?\r\n\r\n**NOTES**\r\n\r\n*IAP Helper class is from Ray Wenderlich&#39;s website.  ",
+            "link": "https://stackoverflow.com/questions/49904095/use-notificationcenter-or-call-back-function-for-managing-failed-purchases-in-ia",
+            "title": "Use NotificationCenter or Call Back function for managing Failed purchases in IAPHelper?",
+            "body": "<p><strong>Question 1: How should failed transactions form the iTunes Store be managed with NotificationCenter?</strong> I'm able to have a working system with a call back but is this the recommended implementation.</p>\n\n<p>I have implemented an iTunes Purchasing view using the IAPHelper class (see notes). However, I felt that the purchasing process needed to provide feedback during the requests to Store. Particularly:</p>\n\n<ol>\n<li>requestProducts (Getting the product list)</li>\n<li>Restore (Restore prior Purchases)</li>\n<li>buyProduct (buying and success or buying and failure due to user action or inability to reach the iTunes store)</li>\n</ol>\n\n<p>To do this, I created a simple IUView with a spinner and a message.</p>\n\n<p><strong>Implementation</strong></p>\n\n<ol>\n<li><p>Prior to requesting the Product list, the SpinnerUIView is shown and hidden after success or failure. (trivial)</p>\n\n<pre><code>showSpinner()\nProducts.store.requestProducts{success, products in\n    if success { \n       self.hideSpinner()\n       ...\n    } else {\n       self.hideSpinner()\n      ...\n    }\n}\n</code></pre></li>\n<li><p>For the Restore, I used the NotificationCenter as implemented in the IAPHelper. The Restore call function is simply </p>\n\n<pre><code>@IBAction func touchRestore(_ sender: Any) {\n    hideall() //hides open items will data is fetched\n    showSpinner()\n    Products.store.restorePurchases()\n }\n</code></pre></li>\n</ol>\n\n<p>and use the handlePurchaseNotifications both to manage restored and new purchased and to hide the spinner.</p>\n\n<ol start=\"3\">\n<li><p>For the failed transaction, I implemented a Callback function. First, the call back (see point 3, too) is defined in IAPHelper class and assigned in viewdidLoad. </p>\n\n<p>in IAPHelper class</p>\n\n<pre><code>public var onFail: ((String) -&gt; ())? \n</code></pre>\n\n<p>in viewdidLoad</p>\n\n<pre><code>Products.store.onFail = onFail   \n</code></pre>\n\n<p>which hides the spinner, provides an error pop-up message to the user and tries to load the available items from the Store.</p>\n\n<pre><code>func onFail (errMsg: String) {\n    hideSpinner()\n    if errMsg.count &gt; 0 {\n        let alert = UIAlertController(title: NSLocalizedString(\"App Store\", comment: \"\"), message:\n        NSLocalizedString(errMsg, comment: \"\"), preferredStyle: UIAlertControllerStyle.alert)\n        alert.addAction(UIAlertAction(title: NSLocalizedString(\"OK\", comment: \"\"), style: UIAlertActionStyle.default,handler: nil))\n        self.present(alert, animated: true, completion: nil)\n    }\n    reload() //reload items in PurchaseViewController\n}\n</code></pre></li>\n</ol>\n\n<p>This solution work, was 'somewhat' easy to implement (when the Sandbox environment works).</p>\n\n<p>Question 2: I've implemented what seems to be a clean-set for managing purchasing, restore, and failures due to either unavailability of the app store or cancelled transactions by the user. However, testing with the Sandbox environment is extremely slow and difficult. What are the 'best practice' for the sandbox testing of purchases?</p>\n\n<p><strong>NOTES</strong></p>\n\n<p>*IAP Helper class is from Ray Wenderlich's website.  </p>\n"
+        },
+        {
+            "tags": [
+                "android-studio",
+                "android-fragments",
+                "android-viewpager",
+                "animated-gif",
+                "viewpagerindicator"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9580105,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/63d1ee0a1c0d455329a285a37e9ef508?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Nisha Chauhan",
+                "link": "https://stackoverflow.com/users/9580105/nisha-chauhan"
+            },
+            "is_answered": true,
+            "view_count": 18,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524146269,
+            "creation_date": 1524034254,
+            "last_edit_date": 1524035389,
+            "question_id": 49893012,
+            "body_markdown": "I am trying to create image slider using viewPager into fragment in Bottom Navigation Bar in android. \r\nI wanna load GIF images into viewPager but it is not working.If it is  possible please let me know how it is possible \r\nThis is my xml code.\r\n\r\n    &lt;FrameLayout \r\n        xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;\r\n        xmlns:tools=&quot;http://schemas.android.com/tools&quot;\r\n        android:layout_width=&quot;match_parent&quot;\r\n        android:layout_height=&quot;match_parent&quot;\r\n        tools:context=&quot;.HomeFragment&quot;&gt;\r\n    \r\n        &lt;!-- TODO: Update blank fragment layout --&gt;\r\n    \r\n        &lt;LinearLayout\r\n            android:layout_width=&quot;match_parent&quot;\r\n            android:layout_height=&quot;match_parent&quot;\r\n            android:gravity=&quot;center&quot;\r\n            android:orientation=&quot;vertical&quot;\r\n            android:paddingBottom=&quot;60dp&quot;\r\n            android:paddingTop=&quot;60dp&quot;&gt;\r\n    \r\n           &lt;android.support.v4.view.ViewPager\r\n                   android:id=&quot;@+id/mainviewPager1&quot;\r\n                   android:layout_width=&quot;match_parent&quot;\r\n                   android:layout_height=&quot;200dp&quot;\r\n                   android:layout_alignParentLeft=&quot;true&quot; /&gt;\r\n   \r\n    \r\n     &lt;/LinearLayout&gt;\r\n    \r\n    &lt;/FrameLayout&gt;\r\n\r\nThis is my HomeFragment class where i am adding viewPager into fragment.\r\n\r\n    public class HomeFragment extends Fragment \r\n    {\r\n            ViewPager viewPager;\r\n         \r\n            public HomeFragment()\r\n            {\r\n                // Required empty public constructor\r\n            }\r\n        \r\n            @Override\r\n            public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)\r\n            {\r\n               View v = inflater.inflate(R.layout.fragment_home, container,false);\r\n        \r\n                viewPager = (ViewPager) v.findViewById(R.id.mainviewPager1);\r\n                // Inflate the layout for this fragment\r\n        \r\n               ViewPagerAdapter viewPagerAdapter = new ViewPagerAdapter(getContext());\r\n                viewPager.setAdapter(viewPagerAdapter);\r\n    \r\n                }\r\n       \r\n                return v;\r\n        }\r\n\r\n\r\nThis is my viewPagerAdaper.java code.\r\n\r\n    public class ViewPagerAdapter extends PagerAdapter\r\n    {\r\n        Context context;\r\n        LayoutInflater layoutInflater;\r\n        Integer[] images={R.drawable.fimage,R.drawable.simage,R.drawable.timage};\r\n    \r\n        public ViewPagerAdapter(Context context) {\r\n            this.context = context;\r\n        }\r\n    \r\n        @Override\r\n        public int getCount()\r\n        {\r\n            return images.length;\r\n        }\r\n    \r\n        @Override\r\n        public boolean isViewFromObject(View view, Object object)\r\n        {\r\n            return view==object;\r\n        }\r\n    \r\n        @Override\r\n        public Object instantiateItem(ViewGroup container, int position) {\r\n            layoutInflater=(LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);\r\n            View view=layoutInflater.inflate(R.layout.custom_layout,null);\r\n    \r\n            ImageView imageView=(ImageView)view.findViewById(R.id.customimageView2);\r\n            imageView.setImageResource(images[position]);\r\n    \r\n            ViewPager vp=(ViewPager) container;\r\n            vp.addView(view,0);\r\n            return view;\r\n    \r\n        }\r\n    \r\n        @Override\r\n        public void destroyItem(ViewGroup container, int position, Object object) {\r\n            ViewPager vp=(ViewPager) container;\r\n            View v=(View) object;\r\n            vp.removeView(v);\r\n        }\r\n    }\r\n\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49893012/how-can-add-gif-images-in-viewpager-in-android",
+            "title": "how can add GIF images in viewPager in android",
+            "body": "<p>I am trying to create image slider using viewPager into fragment in Bottom Navigation Bar in android. \nI wanna load GIF images into viewPager but it is not working.If it is  possible please let me know how it is possible \nThis is my xml code.</p>\n\n<pre><code>&lt;FrameLayout \n    xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    android:layout_width=\"match_parent\"\n    android:layout_height=\"match_parent\"\n    tools:context=\".HomeFragment\"&gt;\n\n    &lt;!-- TODO: Update blank fragment layout --&gt;\n\n    &lt;LinearLayout\n        android:layout_width=\"match_parent\"\n        android:layout_height=\"match_parent\"\n        android:gravity=\"center\"\n        android:orientation=\"vertical\"\n        android:paddingBottom=\"60dp\"\n        android:paddingTop=\"60dp\"&gt;\n\n       &lt;android.support.v4.view.ViewPager\n               android:id=\"@+id/mainviewPager1\"\n               android:layout_width=\"match_parent\"\n               android:layout_height=\"200dp\"\n               android:layout_alignParentLeft=\"true\" /&gt;\n\n\n &lt;/LinearLayout&gt;\n\n&lt;/FrameLayout&gt;\n</code></pre>\n\n<p>This is my HomeFragment class where i am adding viewPager into fragment.</p>\n\n<pre><code>public class HomeFragment extends Fragment \n{\n        ViewPager viewPager;\n\n        public HomeFragment()\n        {\n            // Required empty public constructor\n        }\n\n        @Override\n        public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)\n        {\n           View v = inflater.inflate(R.layout.fragment_home, container,false);\n\n            viewPager = (ViewPager) v.findViewById(R.id.mainviewPager1);\n            // Inflate the layout for this fragment\n\n           ViewPagerAdapter viewPagerAdapter = new ViewPagerAdapter(getContext());\n            viewPager.setAdapter(viewPagerAdapter);\n\n            }\n\n            return v;\n    }\n</code></pre>\n\n<p>This is my viewPagerAdaper.java code.</p>\n\n<pre><code>public class ViewPagerAdapter extends PagerAdapter\n{\n    Context context;\n    LayoutInflater layoutInflater;\n    Integer[] images={R.drawable.fimage,R.drawable.simage,R.drawable.timage};\n\n    public ViewPagerAdapter(Context context) {\n        this.context = context;\n    }\n\n    @Override\n    public int getCount()\n    {\n        return images.length;\n    }\n\n    @Override\n    public boolean isViewFromObject(View view, Object object)\n    {\n        return view==object;\n    }\n\n    @Override\n    public Object instantiateItem(ViewGroup container, int position) {\n        layoutInflater=(LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);\n        View view=layoutInflater.inflate(R.layout.custom_layout,null);\n\n        ImageView imageView=(ImageView)view.findViewById(R.id.customimageView2);\n        imageView.setImageResource(images[position]);\n\n        ViewPager vp=(ViewPager) container;\n        vp.addView(view,0);\n        return view;\n\n    }\n\n    @Override\n    public void destroyItem(ViewGroup container, int position, Object object) {\n        ViewPager vp=(ViewPager) container;\n        View v=(View) object;\n        vp.removeView(v);\n    }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "sass",
+                "bootstrap-4"
+            ],
+            "owner": {
+                "reputation": 650,
+                "user_id": 5216651,
+                "user_type": "registered",
+                "accept_rate": 51,
+                "profile_image": "https://www.gravatar.com/avatar/d5afb8df66b98797e5bd9bfe1b0e5dcd?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Caverman",
+                "link": "https://stackoverflow.com/users/5216651/caverman"
+            },
+            "is_answered": true,
+            "view_count": 25,
+            "accepted_answer_id": 49917437,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524146262,
+            "creation_date": 1524061654,
+            "last_edit_date": 1524063059,
+            "question_id": 49902308,
+            "body_markdown": "I&#39;m still learning BS4 and SASS but I&#39;m not understanding why setting my primary color is not being picked up.\r\n\r\nI created a customer variables file and set the color of `$blue` that I want. This is all I have in my `_custom-variables.scss` file.\r\n\r\n    $blue: #0078D2;\r\n    $light: #F7F7F7;\r\n\r\nThen in my site.scss file I have it imported. \r\n\r\n    @import &quot;scss/_custom-variables.scss&quot;;\r\n    @import &quot;bootstrap/bootstrap.scss&quot;;\r\n    @import &quot;scss/_my-theme.scss&quot;;\r\n\r\n\r\nWhen I look at my compiled CSS file I can see that the $blue is set to the correct value. \r\n \r\n\r\n    :root {\r\n      --blue: #0078D2;\r\n      --indigo: #6610f2;\r\n      --purple: #6f42c1;\r\n\r\n\r\n\r\nHowever, when I used the following for a table header it shows the default BS4 blue which is much lighter than the blue I&#39;m looking to set. Here is a snippet of the comipiled CSS and you can see the blue is set correctly.\r\n\r\n    &lt;table class=&quot;table table-striped table-bordered&quot;&gt;\r\n    &lt;thead&gt;\r\n    \t&lt;tr class=&quot;table-primary&quot;&gt;\r\n    \t\t&lt;th&gt;File Name&lt;/th&gt;\r\n    \t\t&lt;th&gt;File Date&lt;/th&gt;\r\n    \t\t&lt;th&gt;Action&lt;/th&gt;\r\n    \t&lt;/tr&gt;\r\n    &lt;/thead&gt;\r\n\r\nThe weird thing is that I have some basic text that I&#39;m using the `text-primary` class with and it is picking up the `$blue` color that I set. So, there must be something with the `table-primary` but I&#39;m not seeing it. I looked at the `_tables.scss` in my Bootstrap folder but I don&#39;t see anything in there that looks like it would be setting it. When I search my entire solution for `table-primary` all I find is the class in the compiled CSS and not in any of the .scss files. The `table-primary` in the compiled CSS has the lighter blue color.  \r\n\r\nThis is picking up the correct blue. \r\n\r\n    &lt;span class=&quot;text-primary&quot;&gt;@ViewBag.FolderPath&lt;/span&gt;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49902308/bootstrap-4-sass-table-primary-class-not-picking-up-changed-primary-color",
+            "title": "Bootstrap 4 SASS Table-Primary class not picking up changed Primary color?",
+            "body": "<p>I'm still learning BS4 and SASS but I'm not understanding why setting my primary color is not being picked up.</p>\n\n<p>I created a customer variables file and set the color of <code>$blue</code> that I want. This is all I have in my <code>_custom-variables.scss</code> file.</p>\n\n<pre><code>$blue: #0078D2;\n$light: #F7F7F7;\n</code></pre>\n\n<p>Then in my site.scss file I have it imported. </p>\n\n<pre><code>@import \"scss/_custom-variables.scss\";\n@import \"bootstrap/bootstrap.scss\";\n@import \"scss/_my-theme.scss\";\n</code></pre>\n\n<p>When I look at my compiled CSS file I can see that the $blue is set to the correct value. </p>\n\n<pre><code>:root {\n  --blue: #0078D2;\n  --indigo: #6610f2;\n  --purple: #6f42c1;\n</code></pre>\n\n<p>However, when I used the following for a table header it shows the default BS4 blue which is much lighter than the blue I'm looking to set. Here is a snippet of the comipiled CSS and you can see the blue is set correctly.</p>\n\n<pre><code>&lt;table class=\"table table-striped table-bordered\"&gt;\n&lt;thead&gt;\n    &lt;tr class=\"table-primary\"&gt;\n        &lt;th&gt;File Name&lt;/th&gt;\n        &lt;th&gt;File Date&lt;/th&gt;\n        &lt;th&gt;Action&lt;/th&gt;\n    &lt;/tr&gt;\n&lt;/thead&gt;\n</code></pre>\n\n<p>The weird thing is that I have some basic text that I'm using the <code>text-primary</code> class with and it is picking up the <code>$blue</code> color that I set. So, there must be something with the <code>table-primary</code> but I'm not seeing it. I looked at the <code>_tables.scss</code> in my Bootstrap folder but I don't see anything in there that looks like it would be setting it. When I search my entire solution for <code>table-primary</code> all I find is the class in the compiled CSS and not in any of the .scss files. The <code>table-primary</code> in the compiled CSS has the lighter blue color.  </p>\n\n<p>This is picking up the correct blue. </p>\n\n<pre><code>&lt;span class=\"text-primary\"&gt;@ViewBag.FolderPath&lt;/span&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "maven",
+                "pom.xml",
+                "dependency-management",
+                "maven-dependency-plugin"
+            ],
+            "owner": {
+                "reputation": 186,
+                "user_id": 4564505,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://www.gravatar.com/avatar/618acca133533d49150d5cff1f815158?s=128&d=identicon&r=PG&f=1",
+                "display_name": "pavlos163",
+                "link": "https://stackoverflow.com/users/4564505/pavlos163"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524146261,
+            "creation_date": 1524146261,
+            "question_id": 49922985,
+            "body_markdown": "I am running the [Maven Dependency Analyzer][1] plugin using this command: \r\n    \r\n    mvn install org.apache.maven.plugins:maven-dependency-plugin:2.9:analyze\r\n\r\nI have two questions concerning this:\r\n\r\n 1. If I understand correctly, if I instead run it by adding it as a `&lt;plugin&gt;` in my `pom.xml`, then I will be able to provide optional parameters such as `verbose`. How do I this from the command line?\r\n 2. The docs mention the below. How do I build an analyzer and for which purpose would I do that? Are there any other analyzers available for me to use?\r\n\r\n&gt; Specify the project dependency analyzer to use (plexus component role-hint). By default, maven-dependency-analyzer is used.\r\n\r\n  [1]: http://maven.apache.org/plugins/maven-dependency-plugin/analyze-mojo.html",
+            "link": "https://stackoverflow.com/questions/49922985/executing-maven-dependency-analyzer-with-parameters-from-command-line",
+            "title": "Executing maven dependency analyzer with parameters from command line",
+            "body": "<p>I am running the <a href=\"http://maven.apache.org/plugins/maven-dependency-plugin/analyze-mojo.html\" rel=\"nofollow noreferrer\">Maven Dependency Analyzer</a> plugin using this command: </p>\n\n<pre><code>mvn install org.apache.maven.plugins:maven-dependency-plugin:2.9:analyze\n</code></pre>\n\n<p>I have two questions concerning this:</p>\n\n<ol>\n<li>If I understand correctly, if I instead run it by adding it as a <code>&lt;plugin&gt;</code> in my <code>pom.xml</code>, then I will be able to provide optional parameters such as <code>verbose</code>. How do I this from the command line?</li>\n<li>The docs mention the below. How do I build an analyzer and for which purpose would I do that? Are there any other analyzers available for me to use?</li>\n</ol>\n\n<blockquote>\n  <p>Specify the project dependency analyzer to use (plexus component role-hint). By default, maven-dependency-analyzer is used.</p>\n</blockquote>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "jquery",
+                "json",
+                "api",
+                "geocode"
+            ],
+            "owner": {
+                "reputation": 97,
+                "user_id": 1266532,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/359a3ff96a37de5003572c181111b57c?s=128&d=identicon&r=PG",
+                "display_name": "Kuba",
+                "link": "https://stackoverflow.com/users/1266532/kuba"
+            },
+            "is_answered": true,
+            "view_count": 20,
+            "accepted_answer_id": 49918515,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524146257,
+            "creation_date": 1524132475,
+            "last_edit_date": 1524146257,
+            "question_id": 49918347,
+            "body_markdown": "I try to get a certain data from my json request from the google geocode api.\r\n\r\nMy code looks like this:\r\n\r\n    $(&#39;#test&#39;).on(&#39;focusout&#39;, function() {\r\n        var address = $(&#39;#ustreet&#39;).val() + &quot; &quot; + $(&#39;#ustreetnr&#39;).val() + &quot;, &quot; + $(&#39;#uplz&#39;).val(); \r\n    $(&#39;#uaddress&#39;).val(address);\r\n    $.ajax({\r\n        url: &#39;https://maps.googleapis.com/maps/api/geocode/json?address=&#39; + address,\r\n        dataType: &#39;jsonp&#39;,\r\n        success: function(json) {\r\n            console.log(json.geometry.location.lat);\r\n            console.log(json);\r\n        }\r\n    });\r\n});\r\n\r\nMy results from request are fine and looking like this:\r\n\r\nhttp://maps.google.com/maps/api/geocode/json?address=Celler%20Weg%2055,%2021079\r\n\r\nBut I got problems to get just the &quot;lat &amp; lng&quot; values from geometry-&gt;location and store it into a var.\r\n\r\n&gt; ReferenceError: json is not defined\r\n\r\nI am for sure a javascript/jquery beginner BUT for an other project with another api it worked great the same way I tried it here ...\r\n\r\nI hope I can get some help here :)\r\n\r\nGreetings from poland",
+            "link": "https://stackoverflow.com/questions/49918347/get-certain-data-from-json-google-geocode-api",
+            "title": "Get certain data from json (google geocode api)",
+            "body": "<p>I try to get a certain data from my json request from the google geocode api.</p>\n\n<p>My code looks like this:</p>\n\n<pre><code>$('#test').on('focusout', function() {\n    var address = $('#ustreet').val() + \" \" + $('#ustreetnr').val() + \", \" + $('#uplz').val(); \n    $('#uaddress').val(address);\n    $.ajax({\n        url: 'https://maps.googleapis.com/maps/api/geocode/json?address=' + address,\n        dataType: 'jsonp',\n        success: function(json) {\n            console.log(json.geometry.location.lat);\n            console.log(json);\n        }\n    });\n});\n</code></pre>\n\n<p>My results from request are fine and looking like this:</p>\n\n<p><a href=\"http://maps.google.com/maps/api/geocode/json?address=Celler%20Weg%2055,%2021079\" rel=\"nofollow noreferrer\">http://maps.google.com/maps/api/geocode/json?address=Celler%20Weg%2055,%2021079</a></p>\n\n<p>But I got problems to get just the \"lat &amp; lng\" values from geometry->location and store it into a var.</p>\n\n<blockquote>\n  <p>ReferenceError: json is not defined</p>\n</blockquote>\n\n<p>I am for sure a JavaScript/jQuery beginner but for an other project with another API it worked great the same way I tried it here ...</p>\n\n<p>I hope I can get some help here :)</p>\n\n<p>Greetings from poland</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "multithreading",
+                "final"
+            ],
+            "owner": {
+                "reputation": 8204,
+                "user_id": 2786156,
+                "user_type": "registered",
+                "accept_rate": 76,
+                "profile_image": "https://i.stack.imgur.com/fWMLm.jpg?s=128&g=1",
+                "display_name": "St.Antario",
+                "link": "https://stackoverflow.com/users/2786156/st-antario"
+            },
+            "is_answered": true,
+            "view_count": 136,
+            "accepted_answer_id": 34489345,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1524146252,
+            "creation_date": 1451287382,
+            "last_edit_date": 1524146252,
+            "question_id": 34489288,
+            "body_markdown": "I am currently reading [*Java Concurrency in Practice* by Brian Goetz][1]. On page 51. In one of the footnotes, he stated:\r\n\r\n&gt; While it may seem that field values set in a constructor are the first\r\n&gt; values written to those fields and therefore that there are no “older”\r\n&gt; values to see as stale values, the Object constructor first writes the\r\n&gt; default values to all fields before subclass constructors run. It is\r\n&gt; therefore possible to see the default value for a field as a stale\r\n&gt; value.\r\n\r\nSo, the concept of final fields is not clear to me now. Consider the sample class:\r\n\r\n    public class MyClass{\r\n        private final MyImmutableClass mic;\r\n    \r\n        public MyClass(){\r\n            mic = MyImmutableClass.empty();\r\n        }\r\n    }\r\n\r\nAccording to the above footnote, the `mic` field is ***assigned twice***, once by the `Object`&#39;s constructor and once by the `MyClass`&#39;s constructor itself. Now, imagine that we published a `MyClass` object unsafely (e.g. through a `public` field):\r\n\r\n    public final MyClass mc;\r\n\r\nWho guarantees that `mc` is always observed by any thread in a consistent state? Why can&#39;t some thread accidentally observe the default value?\r\n\r\nTo my knowledge, the `final` field itself only guarantees that the reference cannot be assigned after object construction. If we declared `mc` volatile, that would be clear. Any thread reading the field should read it from the memory directly. It&#39;s prohibited to read it from cache.\r\n\r\nUPD: The publication example:\r\n\r\n\r\n    public static void main(String[] args){\r\n        class MyRunnable implements Runnable(){\r\n            private SomeClass sc;\r\n            public MyRunnable(SomeClass sc){\r\n                this.sc = sc;\r\n            }\r\n            public void run(){\r\n                //do some with sc\r\n            }\r\n        }\r\n        SomeClass sc = getInitialized();\r\n        ExecutorService es = Executors.newFixedThreadPool(10);\r\n        MyRunnable mr = new MyRunnable(sc);\r\n        //submiting mr to es 10 times\r\n        es.awaitTemination();\r\n        es.shutdown();\r\n    }\r\n\r\n    private static SomeClass getInitialized(){\r\n        SomeClass sc = new SomeClass();\r\n        sc. initialize();\r\n        return sc;\r\n    }\r\n    public class SomeClass\r\n        public MyClass mc;\r\n    \r\n        public void initialize(){\r\n            mc = new MyClass();\r\n        }\r\n    }\r\n\r\nA `SomeClass` instance is going to be published across multiple threads. Can some thread observe the default value of the `mic` field?\r\n\r\n  [1]: http://jcip.net/",
+            "link": "https://stackoverflow.com/questions/34489288/why-is-publishing-final-fields-safe",
+            "title": "Why is publishing final fields safe?",
+            "body": "<p>I am currently reading <a href=\"http://jcip.net/\" rel=\"nofollow noreferrer\"><em>Java Concurrency in Practice</em> by Brian Goetz</a>. On page 51. In one of the footnotes, he stated:</p>\n\n<blockquote>\n  <p>While it may seem that field values set in a constructor are the first\n  values written to those fields and therefore that there are no “older”\n  values to see as stale values, the Object constructor first writes the\n  default values to all fields before subclass constructors run. It is\n  therefore possible to see the default value for a field as a stale\n  value.</p>\n</blockquote>\n\n<p>So, the concept of final fields is not clear to me now. Consider the sample class:</p>\n\n<pre><code>public class MyClass{\n    private final MyImmutableClass mic;\n\n    public MyClass(){\n        mic = MyImmutableClass.empty();\n    }\n}\n</code></pre>\n\n<p>According to the above footnote, the <code>mic</code> field is <strong><em>assigned twice</em></strong>, once by the <code>Object</code>'s constructor and once by the <code>MyClass</code>'s constructor itself. Now, imagine that we published a <code>MyClass</code> object unsafely (e.g. through a <code>public</code> field):</p>\n\n<pre><code>public final MyClass mc;\n</code></pre>\n\n<p>Who guarantees that <code>mc</code> is always observed by any thread in a consistent state? Why can't some thread accidentally observe the default value?</p>\n\n<p>To my knowledge, the <code>final</code> field itself only guarantees that the reference cannot be assigned after object construction. If we declared <code>mc</code> volatile, that would be clear. Any thread reading the field should read it from the memory directly. It's prohibited to read it from cache.</p>\n\n<p>UPD: The publication example:</p>\n\n<pre><code>public static void main(String[] args){\n    class MyRunnable implements Runnable(){\n        private SomeClass sc;\n        public MyRunnable(SomeClass sc){\n            this.sc = sc;\n        }\n        public void run(){\n            //do some with sc\n        }\n    }\n    SomeClass sc = getInitialized();\n    ExecutorService es = Executors.newFixedThreadPool(10);\n    MyRunnable mr = new MyRunnable(sc);\n    //submiting mr to es 10 times\n    es.awaitTemination();\n    es.shutdown();\n}\n\nprivate static SomeClass getInitialized(){\n    SomeClass sc = new SomeClass();\n    sc. initialize();\n    return sc;\n}\npublic class SomeClass\n    public MyClass mc;\n\n    public void initialize(){\n        mc = new MyClass();\n    }\n}\n</code></pre>\n\n<p>A <code>SomeClass</code> instance is going to be published across multiple threads. Can some thread observe the default value of the <code>mic</code> field?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "function",
+                "python-import"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 7041120,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-aCIBZjquGzM/AAAAAAAAAAI/AAAAAAAAIgI/Hz0ISrFNd2U/photo.jpg?sz=128",
+                "display_name": "Leo Ruyven",
+                "link": "https://stackoverflow.com/users/7041120/leo-ruyven"
+            },
+            "is_answered": false,
+            "view_count": 34,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1524146247,
+            "creation_date": 1524143457,
+            "last_edit_date": 1524146247,
+            "question_id": 49921998,
+            "body_markdown": "I would like to create multiple files with my own functions and store it as multiple script files. what is the best way to make it work.\r\nHow do I call it from another python script?\r\n\r\nFor example I have the files `a.py`, `b.py`, `c.py` and `x.py` in the files `a.py`, `b.py` and `c.py`. I would like to use functions from the other imported files.\r\n\r\n    def a():\r\n      print(&quot;Function a is called&quot;)\r\n      print(c())\r\n      return 1\r\n\r\nb.py\r\n\r\n    def b():\r\n      # Something\r\n      print(&quot;function b is called.&quot;)\r\n      return 2\r\n\r\nc.py\r\n\r\n    def c():\r\n      # de Something\r\n      print(&quot;Function C is called.&quot;)\r\n      print(b())\r\n      return 3\r\n    \r\n    print(a())\r\n\r\n\r\n----------\r\n\r\n\r\nx.py\r\n\r\n    from a import *\r\n    from b import *\r\n    from c import *\r\n    print(a())\r\n    print(b())\r\n    print(c())\r\n\r\nThanks.",
+            "link": "https://stackoverflow.com/questions/49921998/function-calls-to-multiple-different-files-in-python",
+            "title": "Function calls to multiple different files in python",
+            "body": "<p>I would like to create multiple files with my own functions and store it as multiple script files. what is the best way to make it work.\nHow do I call it from another python script?</p>\n\n<p>For example I have the files <code>a.py</code>, <code>b.py</code>, <code>c.py</code> and <code>x.py</code> in the files <code>a.py</code>, <code>b.py</code> and <code>c.py</code>. I would like to use functions from the other imported files.</p>\n\n<pre><code>def a():\n  print(\"Function a is called\")\n  print(c())\n  return 1\n</code></pre>\n\n<p>b.py</p>\n\n<pre><code>def b():\n  # Something\n  print(\"function b is called.\")\n  return 2\n</code></pre>\n\n<p>c.py</p>\n\n<pre><code>def c():\n  # de Something\n  print(\"Function C is called.\")\n  print(b())\n  return 3\n\nprint(a())\n</code></pre>\n\n<hr>\n\n<p>x.py</p>\n\n<pre><code>from a import *\nfrom b import *\nfrom c import *\nprint(a())\nprint(b())\nprint(c())\n</code></pre>\n\n<p>Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "telegram",
+                "telegram-bot"
+            ],
+            "owner": {
+                "reputation": 79,
+                "user_id": 6587056,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/e362e60c56b3dec36d25112009032169?s=128&d=identicon&r=PG&f=1",
+                "display_name": "snowman",
+                "link": "https://stackoverflow.com/users/6587056/snowman"
+            },
+            "is_answered": true,
+            "view_count": 3315,
+            "accepted_answer_id": 46018195,
+            "answer_count": 3,
+            "score": 8,
+            "last_activity_date": 1524146239,
+            "creation_date": 1504366054,
+            "last_edit_date": 1504373231,
+            "question_id": 46015319,
+            "body_markdown": "I&#39;m developing a Telegram bot, which should be accessible only by its owner (only the owner would be able to add it to groups or see it in the search). Is it possible to achieve this via Telegram services (like BotFather) or should I check in my code if the one who&#39;s sending messages to the bot is the owner?",
+            "link": "https://stackoverflow.com/questions/46015319/how-to-make-a-private-telegram-bot-accessible-only-by-its-owner",
+            "title": "How to make a private Telegram bot accessible only by its owner?",
+            "body": "<p>I'm developing a Telegram bot, which should be accessible only by its owner (only the owner would be able to add it to groups or see it in the search). Is it possible to achieve this via Telegram services (like BotFather) or should I check in my code if the one who's sending messages to the bot is the owner?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "arrays",
+                "qualtrics"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9670217,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/cb6853f888a51cdd44013a63e0e5f4b7?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Rajitha",
+                "link": "https://stackoverflow.com/users/9670217/rajitha"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "closed_date": 1524147409,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524146236,
+            "creation_date": 1524146236,
+            "question_id": 49922978,
+            "body_markdown": "I am working on Pick, Group and Rank question type wherein i want to use the selected drag and drop choices in the same rank order as answer options to the following slider bar question. Can someone help me on this? Can we achieve this through Javascript? Can you please share if anyone has already written a code?",
+            "link": "https://stackoverflow.com/questions/49922978/carry-forward-same-ranking-order-selected-in-pick-group-and-rank-to-display-as-a",
+            "closed_reason": "off-topic",
+            "title": "Carry forward same ranking order selected in Pick Group and Rank to display as answer options/choices to slider bar in Qualtrics",
+            "body": "<p>I am working on Pick, Group and Rank question type wherein i want to use the selected drag and drop choices in the same rank order as answer options to the following slider bar question. Can someone help me on this? Can we achieve this through Javascript? Can you please share if anyone has already written a code?</p>\n"
+        },
+        {
+            "tags": [
+                "firebase",
+                "google-cloud-firestore",
+                "firebase-security-rules"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 3147305,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2d8ebdf476a0f27ce1531e92759e2d9d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Genuanceerd",
+                "link": "https://stackoverflow.com/users/3147305/genuanceerd"
+            },
+            "is_answered": true,
+            "view_count": 43,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524146236,
+            "creation_date": 1524136243,
+            "last_edit_date": 1524144514,
+            "question_id": 49919641,
+            "body_markdown": "I&#39;m struggling within Firestore to set security rules for a document. With the RTDB is was possible to set rules for a specific object property and I&#39;m trying to do the same with Firestore.\r\n\r\nRTDB Code:\r\n\r\n    &quot;users&quot;: {\r\n        &quot;.read&quot;: true,\r\n        &quot;.indexOn&quot;: [&quot;profile/name&quot;],\r\n        &quot;$uid&quot;: {\r\n            &quot;.read&quot;: &quot;auth != null&quot;,\r\n            &quot;.write&quot;:\r\n                &quot;$uid === auth.uid &amp;&amp; !data.exists()&quot;,\r\n            &quot;profile&quot;: {\r\n                &quot;birthday&quot;: {\r\n                    &quot;.write&quot;: &quot;$uid === auth.uid&quot;\r\n                },\r\n                &quot;name&quot;: {\r\n                    &quot;.write&quot;: &quot;$uid === auth.uid&quot;\r\n                },\r\n                &quot;banned&quot;: {\r\n                    &quot;.write&quot;: &quot;root.child(&#39;admins&#39;).child(auth.uid).exists()&quot;\r\n                }\r\n            }\r\n        }\r\n    }\r\n\r\nBelow the same code in Firestore:\r\n\r\n    service cloud.firestore {\r\n        match /databases/{database}/documents {\r\n            match /users/ {\r\n                allow read\r\n                match /{$user} {\r\n                    allow read: if request.auth.uid != null\r\n                    allow write: if request.auth.uid == request.resource.id &amp;&amp;  exists(/databases/$(database)/documents/users/$(request.resource.id)) === false\r\n                    \r\n                    match /birthday {\r\n                        allow write: if request.auth.uid == request.resource.id\r\n                    }\r\n                    match /name {\r\n                        allow write: if request.auth.uid == request.resource.id\r\n                    }\r\n                    match /banned  {\r\n                        allow write: get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType &gt; 3\r\n                    }\r\n    \r\n                }\r\n            }\r\n        }\r\n    }\r\n\r\nWhen I&#39;m writing security rules for a subcollection it&#39;s working fine. But for a document field it&#39;s not working. Is this not possible or is there a special `path` segment in the match reference? [The documentation][1] doesn&#39;t state anything about this.\r\n\r\n\r\n  [1]: https://firebase.google.com/docs/firestore/reference/security/#path_segments",
+            "link": "https://stackoverflow.com/questions/49919641/firestore-rules-for-document-field",
+            "title": "Firestore rules for document field",
+            "body": "<p>I'm struggling within Firestore to set security rules for a document. With the RTDB is was possible to set rules for a specific object property and I'm trying to do the same with Firestore.</p>\n\n<p>RTDB Code:</p>\n\n<pre><code>\"users\": {\n    \".read\": true,\n    \".indexOn\": [\"profile/name\"],\n    \"$uid\": {\n        \".read\": \"auth != null\",\n        \".write\":\n            \"$uid === auth.uid &amp;&amp; !data.exists()\",\n        \"profile\": {\n            \"birthday\": {\n                \".write\": \"$uid === auth.uid\"\n            },\n            \"name\": {\n                \".write\": \"$uid === auth.uid\"\n            },\n            \"banned\": {\n                \".write\": \"root.child('admins').child(auth.uid).exists()\"\n            }\n        }\n    }\n}\n</code></pre>\n\n<p>Below the same code in Firestore:</p>\n\n<pre><code>service cloud.firestore {\n    match /databases/{database}/documents {\n        match /users/ {\n            allow read\n            match /{$user} {\n                allow read: if request.auth.uid != null\n                allow write: if request.auth.uid == request.resource.id &amp;&amp;  exists(/databases/$(database)/documents/users/$(request.resource.id)) === false\n\n                match /birthday {\n                    allow write: if request.auth.uid == request.resource.id\n                }\n                match /name {\n                    allow write: if request.auth.uid == request.resource.id\n                }\n                match /banned  {\n                    allow write: get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType &gt; 3\n                }\n\n            }\n        }\n    }\n}\n</code></pre>\n\n<p>When I'm writing security rules for a subcollection it's working fine. But for a document field it's not working. Is this not possible or is there a special <code>path</code> segment in the match reference? <a href=\"https://firebase.google.com/docs/firestore/reference/security/#path_segments\" rel=\"nofollow noreferrer\">The documentation</a> doesn't state anything about this.</p>\n"
+        },
+        {
+            "tags": [
+                "python-3.x"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9637910,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "DocSpiegel",
+                "link": "https://stackoverflow.com/users/9637910/docspiegel"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524146235,
+            "creation_date": 1524146235,
+            "question_id": 49922977,
+            "body_markdown": "I am looking for the best way to check a line in a lease file to see if an IPv6 address falls into a range:\r\n\r\ni.e. 2603:7300:201:2::50 - 2603:7300:201:2::ffff\r\n\r\nSomething like:\r\n\r\npossible pseudo-code in asterisks\r\n    \r\n    for line in file:\r\n        if *denote last set of ip* &gt; *denote last set of range low (i.e. 50)* and &lt; *denote last set of range high*:\r\n            do something\r\n\r\nEssentially my hang up is how to go about referencing the last set in the IP address for the checks. Any help or a nudge to a resource greatly appreciated!\r\n             \r\n        ",
+            "link": "https://stackoverflow.com/questions/49922977/python-check-if-ipv6-address-falls-in-range",
+            "title": "Python - Check if IPv6 address falls in range",
+            "body": "<p>I am looking for the best way to check a line in a lease file to see if an IPv6 address falls into a range:</p>\n\n<p>i.e. 2603:7300:201:2::50 - 2603:7300:201:2::ffff</p>\n\n<p>Something like:</p>\n\n<p>possible pseudo-code in asterisks</p>\n\n<pre><code>for line in file:\n    if *denote last set of ip* &gt; *denote last set of range low (i.e. 50)* and &lt; *denote last set of range high*:\n        do something\n</code></pre>\n\n<p>Essentially my hang up is how to go about referencing the last set in the IP address for the checks. Any help or a nudge to a resource greatly appreciated!</p>\n"
+        },
+        {
+            "tags": [
+                "php"
+            ],
+            "owner": {
+                "reputation": 529,
+                "user_id": 4906944,
+                "user_type": "registered",
+                "accept_rate": 58,
+                "profile_image": "https://www.gravatar.com/avatar/82da967fda4601090ceb2ea68c1433c1?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Sanjana Nair",
+                "link": "https://stackoverflow.com/users/4906944/sanjana-nair"
+            },
+            "is_answered": true,
+            "view_count": 35,
+            "accepted_answer_id": 45250096,
+            "answer_count": 3,
+            "score": 1,
+            "last_activity_date": 1524146235,
+            "creation_date": 1500689809,
+            "question_id": 45249996,
+            "body_markdown": "Hi I am trying list all the html and XML formats in a particular directory using Php. \r\n\r\nI tried the following: I succeeded with only showing html but couldn&#39;t include XML with this. \r\n\r\nCan some help me with this:\r\n\r\nHere is what I have tried: How do I add .xml to the below filter.\r\n\r\n    &lt;?php\r\n    include(&quot;lock.php&quot;);\r\n    \r\n    $myDirectory = opendir(&quot;.&quot;);\r\n    \r\n    \r\n    while ($entryName = readdir($myDirectory))\r\n    {\r\n       if ($entryName != &quot;.&quot; &amp;&amp; strtolower(substr($entryName, strrpos($entryName, &#39;.&#39;) + 1)) == &#39;html&#39;)\r\n        {\r\n    \t  $dirArray[] = $entryName;\r\n        }\r\n    }\r\n    \r\n  \r\n    closedir($myDirectory);\r\n    \r\n  \r\n    $indexCount\t= count($dirArray);\r\n    Print (&quot;$indexCount files&lt;br&gt;\\n&quot;);\r\n    \r\n    sort($dirArray);\r\n    \r\n    print(&quot;&lt;TABLE border=1 cellpadding=5 cellspacing=0 class=whitelinks&gt;\\n&quot;);\r\n    print(&quot;&lt;TR&gt;&lt;TH&gt;S.No&lt;/TH&gt;&lt;TH&gt;Filename&lt;/TH&gt;&lt;/TR&gt;\\n&quot;); \r\n\r\n    for($index=0; $index &lt; $indexCount; $index++) {\r\n            if (substr(&quot;$dirArray[$index]&quot;, 0, 1) != &quot;.&quot;)\r\n    { \r\n    \t\tprint(&quot;&lt;TR&gt;&lt;td&gt;&quot;);\r\n    \t\tprint($index + 1);\r\n    \t\tprint(&quot;&lt;/td&gt;&quot;);\r\n    \t\tprint(&quot;&lt;TD&gt;&lt;a href=\\&quot;$dirArray[$index]\\&quot;&gt;$dirArray[$index]&lt;/a&gt;&lt;/td&gt;&quot;);\r\n    \t\tprint(&quot;&lt;/TR&gt;\\n&quot;);\r\n    \t}\r\n    }\r\n    print(&quot;&lt;/TABLE&gt;\\n&quot;);\r\n    ?&gt;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/45249996/list-particular-extensions-in-directory-format-in-php",
+            "title": "list particular extensions in directory format in PHP",
+            "body": "<p>Hi I am trying list all the html and XML formats in a particular directory using Php. </p>\n\n<p>I tried the following: I succeeded with only showing html but couldn't include XML with this. </p>\n\n<p>Can some help me with this:</p>\n\n<p>Here is what I have tried: How do I add .xml to the below filter.</p>\n\n<pre><code>&lt;?php\ninclude(\"lock.php\");\n\n$myDirectory = opendir(\".\");\n\n\nwhile ($entryName = readdir($myDirectory))\n{\n   if ($entryName != \".\" &amp;&amp; strtolower(substr($entryName, strrpos($entryName, '.') + 1)) == 'html')\n    {\n      $dirArray[] = $entryName;\n    }\n}\n\n\nclosedir($myDirectory);\n\n\n$indexCount = count($dirArray);\nPrint (\"$indexCount files&lt;br&gt;\\n\");\n\nsort($dirArray);\n\nprint(\"&lt;TABLE border=1 cellpadding=5 cellspacing=0 class=whitelinks&gt;\\n\");\nprint(\"&lt;TR&gt;&lt;TH&gt;S.No&lt;/TH&gt;&lt;TH&gt;Filename&lt;/TH&gt;&lt;/TR&gt;\\n\"); \n\nfor($index=0; $index &lt; $indexCount; $index++) {\n        if (substr(\"$dirArray[$index]\", 0, 1) != \".\")\n{ \n        print(\"&lt;TR&gt;&lt;td&gt;\");\n        print($index + 1);\n        print(\"&lt;/td&gt;\");\n        print(\"&lt;TD&gt;&lt;a href=\\\"$dirArray[$index]\\\"&gt;$dirArray[$index]&lt;/a&gt;&lt;/td&gt;\");\n        print(\"&lt;/TR&gt;\\n\");\n    }\n}\nprint(\"&lt;/TABLE&gt;\\n\");\n?&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "spring",
+                "angular"
+            ],
+            "owner": {
+                "reputation": 35,
+                "user_id": 4537774,
+                "user_type": "registered",
+                "accept_rate": 40,
+                "profile_image": "https://www.gravatar.com/avatar/65c084271f161ca40c2c8722c3fd0ff0?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Omaja7",
+                "link": "https://stackoverflow.com/users/4537774/omaja7"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524146227,
+            "creation_date": 1524146227,
+            "question_id": 49922975,
+            "body_markdown": "I&#39;ve been trying to understand how can I use Angular 5 (or 2 or 4) together with Spring thymeleaf template together. My problem is that Angular 5 runs on CLI and it resolves as it&#39;s own project (app folder). But that makes it SPA and to be honest I do not like full SPA applications. In my opinion it makes them slow when huge data is there to be processed. \r\n\r\nInstead I want to make multi page applications (which means page refresh and server side rendering). And I want to use some Angular 5 features (for example two way data binding). But how exactly I can achieve that? In Angular 1 (AngularJS) all I had to do was include it&#39;s source and done. But how about with Angular 5?",
+            "link": "https://stackoverflow.com/questions/49922975/angular-5-together-with-spring-thymeleaf",
+            "title": "Angular 5 together with Spring Thymeleaf",
+            "body": "<p>I've been trying to understand how can I use Angular 5 (or 2 or 4) together with Spring thymeleaf template together. My problem is that Angular 5 runs on CLI and it resolves as it's own project (app folder). But that makes it SPA and to be honest I do not like full SPA applications. In my opinion it makes them slow when huge data is there to be processed. </p>\n\n<p>Instead I want to make multi page applications (which means page refresh and server side rendering). And I want to use some Angular 5 features (for example two way data binding). But how exactly I can achieve that? In Angular 1 (AngularJS) all I had to do was include it's source and done. But how about with Angular 5?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "regex",
+                "string"
+            ],
+            "owner": {
+                "reputation": 1136,
+                "user_id": 40769,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ca7f3f5180c97c2ba848f462d59cc98c?s=128&d=identicon&r=PG",
+                "display_name": "phil",
+                "link": "https://stackoverflow.com/users/40769/phil"
+            },
+            "is_answered": true,
+            "view_count": 225904,
+            "accepted_answer_id": 5642327,
+            "answer_count": 7,
+            "score": 99,
+            "last_activity_date": 1524146226,
+            "creation_date": 1302646850,
+            "last_edit_date": 1491544185,
+            "question_id": 5642315,
+            "body_markdown": "I have found very similar posts but I can&#39;t quite get my regular expression right here.\r\n\r\nI am trying to write a regular expression which returns a string which is between two other strings. For example: I want to get the string which resides between the strings &quot;cow&quot; and &quot;milk&quot;\r\n\r\n&gt; My cow always gives milk\r\n\r\nwould return\r\n\r\n&gt; &quot;always gives&quot;\r\n\r\nHere is the expression I have pieced together so far:\r\n\r\n    (?=cow).*(?=milk)\r\n\r\nHowever this returns the string &quot;cow always gives&quot;",
+            "link": "https://stackoverflow.com/questions/5642315/regular-expression-to-get-a-string-between-two-strings-in-javascript",
+            "title": "Regular Expression to get a string between two strings in Javascript",
+            "body": "<p>I have found very similar posts but I can't quite get my regular expression right here.</p>\n\n<p>I am trying to write a regular expression which returns a string which is between two other strings. For example: I want to get the string which resides between the strings \"cow\" and \"milk\"</p>\n\n<blockquote>\n  <p>My cow always gives milk</p>\n</blockquote>\n\n<p>would return</p>\n\n<blockquote>\n  <p>\"always gives\"</p>\n</blockquote>\n\n<p>Here is the expression I have pieced together so far:</p>\n\n<pre><code>(?=cow).*(?=milk)\n</code></pre>\n\n<p>However this returns the string \"cow always gives\"</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "button",
+                "tkinter"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9670153,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Dkos2019",
+                "link": "https://stackoverflow.com/users/9670153/dkos2019"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1524146221,
+            "creation_date": 1524145741,
+            "last_edit_date": 1524146221,
+            "question_id": 49922781,
+            "body_markdown": "When trying to run this code, I get a key error that says\r\n\r\n    KeyError: &lt;tkinter.Button object .!button4&gt;\r\n\r\nThe button number is different for all the buttons 1-5.\r\n\r\nI dont understand what it is implying as I thought I was referring to the right button. Please help! Here&#39;s my code:\r\n\r\n    import tkinter as tk\r\n\r\n    def button_click(event = None):\r\n        which_button = event.widget\r\n        var = f[which_button]\r\n\r\n        if var in f:\r\n            var.set(f[var])\r\n\r\n        else:\r\n            for i, j in enumerate(v):\r\n                if j == v[i]:\r\n                    var.set(k[i])\r\n\r\n\r\n\r\n\r\n    window = tk.Tk()\r\n    window.title(&quot;Flashcards&quot;)\r\n    k=[]\r\n    v=[]\r\n\r\n    f={&quot;Bonjour&quot;:&quot;Hello&quot;,&quot;Lundi&quot;:&quot;Monday&quot;,&quot;Parler&quot;:&quot;To Talk&quot;,&quot;Manger&quot;:&quot;To Eat&quot;,&quot;Dormir&quot;:&quot;To Sleep&quot;}\r\n    for key,val in f.items():\r\n        k.append(key)\r\n        v.append(val)\r\n\r\n\r\n\r\n\r\n    for i in range(5):\r\n    \ts = tk.StringVar()\r\n    \ts.set(k[i])\r\n\r\n    \tb = tk.Button(window, textvariable = s, width = 10)\r\n    \tb.bind(&quot;&lt;Button-1&gt;&quot;, button_click)\r\n    \tb.grid(row = 0, column = i)\r\n\r\n    window.mainloop()\r\n\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49922781/keyerror-tkinter-button-object-button",
+            "title": "KeyError: &lt;tkinter.Button object .!button&gt;",
+            "body": "<p>When trying to run this code, I get a key error that says</p>\n\n<pre><code>KeyError: &lt;tkinter.Button object .!button4&gt;\n</code></pre>\n\n<p>The button number is different for all the buttons 1-5.</p>\n\n<p>I dont understand what it is implying as I thought I was referring to the right button. Please help! Here's my code:</p>\n\n<pre><code>import tkinter as tk\n\ndef button_click(event = None):\n    which_button = event.widget\n    var = f[which_button]\n\n    if var in f:\n        var.set(f[var])\n\n    else:\n        for i, j in enumerate(v):\n            if j == v[i]:\n                var.set(k[i])\n\n\n\n\nwindow = tk.Tk()\nwindow.title(\"Flashcards\")\nk=[]\nv=[]\n\nf={\"Bonjour\":\"Hello\",\"Lundi\":\"Monday\",\"Parler\":\"To Talk\",\"Manger\":\"To Eat\",\"Dormir\":\"To Sleep\"}\nfor key,val in f.items():\n    k.append(key)\n    v.append(val)\n\n\n\n\nfor i in range(5):\n    s = tk.StringVar()\n    s.set(k[i])\n\n    b = tk.Button(window, textvariable = s, width = 10)\n    b.bind(\"&lt;Button-1&gt;\", button_click)\n    b.grid(row = 0, column = i)\n\nwindow.mainloop()\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "swift",
+                "uitableview",
+                "tableview",
+                "cells"
+            ],
+            "owner": {
+                "reputation": 20,
+                "user_id": 9643619,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-ZW45M5w-Odo/AAAAAAAAAAI/AAAAAAAAAPc/0DZYVAfeBrc/photo.jpg?sz=128",
+                "display_name": "sheishistoric",
+                "link": "https://stackoverflow.com/users/9643619/sheishistoric"
+            },
+            "is_answered": true,
+            "view_count": 29,
+            "accepted_answer_id": 49922967,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524146203,
+            "creation_date": 1524145958,
+            "question_id": 49922859,
+            "body_markdown": "I&#39;ve developed a personality quiz app here entirely in code. Some of the separators keep disappearing though - it&#39;s not consistent from question to question, but it&#39;s usually one or two in the middle. \r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/KJG1m.png\r\n\r\nI can update with code, but I&#39;m not sure what aspect of TableView&#39;s code is causing this problem.",
+            "link": "https://stackoverflow.com/questions/49922859/tableview-separator-cells-disappearing",
+            "title": "TableView separator cells disappearing?",
+            "body": "<p>I've developed a personality quiz app here entirely in code. Some of the separators keep disappearing though - it's not consistent from question to question, but it's usually one or two in the middle. </p>\n\n<p><a href=\"https://i.stack.imgur.com/KJG1m.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/KJG1m.png\" alt=\"enter image description here\"></a></p>\n\n<p>I can update with code, but I'm not sure what aspect of TableView's code is causing this problem.</p>\n"
+        },
+        {
+            "tags": [
+                "opencv",
+                "cmake",
+                "cuda",
+                "ubuntu-16.04"
+            ],
+            "owner": {
+                "reputation": 587,
+                "user_id": 3636909,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/da875264051dc76606a99aff3b8448a8?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Ja_cpp",
+                "link": "https://stackoverflow.com/users/3636909/ja-cpp"
+            },
+            "is_answered": true,
+            "view_count": 6006,
+            "accepted_answer_id": 46614298,
+            "answer_count": 6,
+            "score": 11,
+            "last_activity_date": 1524146197,
+            "creation_date": 1507201069,
+            "last_edit_date": 1507286292,
+            "question_id": 46584000,
+            "body_markdown": "I installed cuda first using `cuda-repo-ubuntu1604-9-0-local_9.0.176-1_amd64.deb`. Now I&#39;m trying to install `OpenCV 3.3.0` But i&#39;m getting CMake Error:\r\n\r\n    CMake Error: The following variables are used in this project, but they are set to NOTFOUND.\r\n    Please set them or make sure they are set and tested correctly in the CMake files:\r\n    CUDA_nppi_LIBRARY (ADVANCED)\r\n\r\nAnd then a very long list of targets like so:\r\n\r\n    linked by target &quot;opencv_cudev&quot; in directory /home/jjros/opencv-3.3.0/modules/cudev\r\n\r\nI&#39;m using this command to compile the library:\r\n\r\n    cmake \r\n    \r\n    -D CMAKE_C_COMPILER=/usr/bin/gcc-5 \\ \r\n    -D CMAKE_BUILD_TYPE=RELEASE \\   \r\n    -D CMAKE_INSTALL_PREFIX=/usr/local \\     \r\n    -D WITH_CUDA=ON \\     \r\n    -D WITH_CUBLAS=ON \\     \r\n    -D WITH_TBB=ON \\    \r\n    -D WITH_V4L=ON \\    \r\n    -D WITH_QT=ON \\     \r\n    -D WITH_OPENGL=ON \\    \r\n    -D ENABLE_FAST_MATH=1 \\        \r\n    -D CUDA_FAST_MATH=1 \\        \r\n    -D WITH_CUBLAS=1 \\        \r\n    -D INSTALL_C_EXAMPLES=OFF \\    \r\n    -D INSTALL_PYTHON_EXAMPLES=ON \\        \r\n    -D BUILD_SHARED_LIBS=ON \\        \r\n    -D WITH_GTK=ON \\        \r\n    -D BUILD_EXAMPLES=ON \\     \r\n    -D  CUDA_NVCC_FLAGS=&quot;-D_FORCE_INLINES&quot; .. \r\n\r\nHow can set my CMakeLists? What&#39;s going wrong?",
+            "link": "https://stackoverflow.com/questions/46584000/cmake-error-variables-are-set-to-notfound",
+            "title": "CMake Error: Variables are set to NOTFOUND",
+            "body": "<p>I installed cuda first using <code>cuda-repo-ubuntu1604-9-0-local_9.0.176-1_amd64.deb</code>. Now I'm trying to install <code>OpenCV 3.3.0</code> But i'm getting CMake Error:</p>\n\n<pre><code>CMake Error: The following variables are used in this project, but they are set to NOTFOUND.\nPlease set them or make sure they are set and tested correctly in the CMake files:\nCUDA_nppi_LIBRARY (ADVANCED)\n</code></pre>\n\n<p>And then a very long list of targets like so:</p>\n\n<pre><code>linked by target \"opencv_cudev\" in directory /home/jjros/opencv-3.3.0/modules/cudev\n</code></pre>\n\n<p>I'm using this command to compile the library:</p>\n\n<pre><code>cmake \n\n-D CMAKE_C_COMPILER=/usr/bin/gcc-5 \\ \n-D CMAKE_BUILD_TYPE=RELEASE \\   \n-D CMAKE_INSTALL_PREFIX=/usr/local \\     \n-D WITH_CUDA=ON \\     \n-D WITH_CUBLAS=ON \\     \n-D WITH_TBB=ON \\    \n-D WITH_V4L=ON \\    \n-D WITH_QT=ON \\     \n-D WITH_OPENGL=ON \\    \n-D ENABLE_FAST_MATH=1 \\        \n-D CUDA_FAST_MATH=1 \\        \n-D WITH_CUBLAS=1 \\        \n-D INSTALL_C_EXAMPLES=OFF \\    \n-D INSTALL_PYTHON_EXAMPLES=ON \\        \n-D BUILD_SHARED_LIBS=ON \\        \n-D WITH_GTK=ON \\        \n-D BUILD_EXAMPLES=ON \\     \n-D  CUDA_NVCC_FLAGS=\"-D_FORCE_INLINES\" .. \n</code></pre>\n\n<p>How can set my CMakeLists? What's going wrong?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "php",
+                "android",
+                "nullpointerexception"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 7805457,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/45c7578a546c5773f89f93000c344baf?s=128&d=identicon&r=PG",
+                "display_name": "Bonuz",
+                "link": "https://stackoverflow.com/users/7805457/bonuz"
+            },
+            "is_answered": false,
+            "view_count": 415,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1524146195,
+            "creation_date": 1502199044,
+            "last_edit_date": 1502201379,
+            "question_id": 45569757,
+            "body_markdown": "I need help with this please. \r\nI&#39;m making activity where one can signup and signin. In the signup, I followed every procedure I think im supposed to follow. But i&#39;m still having an error when i clicked the register button. I dont know where the error generated from, thats why i caught the error on the `registerclick` method and it gave me this error `Java.lang.nullPointerException: Attempt to invoke virtual method &#39;int java.lang.string.hashCode() on a null object reference`. Please it is not a duplicate of any question as i have searched through every question that looks like it. Still no solution. This is my constants class\r\n\r\n    package tk.trythisout.learnit;\r\n\r\n\r\n\r\n    public class Constants {\r\n    private static final String ROOT_URL = &quot;192.168.33.149/and/req/&quot;;\r\n    public static final String URL_REGISTER = ROOT_URL+&quot;register.php&quot;;\r\n    }\r\n\r\nRegisterActivity1.java\r\n\r\n    package tk.trythisout.learnit;\r\n    \r\n    import android.app.ProgressDialog;\r\n    import android.support.v7.app.AppCompatActivity;\r\n    import android.os.Bundle;\r\n    import android.view.View;\r\n    import android.widget.Button;\r\n    import android.widget.EditText;\r\n    import android.widget.Spinner;\r\n    import android.widget.Toast;\r\n    \r\n    import com.android.volley.AuthFailureError;\r\n    import com.android.volley.Request;\r\n    import com.android.volley.RequestQueue;\r\n    import com.android.volley.Response;\r\n    import com.android.volley.VolleyError;\r\n    import com.android.volley.toolbox.StringRequest;\r\n    import com.android.volley.toolbox.Volley;\r\n    \r\n    import org.json.JSONException;\r\n    import org.json.JSONObject;\r\n    \r\n    import java.util.HashMap;\r\n    import java.util.Map;\r\n    import java.util.Objects;\r\n    \r\n    public class RegisterActivity1 extends AppCompatActivity {\r\n        EditText FirstName, LastName, Email, IndexNumber, Password, Repassword, PhoneNumber;\r\n        Spinner Level, Program;\r\n        Button Register;\r\n    //    ProgressDialog progressDialog;\r\n    \r\n        @Override\r\n        protected void onCreate(Bundle savedInstanceState) {\r\n            super.onCreate(savedInstanceState);\r\n            setContentView(R.layout.activity_register1);\r\n            FirstName = (EditText) findViewById(R.id.txtFirstName);\r\n            LastName = (EditText) findViewById(R.id.txtLastName);\r\n            Email = (EditText) findViewById(R.id.txtEmail);\r\n            IndexNumber = (EditText) findViewById(R.id.txtIndexNumber);\r\n            Password = (EditText) findViewById(R.id.txtPassword);\r\n            Repassword = (EditText) findViewById(R.id.txtRePassword);\r\n            PhoneNumber = (EditText) findViewById(R.id.txtPhoneNumber);\r\n            Level = (Spinner) findViewById(R.id.spinLevel);\r\n            Program = (Spinner) findViewById(R.id.spinProgram);\r\n            Register = (Button) findViewById(R.id.btnRegister);\r\n    //        progressDialog = new ProgressDialog(this);\r\n            Register.setOnClickListener(new View.OnClickListener() {\r\n                @Override\r\n                public void onClick(View view) {\r\n                    try {\r\n                        registerClick();\r\n                    } catch (Exception e) {\r\n                        Toast.makeText(RegisterActivity1.this, &quot;error: &quot;+e, Toast.LENGTH_LONG).show();\r\n                    }\r\n                }\r\n            });\r\n    \r\n        }\r\n    \r\n        private void registerClick() throws Exception  {\r\n            final String firstName = FirstName.getText().toString().trim();\r\n            final String lastName = LastName.getText().toString().trim();\r\n            final String email = Email.getText().toString().trim();\r\n            final String indexnumber = IndexNumber.getText().toString().trim();\r\n            final String password = Password.getText().toString().trim();\r\n            final String repassword = Repassword.getText().toString().trim();\r\n            final String phonenumber = PhoneNumber.getText().toString().trim();\r\n            final String level = Level.getSelectedItem().toString();\r\n            final String program = Program.getSelectedItem().toString();\r\n    //        progressDialog.setMessage(&quot;Registering User...&quot;);\r\n    //        progressDialog.show();\r\n    \r\n                StringRequest stringRequest = new StringRequest(Request.Method.POST, Constants.URL_REGISTER, new Response.Listener&lt;String&gt;() {\r\n                    @Override\r\n                    public void onResponse(String response) {\r\n    //                    progressDialog.dismiss();\r\n                        try {\r\n                            JSONObject jsonObject = new JSONObject(response);\r\n                            Toast.makeText(RegisterActivity1.this, jsonObject.getString(&quot;message&quot;), Toast.LENGTH_LONG).show();\r\n                        } catch (JSONException e) {\r\n    \r\n                        }\r\n    \r\n                    }\r\n                }, new Response.ErrorListener() {\r\n                    @Override\r\n                    public void onErrorResponse(VolleyError error) {\r\n    //                    progressDialog.hide();\r\n                        Toast.makeText(RegisterActivity1.this, &quot;too bad: &quot;+error, Toast.LENGTH_LONG).show();\r\n    \r\n                    }\r\n                }) {\r\n                    @Override\r\n                    protected Map&lt;String, String&gt; getParams() throws AuthFailureError {\r\n                        Map&lt;String, String&gt; params = new HashMap&lt;&gt;();\r\n                        params.put(&quot;indexnumber&quot;, indexnumber);\r\n                        params.put(&quot;firstName&quot;, firstName);\r\n                        params.put(&quot;lastName&quot;, lastName);\r\n                        params.put(&quot;level&quot;, level);\r\n                        params.put(&quot;email&quot;, email);\r\n                        params.put(&quot;program&quot;, program);\r\n                        params.put(&quot;password&quot;, password);\r\n                        params.put(&quot;phonenumber&quot;,phonenumber);\r\n                        return params;\r\n                    }\r\n                };\r\n                RequestQueue requestQueue = Volley.newRequestQueue(this);\r\n                requestQueue.add(stringRequest);\r\n    \r\n    \r\n    \r\n        }\r\n    }\r\n\r\nregister.php\r\n\r\n    &lt;?php\r\n    \r\n    require_once &#39;../includes/dbOperation.php&#39;;\r\n    \r\n    $response = array();\r\n    \r\n    if ($_SERVER[&#39;REQUEST_METHOD&#39;]==&#39;POST&#39;) {\r\n    \t# code...\r\n    \tif (isset($_POST[&#39;indexnumber&#39;]) and isset($_POST[&#39;firstname&#39;]) and isset($_POST[&#39;lastname&#39;])\r\n    \t\tand isset($_POST[&#39;level&#39;]) and isset($_POST[&#39;email&#39;])\r\n    \t\tand isset($_POST[&#39;program&#39;]) and isset($_POST[&#39;password&#39;]) and isset($_POST[&#39;phonenumber&#39;])) \r\n    \t{\r\n    \t\t# code...\r\n    \t\t$db = new dbOperation();\r\n    \t\tif ($db-&gt;createUser(\r\n    \t\t\t$_POST[&#39;indexnumber&#39;], $_POST[&#39;firstname&#39;], $_POST[&#39;lastname&#39;], $_POST[&#39;level&#39;], $_POST[&#39;email&#39;], $_POST[&#39;program&#39;], $_POST[&#39;password&#39;], $_POST[&#39;phonenumber&#39;])) {\r\n    \t\t\t# code...\r\n    \t\t\t$response[&#39;error&#39;] = false;\r\n    \t\t\t$response[&#39;message&#39;] = &#39;Successfully Registered&#39;;\r\n    \r\n    \t\t}else{\r\n    \t\t\t$response[&#39;error&#39;] = true;\r\n    \t\t\t$response[&#39;message&#39;] = &#39;Unknown error occurred&#39;;\r\n    \t\t}\r\n    \t}else{\r\n    \t\t$response[&#39;error&#39;] = true;\r\n    \t\t$response[&#39;message&#39;] = &#39;All fields are required, Pls input correct values into the fields&#39;;\r\n    \t}\r\n    }\r\n    echo json_encode($response);\r\n\r\ndboperation.php\r\n\r\n    &lt;?php\r\n    \r\n    class dbOperation{\r\n    \tprivate $con;\r\n    \r\n    \tfunction __construct(){\r\n    \t\trequire_once dirname(__FILE__).&#39;/DbConnect.php&#39;;\r\n    \t\t$db = new DbConnect();\r\n    \t\t$this-&gt;con = $db-&gt;connect();\r\n    \t}\r\n    \r\n    \tpublic function createUser($indexnumber, $firstname, $lastname, $level, $email, $program, $password, $phonenumber)\r\n    \t{\r\n    \t\t# code...\r\n    \t\t$password = md5($password);\r\n    \t\t$stmt = $this-&gt;con-&gt;prepare(&quot;INSERT INTO `students`(`sn`, `IndexNumber`, `firstName`, `LastName`, `level`, `email`, `department`, `password`, `phonenumber`) VALUES (NULL,?,?,?,?,?,?,?,?)&quot;);\r\n    \t\t$stmt-&gt;bind_param(&quot;ssssssss&quot;,$indexnumber, $firstname, $lastname, $level, $email, $program, $password, $phonenumber);\r\n    \t\r\n    \tif ($stmt-&gt;execute()) {\r\n    \t\t# code...\r\n    \t\treturn true;\r\n    \t}else{\r\n    \t\treturn false;\r\n    \t}\r\n       }\r\n    }\r\n\r\n\r\nPlease help. I&#39;m Stuck!\r\n\r\n    &quot;main@2&quot; prio=5 waiting\r\n      java.lang.Thread.State: WAITING\r\n    \t  at com.android.volley.Request.&lt;init&gt;(Request.java:136)\r\n    \t  at com.android.volley.toolbox.StringRequest.&lt;init&gt;(StringRequest.java:43)\r\n    \t  at tk.trythisout.learnit.RegisterActivity1$4.&lt;init&gt;(RegisterActivity1.java:0)\r\n    \t  at tk.trythisout.learnit.RegisterActivity1.registerClick(RegisterActivity1.java:74)\r\n    \t  at tk.trythisout.learnit.RegisterActivity1.access$000(RegisterActivity1.java:27)\r\n    \t  at tk.trythisout.learnit.RegisterActivity1$1.onClick(RegisterActivity1.java:52)\r\n    \t  at android.view.View.performClick(View.java:4756)\r\n    \t  at android.view.View$PerformClick.run(View.java:19749)\r\n    \t  at android.os.Handler.handleCallback(Handler.java:739)\r\n    \t  at android.os.Handler.dispatchMessage(Handler.java:95)\r\n    \t  at android.os.Looper.loop(Looper.java:135)\r\n    \t  at android.app.ActivityThread.main(ActivityThread.java:5221)\r\n    \t  at java.lang.reflect.Method.invoke(Method.java:-1)\r\n    \t  at java.lang.reflect.Method.invoke(Method.java:372)\r\n    \t  at com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:899)\r\n    \t  at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:694)\r\n\r\n\r\nthis is all i got..\r\n\r\n    this = {RegisterActivity1$4@4262} &quot;[ ] 192.168.33.149/and/req/register.php 0x0 NORMAL null&quot;\r\n     this$0 = {RegisterActivity1@4057} \r\n     mListener = null\r\n     mCacheEntry = null\r\n     mErrorListener = {RegisterActivity1$3@4263} \r\n     mEventLog = null\r\n     mRequestQueue = null\r\n     mRetryPolicy = {DefaultRetryPolicy@4271} \r\n     mSequence = null\r\n     mTag = null\r\n     mUrl = &quot;192.168.33.149/and/req/register.php&quot;\r\n     mRequestBirthTime = 0\r\n     mCanceled = false\r\n     mDefaultTrafficStatsTag = 0\r\n     mMethod = 1\r\n     mResponseDelivered = false\r\n     mShouldCache = true\r\n     shadow$_klass_ = {Class@3966} &quot;class tk.trythisout.learnit.RegisterActivity1$4&quot;\r\n     shadow$_monitor_ = -1782153838\r\n    Exception = {NullPointerException@4261} \r\n     cause = {NullPointerException@4261} &quot;java.lang.NullPointerException: Attempt to invoke virtual method &#39;int java.lang.String.hashCode()&#39; on a null object reference&quot;\r\n     detailMessage = &quot;Attempt to invoke virtual method &#39;int java.lang.String.hashCode()&#39; on a null object reference&quot;\r\n      value = {char[93]@4298} \r\n      count = 93\r\n      hashCode = 154031741\r\n      offset = 0\r\n      shadow$_klass_ = {Class@1531} &quot;class java.lang.String&quot;\r\n      shadow$_monitor_ = -1407867750\r\n     stackState = {Object[17]@4287} \r\n     stackTrace = {StackTraceElement[0]@4288} \r\n     suppressedExceptions = {Collections$EmptyList@4289}  size = 0\r\n     shadow$_klass_ = {Class@3006} &quot;class java.lang.NullPointerException&quot;\r\n     shadow$_monitor_ = -2087831779\r\n    email = &quot;fadf@sdgh.fyt&quot;\r\n    firstName = &quot;busaf&quot;\r\n    indexnumber = &quot;afa&quot;\r\n    lastName = &quot;adf&quot;\r\n    level = &quot;300&quot;\r\n    password = &quot;qwerty&quot;\r\n    phonenumber = &quot;5556321&quot;\r\n    program = &quot;BSc. Midwifery&quot;\r\n    x0 = 1\r\n    x1 = &quot;192.168.33.149/and/req/register.php&quot;\r\n    x2 = {RegisterActivity1$2@4273} \r\n    x3 = {RegisterActivity1$3@4263} ",
+            "link": "https://stackoverflow.com/questions/45569757/java-lang-nullpointerexception-attempt-to-invoke-virtual-method-int-java-lang",
+            "title": "Java.lang.nullPointerException: Attempt to invoke virtual method &#39;int java.lang.string.hashCode() on a null object reference",
+            "body": "<p>I need help with this please. \nI'm making activity where one can signup and signin. In the signup, I followed every procedure I think im supposed to follow. But i'm still having an error when i clicked the register button. I dont know where the error generated from, thats why i caught the error on the <code>registerclick</code> method and it gave me this error <code>Java.lang.nullPointerException: Attempt to invoke virtual method 'int java.lang.string.hashCode() on a null object reference</code>. Please it is not a duplicate of any question as i have searched through every question that looks like it. Still no solution. This is my constants class</p>\n\n<pre><code>package tk.trythisout.learnit;\n\n\n\npublic class Constants {\nprivate static final String ROOT_URL = \"192.168.33.149/and/req/\";\npublic static final String URL_REGISTER = ROOT_URL+\"register.php\";\n}\n</code></pre>\n\n<p>RegisterActivity1.java</p>\n\n<pre><code>package tk.trythisout.learnit;\n\nimport android.app.ProgressDialog;\nimport android.support.v7.app.AppCompatActivity;\nimport android.os.Bundle;\nimport android.view.View;\nimport android.widget.Button;\nimport android.widget.EditText;\nimport android.widget.Spinner;\nimport android.widget.Toast;\n\nimport com.android.volley.AuthFailureError;\nimport com.android.volley.Request;\nimport com.android.volley.RequestQueue;\nimport com.android.volley.Response;\nimport com.android.volley.VolleyError;\nimport com.android.volley.toolbox.StringRequest;\nimport com.android.volley.toolbox.Volley;\n\nimport org.json.JSONException;\nimport org.json.JSONObject;\n\nimport java.util.HashMap;\nimport java.util.Map;\nimport java.util.Objects;\n\npublic class RegisterActivity1 extends AppCompatActivity {\n    EditText FirstName, LastName, Email, IndexNumber, Password, Repassword, PhoneNumber;\n    Spinner Level, Program;\n    Button Register;\n//    ProgressDialog progressDialog;\n\n    @Override\n    protected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        setContentView(R.layout.activity_register1);\n        FirstName = (EditText) findViewById(R.id.txtFirstName);\n        LastName = (EditText) findViewById(R.id.txtLastName);\n        Email = (EditText) findViewById(R.id.txtEmail);\n        IndexNumber = (EditText) findViewById(R.id.txtIndexNumber);\n        Password = (EditText) findViewById(R.id.txtPassword);\n        Repassword = (EditText) findViewById(R.id.txtRePassword);\n        PhoneNumber = (EditText) findViewById(R.id.txtPhoneNumber);\n        Level = (Spinner) findViewById(R.id.spinLevel);\n        Program = (Spinner) findViewById(R.id.spinProgram);\n        Register = (Button) findViewById(R.id.btnRegister);\n//        progressDialog = new ProgressDialog(this);\n        Register.setOnClickListener(new View.OnClickListener() {\n            @Override\n            public void onClick(View view) {\n                try {\n                    registerClick();\n                } catch (Exception e) {\n                    Toast.makeText(RegisterActivity1.this, \"error: \"+e, Toast.LENGTH_LONG).show();\n                }\n            }\n        });\n\n    }\n\n    private void registerClick() throws Exception  {\n        final String firstName = FirstName.getText().toString().trim();\n        final String lastName = LastName.getText().toString().trim();\n        final String email = Email.getText().toString().trim();\n        final String indexnumber = IndexNumber.getText().toString().trim();\n        final String password = Password.getText().toString().trim();\n        final String repassword = Repassword.getText().toString().trim();\n        final String phonenumber = PhoneNumber.getText().toString().trim();\n        final String level = Level.getSelectedItem().toString();\n        final String program = Program.getSelectedItem().toString();\n//        progressDialog.setMessage(\"Registering User...\");\n//        progressDialog.show();\n\n            StringRequest stringRequest = new StringRequest(Request.Method.POST, Constants.URL_REGISTER, new Response.Listener&lt;String&gt;() {\n                @Override\n                public void onResponse(String response) {\n//                    progressDialog.dismiss();\n                    try {\n                        JSONObject jsonObject = new JSONObject(response);\n                        Toast.makeText(RegisterActivity1.this, jsonObject.getString(\"message\"), Toast.LENGTH_LONG).show();\n                    } catch (JSONException e) {\n\n                    }\n\n                }\n            }, new Response.ErrorListener() {\n                @Override\n                public void onErrorResponse(VolleyError error) {\n//                    progressDialog.hide();\n                    Toast.makeText(RegisterActivity1.this, \"too bad: \"+error, Toast.LENGTH_LONG).show();\n\n                }\n            }) {\n                @Override\n                protected Map&lt;String, String&gt; getParams() throws AuthFailureError {\n                    Map&lt;String, String&gt; params = new HashMap&lt;&gt;();\n                    params.put(\"indexnumber\", indexnumber);\n                    params.put(\"firstName\", firstName);\n                    params.put(\"lastName\", lastName);\n                    params.put(\"level\", level);\n                    params.put(\"email\", email);\n                    params.put(\"program\", program);\n                    params.put(\"password\", password);\n                    params.put(\"phonenumber\",phonenumber);\n                    return params;\n                }\n            };\n            RequestQueue requestQueue = Volley.newRequestQueue(this);\n            requestQueue.add(stringRequest);\n\n\n\n    }\n}\n</code></pre>\n\n<p>register.php</p>\n\n<pre><code>&lt;?php\n\nrequire_once '../includes/dbOperation.php';\n\n$response = array();\n\nif ($_SERVER['REQUEST_METHOD']=='POST') {\n    # code...\n    if (isset($_POST['indexnumber']) and isset($_POST['firstname']) and isset($_POST['lastname'])\n        and isset($_POST['level']) and isset($_POST['email'])\n        and isset($_POST['program']) and isset($_POST['password']) and isset($_POST['phonenumber'])) \n    {\n        # code...\n        $db = new dbOperation();\n        if ($db-&gt;createUser(\n            $_POST['indexnumber'], $_POST['firstname'], $_POST['lastname'], $_POST['level'], $_POST['email'], $_POST['program'], $_POST['password'], $_POST['phonenumber'])) {\n            # code...\n            $response['error'] = false;\n            $response['message'] = 'Successfully Registered';\n\n        }else{\n            $response['error'] = true;\n            $response['message'] = 'Unknown error occurred';\n        }\n    }else{\n        $response['error'] = true;\n        $response['message'] = 'All fields are required, Pls input correct values into the fields';\n    }\n}\necho json_encode($response);\n</code></pre>\n\n<p>dboperation.php</p>\n\n<pre><code>&lt;?php\n\nclass dbOperation{\n    private $con;\n\n    function __construct(){\n        require_once dirname(__FILE__).'/DbConnect.php';\n        $db = new DbConnect();\n        $this-&gt;con = $db-&gt;connect();\n    }\n\n    public function createUser($indexnumber, $firstname, $lastname, $level, $email, $program, $password, $phonenumber)\n    {\n        # code...\n        $password = md5($password);\n        $stmt = $this-&gt;con-&gt;prepare(\"INSERT INTO `students`(`sn`, `IndexNumber`, `firstName`, `LastName`, `level`, `email`, `department`, `password`, `phonenumber`) VALUES (NULL,?,?,?,?,?,?,?,?)\");\n        $stmt-&gt;bind_param(\"ssssssss\",$indexnumber, $firstname, $lastname, $level, $email, $program, $password, $phonenumber);\n\n    if ($stmt-&gt;execute()) {\n        # code...\n        return true;\n    }else{\n        return false;\n    }\n   }\n}\n</code></pre>\n\n<p>Please help. I'm Stuck!</p>\n\n<pre><code>\"main@2\" prio=5 waiting\n  java.lang.Thread.State: WAITING\n      at com.android.volley.Request.&lt;init&gt;(Request.java:136)\n      at com.android.volley.toolbox.StringRequest.&lt;init&gt;(StringRequest.java:43)\n      at tk.trythisout.learnit.RegisterActivity1$4.&lt;init&gt;(RegisterActivity1.java:0)\n      at tk.trythisout.learnit.RegisterActivity1.registerClick(RegisterActivity1.java:74)\n      at tk.trythisout.learnit.RegisterActivity1.access$000(RegisterActivity1.java:27)\n      at tk.trythisout.learnit.RegisterActivity1$1.onClick(RegisterActivity1.java:52)\n      at android.view.View.performClick(View.java:4756)\n      at android.view.View$PerformClick.run(View.java:19749)\n      at android.os.Handler.handleCallback(Handler.java:739)\n      at android.os.Handler.dispatchMessage(Handler.java:95)\n      at android.os.Looper.loop(Looper.java:135)\n      at android.app.ActivityThread.main(ActivityThread.java:5221)\n      at java.lang.reflect.Method.invoke(Method.java:-1)\n      at java.lang.reflect.Method.invoke(Method.java:372)\n      at com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:899)\n      at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:694)\n</code></pre>\n\n<p>this is all i got..</p>\n\n<pre><code>this = {RegisterActivity1$4@4262} \"[ ] 192.168.33.149/and/req/register.php 0x0 NORMAL null\"\n this$0 = {RegisterActivity1@4057} \n mListener = null\n mCacheEntry = null\n mErrorListener = {RegisterActivity1$3@4263} \n mEventLog = null\n mRequestQueue = null\n mRetryPolicy = {DefaultRetryPolicy@4271} \n mSequence = null\n mTag = null\n mUrl = \"192.168.33.149/and/req/register.php\"\n mRequestBirthTime = 0\n mCanceled = false\n mDefaultTrafficStatsTag = 0\n mMethod = 1\n mResponseDelivered = false\n mShouldCache = true\n shadow$_klass_ = {Class@3966} \"class tk.trythisout.learnit.RegisterActivity1$4\"\n shadow$_monitor_ = -1782153838\nException = {NullPointerException@4261} \n cause = {NullPointerException@4261} \"java.lang.NullPointerException: Attempt to invoke virtual method 'int java.lang.String.hashCode()' on a null object reference\"\n detailMessage = \"Attempt to invoke virtual method 'int java.lang.String.hashCode()' on a null object reference\"\n  value = {char[93]@4298} \n  count = 93\n  hashCode = 154031741\n  offset = 0\n  shadow$_klass_ = {Class@1531} \"class java.lang.String\"\n  shadow$_monitor_ = -1407867750\n stackState = {Object[17]@4287} \n stackTrace = {StackTraceElement[0]@4288} \n suppressedExceptions = {Collections$EmptyList@4289}  size = 0\n shadow$_klass_ = {Class@3006} \"class java.lang.NullPointerException\"\n shadow$_monitor_ = -2087831779\nemail = \"fadf@sdgh.fyt\"\nfirstName = \"busaf\"\nindexnumber = \"afa\"\nlastName = \"adf\"\nlevel = \"300\"\npassword = \"qwerty\"\nphonenumber = \"5556321\"\nprogram = \"BSc. Midwifery\"\nx0 = 1\nx1 = \"192.168.33.149/and/req/register.php\"\nx2 = {RegisterActivity1$2@4273} \nx3 = {RegisterActivity1$3@4263} \n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "unicode",
+                "oracle-sqldeveloper",
+                "nvarchar"
+            ],
+            "owner": {
+                "reputation": 31,
+                "user_id": 8856601,
+                "user_type": "registered",
+                "accept_rate": 12,
+                "profile_image": "https://lh6.googleusercontent.com/-sZSShvMYAnE/AAAAAAAAAAI/AAAAAAAAINY/NYGTkHaQNZs/photo.jpg?sz=128",
+                "display_name": "Justin Holze",
+                "link": "https://stackoverflow.com/users/8856601/justin-holze"
+            },
+            "is_answered": true,
+            "view_count": 52,
+            "accepted_answer_id": 49918643,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1524146190,
+            "creation_date": 1524126176,
+            "last_edit_date": 1524127106,
+            "question_id": 49916168,
+            "body_markdown": "I have a database with one column of the type nvarchar. If I write \r\n\r\n    INSERT INTO table VALUES (&quot;玄真&quot;) \r\n\r\nIt shows `&#191;&#191;` in the table. What should I do? \r\n\r\nI&#39;m using SQL Developer.\r\n",
+            "link": "https://stackoverflow.com/questions/49916168/sql-command-to-insert-chinese-letters",
+            "title": "SQL Command to insert Chinese Letters",
+            "body": "<p>I have a database with one column of the type nvarchar. If I write </p>\n\n<pre><code>INSERT INTO table VALUES (\"玄真\") \n</code></pre>\n\n<p>It shows <code>¿¿</code> in the table. What should I do? </p>\n\n<p>I'm using SQL Developer.</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "html"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9670095,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-qgSCo1qjlGQ/AAAAAAAAAAI/AAAAAAAAAAs/VUObtKRxeIw/photo.jpg?sz=128",
+                "display_name": "White Fang",
+                "link": "https://stackoverflow.com/users/9670095/white-fang"
+            },
+            "is_answered": false,
+            "view_count": 33,
+            "closed_date": 1524145028,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524146188,
+            "creation_date": 1524144784,
+            "last_edit_date": 1524146188,
+            "question_id": 49922440,
+            "body_markdown": "I am a beginner at php html and css\r\nHow can i get another element with the last id using &quot;$SQL=select * from test where id&#39;&#39;&quot;query\r\nthen display it on a text area?\r\n\r\nif you have other suggestions other than select query feel free to do so",
+            "link": "https://stackoverflow.com/questions/49922440/how-can-i-get-the-last-inserted-id-using-select-from-query",
+            "closed_reason": "duplicate",
+            "title": "How can i get the last inserted id using select * from query?",
+            "body": "<p>I am a beginner at php html and css\nHow can i get another element with the last id using \"$SQL=select * from test where id''\"query\nthen display it on a text area?</p>\n\n<p>if you have other suggestions other than select query feel free to do so</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "node.js",
+                "express",
+                "async-await"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 7369503,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/kVS7Q.jpg?s=128&g=1",
+                "display_name": "Mubashar Rasheed",
+                "link": "https://stackoverflow.com/users/7369503/mubashar-rasheed"
+            },
+            "is_answered": true,
+            "view_count": 47,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524146187,
+            "creation_date": 1524145206,
+            "question_id": 49922592,
+            "body_markdown": "Searched on many places and also went through many tutorials to deeply understand the async/awiat behavior of the javascript. Here is my code:\r\n\r\n    var bookAppointment =  async (data) =&gt; {\r\n        return User.findOne({_id: data.user_id})\r\n        .then((userfound) =&gt;{\r\n                //manipulate user&#39;s data and find if in array the specific object exist\r\n                var found = await userfound.dataArray.find( function(element){\r\n                  return element.data == data.user_data\r\n                });\r\n                //here I want to wait until above result comes to evaulate below condition\r\n                if(found)\r\n                {\r\n                    return &quot;Sorry! data does not exist&quot;;\r\n                }\r\n                else\r\n                {\r\n                    return userfound;\r\n                }\r\n        })\r\n        .catch(err =&gt; {\r\n            return err \r\n        });\r\n    } \r\n\r\nWhat I want to achieve is to make my if else condition to wait above find function on array of javascript. Here is the error I&#39;m facing:\r\n\r\n    SyntaxError: await is only valid in async function\r\n\r\nI&#39;m unable to understand where I&#39;m wrong! Even my function has keyword async with its definition. Anyone around for a quick help?",
+            "link": "https://stackoverflow.com/questions/49922592/stuck-in-asnyc-await",
+            "title": "Stuck in asnyc/await",
+            "body": "<p>Searched on many places and also went through many tutorials to deeply understand the async/awiat behavior of the javascript. Here is my code:</p>\n\n<pre><code>var bookAppointment =  async (data) =&gt; {\n    return User.findOne({_id: data.user_id})\n    .then((userfound) =&gt;{\n            //manipulate user's data and find if in array the specific object exist\n            var found = await userfound.dataArray.find( function(element){\n              return element.data == data.user_data\n            });\n            //here I want to wait until above result comes to evaulate below condition\n            if(found)\n            {\n                return \"Sorry! data does not exist\";\n            }\n            else\n            {\n                return userfound;\n            }\n    })\n    .catch(err =&gt; {\n        return err \n    });\n} \n</code></pre>\n\n<p>What I want to achieve is to make my if else condition to wait above find function on array of javascript. Here is the error I'm facing:</p>\n\n<pre><code>SyntaxError: await is only valid in async function\n</code></pre>\n\n<p>I'm unable to understand where I'm wrong! Even my function has keyword async with its definition. Anyone around for a quick help?</p>\n"
+        },
+        {
+            "tags": [
+                "smtp",
+                "google-cloud-platform",
+                "office365",
+                "google-compute-engine"
+            ],
+            "owner": {
+                "reputation": 91,
+                "user_id": 673037,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://www.gravatar.com/avatar/fb9f0b7594c73df491c5270c8c595467?s=128&d=identicon&r=PG",
+                "display_name": "Nick Wallbridge",
+                "link": "https://stackoverflow.com/users/673037/nick-wallbridge"
+            },
+            "is_answered": false,
+            "view_count": 433,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1524146186,
+            "creation_date": 1501140250,
+            "last_edit_date": 1524146186,
+            "question_id": 45344000,
+            "body_markdown": "I just hit a major block in a planned migration from Azure to GCP/GCE. GCP does not allow egress of SMTP on port 587. I double checked and their support confirmed this. The upshot is that I can&#39;t use the SMTP server in Office 365 from my GCEs as the requirement for SMTP when using O365 is port 587 at smtp.office365.com. Bizarrely, (and somewhat contradicting the supposed reason for this block) port 2525 is open for SMTP traffic. Oh, and of course port 587 is open if you use Google for email!!\r\n\r\nHas anyone found a way around this, perhaps by getting SMTP out on 2525 and back to O365 on port 587 - but I assume that needs a server outside of GCP - defeating the whole object of the exercise!!    \r\n\r\nI have a workaround by using a third-party email service open on 2525 (AuthSMTP), but this adds cost and more importantly means I wouldn&#39;t have a single source of email for audit purposes within O365. ",
+            "link": "https://stackoverflow.com/questions/45344000/using-smtp-to-office-365-from-google-cloud-engine",
+            "title": "Using SMTP to Office 365 from Google Cloud Engine",
+            "body": "<p>I just hit a major block in a planned migration from Azure to GCP/GCE. GCP does not allow egress of SMTP on port 587. I double checked and their support confirmed this. The upshot is that I can't use the SMTP server in Office 365 from my GCEs as the requirement for SMTP when using O365 is port 587 at smtp.office365.com. Bizarrely, (and somewhat contradicting the supposed reason for this block) port 2525 is open for SMTP traffic. Oh, and of course port 587 is open if you use Google for email!!</p>\n\n<p>Has anyone found a way around this, perhaps by getting SMTP out on 2525 and back to O365 on port 587 - but I assume that needs a server outside of GCP - defeating the whole object of the exercise!!    </p>\n\n<p>I have a workaround by using a third-party email service open on 2525 (AuthSMTP), but this adds cost and more importantly means I wouldn't have a single source of email for audit purposes within O365. </p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "mysql"
+            ],
+            "owner": {
+                "reputation": 486,
+                "user_id": 7785337,
+                "user_type": "registered",
+                "accept_rate": 78,
+                "profile_image": "https://i.stack.imgur.com/FqXjf.jpg?s=128&g=1",
+                "display_name": "Mani Raj",
+                "link": "https://stackoverflow.com/users/7785337/mani-raj"
+            },
+            "is_answered": false,
+            "view_count": 53,
+            "answer_count": 4,
+            "score": 0,
+            "last_activity_date": 1524146180,
+            "creation_date": 1524138474,
+            "last_edit_date": 1524140809,
+            "question_id": 49920360,
+            "body_markdown": "The table has the values like,\r\n\r\n       group_name    group_id    parent_group_id     amount\r\n        \r\n         One           69             10              1000\r\n         Two           70             11              500\r\n        Three          71             69              700\r\n\r\nHere I need to make sum of the values in amount column if the `group id = 69`  matches with the `parent_group_id = 69` for which I have tried with \r\n\r\n    SUM(CASE WHEN fee_groups.groups_id = fee_groups.parent_fee_groups_id \r\n                THEN amount \r\n             ELSE 0 \r\n         END) AS total\r\n\r\nBut above line doing nothing for me. If I am wrong with it then kindly help me to achieve the following result,\r\n\r\n       group_name    group_id    parent_group_id     amount\r\n        \r\n         One           69             10              1700\r\n         Two           70             11              500  \r\n\r\n\r\nHere the `group_id` and `parent_group_id` make a relationship, if there is a match from any of the `parent_group_id` with `group_id` then both are comes under single group and hence I need to sum both the values.\r\n",
+            "link": "https://stackoverflow.com/questions/49920360/how-to-make-sum-of-two-rows-in-a-table",
+            "title": "How to make sum of two rows in a table?",
+            "body": "<p>The table has the values like,</p>\n\n<pre><code>   group_name    group_id    parent_group_id     amount\n\n     One           69             10              1000\n     Two           70             11              500\n    Three          71             69              700\n</code></pre>\n\n<p>Here I need to make sum of the values in amount column if the <code>group id = 69</code>  matches with the <code>parent_group_id = 69</code> for which I have tried with </p>\n\n<pre><code>SUM(CASE WHEN fee_groups.groups_id = fee_groups.parent_fee_groups_id \n            THEN amount \n         ELSE 0 \n     END) AS total\n</code></pre>\n\n<p>But above line doing nothing for me. If I am wrong with it then kindly help me to achieve the following result,</p>\n\n<pre><code>   group_name    group_id    parent_group_id     amount\n\n     One           69             10              1700\n     Two           70             11              500  \n</code></pre>\n\n<p>Here the <code>group_id</code> and <code>parent_group_id</code> make a relationship, if there is a match from any of the <code>parent_group_id</code> with <code>group_id</code> then both are comes under single group and hence I need to sum both the values.</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift",
+                "uitableview"
+            ],
+            "owner": {
+                "reputation": 1430,
+                "user_id": 3998503,
+                "user_type": "registered",
+                "accept_rate": 77,
+                "profile_image": "https://i.stack.imgur.com/Kgueg.jpg?s=128&g=1",
+                "display_name": "John",
+                "link": "https://stackoverflow.com/users/3998503/john"
+            },
+            "is_answered": false,
+            "view_count": 39,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524146172,
+            "creation_date": 1505278370,
+            "last_edit_date": 1524146172,
+            "question_id": 46189090,
+            "body_markdown": "I have a view hierarchy like so:\r\n\r\n    UIViewController\r\n    --UIScrollView (for swiping between views)\r\n    ----UIViewController\r\n    ----UIViewController\r\n    ----UIViewController\r\n    ------UITableViewController\r\n    --------UITableViewCells\r\n\r\nI want the Tableview cells to have respond to the edit actions in one direction, but in the other direction swipe between sibling view controllers.\r\n\r\n    [ScrollVC [VC1] [VC2] [TableVC[cells]]\r\n\r\nCurrently the edit actions are simply never called.\r\n\r\nRelevant scrollview Code \r\n\r\n    func scrollViewDidScroll(_ scrollView: UIScrollView) {\r\n    \r\n        switch scrollView {\r\n        case is PagerScrollView:\r\n            navBar.contentOffset.x = scrollView.contentOffset.x * (1 / scrollRatio)\r\n        case is PagerNavigationBar:\r\n            //self.scrollView != scrollview\r\n            self.scrollView.contentOffset.x = navBar.contentOffset.x * scrollRatio\r\n        default:      break;\r\n        }\r\n        let offsetX = self.scrollView.contentOffset.x\r\n        let scrollWidth = self.scrollView.width\r\n        let pgIndex = (offsetX + 0.5 * scrollWidth) / scrollWidth\r\n        //print(&quot;scrollViewDidScroll(): fakeNav \\(fakeNav) , pgIndex:\\(pgIndex)&quot;)\r\n        if  pgIndex &gt; 3.0 &amp;&amp; !showNavigationBar{\r\n            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {\r\n                self.onboardingDelegate?.onboardingVCComplete()\r\n            }\r\n        }\r\n        navBar.updateNavigationButtons()\r\n    }\r\n    \r\n    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {\r\n        print(&quot;SCROOLLLLLLLL&quot;)\r\n        endEditingOnPages()\r\n    }\r\n    \r\n    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {\r\n        let offsetX = self.scrollView.contentOffset.x\r\n        let scrollWidth = self.scrollView.width\r\n        let roundIndex = Int((offsetX + 0.5 * scrollWidth) / scrollWidth)\r\n        if roundIndex &gt;= 3 {\r\n            self.onboardingDelegate?.onboardingVCComplete()\r\n            return\r\n        }\r\n        slide(toPage: roundIndex, duration: 0.12)\r\n    }\r\n    \r\n    func slide(toPage index: Int, duration: TimeInterval = 0.3, completion: (() -&gt; Void)? = nil) {\r\n    \r\n        view.isUserInteractionEnabled = false\r\n        UIView.animate(\r\n            withDuration: duration,\r\n            delay: 0.0,\r\n            options: .curveEaseOut,\r\n            animations: {\r\n                self.scrollView.contentOffset.x = CGFloat(index) * self.scrollView.width\r\n        }) { _ in\r\n            self.view.isUserInteractionEnabled = true\r\n            self.currentIndex = index\r\n            self.pageControl?.currentPage = index\r\n    \r\n            completion?()\r\n        }\r\n    }\r\n\r\nTableview edit actions:\r\n\r\n    override func tableView(_ tableView: UITableView, editActionsForRowAt: IndexPath) -&gt; [UITableViewRowAction]? {\r\n        let more = UITableViewRowAction(style: .normal, title: &quot;Edit&quot;) { action, index in\r\n          print(&quot;more button tapped&quot;)\r\n        }\r\n        more.backgroundColor = .lightGray\r\n    }\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/46189090/capturing-swipe-action-in-tableview-in-a-scrollview",
+            "title": "Capturing Swipe Action In Tableview In a ScrollView",
+            "body": "<p>I have a view hierarchy like so:</p>\n\n<pre><code>UIViewController\n--UIScrollView (for swiping between views)\n----UIViewController\n----UIViewController\n----UIViewController\n------UITableViewController\n--------UITableViewCells\n</code></pre>\n\n<p>I want the Tableview cells to have respond to the edit actions in one direction, but in the other direction swipe between sibling view controllers.</p>\n\n<pre><code>[ScrollVC [VC1] [VC2] [TableVC[cells]]\n</code></pre>\n\n<p>Currently the edit actions are simply never called.</p>\n\n<p>Relevant scrollview Code </p>\n\n<pre><code>func scrollViewDidScroll(_ scrollView: UIScrollView) {\n\n    switch scrollView {\n    case is PagerScrollView:\n        navBar.contentOffset.x = scrollView.contentOffset.x * (1 / scrollRatio)\n    case is PagerNavigationBar:\n        //self.scrollView != scrollview\n        self.scrollView.contentOffset.x = navBar.contentOffset.x * scrollRatio\n    default:      break;\n    }\n    let offsetX = self.scrollView.contentOffset.x\n    let scrollWidth = self.scrollView.width\n    let pgIndex = (offsetX + 0.5 * scrollWidth) / scrollWidth\n    //print(\"scrollViewDidScroll(): fakeNav \\(fakeNav) , pgIndex:\\(pgIndex)\")\n    if  pgIndex &gt; 3.0 &amp;&amp; !showNavigationBar{\n        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {\n            self.onboardingDelegate?.onboardingVCComplete()\n        }\n    }\n    navBar.updateNavigationButtons()\n}\n\nfunc scrollViewWillBeginDragging(_ scrollView: UIScrollView) {\n    print(\"SCROOLLLLLLLL\")\n    endEditingOnPages()\n}\n\nfunc scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {\n    let offsetX = self.scrollView.contentOffset.x\n    let scrollWidth = self.scrollView.width\n    let roundIndex = Int((offsetX + 0.5 * scrollWidth) / scrollWidth)\n    if roundIndex &gt;= 3 {\n        self.onboardingDelegate?.onboardingVCComplete()\n        return\n    }\n    slide(toPage: roundIndex, duration: 0.12)\n}\n\nfunc slide(toPage index: Int, duration: TimeInterval = 0.3, completion: (() -&gt; Void)? = nil) {\n\n    view.isUserInteractionEnabled = false\n    UIView.animate(\n        withDuration: duration,\n        delay: 0.0,\n        options: .curveEaseOut,\n        animations: {\n            self.scrollView.contentOffset.x = CGFloat(index) * self.scrollView.width\n    }) { _ in\n        self.view.isUserInteractionEnabled = true\n        self.currentIndex = index\n        self.pageControl?.currentPage = index\n\n        completion?()\n    }\n}\n</code></pre>\n\n<p>Tableview edit actions:</p>\n\n<pre><code>override func tableView(_ tableView: UITableView, editActionsForRowAt: IndexPath) -&gt; [UITableViewRowAction]? {\n    let more = UITableViewRowAction(style: .normal, title: \"Edit\") { action, index in\n      print(\"more button tapped\")\n    }\n    more.backgroundColor = .lightGray\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "laravel",
+                "drag"
+            ],
+            "owner": {
+                "reputation": 284,
+                "user_id": 2519032,
+                "user_type": "registered",
+                "accept_rate": 78,
+                "profile_image": "https://www.gravatar.com/avatar/6009df8c3666198f8e242353e1a73231?s=128&d=identicon&r=PG",
+                "display_name": "user2519032",
+                "link": "https://stackoverflow.com/users/2519032/user2519032"
+            },
+            "is_answered": true,
+            "view_count": 19,
+            "accepted_answer_id": 49922957,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524146172,
+            "creation_date": 1523883769,
+            "question_id": 49858026,
+            "body_markdown": "In my custom CMS I have created CRUD menu and in the frontend I&#39;m displaying it successfully.\r\n\r\nNow I&#39;m trying to find any solution to change order by dragging these menu items in the admin section, but still no luck. Does anyone knows how to achieve this with Laravel? Also I use third party Laravel translatable, so I&#39;ll explain in my following code:\r\n\r\nMenu model:\r\n\r\n    &lt;?php\r\n    \r\n    namespace App;\r\n    \r\n    use Illuminate\\Database\\Eloquent\\Model;\r\n    use Dimsav\\Translatable\\Translatable;\r\n    \r\n    class Menu extends Model\r\n    {\r\n        use Translatable;\r\n    \r\n        public $translatedAttributes = [&#39;title&#39;, &#39;url&#39;, &#39;status&#39;];\r\n    }\r\n\r\nMenuTranslation model:\r\n\r\n    &lt;?php\r\n    \r\n    namespace App;\r\n    \r\n    use Illuminate\\Database\\Eloquent\\Model;\r\n    \r\n    class MenuTranslation extends Model\r\n    {\r\n        //\r\n    }\r\n\r\ncreate_menus_table migration:\r\n\r\n    &lt;?php\r\n    \r\n    use Illuminate\\Support\\Facades\\Schema;\r\n    use Illuminate\\Database\\Schema\\Blueprint;\r\n    use Illuminate\\Database\\Migrations\\Migration;\r\n    \r\n    class CreateMenusTable extends Migration\r\n    {\r\n        /**\r\n         * Run the migrations.\r\n         *\r\n         * @return void\r\n         */\r\n        public function up()\r\n        {\r\n            Schema::create(&#39;menus&#39;, function (Blueprint $table) {\r\n                $table-&gt;increments(&#39;id&#39;);\r\n                $table-&gt;timestamps();\r\n            });\r\n        }\r\n    \r\n        /**\r\n         * Reverse the migrations.\r\n         *\r\n         * @return void\r\n         */\r\n        public function down()\r\n        {\r\n            Schema::dropIfExists(&#39;menus&#39;);\r\n        }\r\n    }\r\n\r\ncreate_menus_translations_table migration:\r\n\r\n    &lt;?php\r\n    \r\n    use Illuminate\\Support\\Facades\\Schema;\r\n    use Illuminate\\Database\\Schema\\Blueprint;\r\n    use Illuminate\\Database\\Migrations\\Migration;\r\n    \r\n    class CreateMenuTranslationsTable extends Migration\r\n    {\r\n        /**\r\n         * Run the migrations.\r\n         *\r\n         * @return void\r\n         */\r\n        public function up()\r\n        {\r\n            Schema::create(&#39;menu_translations&#39;, function (Blueprint $table) {\r\n                $table-&gt;increments(&#39;id&#39;);\r\n                $table-&gt;integer(&#39;menu_id&#39;)-&gt;unsigned();\r\n                $table-&gt;string(&#39;locale&#39;)-&gt;index();\r\n    \r\n                // The actual fields to store the content of your entity. You can add whatever you need.\r\n                $table-&gt;string(&#39;title&#39;);\r\n                $table-&gt;string(&#39;url&#39;)-&gt;nullable();\r\n                $table-&gt;string(&#39;status&#39;);\r\n    \r\n                $table-&gt;unique([&#39;menu_id&#39;, &#39;locale&#39;]);\r\n                $table-&gt;timestamps();\r\n            });\r\n        }\r\n    \r\n        /**\r\n         * Reverse the migrations.\r\n         *\r\n         * @return void\r\n         */\r\n        public function down()\r\n        {\r\n            Schema::dropIfExists(&#39;menu_translations&#39;);\r\n        }\r\n    }\r\n\r\nMy view index menu:\r\n\r\n    @extends(&#39;layouts.admin&#39;)\r\n    \r\n    @section(&#39;content&#39;)\r\n      @if(session()-&gt;has(&#39;success_message&#39;))\r\n        &lt;div class=&quot;alert alert-success&quot;&gt;\r\n          {{ session()-&gt;get(&#39;success_message&#39;) }}\r\n        &lt;/div&gt;\r\n      @endif\r\n      &lt;h1&gt;Users&lt;/h1&gt;\r\n      &lt;a class=&quot;btn btn-primary&quot; href=&quot;{{ route(&#39;menus.create&#39;) }}&quot;&gt;Create new menu&lt;/a&gt;\r\n      &lt;table class=&quot;table&quot;&gt;\r\n        &lt;thead&gt;\r\n          &lt;tr&gt;\r\n            &lt;th&gt;Id&lt;/th&gt;\r\n            &lt;th&gt;Title&lt;/th&gt;\r\n            &lt;th&gt;Status&lt;/th&gt;\r\n            &lt;th&gt;Created&lt;/th&gt;\r\n            &lt;th&gt;Operations&lt;/th&gt;\r\n          &lt;/tr&gt;\r\n        &lt;/thead&gt;\r\n        &lt;tbody&gt;\r\n          @foreach($menus as $menu)\r\n            &lt;tr&gt;\r\n              &lt;td&gt;{{ $menu-&gt;id }}&lt;/td&gt;\r\n              &lt;td&gt;{{ $menu-&gt;title }}&lt;/td&gt;\r\n              &lt;td&gt;{{ $menu-&gt;status ? &#39;Active&#39; : &#39;Disabled&#39; }}&lt;/td&gt;\r\n              &lt;td&gt;{{ $menu-&gt;created_at-&gt;diffForHumans() }}&lt;/td&gt;\r\n              &lt;td&gt;\r\n                &lt;a class=&quot;btn btn-primary btn-edit&quot; href=&quot;{{ route(&#39;menus.edit&#39; , $menu-&gt;id) }}&quot;&gt;Edit&lt;/a&gt;\r\n                &lt;form action=&quot;{{ route(&#39;menus.destroy&#39;, $menu-&gt;id) }}&quot; method=&quot;POST&quot;&gt;\r\n                  {{ csrf_field() }}\r\n                  {{ method_field(&#39;DELETE&#39;) }}\r\n                  &lt;input type=&quot;submit&quot; class=&quot;btn btn-danger btn-delete&quot; value=&quot;Delete&quot;&gt;\r\n                &lt;/form&gt;\r\n              &lt;/td&gt;\r\n            &lt;/tr&gt;\r\n          @endforeach\r\n        &lt;/tbody&gt;\r\n      &lt;/table&gt;\r\n    @endsection\r\n\r\nAs you can see in the view menu index I&#39;m displaying the created menu items. The key is to use some js and Ajax I guess and with dragging to change the id&#39;s in the menus table or to create a new column in the database (order).\r\n\r\nSo, the question again is: how can I drag these menu items and change order in the database by using Laravel?",
+            "link": "https://stackoverflow.com/questions/49858026/changing-menus-order-by-dragging-laravel",
+            "title": "Changing menus order by dragging - Laravel",
+            "body": "<p>In my custom CMS I have created CRUD menu and in the frontend I'm displaying it successfully.</p>\n\n<p>Now I'm trying to find any solution to change order by dragging these menu items in the admin section, but still no luck. Does anyone knows how to achieve this with Laravel? Also I use third party Laravel translatable, so I'll explain in my following code:</p>\n\n<p>Menu model:</p>\n\n<pre><code>&lt;?php\n\nnamespace App;\n\nuse Illuminate\\Database\\Eloquent\\Model;\nuse Dimsav\\Translatable\\Translatable;\n\nclass Menu extends Model\n{\n    use Translatable;\n\n    public $translatedAttributes = ['title', 'url', 'status'];\n}\n</code></pre>\n\n<p>MenuTranslation model:</p>\n\n<pre><code>&lt;?php\n\nnamespace App;\n\nuse Illuminate\\Database\\Eloquent\\Model;\n\nclass MenuTranslation extends Model\n{\n    //\n}\n</code></pre>\n\n<p>create_menus_table migration:</p>\n\n<pre><code>&lt;?php\n\nuse Illuminate\\Support\\Facades\\Schema;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Database\\Migrations\\Migration;\n\nclass CreateMenusTable extends Migration\n{\n    /**\n     * Run the migrations.\n     *\n     * @return void\n     */\n    public function up()\n    {\n        Schema::create('menus', function (Blueprint $table) {\n            $table-&gt;increments('id');\n            $table-&gt;timestamps();\n        });\n    }\n\n    /**\n     * Reverse the migrations.\n     *\n     * @return void\n     */\n    public function down()\n    {\n        Schema::dropIfExists('menus');\n    }\n}\n</code></pre>\n\n<p>create_menus_translations_table migration:</p>\n\n<pre><code>&lt;?php\n\nuse Illuminate\\Support\\Facades\\Schema;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Database\\Migrations\\Migration;\n\nclass CreateMenuTranslationsTable extends Migration\n{\n    /**\n     * Run the migrations.\n     *\n     * @return void\n     */\n    public function up()\n    {\n        Schema::create('menu_translations', function (Blueprint $table) {\n            $table-&gt;increments('id');\n            $table-&gt;integer('menu_id')-&gt;unsigned();\n            $table-&gt;string('locale')-&gt;index();\n\n            // The actual fields to store the content of your entity. You can add whatever you need.\n            $table-&gt;string('title');\n            $table-&gt;string('url')-&gt;nullable();\n            $table-&gt;string('status');\n\n            $table-&gt;unique(['menu_id', 'locale']);\n            $table-&gt;timestamps();\n        });\n    }\n\n    /**\n     * Reverse the migrations.\n     *\n     * @return void\n     */\n    public function down()\n    {\n        Schema::dropIfExists('menu_translations');\n    }\n}\n</code></pre>\n\n<p>My view index menu:</p>\n\n<pre><code>@extends('layouts.admin')\n\n@section('content')\n  @if(session()-&gt;has('success_message'))\n    &lt;div class=\"alert alert-success\"&gt;\n      {{ session()-&gt;get('success_message') }}\n    &lt;/div&gt;\n  @endif\n  &lt;h1&gt;Users&lt;/h1&gt;\n  &lt;a class=\"btn btn-primary\" href=\"{{ route('menus.create') }}\"&gt;Create new menu&lt;/a&gt;\n  &lt;table class=\"table\"&gt;\n    &lt;thead&gt;\n      &lt;tr&gt;\n        &lt;th&gt;Id&lt;/th&gt;\n        &lt;th&gt;Title&lt;/th&gt;\n        &lt;th&gt;Status&lt;/th&gt;\n        &lt;th&gt;Created&lt;/th&gt;\n        &lt;th&gt;Operations&lt;/th&gt;\n      &lt;/tr&gt;\n    &lt;/thead&gt;\n    &lt;tbody&gt;\n      @foreach($menus as $menu)\n        &lt;tr&gt;\n          &lt;td&gt;{{ $menu-&gt;id }}&lt;/td&gt;\n          &lt;td&gt;{{ $menu-&gt;title }}&lt;/td&gt;\n          &lt;td&gt;{{ $menu-&gt;status ? 'Active' : 'Disabled' }}&lt;/td&gt;\n          &lt;td&gt;{{ $menu-&gt;created_at-&gt;diffForHumans() }}&lt;/td&gt;\n          &lt;td&gt;\n            &lt;a class=\"btn btn-primary btn-edit\" href=\"{{ route('menus.edit' , $menu-&gt;id) }}\"&gt;Edit&lt;/a&gt;\n            &lt;form action=\"{{ route('menus.destroy', $menu-&gt;id) }}\" method=\"POST\"&gt;\n              {{ csrf_field() }}\n              {{ method_field('DELETE') }}\n              &lt;input type=\"submit\" class=\"btn btn-danger btn-delete\" value=\"Delete\"&gt;\n            &lt;/form&gt;\n          &lt;/td&gt;\n        &lt;/tr&gt;\n      @endforeach\n    &lt;/tbody&gt;\n  &lt;/table&gt;\n@endsection\n</code></pre>\n\n<p>As you can see in the view menu index I'm displaying the created menu items. The key is to use some js and Ajax I guess and with dragging to change the id's in the menus table or to create a new column in the database (order).</p>\n\n<p>So, the question again is: how can I drag these menu items and change order in the database by using Laravel?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "while-loop",
+                "condition"
+            ],
+            "owner": {
+                "reputation": 84,
+                "user_id": 3244624,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://i.stack.imgur.com/QFOvl.jpg?s=128&g=1",
+                "display_name": "ntrx",
+                "link": "https://stackoverflow.com/users/3244624/ntrx"
+            },
+            "is_answered": true,
+            "view_count": 39,
+            "accepted_answer_id": 32851735,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1524146171,
+            "creation_date": 1443552612,
+            "last_edit_date": 1524146171,
+            "question_id": 32851626,
+            "body_markdown": "    while ((len = var1) != -1)\r\n    {\r\n    \r\n       // do something\r\n    \r\n    }\r\n\r\nWhich is being compared to -1? `len` or `var1`?\r\n\r\nThis is Java EE.\r\n",
+            "link": "https://stackoverflow.com/questions/32851626/how-does-this-condition-work-in-this-while-loop",
+            "title": "How does this condition work in this while-loop?",
+            "body": "<pre><code>while ((len = var1) != -1)\n{\n\n   // do something\n\n}\n</code></pre>\n\n<p>Which is being compared to -1? <code>len</code> or <code>var1</code>?</p>\n\n<p>This is Java EE.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "xml",
+                "scala",
+                "xslt",
+                "playframework"
+            ],
+            "owner": {
+                "reputation": 613,
+                "user_id": 8230810,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/dCeAX.jpg?s=128&g=1",
+                "display_name": "James Whiteley",
+                "link": "https://stackoverflow.com/users/8230810/james-whiteley"
+            },
+            "is_answered": true,
+            "view_count": 32,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1524146170,
+            "creation_date": 1524134063,
+            "question_id": 49918913,
+            "body_markdown": "I am using the Java `javax.xml.transform` library in my Scala Play application to perform a simple XSLT transformation on some XML. I am trying to remove the namespace from one of the elements, but I am getting an exception when I POST XML to the endpoint which does the transformation.\r\n\r\nThe method I have written to do the transformation is below:\r\n\r\n    def transformXml(xml: String, xslName: String): Try[String] = {\r\n      Try {\r\n        // Create transformer factory\r\n        val factory: TransformerFactory = TransformerFactory.newInstance()\r\n    \r\n        // Use the factory to create a template containing the xsl file\r\n        val template: Templates = factory.newTemplates(new StreamSource(new FileInputStream(s&quot;app/xsl/$xslName.xsl&quot;)))\r\n    \r\n        // Use the template to create a transformer\r\n        val xformer: Transformer = template.newTransformer()\r\n    \r\n        // Prepare the input for transformation\r\n        val input: Source = new StreamSource(new StringReader(xml))\r\n    \r\n        // Prepare the output for transformation result\r\n        val outputBuffer: Writer = new StringWriter\r\n        val output: javax.xml.transform.Result = new StreamResult(outputBuffer)\r\n    \r\n        // Apply the xslt transformation to the input and store the result in the output\r\n        xformer.transform(input, output)\r\n    \r\n        // Return the transformed XML\r\n        outputBuffer.toString\r\n      }\r\n    }\r\n\r\nThrough putting `println`s in my code, I have deduced that it is in fact failing at the `xformer.transform(input, output)` line. The XML I am passing in and the XSL file I am using to transform are below:\r\n\r\n    &lt;?xml version=&quot;1.0&quot;?&gt;\r\n    &lt;Message xmlns=&quot;http://foo.bar&quot; xmlns:xsi=&quot;http://www.w3.org/1999/XMLSchema-instance&quot;&gt;\r\n    \t&lt;EnvelopeVersion&gt;2.0&lt;/EnvelopeVersion&gt;\r\n    \t&lt;Header&gt;\r\n        \t&lt;MessageDetails&gt;\r\n        \t\t...\r\n                ...\r\n                ...\r\n        \t&lt;/MessageDetails&gt;\r\n        \t&lt;SenderDetails/&gt;\r\n    \t&lt;/Header&gt;\r\n    \t&lt;OtherDetails&gt;\r\n        \t&lt;Keys/&gt;\r\n    \t&lt;/OtherDetails&gt;\r\n    \t&lt;Body&gt;\r\n        &lt;/Body&gt;\r\n    &lt;/Message&gt;\r\n\r\n\r\n----------\r\n\r\n\r\n    &lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;\r\n    &lt;xsl:stylesheet version=&quot;1.0&quot; xmlns:xsl=&quot;http://www.w3.org/1999/XSL/Transform&quot; exclude-result-prefixes=&quot;&quot;&gt;\r\n    \t&lt;xsl:output method=&quot;xml&quot; version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; indent=&quot;yes&quot;/&gt;\r\n    \t&lt;xsl:template match=&quot;@*|node()&quot;&gt;\r\n    \t\t&lt;xsl:param name=&quot;ancestralNamespace&quot; select=&quot;namespace-uri(/*[1])&quot;/&gt;\r\n    \t\t&lt;xsl:copy&gt;\r\n    \t\t\t&lt;xsl:apply-templates select=&quot;@*|node()&quot;&gt;\r\n    \t\t\t\t&lt;xsl:with-param name=&quot;ancestralNamespace&quot; select=&quot;$ancestralNamespace&quot;/&gt;\r\n    \t\t\t&lt;/xsl:apply-templates&gt;\r\n    \t\t&lt;/xsl:copy&gt;\r\n    \t&lt;/xsl:template&gt;\r\n    \t&lt;xsl:template match=&quot;*[contains(namespace-uri(),&#39;foo.bar&#39;)]&quot;&gt;\r\n    \t\t&lt;xsl:param name=&quot;ancestralNamespace&quot; select=&quot;namespace-uri(..)&quot;/&gt;\r\n    \t\t&lt;xsl:element name=&quot;{local-name()}&quot; namespace=&quot;&quot;&gt;\r\n    \t\t\t&lt;xsl:apply-templates select=&quot;@*|node()&quot;&gt;\r\n    \t\t\t\t&lt;xsl:with-param name=&quot;ancestralNamespace&quot; select=&quot;$ancestralNamespace&quot;/&gt;\r\n    \t\t\t&lt;/xsl:apply-templates&gt;\r\n    \t\t&lt;/xsl:element&gt;\r\n    \t&lt;/xsl:template&gt;\r\n    &lt;/xsl:stylesheet&gt;\r\n\r\nMy expected output is this:\r\n\r\n    &lt;?xml version=&quot;1.0&quot;?&gt;\r\n        &lt;Message&gt;\r\n        \t&lt;EnvelopeVersion&gt;2.0&lt;/EnvelopeVersion&gt;\r\n        \t&lt;Header&gt;\r\n            \t&lt;MessageDetails&gt;\r\n            \t\t...\r\n                    ...\r\n                    ...\r\n            \t&lt;/MessageDetails&gt;\r\n            \t&lt;SenderDetails/&gt;\r\n        \t&lt;/Header&gt;\r\n        \t&lt;OtherDetails&gt;\r\n            \t&lt;Keys/&gt;\r\n        \t&lt;/OtherDetails&gt;\r\n        \t&lt;Body&gt;\r\n            &lt;/Body&gt;\r\n        &lt;/Message&gt;\r\n\r\nThe error I get back from sending a POST request to my endpoint is this:\r\n\r\n    {\r\n        &quot;statusCode&quot;: 500,\r\n        &quot;message&quot;: &quot;javax.xml.transform.TransformerException: java.lang.ArrayIndexOutOfBoundsException: -1&quot;\r\n    }\r\n\r\nI do not have much experience with XSLT and have inherited this code from someone else to try to debug, so if anyone with XML/XSLT experience could give me some help I would greatly appreciate it. The perplexing thing is that the person I got this problem from had written Unit Tests using this method (send in my example XML and get out the expected XML) and they passed so I don&#39;t know where to look next.",
+            "link": "https://stackoverflow.com/questions/49918913/arrayindexoutofboundsexception-when-transforming-xml-using-xslt",
+            "title": "ArrayIndexOutOfBoundsException when transforming XML using XSLT",
+            "body": "<p>I am using the Java <code>javax.xml.transform</code> library in my Scala Play application to perform a simple XSLT transformation on some XML. I am trying to remove the namespace from one of the elements, but I am getting an exception when I POST XML to the endpoint which does the transformation.</p>\n\n<p>The method I have written to do the transformation is below:</p>\n\n<pre><code>def transformXml(xml: String, xslName: String): Try[String] = {\n  Try {\n    // Create transformer factory\n    val factory: TransformerFactory = TransformerFactory.newInstance()\n\n    // Use the factory to create a template containing the xsl file\n    val template: Templates = factory.newTemplates(new StreamSource(new FileInputStream(s\"app/xsl/$xslName.xsl\")))\n\n    // Use the template to create a transformer\n    val xformer: Transformer = template.newTransformer()\n\n    // Prepare the input for transformation\n    val input: Source = new StreamSource(new StringReader(xml))\n\n    // Prepare the output for transformation result\n    val outputBuffer: Writer = new StringWriter\n    val output: javax.xml.transform.Result = new StreamResult(outputBuffer)\n\n    // Apply the xslt transformation to the input and store the result in the output\n    xformer.transform(input, output)\n\n    // Return the transformed XML\n    outputBuffer.toString\n  }\n}\n</code></pre>\n\n<p>Through putting <code>println</code>s in my code, I have deduced that it is in fact failing at the <code>xformer.transform(input, output)</code> line. The XML I am passing in and the XSL file I am using to transform are below:</p>\n\n<pre><code>&lt;?xml version=\"1.0\"?&gt;\n&lt;Message xmlns=\"http://foo.bar\" xmlns:xsi=\"http://www.w3.org/1999/XMLSchema-instance\"&gt;\n    &lt;EnvelopeVersion&gt;2.0&lt;/EnvelopeVersion&gt;\n    &lt;Header&gt;\n        &lt;MessageDetails&gt;\n            ...\n            ...\n            ...\n        &lt;/MessageDetails&gt;\n        &lt;SenderDetails/&gt;\n    &lt;/Header&gt;\n    &lt;OtherDetails&gt;\n        &lt;Keys/&gt;\n    &lt;/OtherDetails&gt;\n    &lt;Body&gt;\n    &lt;/Body&gt;\n&lt;/Message&gt;\n</code></pre>\n\n<hr>\n\n<pre><code>&lt;?xml version=\"1.0\" encoding=\"UTF-8\"?&gt;\n&lt;xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\" exclude-result-prefixes=\"\"&gt;\n    &lt;xsl:output method=\"xml\" version=\"1.0\" encoding=\"UTF-8\" indent=\"yes\"/&gt;\n    &lt;xsl:template match=\"@*|node()\"&gt;\n        &lt;xsl:param name=\"ancestralNamespace\" select=\"namespace-uri(/*[1])\"/&gt;\n        &lt;xsl:copy&gt;\n            &lt;xsl:apply-templates select=\"@*|node()\"&gt;\n                &lt;xsl:with-param name=\"ancestralNamespace\" select=\"$ancestralNamespace\"/&gt;\n            &lt;/xsl:apply-templates&gt;\n        &lt;/xsl:copy&gt;\n    &lt;/xsl:template&gt;\n    &lt;xsl:template match=\"*[contains(namespace-uri(),'foo.bar')]\"&gt;\n        &lt;xsl:param name=\"ancestralNamespace\" select=\"namespace-uri(..)\"/&gt;\n        &lt;xsl:element name=\"{local-name()}\" namespace=\"\"&gt;\n            &lt;xsl:apply-templates select=\"@*|node()\"&gt;\n                &lt;xsl:with-param name=\"ancestralNamespace\" select=\"$ancestralNamespace\"/&gt;\n            &lt;/xsl:apply-templates&gt;\n        &lt;/xsl:element&gt;\n    &lt;/xsl:template&gt;\n&lt;/xsl:stylesheet&gt;\n</code></pre>\n\n<p>My expected output is this:</p>\n\n<pre><code>&lt;?xml version=\"1.0\"?&gt;\n    &lt;Message&gt;\n        &lt;EnvelopeVersion&gt;2.0&lt;/EnvelopeVersion&gt;\n        &lt;Header&gt;\n            &lt;MessageDetails&gt;\n                ...\n                ...\n                ...\n            &lt;/MessageDetails&gt;\n            &lt;SenderDetails/&gt;\n        &lt;/Header&gt;\n        &lt;OtherDetails&gt;\n            &lt;Keys/&gt;\n        &lt;/OtherDetails&gt;\n        &lt;Body&gt;\n        &lt;/Body&gt;\n    &lt;/Message&gt;\n</code></pre>\n\n<p>The error I get back from sending a POST request to my endpoint is this:</p>\n\n<pre><code>{\n    \"statusCode\": 500,\n    \"message\": \"javax.xml.transform.TransformerException: java.lang.ArrayIndexOutOfBoundsException: -1\"\n}\n</code></pre>\n\n<p>I do not have much experience with XSLT and have inherited this code from someone else to try to debug, so if anyone with XML/XSLT experience could give me some help I would greatly appreciate it. The perplexing thing is that the person I got this problem from had written Unit Tests using this method (send in my example XML and get out the expected XML) and they passed so I don't know where to look next.</p>\n"
+        },
+        {
+            "tags": [
+                "google-calendar",
+                "google-calendar-api3"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 2804625,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/87b2795d73625cbf7a42310a3c11be83?s=128&d=identicon&r=PG&f=1",
+                "display_name": "qwerty86",
+                "link": "https://stackoverflow.com/users/2804625/qwerty86"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524146153,
+            "creation_date": 1524146153,
+            "question_id": 49922948,
+            "body_markdown": "i am having an issue when call free busy request on Google Calendar API.\r\n\r\nFull day event are not showed correctly.\r\n\r\nIf I have an event on 23/04/2018 (full day event)\r\n\r\nthe FreeBusy request return this:\r\n\r\n    {&quot;calendars&quot;:{&quot;null&quot;:{&quot;busy&quot;:[],&quot;errors&quot;:[{&quot;domain&quot;:&quot;global&quot;,&quot;reason&quot;:&quot;notFound&quot;}]},&quot;&lt;MYEMAILADDRESS&gt;&quot;:{&quot;busy&quot;:[{&quot;end&quot;:&quot;2018-04-23T08:15:00.000Z&quot;,&quot;start&quot;:&quot;2018-04-23T08:00:00.000Z&quot;}]}},&quot;kind&quot;:&quot;calendar#freeBusy&quot;,&quot;timeMax&quot;:&quot;2018-04-24T06:00:00.000Z&quot;,&quot;timeMin&quot;:&quot;2018-04-23T05:00:00.000Z&quot;}\r\n\r\nAs you can see the start/end time is not useful. \r\n\r\nOtherwise if i get the event from event list API, the event has not a time but only date (correct).\r\n\r\nAny suggestion?\r\n\r\nThanks",
+            "link": "https://stackoverflow.com/questions/49922948/full-day-event-not-correctly-showed-on-free-busy-request",
+            "title": "Full day event not correctly showed on free busy request",
+            "body": "<p>i am having an issue when call free busy request on Google Calendar API.</p>\n\n<p>Full day event are not showed correctly.</p>\n\n<p>If I have an event on 23/04/2018 (full day event)</p>\n\n<p>the FreeBusy request return this:</p>\n\n<pre><code>{\"calendars\":{\"null\":{\"busy\":[],\"errors\":[{\"domain\":\"global\",\"reason\":\"notFound\"}]},\"&lt;MYEMAILADDRESS&gt;\":{\"busy\":[{\"end\":\"2018-04-23T08:15:00.000Z\",\"start\":\"2018-04-23T08:00:00.000Z\"}]}},\"kind\":\"calendar#freeBusy\",\"timeMax\":\"2018-04-24T06:00:00.000Z\",\"timeMin\":\"2018-04-23T05:00:00.000Z\"}\n</code></pre>\n\n<p>As you can see the start/end time is not useful. </p>\n\n<p>Otherwise if i get the event from event list API, the event has not a time but only date (correct).</p>\n\n<p>Any suggestion?</p>\n\n<p>Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "android",
+                "animation",
+                "imageview",
+                "objectanimator"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 7888815,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ee5bf0d9cd2f33065203b58d75065f30?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Tatsurou",
+                "link": "https://stackoverflow.com/users/7888815/tatsurou"
+            },
+            "is_answered": true,
+            "view_count": 22,
+            "accepted_answer_id": 49922943,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524146133,
+            "creation_date": 1523836567,
+            "question_id": 49847932,
+            "body_markdown": "I am making a game for Android and I encountered a problem while working on my next update. Game is set to work from API 19 upwards. I am using ObjectAnimator class to animate little bouncing arrows pointing buttons in tutorial. Nothing fancy. \r\n\r\n[Yellow arrow - Screenshot 1][1]\r\n\r\n  [1]: https://i.stack.imgur.com/fsw3b.png\r\n\r\nCode:\r\n\r\n     //Animate minestone clicker button arrow\r\n                b1_animator = ObjectAnimator.ofFloat(button_minestone_pointer,&quot;translationX&quot;,0,-100);\r\n                b1_animator.setDuration(500);\r\n                b1_animator.setRepeatMode(ValueAnimator.REVERSE);\r\n                b1_animator.setRepeatCount(Animation.INFINITE);\r\n                b1_animator.start();\r\n\r\nProblem is, animations are smooth on ALL virtual devices provided by Android Studio (API 19 - API 27) and on all newer APIs, but on my phone (Sharp SH-01G), which is running Android 4.4, automatic scrolling or these arrows simply jump from one position to another creating blurred image. \r\nDid not have a chance to check it on another pre-API21 device yet.\r\nFeeling like it does not respect the &quot;.setDuration();&quot; bit. Scrolls are jumping immediately to the desired position but not smoothly at all.\r\n\r\nThis is the scroller code:\r\n\r\n    ObjectAnimator.ofInt(scroller_clickers, &quot;scrollX&quot;,  800).setDuration(777).start();\r\n\r\nSo the question is, what is causing such a behaviour? I tried using view.animate() instead too, but it didn&#39;t help either. Clue is, when I tried to lookup the &quot;getAnimatedFraction();&quot; value, emulators were showing various fractions - smooth transition between 0.0 and 1. My phone was always showing 0.0 or 1.0 in somehow random order (Stuffed this into a TextView and refreshed with a Runnable). Assigning &quot;AccelerateDecelerateInterpolator()&quot; did not work either. I don&#39;t want to show a faulty game to the public :(\r\n\r\nAny ideas?",
+            "link": "https://stackoverflow.com/questions/49847932/objectanimator-android-is-not-working-correctly-on-real-device-with-api-19",
+            "title": "ObjectAnimator Android is not working correctly on real device with API 19",
+            "body": "<p>I am making a game for Android and I encountered a problem while working on my next update. Game is set to work from API 19 upwards. I am using ObjectAnimator class to animate little bouncing arrows pointing buttons in tutorial. Nothing fancy. </p>\n\n<p><a href=\"https://i.stack.imgur.com/fsw3b.png\" rel=\"nofollow noreferrer\">Yellow arrow - Screenshot 1</a></p>\n\n<p>Code:</p>\n\n<pre><code> //Animate minestone clicker button arrow\n            b1_animator = ObjectAnimator.ofFloat(button_minestone_pointer,\"translationX\",0,-100);\n            b1_animator.setDuration(500);\n            b1_animator.setRepeatMode(ValueAnimator.REVERSE);\n            b1_animator.setRepeatCount(Animation.INFINITE);\n            b1_animator.start();\n</code></pre>\n\n<p>Problem is, animations are smooth on ALL virtual devices provided by Android Studio (API 19 - API 27) and on all newer APIs, but on my phone (Sharp SH-01G), which is running Android 4.4, automatic scrolling or these arrows simply jump from one position to another creating blurred image. \nDid not have a chance to check it on another pre-API21 device yet.\nFeeling like it does not respect the \".setDuration();\" bit. Scrolls are jumping immediately to the desired position but not smoothly at all.</p>\n\n<p>This is the scroller code:</p>\n\n<pre><code>ObjectAnimator.ofInt(scroller_clickers, \"scrollX\",  800).setDuration(777).start();\n</code></pre>\n\n<p>So the question is, what is causing such a behaviour? I tried using view.animate() instead too, but it didn't help either. Clue is, when I tried to lookup the \"getAnimatedFraction();\" value, emulators were showing various fractions - smooth transition between 0.0 and 1. My phone was always showing 0.0 or 1.0 in somehow random order (Stuffed this into a TextView and refreshed with a Runnable). Assigning \"AccelerateDecelerateInterpolator()\" did not work either. I don't want to show a faulty game to the public :(</p>\n\n<p>Any ideas?</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "forms",
+                "mysqli",
+                "registration"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 2620954,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/950e205057bf04c1ffa8e4476f8ecf62?s=128&d=identicon&r=PG",
+                "display_name": "Devin Smith",
+                "link": "https://stackoverflow.com/users/2620954/devin-smith"
+            },
+            "is_answered": true,
+            "view_count": 9675,
+            "answer_count": 4,
+            "score": 0,
+            "last_activity_date": 1524146110,
+            "creation_date": 1375852286,
+            "question_id": 18095098,
+            "body_markdown": "This is the html form (register.php):\r\n\r\n    &lt;html&gt;\r\n    &lt;body&gt;\r\n\r\n    &lt;form action=&quot;handle_registration.php&quot; method=&quot;post&quot;&gt;\r\n\r\n    &lt;fieldset&gt;&lt;legend&gt;Enter your\r\n    information in the form below:&lt;/legend&gt;\r\n\r\n    First Name: &lt;input type=&quot;text&quot; name=&quot;fname&quot; size=&quot;20&quot; maxlength=&quot;40&quot;&gt;&lt;br&gt;\r\n    Last Name: &lt;input type=&quot;text&quot; name=&quot;lname&quot; size=&quot;20&quot; maxlength=&quot;40&quot;&gt;&lt;br&gt;\r\n    Username: &lt;input type=&quot;text&quot; name=&quot;uname&quot; size=&quot;20&quot; maxlength=&quot;40&quot;&gt;&lt;br&gt;\r\n    Password: &lt;input type=&quot;text&quot; name=&quot;pword&quot; size=&quot;20&quot; maxlength=&quot;40&quot;&gt;&lt;br&gt;\r\n    &lt;input type=&quot;submit&quot; name=&quot;submit&quot; value=&quot;submit my info&quot;&gt;\r\n\r\n    &lt;/form&gt;\r\n\r\n    &lt;/body&gt;\r\n    &lt;/html&gt;\r\n\r\nThis is the php script that handles the registration (handle_registration.php):\r\n\r\n    &lt;?php\r\n\r\n    // Create a shorthand for the form data:\r\n\r\n    $fname = $_POST[&#39;fname&#39;];\r\n    $lname = $_POST[&#39;lname&#39;];\r\n    $uname = $_POST[&#39;uname&#39;];\r\n    $pword = $_POST[&#39;pword&#39;];\r\n\r\n    // Create the connection variables:\r\n\r\n    $db_host = &quot;localhost&quot;;\r\n    $db_user = &quot;root&quot;;\r\n    $db_pass = &quot;&quot;;\r\n    $db_name = &quot;registration_info&quot;;\r\n    $con = mysqli_connect(&quot;$db_host&quot;, &quot;$db_user&quot;, &quot;$db_pass&quot;, &quot;$db_name&quot;);\r\n\r\n    // Check the connection:\r\n\r\n    if (mysqli_connect_errno ())\r\n    {\r\n    echo &quot;Failed to connect to MySQL: &quot; . mysqli_connect_error();\r\n    }\r\n\r\n    // Make sure all of the input boxes have a value:\r\n\r\n    if (empty($fname)) {\r\n    die(&#39;You forgot to enter your first name!&#39;);\r\n    }\r\n\r\n    if (empty($lname)) {\r\n    die(&#39;You forgot to enter your last name!&#39;);\r\n    }\r\n\r\n    if (empty($uname)) {\r\n    die(&#39;You forgot to choose a username!&#39;);\r\n    }\r\n\r\n    if (empty($pword)) {\r\n    die(&#39;You forgot to choose a password!&#39;);\r\n    }\r\n\r\n    // Insert the data from the form into the DB:\r\n\r\n    $sql = &quot;INSERT INTO basic_information (First_Name, Last_Name, Username, Password)\r\n    VALUES\r\n    (&#39;$_POST[fname]&#39;, &#39;$_POST[lname]&#39;, &#39;$_POST[uname]&#39;, &#39;$_POST[pword]&#39;)&quot;;\r\n\r\n    // Enter the info the end user type if everything is ok:\r\n\r\n    if (!mysqli_query($con,$sql))\r\n    {\r\n    die(&#39;Error: &#39; . mysqli_error($con));\r\n    }\r\n    else\r\n    {\r\n    echo &quot;Record has been added&quot;;\r\n    }\r\n\r\n    // Close the connection:\r\n\r\n    mysqli_close($con);\r\n    \r\n    ?&gt;\r\n\r\nHere&#39;s the problem: \r\n\r\nI want to submit the entered values into my database if all of the input fields have a value, but when I use the die function after checking to see if they&#39;re empty, then it kills the script. I just want to kill the part were it inserts it into my database if one or more of the fields are empty &amp; display an error message that tells which field was empty. I&#39;m not sure how to get around this and any help will be greatly appreciated.",
+            "link": "https://stackoverflow.com/questions/18095098/stop-empty-values-from-input-boxes-from-being-inserted-into-my-database-php",
+            "title": "Stop empty values from input boxes from being inserted into my database? PHP",
+            "body": "<p>This is the html form (register.php):</p>\n\n<pre><code>&lt;html&gt;\n&lt;body&gt;\n\n&lt;form action=\"handle_registration.php\" method=\"post\"&gt;\n\n&lt;fieldset&gt;&lt;legend&gt;Enter your\ninformation in the form below:&lt;/legend&gt;\n\nFirst Name: &lt;input type=\"text\" name=\"fname\" size=\"20\" maxlength=\"40\"&gt;&lt;br&gt;\nLast Name: &lt;input type=\"text\" name=\"lname\" size=\"20\" maxlength=\"40\"&gt;&lt;br&gt;\nUsername: &lt;input type=\"text\" name=\"uname\" size=\"20\" maxlength=\"40\"&gt;&lt;br&gt;\nPassword: &lt;input type=\"text\" name=\"pword\" size=\"20\" maxlength=\"40\"&gt;&lt;br&gt;\n&lt;input type=\"submit\" name=\"submit\" value=\"submit my info\"&gt;\n\n&lt;/form&gt;\n\n&lt;/body&gt;\n&lt;/html&gt;\n</code></pre>\n\n<p>This is the php script that handles the registration (handle_registration.php):</p>\n\n<pre><code>&lt;?php\n\n// Create a shorthand for the form data:\n\n$fname = $_POST['fname'];\n$lname = $_POST['lname'];\n$uname = $_POST['uname'];\n$pword = $_POST['pword'];\n\n// Create the connection variables:\n\n$db_host = \"localhost\";\n$db_user = \"root\";\n$db_pass = \"\";\n$db_name = \"registration_info\";\n$con = mysqli_connect(\"$db_host\", \"$db_user\", \"$db_pass\", \"$db_name\");\n\n// Check the connection:\n\nif (mysqli_connect_errno ())\n{\necho \"Failed to connect to MySQL: \" . mysqli_connect_error();\n}\n\n// Make sure all of the input boxes have a value:\n\nif (empty($fname)) {\ndie('You forgot to enter your first name!');\n}\n\nif (empty($lname)) {\ndie('You forgot to enter your last name!');\n}\n\nif (empty($uname)) {\ndie('You forgot to choose a username!');\n}\n\nif (empty($pword)) {\ndie('You forgot to choose a password!');\n}\n\n// Insert the data from the form into the DB:\n\n$sql = \"INSERT INTO basic_information (First_Name, Last_Name, Username, Password)\nVALUES\n('$_POST[fname]', '$_POST[lname]', '$_POST[uname]', '$_POST[pword]')\";\n\n// Enter the info the end user type if everything is ok:\n\nif (!mysqli_query($con,$sql))\n{\ndie('Error: ' . mysqli_error($con));\n}\nelse\n{\necho \"Record has been added\";\n}\n\n// Close the connection:\n\nmysqli_close($con);\n\n?&gt;\n</code></pre>\n\n<p>Here's the problem: </p>\n\n<p>I want to submit the entered values into my database if all of the input fields have a value, but when I use the die function after checking to see if they're empty, then it kills the script. I just want to kill the part were it inserts it into my database if one or more of the fields are empty &amp; display an error message that tells which field was empty. I'm not sure how to get around this and any help will be greatly appreciated.</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 39
+}

@@ -26,7 +26,7 @@ def getTextWithoutHTMLTagsAndWithoutCode(text):
 
 def remove_special_chars(text):
     #return re.sub("[^a-z0-9]+","", text, flags=re.IGNORECASE)    
-    return text.replace(r'\n', '')
+    return text.replace(r'\n', '').replace(r"\'", "'")
 
 
 

@@ -1,0 +1,816 @@
+{
+    "items": [
+        {
+            "tags": [
+                "python",
+                "django",
+                "graphql",
+                "graphene-python"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9669154,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-O8k55Hzom7E/AAAAAAAAAAI/AAAAAAAAA2Y/mFT3FZY12Ss/photo.jpg?sz=128",
+                "display_name": "Victor Guegan",
+                "link": "https://stackoverflow.com/users/9669154/victor-guegan"
+            },
+            "is_answered": true,
+            "view_count": 37,
+            "accepted_answer_id": 49924807,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524151587,
+            "creation_date": 1524134243,
+            "question_id": 49918978,
+            "body_markdown": "&lt;h2&gt;Hi guys,&lt;/h2&gt; \r\n\r\nso i&#39;m trying to use graphQL queries in django. Basically i have two apps, my &#39;api&#39; app which contains everything i need to make the queries and another one called &#39;frontend&#39; from which i call the api to use these queries.\r\n\r\nI can use the GraphQL view to type queries in it and it works perfectly, but whenever i try to make the query, i get this : &quot;OrderedDict([(&#39;users&#39;, None)])&quot;\r\n\r\n[Result of my query in the GraphQl view][1]\r\n\r\n&lt;h2&gt;And for the code : &lt;/h2&gt;\r\n\r\nIn &#39;api&#39; my **schema.py** :\r\n\r\n    import graphene\r\n    import graphql_jwt\r\n    from graphene import relay, ObjectType, AbstractType, List, String, Field,InputObjectType\r\n    from graphene_django import DjangoObjectType\r\n    from graphene_django.filter import DjangoFilterConnectionField\r\n    from datetime import date, datetime\r\n    from django.contrib.auth.models import User\r\n    from django.contrib.auth import get_user_model\r\n    \r\n    ....\r\n\r\n    class Query(graphene.ObjectType):\r\n        me = graphene.Field(UserType)\r\n        users = graphene.List(UserType)\r\n        profile = relay.Node.Field(ProfileNode)\r\n        all_profiles = DjangoFilterConnectionField(ProfileNode)\r\n\r\n        def resolve_users(self, info):\r\n            ### Returns all users ###\r\n            user = info.context.user\r\n            if user.is_anonymous:\r\n                raise Exception(&#39;Not logged!&#39;)\r\n            if not user.is_superuser:\r\n                raise Exception(&#39;premission denied&#39;)\r\n            return User.objects.all()\r\n\r\n        def resolve_me(self, info):\r\n            ### Returns logged user ###\r\n            user = info.context.user\r\n            if user.is_anonymous:\r\n                raise Exception(&#39;Not logged!&#39;)\r\n            return user\r\n\r\n        def resolve_all_profiles(self, info, **kwargs):\r\n            ### Returns all profiles ###\r\n            return Profile.objects.all()\r\n\r\n    .....\r\n\r\n    def execute(my_query):\r\n        schema = graphene.Schema(query=Query)\r\n        return schema.execute(my_query)\r\n\r\nAnd the **views.py** that calls the app &#39;api&#39; in my app frontend : \r\n\r\n    from django.shortcuts import render\r\n    import graphene\r\n    from api import schema\r\n    from django.contrib.auth import authenticate\r\n\r\n\r\n    def accueil(request):\r\n\r\n        if request.user.is_authenticated:\r\n            check = &quot;I am logged&quot;\r\n        else:\r\n            check = &quot;I am not logged&quot;\r\n\r\n        result = schema.execute(&quot;&quot;&quot;query {\r\n                                    users {\r\n                                        id\r\n                                        username\r\n                                    }\r\n                                }&quot;&quot;&quot;)\r\n\r\n        return render(request, &#39;frontend/accueil.html&#39;, {&#39;result&#39; : result.data, &#39;check&#39; : check})\r\n\r\n**The template :** \r\n\r\n    &lt;h1&gt;OTC&lt;/h1&gt;\r\n    &lt;p&gt; the users are : {{result}}&lt;/p&gt;\r\n    &lt;br/&gt;\r\n    &lt;p&gt;{{check}}&lt;/p&gt;\r\n    &lt;a href=&quot;{%url &#39;login&#39;  %}&quot;&gt;login&lt;/a&gt;\r\n    &lt;a href=&quot;{%url &#39;logout&#39; %}&quot;&gt;logout&lt;/a&gt;\r\n\r\nand finally :\r\n\r\n**[The web page result][2]**\r\n\r\n\r\nand the error in the console : \r\n\r\n    An error occurred while resolving field Query.users\r\n    Traceback (most recent call last):\r\n      File &quot;/home/victor/myenv/lib/python3.5/site-packages/graphql/execution/executor.py&quot;, line 311, in resolve_or_error\r\n        return executor.execute(resolve_fn, source, info, **args)\r\n      File &quot;/home/victor/myenv/lib/python3.5/site-packages/graphql/execution/executors/sync.py&quot;, line 7, in execute\r\n        return fn(*args, **kwargs)\r\n      File &quot;/home/victor/poc2/poc2/api/schema.py&quot;, line 67, in resolve_users\r\n        user = info.context.user\r\n    AttributeError: &#39;NoneType&#39; object has no attribute &#39;user&#39;\r\n    Traceback (most recent call last):\r\n      File &quot;/home/victor/myenv/lib/python3.5/site-packages/graphql/execution/executor.py&quot;, line 330, in complete_value_catching_error\r\n        exe_context, return_type, field_asts, info, result)\r\n      File &quot;/home/victor/myenv/lib/python3.5/site-packages/graphql/execution/executor.py&quot;, line 383, in complete_value\r\n        raise GraphQLLocatedError(field_asts, original_error=result)\r\n    graphql.error.located_error.GraphQLLocatedError: &#39;NoneType&#39; object has no attribute &#39;user&#39;\r\n\r\n\r\nAny help is welcome guys, i just can&#39;t figure out why it isn&#39;t working since i&#39;m logged and everything works just perfectly in the graphql view\r\n\r\nps : sorry if i made some mistake, english isn&#39;t my mother tongue\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/1Jzsb.png\r\n  [2]: https://i.stack.imgur.com/XUvvv.png",
+            "link": "https://stackoverflow.com/questions/49918978/graphql-queries-in-django-returning-none",
+            "title": "GraphQL queries in Django returning None",
+            "body": "<h2>Hi guys,</h2> \n\n<p>so i'm trying to use graphQL queries in django. Basically i have two apps, my 'api' app which contains everything i need to make the queries and another one called 'frontend' from which i call the api to use these queries.</p>\n\n<p>I can use the GraphQL view to type queries in it and it works perfectly, but whenever i try to make the query, i get this : \"OrderedDict([('users', None)])\"</p>\n\n<p><a href=\"https://i.stack.imgur.com/1Jzsb.png\" rel=\"nofollow noreferrer\">Result of my query in the GraphQl view</a></p>\n\n<h2>And for the code : </h2>\n\n<p>In 'api' my <strong>schema.py</strong> :</p>\n\n<pre><code>import graphene\nimport graphql_jwt\nfrom graphene import relay, ObjectType, AbstractType, List, String, Field,InputObjectType\nfrom graphene_django import DjangoObjectType\nfrom graphene_django.filter import DjangoFilterConnectionField\nfrom datetime import date, datetime\nfrom django.contrib.auth.models import User\nfrom django.contrib.auth import get_user_model\n\n....\n\nclass Query(graphene.ObjectType):\n    me = graphene.Field(UserType)\n    users = graphene.List(UserType)\n    profile = relay.Node.Field(ProfileNode)\n    all_profiles = DjangoFilterConnectionField(ProfileNode)\n\n    def resolve_users(self, info):\n        ### Returns all users ###\n        user = info.context.user\n        if user.is_anonymous:\n            raise Exception('Not logged!')\n        if not user.is_superuser:\n            raise Exception('premission denied')\n        return User.objects.all()\n\n    def resolve_me(self, info):\n        ### Returns logged user ###\n        user = info.context.user\n        if user.is_anonymous:\n            raise Exception('Not logged!')\n        return user\n\n    def resolve_all_profiles(self, info, **kwargs):\n        ### Returns all profiles ###\n        return Profile.objects.all()\n\n.....\n\ndef execute(my_query):\n    schema = graphene.Schema(query=Query)\n    return schema.execute(my_query)\n</code></pre>\n\n<p>And the <strong>views.py</strong> that calls the app 'api' in my app frontend : </p>\n\n<pre><code>from django.shortcuts import render\nimport graphene\nfrom api import schema\nfrom django.contrib.auth import authenticate\n\n\ndef accueil(request):\n\n    if request.user.is_authenticated:\n        check = \"I am logged\"\n    else:\n        check = \"I am not logged\"\n\n    result = schema.execute(\"\"\"query {\n                                users {\n                                    id\n                                    username\n                                }\n                            }\"\"\")\n\n    return render(request, 'frontend/accueil.html', {'result' : result.data, 'check' : check})\n</code></pre>\n\n<p><strong>The template :</strong> </p>\n\n<pre><code>&lt;h1&gt;OTC&lt;/h1&gt;\n&lt;p&gt; the users are : {{result}}&lt;/p&gt;\n&lt;br/&gt;\n&lt;p&gt;{{check}}&lt;/p&gt;\n&lt;a href=\"{%url 'login'  %}\"&gt;login&lt;/a&gt;\n&lt;a href=\"{%url 'logout' %}\"&gt;logout&lt;/a&gt;\n</code></pre>\n\n<p>and finally :</p>\n\n<p><strong><a href=\"https://i.stack.imgur.com/XUvvv.png\" rel=\"nofollow noreferrer\">The web page result</a></strong></p>\n\n<p>and the error in the console : </p>\n\n<pre><code>An error occurred while resolving field Query.users\nTraceback (most recent call last):\n  File \"/home/victor/myenv/lib/python3.5/site-packages/graphql/execution/executor.py\", line 311, in resolve_or_error\n    return executor.execute(resolve_fn, source, info, **args)\n  File \"/home/victor/myenv/lib/python3.5/site-packages/graphql/execution/executors/sync.py\", line 7, in execute\n    return fn(*args, **kwargs)\n  File \"/home/victor/poc2/poc2/api/schema.py\", line 67, in resolve_users\n    user = info.context.user\nAttributeError: 'NoneType' object has no attribute 'user'\nTraceback (most recent call last):\n  File \"/home/victor/myenv/lib/python3.5/site-packages/graphql/execution/executor.py\", line 330, in complete_value_catching_error\n    exe_context, return_type, field_asts, info, result)\n  File \"/home/victor/myenv/lib/python3.5/site-packages/graphql/execution/executor.py\", line 383, in complete_value\n    raise GraphQLLocatedError(field_asts, original_error=result)\ngraphql.error.located_error.GraphQLLocatedError: 'NoneType' object has no attribute 'user'\n</code></pre>\n\n<p>Any help is welcome guys, i just can't figure out why it isn't working since i'm logged and everything works just perfectly in the graphql view</p>\n\n<p>ps : sorry if i made some mistake, english isn't my mother tongue</p>\n"
+        },
+        {
+            "tags": [
+                "mysql",
+                "sql"
+            ],
+            "owner": {
+                "reputation": 3210,
+                "user_id": 987864,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/373abf3c8ea06265c165fb286d153c4e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Daan",
+                "link": "https://stackoverflow.com/users/987864/daan"
+            },
+            "is_answered": false,
+            "view_count": 27,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1524151585,
+            "creation_date": 1524149866,
+            "last_edit_date": 1524151585,
+            "question_id": 49924205,
+            "body_markdown": "We need to calculate points for transactions, that are part of a parent and need to take into account a certain threshold. The problem consist of 2 core problems:\r\n\r\n1. Accumulate the calculation of points of products that fall under the same brand (brands have a 1-to-many relationship with products, so let&#39;s call this &quot;parent&quot;)\r\n2. Take into account a threshold before points should be accumulated.\r\n\r\nHere is the [SQLfiddle][2]. \r\n\r\n[![database schema][1]][1]\r\n\r\n\r\nWe run a query to get the: &quot;company name&quot;, &quot;signup_date&quot;, &quot;last_signed_in date&quot;, &quot;current points&quot;, &quot;total points&quot; and the &quot;reward_confirmed_total_count&quot;. \r\n\r\nA `transaction` keeps track of all the points for a `user` (who is related to 1 `company`) and can be linked to only one `program_product_transaction`, `program_promotion_transaction` or one `program_reward_transaction`.\r\n\r\nThe query now get&#39;s the total points, but this is not entirely correct. Points are already inserted in the database, but sometimes not count yet. \r\n\r\nOn a `program_product` is a `units_required` column. Only when the amount of units required is met, the points can be assigned. For example, a `program_product` has `points` 100, a `units_required` of 20 and a user has a `program_product_transaction` with a `quantity` of 50, then a `transaction` is created with `points` = 250. But, the query should only calculate those points, up until full quantities of 20. So only 200 points need to be the result, not 250.\r\n\r\nAn extra difficulty is that `products` within the same `brand`, need to be accumulated to calculate the `units_required`. So for example when I have *product1*, *program_product1*, *product2* and *program_product2* with `points` 40 and `units_required` 20 (the `units_required` and `points` are always the same for `products` in the same `brand`, so we can just pick one) in *brand1*, then when I have a `program_product_transaction` related to *program_product1* with `quantity` 10 and a `program_product_transaction` related to *program_product2* with `quantity` 10, I want the SQL query to give me the 40 points, because the accumulation of the units required is 20 within this same brand.\r\n\r\n\r\n\r\n**Is it possible to correct the current SQL query in that way, the &quot;current_points&quot; and &quot;total_points&quot; in the result are correct, so the points are only accumulated when the threshold is met?**\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/TZbMA.png\r\n  [2]: https://www.db-fiddle.com/f/cngXADUEifRGmbUNJH9cXm/0",
+            "link": "https://stackoverflow.com/questions/49924205/sql-accumulate-points-with-the-same-parent-with-respect-to-a-threshold",
+            "title": "SQL accumulate points with the same &quot;parent&quot; with respect to a threshold",
+            "body": "<p>We need to calculate points for transactions, that are part of a parent and need to take into account a certain threshold. The problem consist of 2 core problems:</p>\n\n<ol>\n<li>Accumulate the calculation of points of products that fall under the same brand (brands have a 1-to-many relationship with products, so let's call this \"parent\")</li>\n<li>Take into account a threshold before points should be accumulated.</li>\n</ol>\n\n<p>Here is the <a href=\"https://www.db-fiddle.com/f/cngXADUEifRGmbUNJH9cXm/0\" rel=\"nofollow noreferrer\">SQLfiddle</a>. </p>\n\n<p><a href=\"https://i.stack.imgur.com/TZbMA.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/TZbMA.png\" alt=\"database schema\"></a></p>\n\n<p>We run a query to get the: \"company name\", \"signup_date\", \"last_signed_in date\", \"current points\", \"total points\" and the \"reward_confirmed_total_count\". </p>\n\n<p>A <code>transaction</code> keeps track of all the points for a <code>user</code> (who is related to 1 <code>company</code>) and can be linked to only one <code>program_product_transaction</code>, <code>program_promotion_transaction</code> or one <code>program_reward_transaction</code>.</p>\n\n<p>The query now get's the total points, but this is not entirely correct. Points are already inserted in the database, but sometimes not count yet. </p>\n\n<p>On a <code>program_product</code> is a <code>units_required</code> column. Only when the amount of units required is met, the points can be assigned. For example, a <code>program_product</code> has <code>points</code> 100, a <code>units_required</code> of 20 and a user has a <code>program_product_transaction</code> with a <code>quantity</code> of 50, then a <code>transaction</code> is created with <code>points</code> = 250. But, the query should only calculate those points, up until full quantities of 20. So only 200 points need to be the result, not 250.</p>\n\n<p>An extra difficulty is that <code>products</code> within the same <code>brand</code>, need to be accumulated to calculate the <code>units_required</code>. So for example when I have <em>product1</em>, <em>program_product1</em>, <em>product2</em> and <em>program_product2</em> with <code>points</code> 40 and <code>units_required</code> 20 (the <code>units_required</code> and <code>points</code> are always the same for <code>products</code> in the same <code>brand</code>, so we can just pick one) in <em>brand1</em>, then when I have a <code>program_product_transaction</code> related to <em>program_product1</em> with <code>quantity</code> 10 and a <code>program_product_transaction</code> related to <em>program_product2</em> with <code>quantity</code> 10, I want the SQL query to give me the 40 points, because the accumulation of the units required is 20 within this same brand.</p>\n\n<p><strong>Is it possible to correct the current SQL query in that way, the \"current_points\" and \"total_points\" in the result are correct, so the points are only accumulated when the threshold is met?</strong></p>\n"
+        },
+        {
+            "tags": [
+                "ubuntu-16.04",
+                "firmware",
+                "asus-xtion",
+                "primesense"
+            ],
+            "owner": {
+                "reputation": 967,
+                "user_id": 874829,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://www.gravatar.com/avatar/1822d300cb6528ec7d23d2cf93cc22a7?s=128&d=identicon&r=PG",
+                "display_name": "martinako",
+                "link": "https://stackoverflow.com/users/874829/martinako"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524151568,
+            "creation_date": 1524151568,
+            "question_id": 49924804,
+            "body_markdown": "How can I check the firmware version of a primesense Xtion camera?\r\n\r\nI can find a firmware upgrade [here][1]\r\nHowever, I have a few of these cameras that seem to behave slightly different in Ubuntu 16.04 and I would prefer to find their firmware versions rather than upgrading.\r\n\r\n\r\n  [1]: https://www.asus.com/3D-Sensor/Xtion_PRO_LIVE/HelpDesk_Download/",
+            "link": "https://stackoverflow.com/questions/49924804/how-can-i-check-the-firmware-version-of-a-primesense-xtion-camera",
+            "title": "How can I check the firmware version of a primesense Xtion camera?",
+            "body": "<p>How can I check the firmware version of a primesense Xtion camera?</p>\n\n<p>I can find a firmware upgrade <a href=\"https://www.asus.com/3D-Sensor/Xtion_PRO_LIVE/HelpDesk_Download/\" rel=\"nofollow noreferrer\">here</a>\nHowever, I have a few of these cameras that seem to behave slightly different in Ubuntu 16.04 and I would prefer to find their firmware versions rather than upgrading.</p>\n"
+        },
+        {
+            "tags": [
+                "tensorflow",
+                "machine-learning",
+                "neural-network"
+            ],
+            "owner": {
+                "reputation": 1054,
+                "user_id": 1258078,
+                "user_type": "registered",
+                "accept_rate": 70,
+                "profile_image": "https://i.stack.imgur.com/CH5KZ.png?s=128&g=1",
+                "display_name": "keypulsations",
+                "link": "https://stackoverflow.com/users/1258078/keypulsations"
+            },
+            "is_answered": true,
+            "view_count": 23,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524151564,
+            "creation_date": 1524146777,
+            "last_edit_date": 1524150925,
+            "question_id": 49923165,
+            "body_markdown": "Assume one has JSON data containining instructions for generating the following 10x5 cell patterns, and that each cell can contain one of the following characters: `_ 0 x y z`\r\n\r\nAlso assume that each character can be displayed in various colors.\r\n\r\npattern 1:\r\n\r\n    _yx_0zzyxx\r\n    _0__yz_0y_\r\n    x0_0x000yx\r\n    _y__x000zx\r\n    zyyzx_z_0y\r\n\r\npattern 2:\r\n\r\n    xx0z00yy_z\r\n    zzx_0000_x\r\n    _yxy0y__yx\r\n    _xz0z__0_y\r\n    y__x0_0_y_\r\n\r\npattern 3:\r\n\r\n    yx0x_xz0_z\r\n    xz_x0_xxxz\r\n    _yy0x_0z00\r\n    zyy0__0zyx\r\n    z_xy0_0xz0\r\n\r\nThese were randomly generated, and are all black, but assume they were devised according to some set of rules, and in color.\r\n\r\nThe JSON for the first pattern would look something like:\r\n\r\n    {\r\n      width: 10,\r\n      height: 5,\r\n      cells: [\r\n        {\r\n          value: &#39;_&#39;,\r\n          color: &#39;red&#39;\r\n        },\r\n        {\r\n          value: &#39;y&#39;,\r\n          color: &#39;blue&#39;\r\n        }, ...\r\n      ]\r\n    }\r\n\r\nIf one wanted to train on this data in order to generate new yet similar patterns (again, assuming these were not randomly generated), what is the recommended approach for:\r\n\r\n* reading the data in (I&#39;d imagine putting the JSON into an `Example` protobuf, serializing the buffer to string with tf.parse_example, and then writing that to TFRecord files)\r\n* training on that data\r\n* generating new patterns based on the trained model\r\n* supplying seed data for the generated patterns, e.g. first cell is the character &quot;x&#39; with the color blue.\r\n\r\nI want to achieve something similar to what I&#39;ve seen in style transfer with art/photos, and with music/MIDI data (see: Google Magenta). In those cases, here the model is trained an a distinctive set of artwork or melodic style, and a seed in the form of a photograph or primer melody is supplied in order to generate content similar to the data used in training.\r\n\r\nThanks!\r\n",
+            "link": "https://stackoverflow.com/questions/49923165/tensorflow-training-on-json-data-to-generate-similar-output",
+            "title": "Tensorflow: training on JSON data to generate similar output",
+            "body": "<p>Assume one has JSON data containining instructions for generating the following 10x5 cell patterns, and that each cell can contain one of the following characters: <code>_ 0 x y z</code></p>\n\n<p>Also assume that each character can be displayed in various colors.</p>\n\n<p>pattern 1:</p>\n\n<pre><code>_yx_0zzyxx\n_0__yz_0y_\nx0_0x000yx\n_y__x000zx\nzyyzx_z_0y\n</code></pre>\n\n<p>pattern 2:</p>\n\n<pre><code>xx0z00yy_z\nzzx_0000_x\n_yxy0y__yx\n_xz0z__0_y\ny__x0_0_y_\n</code></pre>\n\n<p>pattern 3:</p>\n\n<pre><code>yx0x_xz0_z\nxz_x0_xxxz\n_yy0x_0z00\nzyy0__0zyx\nz_xy0_0xz0\n</code></pre>\n\n<p>These were randomly generated, and are all black, but assume they were devised according to some set of rules, and in color.</p>\n\n<p>The JSON for the first pattern would look something like:</p>\n\n<pre><code>{\n  width: 10,\n  height: 5,\n  cells: [\n    {\n      value: '_',\n      color: 'red'\n    },\n    {\n      value: 'y',\n      color: 'blue'\n    }, ...\n  ]\n}\n</code></pre>\n\n<p>If one wanted to train on this data in order to generate new yet similar patterns (again, assuming these were not randomly generated), what is the recommended approach for:</p>\n\n<ul>\n<li>reading the data in (I'd imagine putting the JSON into an <code>Example</code> protobuf, serializing the buffer to string with tf.parse_example, and then writing that to TFRecord files)</li>\n<li>training on that data</li>\n<li>generating new patterns based on the trained model</li>\n<li>supplying seed data for the generated patterns, e.g. first cell is the character \"x' with the color blue.</li>\n</ul>\n\n<p>I want to achieve something similar to what I've seen in style transfer with art/photos, and with music/MIDI data (see: Google Magenta). In those cases, here the model is trained an a distinctive set of artwork or melodic style, and a seed in the form of a photograph or primer melody is supplied in order to generate content similar to the data used in training.</p>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "android",
+                "unity3d",
+                "arcore"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9118474,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a433b37990e86f1ef4b69cf522632589?s=128&d=identicon&r=PG&f=1",
+                "display_name": "x-erold",
+                "link": "https://stackoverflow.com/users/9118474/x-erold"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524151561,
+            "creation_date": 1524151561,
+            "question_id": 49924802,
+            "body_markdown": "I&#39;ve a similiar question like the follow three SO questions:  \r\n\r\n- [Save AcquireCameraImageBytes() from Unity ARCore to storage as an image][1]\r\n- [Save Camera image from unity ARCore][2]\r\n- [ARCore for Unity save camera image][3]\r\n\r\nMy aim is to save the camera image (without the augmented objects) and the pose of the camera on a button click. Today I tried the whole day on saving the camera image with ARCore. I tried the different approaches from the three questions linked above, but it didn&#39;t worke.\r\nMy C# Script which is attached to a button:\r\n\r\n    using UnityEngine;\r\n    using UnityEngine.UI;\r\n    using GoogleARCore;\r\n    using System.IO;\r\n    public class takeimg : MonoBehaviour\r\n    {\r\n        private Texture2D m_TextureRender;\r\n        public Button yourButton;\r\n        private byte[] m_EdgeDetectionResultImage = null;\r\n    \r\n        void Start()\r\n        {\r\n            Button btn = yourButton.GetComponent&lt;Button&gt;();\r\n            btn.onClick.AddListener(TaskOnClick);\r\n        }\r\n    \r\n        void TaskOnClick()\r\n        {\r\n            var image = Frame.CameraImage.AcquireCameraImageBytes();\r\n    \r\n            m_TextureRender = new Texture2D(image.Width, image.Height, TextureFormat.RGBA32, false, false);\r\n            m_EdgeDetectionResultImage = new byte[image.Width * image.Height * 4];\r\n    \r\n    \r\n            System.Runtime.InteropServices.Marshal.Copy(image.Y, m_EdgeDetectionResultImage, 0, image.Width * image.Height * 4);\r\n    \r\n            m_TextureRender.LoadRawTextureData(m_EdgeDetectionResultImage);\r\n            m_TextureRender.Apply();\r\n    \r\n            var encodedJpg = m_TextureRender.EncodeToJPG();\r\n            var path = Application.persistentDataPath;\r\n    \r\n            File.WriteAllBytes(path + &quot;/test.jpg&quot;, encodedJpg);\r\n        }\r\n    }\r\n\r\nCurrently the image i get looks:\r\n[Saved Image][4]\r\nIt looks similiar to the third SO question I linked above. \r\nSo something is still wrong/missing. Can someone help me what&#39;s wrong? Something with the buffers?\r\n\r\n\r\n  [1]: https://stackoverflow.com/questions/49579334/save-acquirecameraimagebytes-from-unity-arcore-to-storage-as-an-image\r\n  [2]: https://stackoverflow.com/questions/49674399/save-camera-image-from-unity-arcore\r\n  [3]: https://stackoverflow.com/questions/49798067/arcore-for-unity-save-camera-image\r\n  [4]: https://i.stack.imgur.com/n9i8O.jpg",
+            "link": "https://stackoverflow.com/questions/49924802/arcore-save-camera-image-unity-c-on-button-click",
+            "title": "ARCore Save Camera Image (Unity C#) on Button click",
+            "body": "<p>I've a similiar question like the follow three SO questions:  </p>\n\n<ul>\n<li><a href=\"https://stackoverflow.com/questions/49579334/save-acquirecameraimagebytes-from-unity-arcore-to-storage-as-an-image\">Save AcquireCameraImageBytes() from Unity ARCore to storage as an image</a></li>\n<li><a href=\"https://stackoverflow.com/questions/49674399/save-camera-image-from-unity-arcore\">Save Camera image from unity ARCore</a></li>\n<li><a href=\"https://stackoverflow.com/questions/49798067/arcore-for-unity-save-camera-image\">ARCore for Unity save camera image</a></li>\n</ul>\n\n<p>My aim is to save the camera image (without the augmented objects) and the pose of the camera on a button click. Today I tried the whole day on saving the camera image with ARCore. I tried the different approaches from the three questions linked above, but it didn't worke.\nMy C# Script which is attached to a button:</p>\n\n<pre><code>using UnityEngine;\nusing UnityEngine.UI;\nusing GoogleARCore;\nusing System.IO;\npublic class takeimg : MonoBehaviour\n{\n    private Texture2D m_TextureRender;\n    public Button yourButton;\n    private byte[] m_EdgeDetectionResultImage = null;\n\n    void Start()\n    {\n        Button btn = yourButton.GetComponent&lt;Button&gt;();\n        btn.onClick.AddListener(TaskOnClick);\n    }\n\n    void TaskOnClick()\n    {\n        var image = Frame.CameraImage.AcquireCameraImageBytes();\n\n        m_TextureRender = new Texture2D(image.Width, image.Height, TextureFormat.RGBA32, false, false);\n        m_EdgeDetectionResultImage = new byte[image.Width * image.Height * 4];\n\n\n        System.Runtime.InteropServices.Marshal.Copy(image.Y, m_EdgeDetectionResultImage, 0, image.Width * image.Height * 4);\n\n        m_TextureRender.LoadRawTextureData(m_EdgeDetectionResultImage);\n        m_TextureRender.Apply();\n\n        var encodedJpg = m_TextureRender.EncodeToJPG();\n        var path = Application.persistentDataPath;\n\n        File.WriteAllBytes(path + \"/test.jpg\", encodedJpg);\n    }\n}\n</code></pre>\n\n<p>Currently the image i get looks:\n<a href=\"https://i.stack.imgur.com/n9i8O.jpg\" rel=\"nofollow noreferrer\">Saved Image</a>\nIt looks similiar to the third SO question I linked above. \nSo something is still wrong/missing. Can someone help me what's wrong? Something with the buffers?</p>\n"
+        },
+        {
+            "tags": [
+                "node.js",
+                "express",
+                "mongoose"
+            ],
+            "owner": {
+                "reputation": 72,
+                "user_id": 8564541,
+                "user_type": "registered",
+                "accept_rate": 53,
+                "profile_image": "https://i.stack.imgur.com/Aq52e.jpg?s=128&g=1",
+                "display_name": "Nenad M",
+                "link": "https://stackoverflow.com/users/8564541/nenad-m"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524151555,
+            "creation_date": 1524150254,
+            "last_edit_date": 1524151555,
+            "question_id": 49924355,
+            "body_markdown": "I have unique compound index in my model:\r\n\r\n    const mongoose = require(&#39;mongoose&#39;);\r\n    const Schema = mongoose.Schema;\r\n    \r\n    const VoterTurnoutSchema = new Schema({\r\n    \r\n        electoralUnit: {\r\n            type: Schema.Types.ObjectId,\r\n            ref: &#39;ElectoralUnit&#39;,\r\n            required: true\r\n        },\r\n    \r\n        turnoutByHour: {\r\n            type: String,\r\n            required: true\r\n        },\r\n    \r\n        voterTurnout: {\r\n            type: Number,\r\n            required: true\r\n        },\r\n    \r\n        safeVoter: {\r\n            type: Number\r\n        }\r\n    \r\n    });\r\n    \r\n    VoterTurnoutSchema.index({ &quot;electoralUnit&quot;: 1, &quot;turnoutByHour&quot;: 1}, { &quot;unique&quot;: true }); // unique compound index\r\n    \r\n    module.exports = mongoose.model(&#39;VoterTurnout&#39;, VoterTurnoutSchema);\r\n\r\nand I set if statement in my route. Unique is working fine but error flash message not:\r\n\r\n    router.post(&#39;/&#39;, (req, res)=&gt;{\r\n        let errors = [];\r\n    \r\n        if (!req.body.electoralUnit) {\r\n          errors.push({message: &#39;Choose ElUnit!&#39;});\r\n        }\r\n        if (!req.body.voterTurnout) {\r\n          errors.push({message: &#39;Enter number!&#39;});\r\n        }\r\n    \r\n        if (errors.length &gt; 0) {\r\n          res.render(&#39;home/voterTurnouts/index&#39;, {\r\n            errors: errors,\r\n            electoralUnit: req.body.electoralUnit,\r\n            voterTurnout: req.body.voterTurnout\r\n          });\r\n        } else {\r\n          VoterTurnout.findOne({voterTurnout: req.body.voterTurnout}).then(voterTurnout=&gt;{\r\n            if (!voterTurnout) {\r\n              const newVoterTurnout = VoterTurnout({\r\n                electoralUnit: req.body.electoralUnit,\r\n                turnoutByHour: req.body.turnoutByHour,\r\n                voterTurnout: req.body.voterTurnout,\r\n                safeVoter: req.body.safeVoter\r\n              });\r\n              newVoterTurnout.save().then(savedVoterTurnout=&gt;{\r\n                ElectoralUnit.find({}).then(electoralUnits=&gt;{\r\n                  res.redirect(&#39;/voterTurnouts&#39;);\r\n                });\r\n              });\r\n            } else {\r\n              req.flash(&#39;error_message&#39;, &#39;Number for that ElUnit is already added!&#39;); // This message is missing\r\n              res.redirect(&#39;/voterTurnouts&#39;);\r\n            }\r\n          });\r\n        }\r\n    });\r\n\r\nInstead of flash message browser is loading forever and I get this message in console.log:\r\n\r\n&gt; (node:10192) UnhandledPromiseRejectionWarning: BulkWriteError: E11000\r\n&gt; duplicate key error collection: crm_electors.voterturnouts index:\r\n&gt; electoralUnit_1_turnoutByHour_1 dup key: { :\r\n&gt; ObjectId(&#39;5ab906612f30fe23d c592591&#39;), : &quot;12:00&quot; }\r\n\r\nI presume that if (!voterTurnout) it&#39;s need to be change but my question is how to catch that variable of unique compound index in model?",
+            "link": "https://stackoverflow.com/questions/49924355/how-to-display-error-message-with-unique-compound-index",
+            "title": "How to display error message with unique compound index?",
+            "body": "<p>I have unique compound index in my model:</p>\n\n<pre><code>const mongoose = require('mongoose');\nconst Schema = mongoose.Schema;\n\nconst VoterTurnoutSchema = new Schema({\n\n    electoralUnit: {\n        type: Schema.Types.ObjectId,\n        ref: 'ElectoralUnit',\n        required: true\n    },\n\n    turnoutByHour: {\n        type: String,\n        required: true\n    },\n\n    voterTurnout: {\n        type: Number,\n        required: true\n    },\n\n    safeVoter: {\n        type: Number\n    }\n\n});\n\nVoterTurnoutSchema.index({ \"electoralUnit\": 1, \"turnoutByHour\": 1}, { \"unique\": true }); // unique compound index\n\nmodule.exports = mongoose.model('VoterTurnout', VoterTurnoutSchema);\n</code></pre>\n\n<p>and I set if statement in my route. Unique is working fine but error flash message not:</p>\n\n<pre><code>router.post('/', (req, res)=&gt;{\n    let errors = [];\n\n    if (!req.body.electoralUnit) {\n      errors.push({message: 'Choose ElUnit!'});\n    }\n    if (!req.body.voterTurnout) {\n      errors.push({message: 'Enter number!'});\n    }\n\n    if (errors.length &gt; 0) {\n      res.render('home/voterTurnouts/index', {\n        errors: errors,\n        electoralUnit: req.body.electoralUnit,\n        voterTurnout: req.body.voterTurnout\n      });\n    } else {\n      VoterTurnout.findOne({voterTurnout: req.body.voterTurnout}).then(voterTurnout=&gt;{\n        if (!voterTurnout) {\n          const newVoterTurnout = VoterTurnout({\n            electoralUnit: req.body.electoralUnit,\n            turnoutByHour: req.body.turnoutByHour,\n            voterTurnout: req.body.voterTurnout,\n            safeVoter: req.body.safeVoter\n          });\n          newVoterTurnout.save().then(savedVoterTurnout=&gt;{\n            ElectoralUnit.find({}).then(electoralUnits=&gt;{\n              res.redirect('/voterTurnouts');\n            });\n          });\n        } else {\n          req.flash('error_message', 'Number for that ElUnit is already added!'); // This message is missing\n          res.redirect('/voterTurnouts');\n        }\n      });\n    }\n});\n</code></pre>\n\n<p>Instead of flash message browser is loading forever and I get this message in console.log:</p>\n\n<blockquote>\n  <p>(node:10192) UnhandledPromiseRejectionWarning: BulkWriteError: E11000\n  duplicate key error collection: crm_electors.voterturnouts index:\n  electoralUnit_1_turnoutByHour_1 dup key: { :\n  ObjectId('5ab906612f30fe23d c592591'), : \"12:00\" }</p>\n</blockquote>\n\n<p>I presume that if (!voterTurnout) it's need to be change but my question is how to catch that variable of unique compound index in model?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "html",
+                "python-2.7",
+                "flask"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9663884,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/w4jrE.jpg?s=128&g=1",
+                "display_name": "Luca",
+                "link": "https://stackoverflow.com/users/9663884/luca"
+            },
+            "is_answered": false,
+            "view_count": 37,
+            "answer_count": 1,
+            "score": -2,
+            "last_activity_date": 1524151553,
+            "creation_date": 1524051727,
+            "last_edit_date": 1524134621,
+            "question_id": 49898842,
+            "body_markdown": "I want a search bar in my site. This get data from a postgresql database with the user input, return the results and show it in a table.\r\n\r\nHow i can send the data to my .py and return the new data and render only the table with the results?\r\n\r\nI&#39;m using python 2.7\r\n\r\nEDIT:\r\n\r\n**edit_person.html**\r\n\r\n    {% extends &quot;layouts/layout_logged.html&quot;%}\r\n    \r\n    {% block body%}\r\n        &lt;a href=&quot;/macro_test&quot; class=&quot;btn btn-danger btn-sm my-2 my-sm-0&quot; type=&quot;submit&quot;&gt;TEST&lt;/a&gt;\r\n        &lt;form&gt;\r\n          # here can the user add something from the search results \r\n        &lt;/form&gt;\r\n    \r\n        {% include &quot;searches/clothings_search_result.html&quot; %}\r\n    {% endblock %}\r\n\r\n**person.py**\r\n\r\n    @app.route(&#39;/macro_test&#39;, methods=[&#39;GET&#39;])\r\n    @login_required\r\n    def test():\r\n        user_input = request.form[&quot;search&quot;]\r\n\r\n        search_result = # here the query\r\n        search_result = [dict(r) for r in search_result ]\r\n    \r\n    \tresult = get_template_attribute(&#39;searches/clothings_search_result.html&#39;, &#39;result &#39;)\r\n\r\n        return result(&#39;search_result&#39;)\r\n\r\n\r\n**clothing_search_result.html**\r\n\r\n    {% macro result (search_result) -%}\r\n         {{ search_result[0] }}\r\n         # here is the table i want to render\r\n    {%- endmacro %}",
+            "link": "https://stackoverflow.com/questions/49898842/flask-python-render-only-a-table-in-template",
+            "title": "Flask/Python render only a table in template",
+            "body": "<p>I want a search bar in my site. This get data from a postgresql database with the user input, return the results and show it in a table.</p>\n\n<p>How i can send the data to my .py and return the new data and render only the table with the results?</p>\n\n<p>I'm using python 2.7</p>\n\n<p>EDIT:</p>\n\n<p><strong>edit_person.html</strong></p>\n\n<pre><code>{% extends \"layouts/layout_logged.html\"%}\n\n{% block body%}\n    &lt;a href=\"/macro_test\" class=\"btn btn-danger btn-sm my-2 my-sm-0\" type=\"submit\"&gt;TEST&lt;/a&gt;\n    &lt;form&gt;\n      # here can the user add something from the search results \n    &lt;/form&gt;\n\n    {% include \"searches/clothings_search_result.html\" %}\n{% endblock %}\n</code></pre>\n\n<p><strong>person.py</strong></p>\n\n<pre><code>@app.route('/macro_test', methods=['GET'])\n@login_required\ndef test():\n    user_input = request.form[\"search\"]\n\n    search_result = # here the query\n    search_result = [dict(r) for r in search_result ]\n\n    result = get_template_attribute('searches/clothings_search_result.html', 'result ')\n\n    return result('search_result')\n</code></pre>\n\n<p><strong>clothing_search_result.html</strong></p>\n\n<pre><code>{% macro result (search_result) -%}\n     {{ search_result[0] }}\n     # here is the table i want to render\n{%- endmacro %}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "excel",
+                "vba",
+                "password-protection"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9670446,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-js9T7axQ1HE/AAAAAAAAAAI/AAAAAAAAJQg/Lgf7v8W8He0/photo.jpg?sz=128",
+                "display_name": "Ilse Zubieta",
+                "link": "https://stackoverflow.com/users/9670446/ilse-zubieta"
+            },
+            "is_answered": false,
+            "view_count": 32,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524151550,
+            "creation_date": 1524151292,
+            "last_edit_date": 1524151550,
+            "question_id": 49924712,
+            "body_markdown": "Someone gave me a code, that he used with a global declared constant as a password set as &quot;321123&quot;.\r\nThis with the objective of just changing the value there and not in every single line, but when I changed the value, the code just stops telling me:\r\n\r\n&gt; Incorrect password, Error 1004\r\n\r\n&gt; The password is incorrect\r\n\r\nBut the issue is that the user doesn&#39;t have to enter anything, now I&#39;m done trying to find the mistake, and after all of this, the whole ribbon just blocks itself.\r\n\r\nHere&#39;s the code:\r\n\r\n    1 Public Const myGenericPassword = &quot;5&quot;\r\n\r\n    2 Sub LockUnlockSheet(myLock As Boolean, mySheetName As String)\r\n    3     If myLock = True Then\r\n    4        Sheets(mySheetName).Protect userinterfaceonly:=True, Password:=myGenericPassword\r\n    5    Else\r\n    6        Sheets(mySheetName).Unprotect Password:=myGenericPassword\r\n    7    End If\r\n    8 End Sub\r\n\r\nWhen debugging, the mistake is on line 6.\r\n\r\nI hope you can help me!\r\n",
+            "link": "https://stackoverflow.com/questions/49924712/i-have-a-string-declared-as-global-that-functions-as-my-password-but-when-i-cha",
+            "title": "I have a string declared as Global that functions as my password, but when I change the value of the string it doesn&#39;t run",
+            "body": "<p>Someone gave me a code, that he used with a global declared constant as a password set as \"321123\".\nThis with the objective of just changing the value there and not in every single line, but when I changed the value, the code just stops telling me:</p>\n\n<blockquote>\n  <p>Incorrect password, Error 1004</p>\n  \n  <p>The password is incorrect</p>\n</blockquote>\n\n<p>But the issue is that the user doesn't have to enter anything, now I'm done trying to find the mistake, and after all of this, the whole ribbon just blocks itself.</p>\n\n<p>Here's the code:</p>\n\n<pre><code>1 Public Const myGenericPassword = \"5\"\n\n2 Sub LockUnlockSheet(myLock As Boolean, mySheetName As String)\n3     If myLock = True Then\n4        Sheets(mySheetName).Protect userinterfaceonly:=True, Password:=myGenericPassword\n5    Else\n6        Sheets(mySheetName).Unprotect Password:=myGenericPassword\n7    End If\n8 End Sub\n</code></pre>\n\n<p>When debugging, the mistake is on line 6.</p>\n\n<p>I hope you can help me!</p>\n"
+        },
+        {
+            "tags": [
+                "apache-flink"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 1981935,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/b7751b1957931fdd417bb062f53c342a?s=128&d=identicon&r=PG",
+                "display_name": "crawlik",
+                "link": "https://stackoverflow.com/users/1981935/crawlik"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524151550,
+            "creation_date": 1524148462,
+            "last_edit_date": 1524151550,
+            "question_id": 49923736,
+            "body_markdown": "Looking for Flink implementation of Louvain method, similar [this one][1] implemented in Spark. Would like to compare it with existing Flink [Community detection][2]\r\n\r\n\r\n  [1]: https://stackoverflow.com/questions/19995754/is-there-any-spark-or-giraph-implement-of-louvain-method\r\n  [2]: https://ci.apache.org/projects/flink/flink-docs-release-1.3/dev/libs/gelly/library_methods.html#community-detection",
+            "link": "https://stackoverflow.com/questions/49923736/is-there-any-flink-implementation-of-louvain-method",
+            "title": "Is there any Flink implementation of Louvain method?",
+            "body": "<p>Looking for Flink implementation of Louvain method, similar <a href=\"https://stackoverflow.com/questions/19995754/is-there-any-spark-or-giraph-implement-of-louvain-method\">this one</a> implemented in Spark. Would like to compare it with existing Flink <a href=\"https://ci.apache.org/projects/flink/flink-docs-release-1.3/dev/libs/gelly/library_methods.html#community-detection\" rel=\"nofollow noreferrer\">Community detection</a></p>\n"
+        },
+        {
+            "tags": [
+                "asp.net",
+                "wcf",
+                "iis-7",
+                "windows-server-2008-r2"
+            ],
+            "owner": {
+                "reputation": 1588,
+                "user_id": 587153,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/a06091e1e22ac74bebb536e7e887d1a4?s=128&d=identicon&r=PG",
+                "display_name": "Nicolai",
+                "link": "https://stackoverflow.com/users/587153/nicolai"
+            },
+            "is_answered": true,
+            "view_count": 70271,
+            "accepted_answer_id": 6384148,
+            "answer_count": 8,
+            "score": 30,
+            "last_activity_date": 1524151541,
+            "creation_date": 1308209525,
+            "question_id": 6368502,
+            "body_markdown": "I have somewhat of a problem.\r\nMy old webserver (windows 2003) have been replaced, with a 2008 R2. I have been given an admin account on it, and can do whatever I want, but I am no expert on this area.\r\nI configured the roles to have application developement and Web server (iis7).\r\n\r\nBUT, my website runs .NET4, and the role only installed 3.5.\r\nSo I have attempted to install .NET4 manually, on the server.\r\nMy problem is, my website will not work on it, due to the System.ServiceModel section in my web.config.\r\nI have made sure it runs in .NET4 application pool.\r\n\r\nI assume this is a WCF problem, but I can&#39;t grasp how to solve it. I have tried everything I found on google. \r\naspnet_regis, ServiceModelReg.exe and so on.\r\nI have even tried re-installing the webserver role, but I still get this error, everytime I try to enter the sites setup.\r\n\r\nI&#39;m hoping there are some experts here, who know how to fix this.",
+            "link": "https://stackoverflow.com/questions/6368502/the-configuration-section-system-servicemodel-cannot-be-read-because-it-is-mis",
+            "title": "The configuration section &#39;system.servicemodel&#39; cannot be read because it is missing a section declaration",
+            "body": "<p>I have somewhat of a problem.\nMy old webserver (windows 2003) have been replaced, with a 2008 R2. I have been given an admin account on it, and can do whatever I want, but I am no expert on this area.\nI configured the roles to have application developement and Web server (iis7).</p>\n\n<p>BUT, my website runs .NET4, and the role only installed 3.5.\nSo I have attempted to install .NET4 manually, on the server.\nMy problem is, my website will not work on it, due to the System.ServiceModel section in my web.config.\nI have made sure it runs in .NET4 application pool.</p>\n\n<p>I assume this is a WCF problem, but I can't grasp how to solve it. I have tried everything I found on google. \naspnet_regis, ServiceModelReg.exe and so on.\nI have even tried re-installing the webserver role, but I still get this error, everytime I try to enter the sites setup.</p>\n\n<p>I'm hoping there are some experts here, who know how to fix this.</p>\n"
+        },
+        {
+            "tags": [
+                "ruby-on-rails",
+                "vuejs2"
+            ],
+            "owner": {
+                "reputation": 1614,
+                "user_id": 3541205,
+                "user_type": "registered",
+                "accept_rate": 42,
+                "profile_image": "https://www.gravatar.com/avatar/6d36383f353f79d903e2e0946b73e8f7?s=128&d=identicon&r=PG",
+                "display_name": "aks",
+                "link": "https://stackoverflow.com/users/3541205/aks"
+            },
+            "is_answered": false,
+            "view_count": 312,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524151529,
+            "creation_date": 1490762489,
+            "question_id": 43084499,
+            "body_markdown": "I have this bizarre idea that how can we replace the Rails `erb` templating with `vue`. I think even the simplest of the sites today are data driven and want to be reactive. For people like me who are boilerplate averse.\r\n\r\nI can do this with new Rails 5.1 but with the following limitations:\r\n\r\n- The naturally available `@variables` are not present in js files, so I have to pass them as data attributes, use Gon gem or make another ajax request.\r\n- The `/= require` syntax can be replaced with new `ES2015` imports, this will allow for a more modular design of the system.\r\n\r\nI would like to know if someone has attempted to do this or has ideas on how this can be achieved.",
+            "link": "https://stackoverflow.com/questions/43084499/replacing-rails-erb-template-with-vue",
+            "title": "Replacing Rails ERB template with Vue",
+            "body": "<p>I have this bizarre idea that how can we replace the Rails <code>erb</code> templating with <code>vue</code>. I think even the simplest of the sites today are data driven and want to be reactive. For people like me who are boilerplate averse.</p>\n\n<p>I can do this with new Rails 5.1 but with the following limitations:</p>\n\n<ul>\n<li>The naturally available <code>@variables</code> are not present in js files, so I have to pass them as data attributes, use Gon gem or make another ajax request.</li>\n<li>The <code>/= require</code> syntax can be replaced with new <code>ES2015</code> imports, this will allow for a more modular design of the system.</li>\n</ul>\n\n<p>I would like to know if someone has attempted to do this or has ideas on how this can be achieved.</p>\n"
+        },
+        {
+            "tags": [
+                "sql-server"
+            ],
+            "owner": {
+                "reputation": 3812,
+                "user_id": 385907,
+                "user_type": "registered",
+                "accept_rate": 76,
+                "profile_image": "https://www.gravatar.com/avatar/5e249e45a1849e387e324787d08ef738?s=128&d=identicon&r=PG",
+                "display_name": "barlop",
+                "link": "https://stackoverflow.com/users/385907/barlop"
+            },
+            "is_answered": false,
+            "view_count": 45,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524151527,
+            "creation_date": 1524118171,
+            "last_edit_date": 1524123331,
+            "question_id": 49913862,
+            "body_markdown": "In SSMS  (SQL Server Management Studio) debugger shows question mark for substring&#39;s return value when called from a function\r\n\r\nI have a query with these two lines\r\n\r\n    SELECT  SUBSTRING(N&#39;אאא&#39;,1,1);\r\n    SELECT dbo.testsubstring5(N&#39;א&#39;);\r\n\r\nI put a breakpoint on the first and hit debug.\r\n\r\nAs you can see SUBSTRING works fine so far. That&#39;s when outside of the function call.\r\n\r\n[![enter image description here][1]][1]\r\n\r\nNow we when we go inside `dbo.testsubstring5` then for some reason `SUBSTRING` doesn&#39;t output the correct result in the debugger, though it does still work correctly outside of the debugger.\r\n\r\nLook at the watch window of the debugger in the picture below\r\n\r\n[![enter image description here][2]][2]\r\n\r\nNotice the problem, that \r\n\r\n`SUBSTRING(@str,1,1)`  fails, it gives the result of ?\r\n\r\nAlso as you see in that watch window, `UNICODE(SUBSTRING(@str,1,1))`  gives the value of 63 which is the ASCII value of question mark.\r\n\r\nThe correct values are returned in the program though, for example, the watch window shows the correct values for `@zzz, @zzz1, and @zzz2`\r\n\r\nSo it seems to be an issue with the debugger window , for substring, when substring is called within a function.  I must be missing something though I don&#39;t know what.\r\n\r\n  [1]: https://i.stack.imgur.com/Kx8YS.png\r\n  [2]: https://i.stack.imgur.com/8itYj.png",
+            "link": "https://stackoverflow.com/questions/49913862/in-ssms-sql-server-management-studio-debugger-shows-question-mark-for-substrin",
+            "title": "In SSMS (SQL Server Management Studio) debugger shows question mark for substring&#39;s return value when called from a function",
+            "body": "<p>In SSMS  (SQL Server Management Studio) debugger shows question mark for substring's return value when called from a function</p>\n\n<p>I have a query with these two lines</p>\n\n<pre><code>SELECT  SUBSTRING(N'אאא',1,1);\nSELECT dbo.testsubstring5(N'א');\n</code></pre>\n\n<p>I put a breakpoint on the first and hit debug.</p>\n\n<p>As you can see SUBSTRING works fine so far. That's when outside of the function call.</p>\n\n<p><a href=\"https://i.stack.imgur.com/Kx8YS.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/Kx8YS.png\" alt=\"enter image description here\"></a></p>\n\n<p>Now we when we go inside <code>dbo.testsubstring5</code> then for some reason <code>SUBSTRING</code> doesn't output the correct result in the debugger, though it does still work correctly outside of the debugger.</p>\n\n<p>Look at the watch window of the debugger in the picture below</p>\n\n<p><a href=\"https://i.stack.imgur.com/8itYj.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/8itYj.png\" alt=\"enter image description here\"></a></p>\n\n<p>Notice the problem, that </p>\n\n<p><code>SUBSTRING(@str,1,1)</code>  fails, it gives the result of ?</p>\n\n<p>Also as you see in that watch window, <code>UNICODE(SUBSTRING(@str,1,1))</code>  gives the value of 63 which is the ASCII value of question mark.</p>\n\n<p>The correct values are returned in the program though, for example, the watch window shows the correct values for <code>@zzz, @zzz1, and @zzz2</code></p>\n\n<p>So it seems to be an issue with the debugger window , for substring, when substring is called within a function.  I must be missing something though I don't know what.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "php",
+                "laravel",
+                "vue.js",
+                "axios"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9521741,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2369efe661dab6fc35ba1687c4f3cd6f?s=128&d=identicon&r=PG",
+                "display_name": "Selmi Med",
+                "link": "https://stackoverflow.com/users/9521741/selmi-med"
+            },
+            "is_answered": true,
+            "view_count": 34,
+            "accepted_answer_id": 49922416,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524151526,
+            "creation_date": 1524143339,
+            "last_edit_date": 1524151526,
+            "question_id": 49921958,
+            "body_markdown": "I am trying to send data to my laravel application using axios in Vue but i had this error \r\n\r\n    Error: Request failed with status code 500\r\n        at e.exports (axios.min.js:8)\r\n        at e.exports (axios.min.js:8)\r\n        at XMLHttpRequest.l.(anonymous function) (http://localhost:8000/js/axios.min.js:8:3282)\r\n\r\n\r\nAxios code:\r\n\r\n       addExperience: function () {\r\n                    axios.post(window.Laravel.url + &#39;/addexperience&#39;, this.experience)\r\n                        .then(response =&gt; {\r\n                            console.log(response.data)\r\n                        if(response.data.etat){\r\n                                this.open = false;\r\n                                this.experiences.push(this.experience);\r\n                    }})\r\n                    .catch(error =&gt; {\r\n                        console.log(error);\r\n                        console.log(window.Laravel.url + &#39;/addexperience&#39;);\r\n                        console.log(this.experience.titre);\r\n                        console.log(this.experience);\r\n                    });\r\n                }\r\n            },\r\n\r\nRoute:\r\n\r\n        Route::post(&#39;/addexperience&#39;, &#39;CvController@addExperience&#39;);\r\n\r\n\r\nController:\r\n\r\n        public function addExperience(Request $request){\r\n        $exp = new Experience();\r\n        $exp-&gt;titre = $request-&gt;titre;\r\n        $exp-&gt;description = $request-&gt;description;\r\n        $exp-&gt;debut = $request-&gt;debut;\r\n        $exp-&gt;fin = $request-&gt;fin;\r\n        $exp-&gt;cv_id = $request-&gt;cv_id;\r\n        $exp-&gt;save();\r\n\r\n        return Response()-&gt;json([&#39;etat&#39; =&gt; true, &#39;id&#39; =&gt;$exp-&gt;id]);\r\n    }\r\nPlease help me",
+            "link": "https://stackoverflow.com/questions/49921958/internal-server-error-500-when-postig-data-to-laravel-project-using-axios-in-vue",
+            "title": "Internal server error 500 when postig data to laravel project using Axios in Vue.js",
+            "body": "<p>I am trying to send data to my laravel application using axios in Vue but i had this error </p>\n\n<pre><code>Error: Request failed with status code 500\n    at e.exports (axios.min.js:8)\n    at e.exports (axios.min.js:8)\n    at XMLHttpRequest.l.(anonymous function) (http://localhost:8000/js/axios.min.js:8:3282)\n</code></pre>\n\n<p>Axios code:</p>\n\n<pre><code>   addExperience: function () {\n                axios.post(window.Laravel.url + '/addexperience', this.experience)\n                    .then(response =&gt; {\n                        console.log(response.data)\n                    if(response.data.etat){\n                            this.open = false;\n                            this.experiences.push(this.experience);\n                }})\n                .catch(error =&gt; {\n                    console.log(error);\n                    console.log(window.Laravel.url + '/addexperience');\n                    console.log(this.experience.titre);\n                    console.log(this.experience);\n                });\n            }\n        },\n</code></pre>\n\n<p>Route:</p>\n\n<pre><code>    Route::post('/addexperience', 'CvController@addExperience');\n</code></pre>\n\n<p>Controller:</p>\n\n<pre><code>    public function addExperience(Request $request){\n    $exp = new Experience();\n    $exp-&gt;titre = $request-&gt;titre;\n    $exp-&gt;description = $request-&gt;description;\n    $exp-&gt;debut = $request-&gt;debut;\n    $exp-&gt;fin = $request-&gt;fin;\n    $exp-&gt;cv_id = $request-&gt;cv_id;\n    $exp-&gt;save();\n\n    return Response()-&gt;json(['etat' =&gt; true, 'id' =&gt;$exp-&gt;id]);\n}\n</code></pre>\n\n<p>Please help me</p>\n"
+        },
+        {
+            "tags": [
+                "grep"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9670378,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "jzm2001",
+                "link": "https://stackoverflow.com/users/9670378/jzm2001"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524151522,
+            "creation_date": 1524151522,
+            "question_id": 49924791,
+            "body_markdown": "I run the below command on 66 linux hosts:\r\n\r\n    du -h indices | grep -v jfs | grep indices/_*\r\n\r\nIt usually gives output similar to:\r\n\r\n    $ du -h indices | grep -v jfs | grep indices/_* \r\n    892K    indices/_Z1MNUYgxEeaU3rxtjTt_dg\r\n\r\nHOWEVER on 1 of the 66 hosts it&#39;s giving an error:\r\n\r\n    $ du -h indices | grep -v jfs | grep indices/_* \r\n    grep: indices/_Z1MNUYgxEeaU3rxtjTt_dg: Is a directory\r\n\r\nI tried redirecting the du -h output to a file called out.txt and did the grep on that file and it&#39;s giving similar error:\r\n\r\n    $ grep indices/_* out.txt \r\n    grep: indices/_Z1MNUYgxEeaU3rxtjTt_dg: Is a directory \r\n    out.txt:204K    indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-rdfhistory \r\n    out.txt:48K     indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-texthistory \r\n    out.txt:204K    indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-rdfindex \r\n    out.txt:48K     indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-textindex \r\n    out.txt:508K    indices/_8wB7A3H1Eeak8_Im3z-qzw \r\n    out.txt:204K    indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-rdfhistory \r\n    out.txt:48K     indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-texthistory \r\n    out.txt:204K    indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-rdfindex \r\n    out.txt:48K     indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-textindex \r\n    out.txt:508K    indices/_8wB7A3H1Eeak8_Im3z-qzw \r\n    out.txt:204K    indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-rdfhistory \r\n    out.txt:48K     indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-texthistory \r\n    out.txt:204K    indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-rdfindex \r\n    out.txt:48K     indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-textindex \r\n    out.txt:508K    indices/_8wB7A3H1Eeak8_Im3z-qzw\r\n\r\nAll of the entries above are directories...however when grepping a file for a string it shouldn&#39;t care.\r\n\r\nContents of the specific main directory:\r\n\r\n     $ ll indices\r\n    total 28\r\n    drwxr-x---  5 websphe websphe  4096 May 26  2017 .\r\n    drwxr-x--- 10 websphe websphe 12288 Apr 19 06:52 ..\r\n    drwxr-x---  6 websphe websphe  4096 Dec  2  2016 _8wB7A3H1Eeak8_Im3z-qzw\r\n    drwxr-x---  4 websphe websphe  4096 May 26  2017 workitemindex\r\n    drwxr-x---  6 websphe websphe  4096 Oct  4  2016 _Z1MNUYgxEeaU3rxtjTt_dg\r\n\r\nI&#39;ve checked permissions and everything i can think of...but this one is stumping me.\r\n\r\nAny ideas/suggestions?\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49924791/grep-giving-is-a-directory-error",
+            "title": "grep giving &quot;Is a directory&quot; error",
+            "body": "<p>I run the below command on 66 linux hosts:</p>\n\n<pre><code>du -h indices | grep -v jfs | grep indices/_*\n</code></pre>\n\n<p>It usually gives output similar to:</p>\n\n<pre><code>$ du -h indices | grep -v jfs | grep indices/_* \n892K    indices/_Z1MNUYgxEeaU3rxtjTt_dg\n</code></pre>\n\n<p>HOWEVER on 1 of the 66 hosts it's giving an error:</p>\n\n<pre><code>$ du -h indices | grep -v jfs | grep indices/_* \ngrep: indices/_Z1MNUYgxEeaU3rxtjTt_dg: Is a directory\n</code></pre>\n\n<p>I tried redirecting the du -h output to a file called out.txt and did the grep on that file and it's giving similar error:</p>\n\n<pre><code>$ grep indices/_* out.txt \ngrep: indices/_Z1MNUYgxEeaU3rxtjTt_dg: Is a directory \nout.txt:204K    indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-rdfhistory \nout.txt:48K     indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-texthistory \nout.txt:204K    indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-rdfindex \nout.txt:48K     indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-textindex \nout.txt:508K    indices/_8wB7A3H1Eeak8_Im3z-qzw \nout.txt:204K    indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-rdfhistory \nout.txt:48K     indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-texthistory \nout.txt:204K    indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-rdfindex \nout.txt:48K     indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-textindex \nout.txt:508K    indices/_8wB7A3H1Eeak8_Im3z-qzw \nout.txt:204K    indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-rdfhistory \nout.txt:48K     indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-texthistory \nout.txt:204K    indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-rdfindex \nout.txt:48K     indices/_8wB7A3H1Eeak8_Im3z-qzw/jfs-textindex \nout.txt:508K    indices/_8wB7A3H1Eeak8_Im3z-qzw\n</code></pre>\n\n<p>All of the entries above are directories...however when grepping a file for a string it shouldn't care.</p>\n\n<p>Contents of the specific main directory:</p>\n\n<pre><code> $ ll indices\ntotal 28\ndrwxr-x---  5 websphe websphe  4096 May 26  2017 .\ndrwxr-x--- 10 websphe websphe 12288 Apr 19 06:52 ..\ndrwxr-x---  6 websphe websphe  4096 Dec  2  2016 _8wB7A3H1Eeak8_Im3z-qzw\ndrwxr-x---  4 websphe websphe  4096 May 26  2017 workitemindex\ndrwxr-x---  6 websphe websphe  4096 Oct  4  2016 _Z1MNUYgxEeaU3rxtjTt_dg\n</code></pre>\n\n<p>I've checked permissions and everything i can think of...but this one is stumping me.</p>\n\n<p>Any ideas/suggestions?</p>\n"
+        },
+        {
+            "tags": [
+                "spring"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9667200,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "devu",
+                "link": "https://stackoverflow.com/users/9667200/devu"
+            },
+            "is_answered": false,
+            "view_count": 39,
+            "answer_count": 1,
+            "score": -2,
+            "last_activity_date": 1524151517,
+            "creation_date": 1524102088,
+            "last_edit_date": 1524131984,
+            "question_id": 49911416,
+            "body_markdown": "We are using below list of Spring Framework jar files in the application and we are not using Spring’s websocket or any other form of websocket dependencies in the application and no code references of enabling STOMP support.\r\n\r\nCould someone please confirm if we are still vulnerable to CVE-2018-1270?\r\n\r\n   \tspring-security-web-4.2.3.RELEASE.jar\r\n\tspring-security-core-4.2.3.RELEASE.jar\r\n\tspring-security-config-4.2.3.RELEASE.jar\r\n\tspring-aspects-4.3.12.RELEASE.jar\r\n\tspring-web-4.3.12.RELEASE.jar\r\n\tspring-tx-4.3.12.RELEASE.jar\r\n\tspring-orm-4.3.12.RELEASE.jar\r\n\tspring-jdbc-4.3.12.RELEASE.jar\r\n\tspring-expression-4.3.12.RELEASE.jar\r\n\tspring-core-4.3.12.RELEASE.jar\r\n\tspring-context-support-4.3.12.RELEASE.jar\r\n\tspring-context-4.3.12.RELEASE.jar\r\n\tspring-beans-4.3.12.RELEASE.jar\r\n\tspring-jms-4.3.12.RELEASE.jar\r\n\tspring-messaging-4.3.12.RELEASE.jar\r\n\tspring-aop-4.3.12.RELEASE.jar\r\n",
+            "link": "https://stackoverflow.com/questions/49911416/are-we-vulnerable-to-pivotal-spring-framework-vulnerability-cve-2018-1270",
+            "title": "Are we vulnerable to Pivotal Spring Framework Vulnerability CVE-2018-1270?",
+            "body": "<p>We are using below list of Spring Framework jar files in the application and we are not using Spring’s websocket or any other form of websocket dependencies in the application and no code references of enabling STOMP support.</p>\n\n<p>Could someone please confirm if we are still vulnerable to CVE-2018-1270?</p>\n\n<pre><code>spring-security-web-4.2.3.RELEASE.jar\nspring-security-core-4.2.3.RELEASE.jar\nspring-security-config-4.2.3.RELEASE.jar\nspring-aspects-4.3.12.RELEASE.jar\nspring-web-4.3.12.RELEASE.jar\nspring-tx-4.3.12.RELEASE.jar\nspring-orm-4.3.12.RELEASE.jar\nspring-jdbc-4.3.12.RELEASE.jar\nspring-expression-4.3.12.RELEASE.jar\nspring-core-4.3.12.RELEASE.jar\nspring-context-support-4.3.12.RELEASE.jar\nspring-context-4.3.12.RELEASE.jar\nspring-beans-4.3.12.RELEASE.jar\nspring-jms-4.3.12.RELEASE.jar\nspring-messaging-4.3.12.RELEASE.jar\nspring-aop-4.3.12.RELEASE.jar\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "mongodb",
+                "jodatime"
+            ],
+            "owner": {
+                "reputation": 128,
+                "user_id": 5383760,
+                "user_type": "registered",
+                "accept_rate": 58,
+                "profile_image": "https://i.stack.imgur.com/Knshb.jpg?s=128&g=1",
+                "display_name": "Black Glix",
+                "link": "https://stackoverflow.com/users/5383760/black-glix"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524151512,
+            "creation_date": 1524151512,
+            "question_id": 49924790,
+            "body_markdown": "I have a legacy `Spring-Boot` project (`Java8`) with `MySQL`. In application, there are a lot of different `entities` with millisecond precision timestamps. I am revising the project and convert database to `MongoDB`.\r\n\r\nI have to do a lot of queries based on timestamps and I don&#39;t want to go nuts later. At this moment, some timestamps stored as `long`, some of them `java.util.Date`. \r\n\r\nWhat is the recommended way to deal with time in `Java 8` and `Mongo` considering the timezone? I didn&#39;t use `Java 8 Time Api` or `JodaTime` before. I want to pick the right pattern to deal time issue.\r\n\r\nPS: Some of the timestamps come as long long int from endpoints (Raspberry Pi) with the followings;\r\n\r\n    void get_timestamp(long long int* epoch)\r\n    {\r\n        struct timespec ts;\r\n        clock_gettime(CLOCK_REALTIME, &amp;ts);\r\n    \r\n        *epoch = ts.tv_sec;\r\n        *epoch *= 1000;\r\n        *epoch += ts.tv_nsec / 1000000;\r\n    }\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49924790/recommending-way-to-store-millisecond-timestamp-in-mongodb",
+            "title": "Recommending way to store millisecond timestamp in MongoDB",
+            "body": "<p>I have a legacy <code>Spring-Boot</code> project (<code>Java8</code>) with <code>MySQL</code>. In application, there are a lot of different <code>entities</code> with millisecond precision timestamps. I am revising the project and convert database to <code>MongoDB</code>.</p>\n\n<p>I have to do a lot of queries based on timestamps and I don't want to go nuts later. At this moment, some timestamps stored as <code>long</code>, some of them <code>java.util.Date</code>. </p>\n\n<p>What is the recommended way to deal with time in <code>Java 8</code> and <code>Mongo</code> considering the timezone? I didn't use <code>Java 8 Time Api</code> or <code>JodaTime</code> before. I want to pick the right pattern to deal time issue.</p>\n\n<p>PS: Some of the timestamps come as long long int from endpoints (Raspberry Pi) with the followings;</p>\n\n<pre><code>void get_timestamp(long long int* epoch)\n{\n    struct timespec ts;\n    clock_gettime(CLOCK_REALTIME, &amp;ts);\n\n    *epoch = ts.tv_sec;\n    *epoch *= 1000;\n    *epoch += ts.tv_nsec / 1000000;\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "sonarqube",
+                "code-coverage",
+                "jacoco",
+                "sonarqube-scan"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 9658678,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/dc0ec6994031ff2691b07727b5e0669d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Alban",
+                "link": "https://stackoverflow.com/users/9658678/alban"
+            },
+            "is_answered": false,
+            "view_count": 62,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1524151510,
+            "creation_date": 1523970493,
+            "question_id": 49879009,
+            "body_markdown": "I&#39;m trying to analyze java code with the SonarQube Scanner (version 3.1.0.1141).\r\n\r\n - SonarQube version : 5.6.6\r\n - Sonar Java plugin version : 4.12.0.11033\r\n - jacoco version : 0.8.0\r\n\r\nI have filled the sonar-project.properties with those properties :\r\n\r\n    # Sonar sources and metadata\r\n    sonar.language=java\r\n    sonar.sources=src/main\r\n    sonar.java.source=1.8\r\n    sonar.sourceEncoding=UTF-8\r\n    sonar.java.binaries=target/classes\r\n    sonar.java.libraries=target/lib\r\n    \r\n    sonar.tests=src/test\r\n    sonar.java.coveragePlugin=jacoco\r\n    sonar.junit.reportsPath=target/surefire-reports\r\n    sonar.surefire.reportsPath=target/surefire-reports\r\n\r\nWhile jacoco report gives me this result for one class :\r\n\r\n - Coverage : **84%**\r\n - Branch Coverage : **71%**\r\n - Missed : **9**\r\n - Complexity : **24**\r\n - Missed : **6**\r\n - Lines : **69**\r\n - Missed : **0**\r\n - Methods : **8**\r\n - Missed : **0**\r\n - Classes : **1**\r\n\r\n\r\nSonarQube displays the measures : \r\n\r\n - Condition coverage **62,5%**\r\n - Coverage **81,7%**\r\n - Line coverage **92,8%**\r\n - Lines to cover **69**\r\n - Overall condition coverage **62,5%**\r\n - Overall coverage **81,7%**\r\n - Overall line coverage **92,8%**\r\n - Overall uncovered branches **15**\r\n - Overall uncovered lines **5**\r\n - Uncovered branches **15**\r\n - Uncovered lines **5**\r\n\r\nAccording to the [sonar metric definition page][1], the sonar key for condition coverage is branch_coverage, so I thought condition and branch coverage are the same things.\r\n\r\nHow to explain the different results?\r\n\r\n\r\n  [1]: https://docs.sonarqube.org/display/SONAR/Metric+Definitions",
+            "link": "https://stackoverflow.com/questions/49879009/what-is-the-difference-between-jacoco-branch-coverage-and-sonar-condition-covera",
+            "title": "What is the difference between jacoco branch coverage and Sonar condition coverage?",
+            "body": "<p>I'm trying to analyze java code with the SonarQube Scanner (version 3.1.0.1141).</p>\n\n<ul>\n<li>SonarQube version : 5.6.6</li>\n<li>Sonar Java plugin version : 4.12.0.11033</li>\n<li>jacoco version : 0.8.0</li>\n</ul>\n\n<p>I have filled the sonar-project.properties with those properties :</p>\n\n<pre><code># Sonar sources and metadata\nsonar.language=java\nsonar.sources=src/main\nsonar.java.source=1.8\nsonar.sourceEncoding=UTF-8\nsonar.java.binaries=target/classes\nsonar.java.libraries=target/lib\n\nsonar.tests=src/test\nsonar.java.coveragePlugin=jacoco\nsonar.junit.reportsPath=target/surefire-reports\nsonar.surefire.reportsPath=target/surefire-reports\n</code></pre>\n\n<p>While jacoco report gives me this result for one class :</p>\n\n<ul>\n<li>Coverage : <strong>84%</strong></li>\n<li>Branch Coverage : <strong>71%</strong></li>\n<li>Missed : <strong>9</strong></li>\n<li>Complexity : <strong>24</strong></li>\n<li>Missed : <strong>6</strong></li>\n<li>Lines : <strong>69</strong></li>\n<li>Missed : <strong>0</strong></li>\n<li>Methods : <strong>8</strong></li>\n<li>Missed : <strong>0</strong></li>\n<li>Classes : <strong>1</strong></li>\n</ul>\n\n<p>SonarQube displays the measures : </p>\n\n<ul>\n<li>Condition coverage <strong>62,5%</strong></li>\n<li>Coverage <strong>81,7%</strong></li>\n<li>Line coverage <strong>92,8%</strong></li>\n<li>Lines to cover <strong>69</strong></li>\n<li>Overall condition coverage <strong>62,5%</strong></li>\n<li>Overall coverage <strong>81,7%</strong></li>\n<li>Overall line coverage <strong>92,8%</strong></li>\n<li>Overall uncovered branches <strong>15</strong></li>\n<li>Overall uncovered lines <strong>5</strong></li>\n<li>Uncovered branches <strong>15</strong></li>\n<li>Uncovered lines <strong>5</strong></li>\n</ul>\n\n<p>According to the <a href=\"https://docs.sonarqube.org/display/SONAR/Metric+Definitions\" rel=\"nofollow noreferrer\">sonar metric definition page</a>, the sonar key for condition coverage is branch_coverage, so I thought condition and branch coverage are the same things.</p>\n\n<p>How to explain the different results?</p>\n"
+        },
+        {
+            "tags": [
+                "android"
+            ],
+            "owner": {
+                "reputation": 2655,
+                "user_id": 532462,
+                "user_type": "registered",
+                "accept_rate": 81,
+                "profile_image": "https://www.gravatar.com/avatar/2c7a08f7f68faf7c3247fd5b1ad2b91a?s=128&d=identicon&r=PG",
+                "display_name": "turtleboy",
+                "link": "https://stackoverflow.com/users/532462/turtleboy"
+            },
+            "is_answered": true,
+            "view_count": 42444,
+            "accepted_answer_id": 25201516,
+            "answer_count": 11,
+            "score": 37,
+            "last_activity_date": 1524151501,
+            "creation_date": 1407493547,
+            "question_id": 25201349,
+            "body_markdown": "I have put my app on the Google Play Store. It has been installed by lots of my company&#39;s customers. I understand the mechanism of how the app is intended to upgrade.\r\n\r\nThe users should check the auto-update check box in the playstore app for each app they want to auto-update. However some users have unchecked it or not checked it in the first place.\r\n\r\nThe app i have written is for the care industry and is used by carers to deliver homecare. Some of our customers my have 1200 carers. They would have to call all the carers into the office to update the phones individually. This is obviously unacceptable.\r\n\r\nIs there a way to programmatically check if there is an updated version of my app on the Play Store?\r\n\r\nCould i have code that runs every time the user starts the app that checks the Play Store?\r\nIf there is an updated version then the user could be directed to the playstore. This will mean it is not essential to have the auto-update checked.\r\n\r\nThanks in advance\r\n\r\nMatt",
+            "link": "https://stackoverflow.com/questions/25201349/programmatically-check-play-store-for-app-updates",
+            "title": "Programmatically check Play Store for app updates",
+            "body": "<p>I have put my app on the Google Play Store. It has been installed by lots of my company's customers. I understand the mechanism of how the app is intended to upgrade.</p>\n\n<p>The users should check the auto-update check box in the playstore app for each app they want to auto-update. However some users have unchecked it or not checked it in the first place.</p>\n\n<p>The app i have written is for the care industry and is used by carers to deliver homecare. Some of our customers my have 1200 carers. They would have to call all the carers into the office to update the phones individually. This is obviously unacceptable.</p>\n\n<p>Is there a way to programmatically check if there is an updated version of my app on the Play Store?</p>\n\n<p>Could i have code that runs every time the user starts the app that checks the Play Store?\nIf there is an updated version then the user could be directed to the playstore. This will mean it is not essential to have the auto-update checked.</p>\n\n<p>Thanks in advance</p>\n\n<p>Matt</p>\n"
+        },
+        {
+            "tags": [
+                "typescript",
+                "webpack",
+                "angular5",
+                "2sxc"
+            ],
+            "owner": {
+                "reputation": 1124,
+                "user_id": 1761714,
+                "user_type": "registered",
+                "accept_rate": 91,
+                "profile_image": "https://www.gravatar.com/avatar/7695391a95b7253105e895600f0d1019?s=128&d=identicon&r=PG",
+                "display_name": "Christoph B&#252;hler",
+                "link": "https://stackoverflow.com/users/1761714/christoph-b%c3%bchler"
+            },
+            "is_answered": false,
+            "view_count": 621,
+            "answer_count": 1,
+            "score": 6,
+            "last_activity_date": 1524151498,
+            "creation_date": 1513612807,
+            "last_edit_date": 1513761119,
+            "question_id": 47872071,
+            "body_markdown": "I cannot compile my Angular 5 application using AOT (ng build --prod). What is the problem?\r\n\r\n&gt; Module not found: Error: Can&#39;t resolve &#39;./app/app.module.ngfactory&#39; in\r\n&gt; &#39;C:\\Projects\\app-dnn-sxc-angular-dev\\src&#39;  @ ./src/main.ts 3:0-66  @\r\n&gt; multi ./src/main.ts\r\n\r\nWe are developing this application to test our `dnn-sxc-angular` npm project with Angular 5. As soon as I import `ContentManagerModule` from `@2sic.com/dnn-sxc-angular`, the AOT build fails.\r\n\r\nI ran `node_modules/.bin/ngc.cmd` but no error appeared. Is there any way of debugging the build process or getting human readable error messages?\r\n\r\nThe demo app that breaks:\r\nhttps://github.com/2sic/app-dnn-sxc-angular-dev\r\n\r\n`dnn-sxc-angular` (worked with Angular 4):\r\nhttps://github.com/2sic/dnn-sxc-angular\r\n\r\n**Project Structure**\r\n[![enter image description here][1]][1]\r\n\r\n**My Environment:**\r\n\r\n - Windows 10\r\n - npm: 5.6.0\r\n - node: 8.9.3\r\n - angular cli (local and global): 1.6.1\r\n\r\n**The complete output of `webpack --bail`:**\r\n\r\n&gt; C:\\Projects\\app-dnn-sxc-angular-dev&gt;webpack --bail  11% building\r\n&gt; modules 9/9 modules 0 activeModuleNotFoundError: Module not found:\r\n&gt; Error: Can&#39;t resolve &#39;./app/app.module.ngfactory&#39; in\r\n&gt; &#39;C:\\Projects\\app-dnn-sxc-angular-dev\\src&#39;\r\n&gt;     at factoryCallback (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\lib\\Compilation.js:276:40)\r\n&gt;     at factory (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\lib\\NormalModuleFactory.js:235:20)\r\n&gt;     at resolver (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\lib\\NormalModuleFactory.js:60:20)\r\n&gt;     at asyncLib.parallel (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\lib\\NormalModuleFactory.js:127:20)\r\n&gt;     at C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\async\\dist\\async.js:3874:9\r\n&gt;     at C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\async\\dist\\async.js:473:16\r\n&gt;     at iteratorCallback (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\async\\dist\\async.js:1048:13)\r\n&gt;     at C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\async\\dist\\async.js:958:16\r\n&gt;     at C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\async\\dist\\async.js:3871:13\r\n&gt;     at resolvers.normal.resolve (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\lib\\NormalModuleFactory.js:119:22)\r\n&gt;     at onError (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\Resolver.js:65:10)\r\n&gt;     at loggingCallbackWrapper (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\createInnerCallback.js:31:19)\r\n&gt;     at runAfter (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\Resolver.js:158:4)\r\n&gt;     at innerCallback (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\Resolver.js:146:3)\r\n&gt;     at loggingCallbackWrapper (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\createInnerCallback.js:31:19)\r\n&gt;     at next (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\tapable\\lib\\Tapable.js:252:11)\r\n&gt;     at C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\UnsafeCachePlugin.js:40:4\r\n&gt;     at loggingCallbackWrapper (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\createInnerCallback.js:31:19)\r\n&gt;     at runAfter (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\Resolver.js:158:4)\r\n&gt;     at innerCallback (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\Resolver.js:146:3)\r\n&gt;     at loggingCallbackWrapper (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\createInnerCallback.js:31:19)\r\n&gt;     at next (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\tapable\\lib\\Tapable.js:252:11)\r\n&gt;     at innerCallback (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\Resolver.js:144:11)\r\n&gt;     at loggingCallbackWrapper (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\createInnerCallback.js:31:19)\r\n&gt;     at next (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\tapable\\lib\\Tapable.js:249:35)\r\n&gt;     at resolver.doResolve.createInnerCallback (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\DescriptionFilePlugin.js:44:6)\r\n&gt;     at loggingCallbackWrapper (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\createInnerCallback.js:31:19)\r\n&gt;     at afterInnerCallback (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\Resolver.js:168:10)\r\n&gt;     at loggingCallbackWrapper (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\createInnerCallback.js:31:19)\r\n&gt;     at next (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\tapable\\lib\\Tapable.js:252:11)\r\n&gt; resolve &#39;./app/app.module.ngfactory&#39; in\r\n&gt; &#39;C:\\Projects\\app-dnn-sxc-angular-dev\\src&#39;   using description file:\r\n&gt; C:\\Projects\\app-dnn-sxc-angular-dev\\package.json (relative path:\r\n&gt; ./src)\r\n&gt;     Field &#39;browser&#39; doesn&#39;t contain a valid alias configuration   after using description file:\r\n&gt; C:\\Projects\\app-dnn-sxc-angular-dev\\package.json (relative path:\r\n&gt; ./src)\r\n&gt;     using description file: C:\\Projects\\app-dnn-sxc-angular-dev\\package.json (relative path:\r\n&gt; ./src/app/app.module.ngfactory)\r\n&gt;       no extension\r\n&gt;         Field &#39;browser&#39; doesn&#39;t contain a valid alias configuration\r\n&gt;         C:\\Projects\\app-dnn-sxc-angular-dev\\src\\app\\app.module.ngfactory\r\n&gt; doesn&#39;t exist\r\n&gt;       .ts\r\n&gt;         Field &#39;browser&#39; doesn&#39;t contain a valid alias configuration\r\n&gt;         C:\\Projects\\app-dnn-sxc-angular-dev\\src\\app\\app.module.ngfactory.ts\r\n&gt; doesn&#39;t exist\r\n&gt;       .js\r\n&gt;         Field &#39;browser&#39; doesn&#39;t contain a valid alias configuration\r\n&gt;         C:\\Projects\\app-dnn-sxc-angular-dev\\src\\app\\app.module.ngfactory.js\r\n&gt; doesn&#39;t exist\r\n&gt;       as directory\r\n&gt;         C:\\Projects\\app-dnn-sxc-angular-dev\\src\\app\\app.module.ngfactory\r\n&gt; doesn&#39;t exist\r\n&gt; \r\n&gt; C:\\Projects\\app-dnn-sxc-angular-dev&gt;\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/E69Iw.png",
+            "link": "https://stackoverflow.com/questions/47872071/module-not-found-error-cant-resolve-app-app-module-ngfactory",
+            "title": "Module not found: Error: Can&#39;t resolve &#39;./app/app.module.ngfactory&#39;",
+            "body": "<p>I cannot compile my Angular 5 application using AOT (ng build --prod). What is the problem?</p>\n\n<blockquote>\n  <p>Module not found: Error: Can't resolve './app/app.module.ngfactory' in\n  'C:\\Projects\\app-dnn-sxc-angular-dev\\src'  @ ./src/main.ts 3:0-66  @\n  multi ./src/main.ts</p>\n</blockquote>\n\n<p>We are developing this application to test our <code>dnn-sxc-angular</code> npm project with Angular 5. As soon as I import <code>ContentManagerModule</code> from <code>@2sic.com/dnn-sxc-angular</code>, the AOT build fails.</p>\n\n<p>I ran <code>node_modules/.bin/ngc.cmd</code> but no error appeared. Is there any way of debugging the build process or getting human readable error messages?</p>\n\n<p>The demo app that breaks:\n<a href=\"https://github.com/2sic/app-dnn-sxc-angular-dev\" rel=\"nofollow noreferrer\">https://github.com/2sic/app-dnn-sxc-angular-dev</a></p>\n\n<p><code>dnn-sxc-angular</code> (worked with Angular 4):\n<a href=\"https://github.com/2sic/dnn-sxc-angular\" rel=\"nofollow noreferrer\">https://github.com/2sic/dnn-sxc-angular</a></p>\n\n<p><strong>Project Structure</strong>\n<a href=\"https://i.stack.imgur.com/E69Iw.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/E69Iw.png\" alt=\"enter image description here\"></a></p>\n\n<p><strong>My Environment:</strong></p>\n\n<ul>\n<li>Windows 10</li>\n<li>npm: 5.6.0</li>\n<li>node: 8.9.3</li>\n<li>angular cli (local and global): 1.6.1</li>\n</ul>\n\n<p><strong>The complete output of <code>webpack --bail</code>:</strong></p>\n\n<blockquote>\n  <p>C:\\Projects\\app-dnn-sxc-angular-dev>webpack --bail  11% building\n  modules 9/9 modules 0 activeModuleNotFoundError: Module not found:\n  Error: Can't resolve './app/app.module.ngfactory' in\n  'C:\\Projects\\app-dnn-sxc-angular-dev\\src'\n      at factoryCallback (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\lib\\Compilation.js:276:40)\n      at factory (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\lib\\NormalModuleFactory.js:235:20)\n      at resolver (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\lib\\NormalModuleFactory.js:60:20)\n      at asyncLib.parallel (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\lib\\NormalModuleFactory.js:127:20)\n      at C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\async\\dist\\async.js:3874:9\n      at C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\async\\dist\\async.js:473:16\n      at iteratorCallback (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\async\\dist\\async.js:1048:13)\n      at C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\async\\dist\\async.js:958:16\n      at C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\async\\dist\\async.js:3871:13\n      at resolvers.normal.resolve (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\lib\\NormalModuleFactory.js:119:22)\n      at onError (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\Resolver.js:65:10)\n      at loggingCallbackWrapper (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\createInnerCallback.js:31:19)\n      at runAfter (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\Resolver.js:158:4)\n      at innerCallback (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\Resolver.js:146:3)\n      at loggingCallbackWrapper (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\createInnerCallback.js:31:19)\n      at next (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\tapable\\lib\\Tapable.js:252:11)\n      at C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\UnsafeCachePlugin.js:40:4\n      at loggingCallbackWrapper (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\createInnerCallback.js:31:19)\n      at runAfter (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\Resolver.js:158:4)\n      at innerCallback (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\Resolver.js:146:3)\n      at loggingCallbackWrapper (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\createInnerCallback.js:31:19)\n      at next (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\tapable\\lib\\Tapable.js:252:11)\n      at innerCallback (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\Resolver.js:144:11)\n      at loggingCallbackWrapper (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\createInnerCallback.js:31:19)\n      at next (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\tapable\\lib\\Tapable.js:249:35)\n      at resolver.doResolve.createInnerCallback (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\DescriptionFilePlugin.js:44:6)\n      at loggingCallbackWrapper (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\createInnerCallback.js:31:19)\n      at afterInnerCallback (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\Resolver.js:168:10)\n      at loggingCallbackWrapper (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\webpack\\node_modules\\enhanced-resolve\\lib\\createInnerCallback.js:31:19)\n      at next (C:\\Projects\\app-dnn-sxc-angular-dev\\node_modules\\tapable\\lib\\Tapable.js:252:11)\n  resolve './app/app.module.ngfactory' in\n  'C:\\Projects\\app-dnn-sxc-angular-dev\\src'   using description file:\n  C:\\Projects\\app-dnn-sxc-angular-dev\\package.json (relative path:\n  ./src)\n      Field 'browser' doesn't contain a valid alias configuration   after using description file:\n  C:\\Projects\\app-dnn-sxc-angular-dev\\package.json (relative path:\n  ./src)\n      using description file: C:\\Projects\\app-dnn-sxc-angular-dev\\package.json (relative path:\n  ./src/app/app.module.ngfactory)\n        no extension\n          Field 'browser' doesn't contain a valid alias configuration\n          C:\\Projects\\app-dnn-sxc-angular-dev\\src\\app\\app.module.ngfactory\n  doesn't exist\n        .ts\n          Field 'browser' doesn't contain a valid alias configuration\n          C:\\Projects\\app-dnn-sxc-angular-dev\\src\\app\\app.module.ngfactory.ts\n  doesn't exist\n        .js\n          Field 'browser' doesn't contain a valid alias configuration\n          C:\\Projects\\app-dnn-sxc-angular-dev\\src\\app\\app.module.ngfactory.js\n  doesn't exist\n        as directory\n          C:\\Projects\\app-dnn-sxc-angular-dev\\src\\app\\app.module.ngfactory\n  doesn't exist</p>\n  \n  <p>C:\\Projects\\app-dnn-sxc-angular-dev></p>\n</blockquote>\n"
+        },
+        {
+            "tags": [
+                "solr"
+            ],
+            "owner": {
+                "reputation": 66,
+                "user_id": 9074574,
+                "user_type": "registered",
+                "accept_rate": 77,
+                "profile_image": "https://i.stack.imgur.com/0T96t.jpg?s=128&g=1",
+                "display_name": "Choix",
+                "link": "https://stackoverflow.com/users/9074574/choix"
+            },
+            "is_answered": true,
+            "view_count": 38,
+            "accepted_answer_id": 49924785,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524151495,
+            "creation_date": 1523761405,
+            "last_edit_date": 1523792153,
+            "question_id": 49838111,
+            "body_markdown": "I need to add all documents in a folder to collection and it failed:\r\n\r\nHere is my command:\r\n\r\n    hostname: mysolr\r\n    Solr Admin URL: http://mysolr.net:8983/solr/#/\r\n    Collection name: collection_indexer\r\n    Collection url: http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1\r\n\r\ndata folder: \r\n\r\n    /tmp/solr_data\r\n\r\nRunning folder:\r\n\r\n    bash-4.1$ pwd\r\n    /opt/cloudera/parcels/CDH/jars\r\n\r\n\r\ncommand: \r\n\r\n    java -Dtype=application/json -Drecursive -Durl=&quot;http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs&quot; -jar post.jar /tmp/solr_data\r\n\r\n\r\nOutput:\r\n\r\n&gt; bash-4.1$ java -Dtype=application/json -Drecursive\r\n&gt; -Durl=&quot;http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs&quot;\r\n&gt; -jar post.jar /tmp/solr_data SimplePostTool version 1.5 Posting files to base url\r\n&gt; http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs\r\n&gt; using content-type application/json.. Entering recursive mode, max\r\n&gt; depth=999, delay=0s Indexing directory /tmp/solr_data (1 files,\r\n&gt; depth=0) POSTing file test.json SimplePostTool: WARNING: Solr returned\r\n&gt; an error #405 (Method Not Allowed) for url:\r\n&gt; http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs\r\n&gt; SimplePostTool: WARNING: Response: &lt;html&gt;&lt;head&gt;&lt;title&gt;Apache\r\n&gt; Tomcat/6.0.45 - Error report&lt;/title&gt;&lt;style&gt;&lt;!--H1\r\n&gt; {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;font-size:22px;}\r\n&gt; H2\r\n&gt; {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;font-size:16px;}\r\n&gt; H3\r\n&gt; {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;font-size:14px;}\r\n&gt; BODY\r\n&gt; {font-family:Tahoma,Arial,sans-serif;color:black;background-color:white;}\r\n&gt; B\r\n&gt; {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;} P\r\n&gt; {font-family:Tahoma,Arial,sans-serif;background:white;color:black;font-size:12px;}A\r\n&gt; {color : black;}A.name {color : black;}HR {color :\r\n&gt; #525D76;}--&gt;&lt;/style&gt; &lt;/head&gt;&lt;body&gt;&lt;h1&gt;HTTP Status 405 - HTTP method POST is not supported by this URL&lt;/h1&gt;&lt;HR size=&quot;1&quot;\r\n&gt; noshade=&quot;noshade&quot;&gt;&lt;p&gt;&lt;b&gt;type&lt;/b&gt; Status report&lt;/p&gt;&lt;p&gt;&lt;b&gt;message&lt;/b&gt;\r\n&gt; &lt;u&gt;HTTP method POST is not supported by this\r\n&gt; URL&lt;/u&gt;&lt;/p&gt;&lt;p&gt;&lt;b&gt;description&lt;/b&gt; &lt;u&gt;The specified HTTP method is not\r\n&gt; allowed for the requested resource.&lt;/u&gt;&lt;/p&gt;&lt;HR size=&quot;1&quot;\r\n&gt; noshade=&quot;noshade&quot;&gt;&lt;h3&gt;Apache Tomcat/6.0.45&lt;/h3&gt;&lt;/body&gt;&lt;/html&gt;\r\n&gt; SimplePostTool: WARNING: IOException while reading response:\r\n&gt; java.io.IOException: Server returned HTTP response code: 405 for URL:\r\n&gt; http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs\r\n&gt; 1 files indexed. COMMITting Solr index changes to\r\n&gt; http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs..\r\n&gt; Time spent: 0:00:00.100\r\n\r\nI also tried: http://mysolr.net:8983/solr/#/collection_indexer/update/json/docs as the Durl and got same error message.\r\n\r\nNote the end of error message seems to give hint that the error pertains to the url or REST, can you please clarify what is missing here?\r\n\r\nThank you very much.\r\n\r\n**Update 20180415 7:07am EST:**\r\n\r\nFollowing MatsLindh&#39;s comment below, I made change to the command and ran again with the new command\r\n\r\n    java -Dtype=application/json -Drecursive -Durl=&quot;http://dsnyr001d01i1d.nam.nsroot.net:8983/solr/collection_indexer_shard1_replica1/update&quot; -jar post.jar /tmp/solr_data\r\n\r\n&gt; SimplePostTool version 1.5 Posting files to base url\r\n&gt; http://mysolr.net:8983/solr/collection_indexer_shard1_replica1/update\r\n&gt; using content-type application/json.. Entering recursive mode, max\r\n&gt; depth=999, delay=0s Indexing directory /tmp/solr_data (1 files,\r\n&gt; depth=0) POSTing file test.json SimplePostTool: WARNING: Solr returned\r\n&gt; an error #400 (Bad Request) for url:\r\n&gt; http://mysolr.net:8983/solr/collection_indexer_shard1_replica1/update\r\n&gt; SimplePostTool: WARNING: Response:\r\n&gt; {&quot;responseHeader&quot;:{&quot;status&quot;:400,&quot;QTime&quot;:0},&quot;error&quot;:{&quot;metadata&quot;:[&quot;error-class&quot;,&quot;org.apache.solr.common.SolrException&quot;,&quot;root-error-class&quot;,&quot;org.apache.solr.common.SolrException&quot;],&quot;msg&quot;:&quot;Unknown\r\n&gt; command: region [9]&quot;,&quot;code&quot;:400}} SimplePostTool: WARNING: IOException\r\n&gt; while reading response: java.io.IOException: Server returned HTTP\r\n&gt; response code: 400 for URL:\r\n&gt; http://mysolr.net:8983/solr/collection_indexer_shard1_replica1/update\r\n&gt; 1 files indexed. COMMITting Solr index changes to\r\n&gt; http://mysolr.net:8983/solr/collection_indexer_shard1_replica1/update..\r\n&gt; Time spent: 0:00:00.100\r\n\r\nThis time it is 400 error.\r\n\r\nFrom Solr Admin I still do not see the new document is added.\r\n\r\nThank you.\r\n",
+            "link": "https://stackoverflow.com/questions/49838111/adding-document-to-collection-failed-in-solr-cloud-mode",
+            "title": "adding document to collection failed in Solr cloud mode",
+            "body": "<p>I need to add all documents in a folder to collection and it failed:</p>\n\n<p>Here is my command:</p>\n\n<pre><code>hostname: mysolr\nSolr Admin URL: http://mysolr.net:8983/solr/#/\nCollection name: collection_indexer\nCollection url: http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1\n</code></pre>\n\n<p>data folder: </p>\n\n<pre><code>/tmp/solr_data\n</code></pre>\n\n<p>Running folder:</p>\n\n<pre><code>bash-4.1$ pwd\n/opt/cloudera/parcels/CDH/jars\n</code></pre>\n\n<p>command: </p>\n\n<pre><code>java -Dtype=application/json -Drecursive -Durl=\"http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs\" -jar post.jar /tmp/solr_data\n</code></pre>\n\n<p>Output:</p>\n\n<blockquote>\n  <p>bash-4.1$ java -Dtype=application/json -Drecursive\n  -Durl=\"http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs\"\n  -jar post.jar /tmp/solr_data SimplePostTool version 1.5 Posting files to base url\n  <a href=\"http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs\" rel=\"nofollow noreferrer\">http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs</a>\n  using content-type application/json.. Entering recursive mode, max\n  depth=999, delay=0s Indexing directory /tmp/solr_data (1 files,\n  depth=0) POSTing file test.json SimplePostTool: WARNING: Solr returned\n  an error #405 (Method Not Allowed) for url:\n  <a href=\"http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs\" rel=\"nofollow noreferrer\">http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs</a>\n  SimplePostTool: WARNING: Response: Apache\n  Tomcat/6.0.45 - Error report\n  \n  <h1>525D76;}--> HTTP Status 405 - HTTP method POST is not supported by this URL</h1>\n  \n  <p>noshade=\"noshade\"><p><b>type</b> Status report</p><p><b>message</b>\n  HTTP method POST is not supported by this\n  URL</p><p><b>description</b> The specified HTTP method is not\n  allowed for the requested resource.</p><h3>Apache Tomcat/6.0.45</h3>\n  SimplePostTool: WARNING: IOException while reading response:\n  java.io.IOException: Server returned HTTP response code: 405 for URL:\n  <a href=\"http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs\" rel=\"nofollow noreferrer\">http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs</a>\n  1 files indexed. COMMITting Solr index changes to\n  <a href=\"http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs\" rel=\"nofollow noreferrer\">http://mysolr.net:8983/solr/#/collection_indexer_shard1_replica1/update/json/docs</a>..\n  Time spent: 0:00:00.100</p>\n</blockquote>\n\n<p>I also tried: <a href=\"http://mysolr.net:8983/solr/#/collection_indexer/update/json/docs\" rel=\"nofollow noreferrer\">http://mysolr.net:8983/solr/#/collection_indexer/update/json/docs</a> as the Durl and got same error message.</p>\n\n<p>Note the end of error message seems to give hint that the error pertains to the url or REST, can you please clarify what is missing here?</p>\n\n<p>Thank you very much.</p>\n\n<p><strong>Update 20180415 7:07am EST:</strong></p>\n\n<p>Following MatsLindh's comment below, I made change to the command and ran again with the new command</p>\n\n<pre><code>java -Dtype=application/json -Drecursive -Durl=\"http://dsnyr001d01i1d.nam.nsroot.net:8983/solr/collection_indexer_shard1_replica1/update\" -jar post.jar /tmp/solr_data\n</code></pre>\n\n<blockquote>\n  <p>SimplePostTool version 1.5 Posting files to base url\n  <a href=\"http://mysolr.net:8983/solr/collection_indexer_shard1_replica1/update\" rel=\"nofollow noreferrer\">http://mysolr.net:8983/solr/collection_indexer_shard1_replica1/update</a>\n  using content-type application/json.. Entering recursive mode, max\n  depth=999, delay=0s Indexing directory /tmp/solr_data (1 files,\n  depth=0) POSTing file test.json SimplePostTool: WARNING: Solr returned\n  an error #400 (Bad Request) for url:\n  <a href=\"http://mysolr.net:8983/solr/collection_indexer_shard1_replica1/update\" rel=\"nofollow noreferrer\">http://mysolr.net:8983/solr/collection_indexer_shard1_replica1/update</a>\n  SimplePostTool: WARNING: Response:\n  {\"responseHeader\":{\"status\":400,\"QTime\":0},\"error\":{\"metadata\":[\"error-class\",\"org.apache.solr.common.SolrException\",\"root-error-class\",\"org.apache.solr.common.SolrException\"],\"msg\":\"Unknown\n  command: region [9]\",\"code\":400}} SimplePostTool: WARNING: IOException\n  while reading response: java.io.IOException: Server returned HTTP\n  response code: 400 for URL:\n  <a href=\"http://mysolr.net:8983/solr/collection_indexer_shard1_replica1/update\" rel=\"nofollow noreferrer\">http://mysolr.net:8983/solr/collection_indexer_shard1_replica1/update</a>\n  1 files indexed. COMMITting Solr index changes to\n  <a href=\"http://mysolr.net:8983/solr/collection_indexer_shard1_replica1/update\" rel=\"nofollow noreferrer\">http://mysolr.net:8983/solr/collection_indexer_shard1_replica1/update</a>..\n  Time spent: 0:00:00.100</p>\n</blockquote>\n\n<p>This time it is 400 error.</p>\n\n<p>From Solr Admin I still do not see the new document is added.</p>\n\n<p>Thank you.</p>\n"
+        },
+        {
+            "tags": [
+                "angularjs",
+                "modal-dialog"
+            ],
+            "owner": {
+                "reputation": 7,
+                "user_id": 6528261,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3e1b9e9488617ee98ef4c23745eea101?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Mads",
+                "link": "https://stackoverflow.com/users/6528261/mads"
+            },
+            "is_answered": false,
+            "view_count": 33,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524151494,
+            "creation_date": 1524144976,
+            "question_id": 49922505,
+            "body_markdown": "I&#39;m in a AngularJS learning-by-doing stage, and this I can not figure out nor been able to find an answer for.\r\n\r\nWhat I&#39;m doing:\r\n\r\nOn ng-click I call a function in my controller, that $http-loads html-content (some divs and a form), that I &quot;paste&quot; to my ng-bind-html inside a div in my template.\r\n\r\nThat&#39;s working fine - but my problem is, that I&#39;m not able to set values to the ng-models or {{someText}} in the loaded data. I get &quot;undefined&quot; on the elements inside the div (a modal-div with random content and therefore not a static part of my template).\r\n\r\nI&#39;m not using Bootstrap or anything similar.\r\n\r\nWhat can I do to make the data a part of my scope - or to achieve what I want in another way (a modal div with random content)?\r\n\r\nI can post some code, if that&#39;s any help to you. And when you answer please remember, I&#39;m a totally newbie! :-)",
+            "link": "https://stackoverflow.com/questions/49922505/angularjs-popup-modal-content",
+            "title": "Angularjs popup/modal content",
+            "body": "<p>I'm in a AngularJS learning-by-doing stage, and this I can not figure out nor been able to find an answer for.</p>\n\n<p>What I'm doing:</p>\n\n<p>On ng-click I call a function in my controller, that $http-loads html-content (some divs and a form), that I \"paste\" to my ng-bind-html inside a div in my template.</p>\n\n<p>That's working fine - but my problem is, that I'm not able to set values to the ng-models or {{someText}} in the loaded data. I get \"undefined\" on the elements inside the div (a modal-div with random content and therefore not a static part of my template).</p>\n\n<p>I'm not using Bootstrap or anything similar.</p>\n\n<p>What can I do to make the data a part of my scope - or to achieve what I want in another way (a modal div with random content)?</p>\n\n<p>I can post some code, if that's any help to you. And when you answer please remember, I'm a totally newbie! :-)</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "visual-studio-2015",
+                "oxyplot"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9669985,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Ryan Moise",
+                "link": "https://stackoverflow.com/users/9669985/ryan-moise"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524151493,
+            "creation_date": 1524144658,
+            "last_edit_date": 1524151493,
+            "question_id": 49922391,
+            "body_markdown": "I&#39;m building an application that is meant to plot both historical data and current data (updated every 10 seconds) onto my OxyPlot PlotModel. For the sake of this question, I am displaying Speed over time.\r\n\r\nWhen the program is run it plots the speed every 10 seconds and those plots are also stored in an SQLite database so that upon starting up the application again they can be used as historical data. My issue is that when the time span between points is too large the line between the points is distorted like so: https://ibb.co/fL9UGn . Here is a closer image https://ibb.co/kxArU7 . \r\n\r\nI know this is a visal bug of some sort because I plot historic data in order of the Date and when I zoom in close enough the issue diappears: https://ibb.co/bza3bn \r\n\r\nHere is the code I am using to read from the DB and plot the points:\r\n\r\n\r\n    private void historicalGraph()\r\n        {\r\n            connectToDB();\r\n            string sqlSelect = &quot;select XValue, YValue from &#39;FlowRate&#39; Order By XValue ASC&quot;;\r\n            SQLiteCommand command = new SQLiteCommand(sqlSelect, m_dbConnection);\r\n            SQLiteDataReader reader = command.ExecuteReader();\r\n            Console.Write(reader);\r\n            var linePoints = new LineSeries { };\r\n            linePoints.Smooth = true;\r\n\r\n                while (reader.Read())\r\n                {\r\n                    //MessageBox.Show(reader.GetString(0), reader.GetString(1));\r\n                    var XValue = DateTime.ParseExact(reader.GetString(0), &quot;MM/dd/yyyy hh:mm:ss tt&quot;, null);\r\n                    var xValue = DateTimeAxis.ToDouble(XValue);\r\n                    var YValue = reader.GetString(1);\r\n                    var yValue = Convert.ToDouble(YValue);\r\n                    //MessageBox.Show(yValue.ToString())\r\n                    linePoints.Points.Add(new DataPoint(xValue, yValue));\r\n                }\r\n                DataPlot.Series.Add(linePoints);\r\n                DataPlot.InvalidatePlot(true);\r\n\r\n                MessageBox.Show(&quot;Stopped reading&quot;);\r\n            closeDB();\r\n        }\r\nDoes anyone know how to rectify this?\r\nThanks",
+            "link": "https://stackoverflow.com/questions/49922391/why-is-my-oxyplot-lineseries-rubberbanding-across-my-plotmodel-when-zommed-out",
+            "title": "Why is my Oxyplot Lineseries rubberbanding across my PlotModel when zommed out?",
+            "body": "<p>I'm building an application that is meant to plot both historical data and current data (updated every 10 seconds) onto my OxyPlot PlotModel. For the sake of this question, I am displaying Speed over time.</p>\n\n<p>When the program is run it plots the speed every 10 seconds and those plots are also stored in an SQLite database so that upon starting up the application again they can be used as historical data. My issue is that when the time span between points is too large the line between the points is distorted like so: <a href=\"https://ibb.co/fL9UGn\" rel=\"nofollow noreferrer\">https://ibb.co/fL9UGn</a> . Here is a closer image <a href=\"https://ibb.co/kxArU7\" rel=\"nofollow noreferrer\">https://ibb.co/kxArU7</a> . </p>\n\n<p>I know this is a visal bug of some sort because I plot historic data in order of the Date and when I zoom in close enough the issue diappears: <a href=\"https://ibb.co/bza3bn\" rel=\"nofollow noreferrer\">https://ibb.co/bza3bn</a> </p>\n\n<p>Here is the code I am using to read from the DB and plot the points:</p>\n\n<pre><code>private void historicalGraph()\n    {\n        connectToDB();\n        string sqlSelect = \"select XValue, YValue from 'FlowRate' Order By XValue ASC\";\n        SQLiteCommand command = new SQLiteCommand(sqlSelect, m_dbConnection);\n        SQLiteDataReader reader = command.ExecuteReader();\n        Console.Write(reader);\n        var linePoints = new LineSeries { };\n        linePoints.Smooth = true;\n\n            while (reader.Read())\n            {\n                //MessageBox.Show(reader.GetString(0), reader.GetString(1));\n                var XValue = DateTime.ParseExact(reader.GetString(0), \"MM/dd/yyyy hh:mm:ss tt\", null);\n                var xValue = DateTimeAxis.ToDouble(XValue);\n                var YValue = reader.GetString(1);\n                var yValue = Convert.ToDouble(YValue);\n                //MessageBox.Show(yValue.ToString())\n                linePoints.Points.Add(new DataPoint(xValue, yValue));\n            }\n            DataPlot.Series.Add(linePoints);\n            DataPlot.InvalidatePlot(true);\n\n            MessageBox.Show(\"Stopped reading\");\n        closeDB();\n    }\n</code></pre>\n\n<p>Does anyone know how to rectify this?\nThanks</p>\n"
+        },
+        {
+            "tags": [
+                "caching",
+                "architecture",
+                "cache-control",
+                "3-tier"
+            ],
+            "owner": {
+                "reputation": 447,
+                "user_id": 1726318,
+                "user_type": "registered",
+                "accept_rate": 30,
+                "profile_image": "https://www.gravatar.com/avatar/f21d19adf40bc3587ef97aeadff68dc4?s=128&d=identicon&r=PG",
+                "display_name": "Niklaus Wirth",
+                "link": "https://stackoverflow.com/users/1726318/niklaus-wirth"
+            },
+            "is_answered": true,
+            "view_count": 22,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1524151489,
+            "creation_date": 1524138706,
+            "question_id": 49920443,
+            "body_markdown": "I&#39;m planing topology of enterprise application according to 3-tier architecture, my solution contains caching server (Redis) in order to manage cached data.\r\n\r\nWhat is the best tier to host the Caching Server in? Business Tier or Data Tier, and why?",
+            "link": "https://stackoverflow.com/questions/49920443/caching-server-in-multi-tire-architecture",
+            "title": "Caching server in multi-tire architecture",
+            "body": "<p>I'm planing topology of enterprise application according to 3-tier architecture, my solution contains caching server (Redis) in order to manage cached data.</p>\n\n<p>What is the best tier to host the Caching Server in? Business Tier or Data Tier, and why?</p>\n"
+        },
+        {
+            "tags": [
+                "sas"
+            ],
+            "owner": {
+                "reputation": 35,
+                "user_id": 4865389,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/62e84e7122fca2e237b77fc551eb4c2c?s=128&d=identicon&r=PG&f=1",
+                "display_name": "janez_007",
+                "link": "https://stackoverflow.com/users/4865389/janez-007"
+            },
+            "is_answered": true,
+            "view_count": 19,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1524151481,
+            "creation_date": 1524149305,
+            "question_id": 49924020,
+            "body_markdown": "Is there a way to import the first sheet from an excel file, without specifying the name of the sheet.\r\n\r\n    PROC IMPORT  \r\n      DATAFILE= &quot;filePath\\fileName.xlsx&quot; \r\n      DBMS=EXCEL REPLACE\r\n      OUT= _fileName_OUT.;\r\n      SHEET = &#39;sheetName&#39;;\r\n      GETNAMES=YES;\r\n      MIXED=NO;\r\n      SCANTEXT=YES;\r\n      USEDATE=YES;\r\n      SCANTIME=YES;\r\n    RUN;\r\n\r\nSo instead of using the &quot;sheetName&quot; parameter, I am looking for a generic term that would specify that it should be the first sheet in the excel file.",
+            "link": "https://stackoverflow.com/questions/49924020/sas-proc-import-excel-first-sheet",
+            "title": "SAS - proc import excel - first sheet",
+            "body": "<p>Is there a way to import the first sheet from an excel file, without specifying the name of the sheet.</p>\n\n<pre><code>PROC IMPORT  \n  DATAFILE= \"filePath\\fileName.xlsx\" \n  DBMS=EXCEL REPLACE\n  OUT= _fileName_OUT.;\n  SHEET = 'sheetName';\n  GETNAMES=YES;\n  MIXED=NO;\n  SCANTEXT=YES;\n  USEDATE=YES;\n  SCANTIME=YES;\nRUN;\n</code></pre>\n\n<p>So instead of using the \"sheetName\" parameter, I am looking for a generic term that would specify that it should be the first sheet in the excel file.</p>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "oracle",
+                "external-tables"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 8502194,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/275c4e26b0ab83c3235309c32c7c6970?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Mohsin Alvi",
+                "link": "https://stackoverflow.com/users/8502194/mohsin-alvi"
+            },
+            "is_answered": false,
+            "view_count": 411,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524151481,
+            "creation_date": 1508427723,
+            "last_edit_date": 1508432560,
+            "question_id": 46833791,
+            "body_markdown": "I have a file that contains tab delimited data. Something like the following\r\n\r\n    id    f_name    l_name    m_name    dob        add_date  \r\n\r\n    100   john      smith     r         19880212   20161010  \r\n \r\n    102   micheal   ford                19920707   20161010  \r\n\r\nI use the following script to load data through `external table`  \r\n\r\n    CREATE TABLE student_info(ID NUMBER, F_NAME VARCHAR2(200 BYTE),\r\n        L_NAME VARCHAR2(200 BYTE),\r\n        M_NAME VARCHAR2(200 BYTE),\r\n        DOB DATE, ADD_DATE DATE) \r\n    ORGANIZATION EXTERNAL(TYPE ORACLE_LOADER \r\n                          DEFAULT DIRECTORY DATA_FILE_DIR \r\n                          ACCESS PARAMETERS(RECORDS DELIMITED BY NEWLINE \r\n                                       BADFILE bad_file_dir: &#39;STUDENT_COMP_INFO.bad&#39;\r\n                                       LOGFILE log_file_dir: &#39;STUDENT_COMP_INFO.log&#39;\r\n                                       SKIP 1 FIELDS TERMINATED BY 0X &#39;09&#39;\r\n                                         OPTIONALLY ENCLOSED BY &#39;&quot;&#39;\r\n        LRTRIM MISSING FIELD VALUES ARE NULL) LOCATION(FILE_DIR: &#39;STUDENT_COMP_INFO.txt&#39;)) REJECT\r\n    LIMIT\r\n    UNLIMITED;\r\n\r\nData load successfully in the data but when I select the data from the table I am getting the following output.  \r\n\r\n    SELECT * FROM STUDENT_INFO  \r\n\r\n    &#39;ID&#39;   &#39;F_NAME&#39;   &#39;L_NAME&#39;   &#39;M_NAME&#39;     &#39;DOB&#39;       &#39;ADD_DATE&#39;  \r\n\r\n    &#39;100&#39;  &#39;john&#39;     &#39;smith&#39;    &#39;r&#39;          &#39;19880212&#39;  &#39;20161010&#39;  \r\n\r\n    &#39;102&#39;  &#39;micheal&#39;  &#39;ford&#39;     &#39;19920707&#39;   &#39;20161010&#39;    \r\n\r\n\r\nSo basically it won&#39;t consider the `Null` values. How can I properly load values in each fields even though if it is `Null`? Thanks in advance.   \r\n\r\n",
+            "link": "https://stackoverflow.com/questions/46833791/external-table-using-tab-delimited-file",
+            "title": "External table using tab delimited file",
+            "body": "<p>I have a file that contains tab delimited data. Something like the following</p>\n\n<pre><code>id    f_name    l_name    m_name    dob        add_date  \n\n100   john      smith     r         19880212   20161010  \n\n102   micheal   ford                19920707   20161010  \n</code></pre>\n\n<p>I use the following script to load data through <code>external table</code>  </p>\n\n<pre><code>CREATE TABLE student_info(ID NUMBER, F_NAME VARCHAR2(200 BYTE),\n    L_NAME VARCHAR2(200 BYTE),\n    M_NAME VARCHAR2(200 BYTE),\n    DOB DATE, ADD_DATE DATE) \nORGANIZATION EXTERNAL(TYPE ORACLE_LOADER \n                      DEFAULT DIRECTORY DATA_FILE_DIR \n                      ACCESS PARAMETERS(RECORDS DELIMITED BY NEWLINE \n                                   BADFILE bad_file_dir: 'STUDENT_COMP_INFO.bad'\n                                   LOGFILE log_file_dir: 'STUDENT_COMP_INFO.log'\n                                   SKIP 1 FIELDS TERMINATED BY 0X '09'\n                                     OPTIONALLY ENCLOSED BY '\"'\n    LRTRIM MISSING FIELD VALUES ARE NULL) LOCATION(FILE_DIR: 'STUDENT_COMP_INFO.txt')) REJECT\nLIMIT\nUNLIMITED;\n</code></pre>\n\n<p>Data load successfully in the data but when I select the data from the table I am getting the following output.  </p>\n\n<pre><code>SELECT * FROM STUDENT_INFO  \n\n'ID'   'F_NAME'   'L_NAME'   'M_NAME'     'DOB'       'ADD_DATE'  \n\n'100'  'john'     'smith'    'r'          '19880212'  '20161010'  \n\n'102'  'micheal'  'ford'     '19920707'   '20161010'    \n</code></pre>\n\n<p>So basically it won't consider the <code>Null</code> values. How can I properly load values in each fields even though if it is <code>Null</code>? Thanks in advance.   </p>\n"
+        },
+        {
+            "tags": [
+                "drupal"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 7300788,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/d4fcd8ee57ac634406b1734194a01f45?s=128&d=identicon&r=PG&f=1",
+                "display_name": "lavender",
+                "link": "https://stackoverflow.com/users/7300788/lavender"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524151479,
+            "creation_date": 1507541522,
+            "question_id": 46643158,
+            "body_markdown": "I run another dupal site in docker with ddev,but the sitename can&#39;t same with the old site in my machine,even I change the old site name.even I remove the code,I also can&#39;t use the name I used.I must use a new name that I never used.\r\nI don&#39;t know why,and how to solve it when I use same name If I don&#39;t want change new site name,how can I remove the old site clear.",
+            "link": "https://stackoverflow.com/questions/46643158/use-ddev-run-dupal-on-docker-the-sitename-cant-same-if-the-code-removed",
+            "title": "use ddev run dupal on docker,the sitename can&#39;t same if the code removed",
+            "body": "<p>I run another dupal site in docker with ddev,but the sitename can't same with the old site in my machine,even I change the old site name.even I remove the code,I also can't use the name I used.I must use a new name that I never used.\nI don't know why,and how to solve it when I use same name If I don't want change new site name,how can I remove the old site clear.</p>\n"
+        },
+        {
+            "tags": [
+                "vb.net"
+            ],
+            "owner": {
+                "reputation": 482,
+                "user_id": 8521346,
+                "user_type": "registered",
+                "accept_rate": 89,
+                "profile_image": "https://www.gravatar.com/avatar/5adedecc5904449d9b448df60d69f5fc?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Philip556677",
+                "link": "https://stackoverflow.com/users/8521346/philip556677"
+            },
+            "is_answered": false,
+            "view_count": 59,
+            "answer_count": 4,
+            "score": 0,
+            "last_activity_date": 1524151479,
+            "creation_date": 1524064909,
+            "last_edit_date": 1524151479,
+            "question_id": 49903456,
+            "body_markdown": "How do I irate through a list/array in vb.net and also keep the count of the current item I&#39;m on without having to declare an explicit counter variable?\r\n\r\nThe result that I am trying to achieve is as follows.\r\n\r\n    dim i as integer = 0 &#39;evil counter variable\r\n    dim arr() as string = {&quot;a&quot;,&quot;b&quot;,&quot;c&quot;,&quot;d&quot;,&quot;e&quot;}\r\n    for each item in arr\r\n        console.writeline(&quot;Item &quot;&quot;&quot; &amp; item &amp; &quot;&quot;&quot; is index &quot; &amp; i)           \r\n        i+=1\r\n    next\r\n\r\nWithout having to declare &quot;i&quot; on its own line\r\n\r\n___\r\n\r\nPython has a shorthand way of doing this as follows.\r\n\r\n    arr=[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;,&quot;d&quot;,&quot;e&quot;]\r\n    for i, item in enumerate(arr):\r\n        print(&quot;Item &quot;&quot;&quot; + item + &quot;&quot;&quot; is index &quot; + str(i))\r\n\r\nA similar implementation in vb.net would be ideal.\r\n\r\n*edit*\r\n\r\nThe significant part of the code is the enumeration. Not the printing of the values.",
+            "link": "https://stackoverflow.com/questions/49903456/loop-through-list-and-keep-index-count-vb-net",
+            "title": "Loop Through List And Keep Index Count VB.net",
+            "body": "<p>How do I irate through a list/array in vb.net and also keep the count of the current item I'm on without having to declare an explicit counter variable?</p>\n\n<p>The result that I am trying to achieve is as follows.</p>\n\n<pre><code>dim i as integer = 0 'evil counter variable\ndim arr() as string = {\"a\",\"b\",\"c\",\"d\",\"e\"}\nfor each item in arr\n    console.writeline(\"Item \"\"\" &amp; item &amp; \"\"\" is index \" &amp; i)           \n    i+=1\nnext\n</code></pre>\n\n<p>Without having to declare \"i\" on its own line</p>\n\n<hr>\n\n<p>Python has a shorthand way of doing this as follows.</p>\n\n<pre><code>arr=[\"a\",\"b\",\"c\",\"d\",\"e\"]\nfor i, item in enumerate(arr):\n    print(\"Item \"\"\" + item + \"\"\" is index \" + str(i))\n</code></pre>\n\n<p>A similar implementation in vb.net would be ideal.</p>\n\n<p><em>edit</em></p>\n\n<p>The significant part of the code is the enumeration. Not the printing of the values.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "angularjs",
+                "drag-and-drop"
+            ],
+            "owner": {
+                "reputation": 45,
+                "user_id": 3837300,
+                "user_type": "registered",
+                "accept_rate": 33,
+                "profile_image": "https://www.gravatar.com/avatar/cad540bd64996d9f1dea3016c6db1555?s=128&d=identicon&r=PG&f=1",
+                "display_name": "jakethecool1",
+                "link": "https://stackoverflow.com/users/3837300/jakethecool1"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524151475,
+            "creation_date": 1524151475,
+            "question_id": 49924778,
+            "body_markdown": "I am having problems dropping my draggable item into my &quot;drop zone&quot;.  It seems that I have to position the exact center of my draggable item onto my drop zone otherwise it won&#39;t work.  How do I make it to where my drop zone activates when any portion of the draggable item enters the drop zone.\r\n\r\nHere is what I have so far that doesn&#39;t seem to be working:\r\n\r\n    &lt;div class=&quot;col-xs-12 row&quot;&gt;\r\n        &lt;div class=&quot;col-xs-3 col-md-2 drop&quot; ng-repeat=&quot;folder in drive.folders&quot; data-drop=&quot;true&quot; jqyoui-droppable=&quot;{index: {{$index}}, onDrop: &#39;moveFile(folder)&#39;, containment:  &#39;.drop&#39; }&quot; data-jqyoui-options=&quot;{hoverClass: &#39;ui-drop-hover-file&#39;, activeClass: &#39;ui-state-default&#39;}&quot;&gt;\r\n            &lt;div class=&quot;panel panel-default&quot; ng-click=&quot;changeFolder(folder)&quot; data-drop=&quot;true&quot;&gt;\r\n                &lt;div class=&quot;panel-footer&quot;&gt;&lt;span class=&quot;fa fa-folder&quot;&gt; {{folder.name}}&lt;/span&gt;&lt;/div&gt;\r\n            &lt;/div&gt;\r\n        &lt;/div&gt;\r\n    &lt;/div&gt;\r\n\r\n    &lt;div class=&quot;col-xs-12 row&quot;&gt;\r\n        &lt;div class=&quot;col-xs-3 col-md-2&quot;&gt;\r\n            &lt;div class=&quot;panel panel-default&quot; ng-repeat=&quot;file in drive.files&quot; data-drag=&quot;true&quot; jqyoui-draggable=&quot;{index: {{$index}}, animation: true, onStart: &#39;start(file)&#39;}&quot; data-jqyoui-options=&quot;{revert: &#39;invalid&#39;, activeClass: &#39;ui-drag-transparent&#39;}&quot; ng-model=&quot;itemDragged&quot;&gt;\r\n                &lt;div class=&quot;panel-body&quot;&gt;&lt;span class=&quot;fa fa-file-o fa-3x text-center&quot;&gt;&lt;/span&gt;&lt;/div&gt;\r\n                &lt;div class=&quot;panel-footer&quot;&gt;{{file.name}}&lt;/div&gt;\r\n            &lt;/div&gt;\r\n        &lt;/div&gt;\r\n    &lt;/div&gt;",
+            "link": "https://stackoverflow.com/questions/49924778/angularjs-item-cannot-be-dropped-drag-and-drop",
+            "title": "AngularJS: Item cannot be dropped (drag and drop)",
+            "body": "<p>I am having problems dropping my draggable item into my \"drop zone\".  It seems that I have to position the exact center of my draggable item onto my drop zone otherwise it won't work.  How do I make it to where my drop zone activates when any portion of the draggable item enters the drop zone.</p>\n\n<p>Here is what I have so far that doesn't seem to be working:</p>\n\n<pre><code>&lt;div class=\"col-xs-12 row\"&gt;\n    &lt;div class=\"col-xs-3 col-md-2 drop\" ng-repeat=\"folder in drive.folders\" data-drop=\"true\" jqyoui-droppable=\"{index: {{$index}}, onDrop: 'moveFile(folder)', containment:  '.drop' }\" data-jqyoui-options=\"{hoverClass: 'ui-drop-hover-file', activeClass: 'ui-state-default'}\"&gt;\n        &lt;div class=\"panel panel-default\" ng-click=\"changeFolder(folder)\" data-drop=\"true\"&gt;\n            &lt;div class=\"panel-footer\"&gt;&lt;span class=\"fa fa-folder\"&gt; {{folder.name}}&lt;/span&gt;&lt;/div&gt;\n        &lt;/div&gt;\n    &lt;/div&gt;\n&lt;/div&gt;\n\n&lt;div class=\"col-xs-12 row\"&gt;\n    &lt;div class=\"col-xs-3 col-md-2\"&gt;\n        &lt;div class=\"panel panel-default\" ng-repeat=\"file in drive.files\" data-drag=\"true\" jqyoui-draggable=\"{index: {{$index}}, animation: true, onStart: 'start(file)'}\" data-jqyoui-options=\"{revert: 'invalid', activeClass: 'ui-drag-transparent'}\" ng-model=\"itemDragged\"&gt;\n            &lt;div class=\"panel-body\"&gt;&lt;span class=\"fa fa-file-o fa-3x text-center\"&gt;&lt;/span&gt;&lt;/div&gt;\n            &lt;div class=\"panel-footer\"&gt;{{file.name}}&lt;/div&gt;\n        &lt;/div&gt;\n    &lt;/div&gt;\n&lt;/div&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "xamarin.ios",
+                "automated-tests",
+                "ui-testing",
+                "xamarin.uitest"
+            ],
+            "owner": {
+                "reputation": 36,
+                "user_id": 7785710,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/11325cd69fc4f18033f7e6adb0127353?s=128&d=identicon&r=PG&f=1",
+                "display_name": "D.Mart",
+                "link": "https://stackoverflow.com/users/7785710/d-mart"
+            },
+            "is_answered": false,
+            "view_count": 58,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524151475,
+            "creation_date": 1509361308,
+            "question_id": 47013635,
+            "body_markdown": "I&#39;m trying to insert a number in a numeric field using app.EnterText(VALUE) but i&#39;m getting this error:\r\n\r\n&gt; Exception: System.Exception: Underlying query failed with output: \r\n{&quot;status_bar_orientation&quot;:&quot;down&quot;,&quot;results&quot;:[{&quot;status&quot;:&quot;error&quot;,&quot;value&quot;:&quot;Input: uia.typeString(&#39;50&#39;)\\n. Error: VerboseError: Cannot perform action on invalid element: UIAElementNil from target.frontMostApp().keyboard()  typeString@[native code]\\nkeyboard_enter_text__delegate@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:26635:66\\nkeyboard_enter_text@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:26643:46\\napply_to@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:10922:22\\napply__2@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:11126:39\\napply@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:11219:29\\ntypeString__delegate@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:28133:64\\ntypeString@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:28140:37\\neval code\\neval@[native code]\\nglobal code@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:28602:35&quot;,&quot;index&quot;:221}],&quot;outcome&quot;:&quot;SUCCESS&quot;}\r\n  at Xamarin.UITest.iOS.iOSGestures.ValidateSuccessfulCalabashResult (Xamarin.UITest.Shared.Http.HttpResult result) [0x00021] in &lt;0d617a84142b49c5bfa7670d2eeb5494&gt;:0 \r\n  at Xamarin.UITest.iOS.iOSGestures.EnterText (Xamarin.UITest.Shared.Queries.SingleQuoteEscapedString text) [0x00069] in &lt;0d617a84142b49c5bfa7670d2eeb5494&gt;:0 \r\n  at Xamarin.UITest.iOS.iOSApp+&lt;EnterText&gt;c__AnonStorey6.&lt;&gt;m__0 () [0x00194] in &lt;0d617a84142b49c5bfa7670d2eeb5494&gt;:0 \r\n  at Xamarin.UITest.Utils.ErrorReporting.With (System.Action func, System.Object[] args, System.String memberName) [0x00006] in &lt;0d617a84142b49c5bfa7670d2eeb5494&gt;:0 \r\nFTook final screenshot. { Title: &quot;After test&quot;, FileName: &quot;/Volumes/Data/xamarin/workspaces/b566c470-cb84-4bf6-a4aa-a328396a2e3f/workspace/screenshot-final-c8f3657d9b934652b8d54d234d597041.png&quot;, ElapsedMilliseconds: 2820 }\r\n\r\nThe value is a string but if i change it to int i can&#39;t execute.",
+            "link": "https://stackoverflow.com/questions/47013635/how-to-insert-int-in-app-entertext",
+            "title": "How to insert int in app.EnterText()?",
+            "body": "<p>I'm trying to insert a number in a numeric field using app.EnterText(VALUE) but i'm getting this error:</p>\n\n<blockquote>\n  <p>Exception: System.Exception: Underlying query failed with output: \n  {\"status_bar_orientation\":\"down\",\"results\":[{\"status\":\"error\",\"value\":\"Input: uia.typeString('50')\\n. Error: VerboseError: Cannot perform action on invalid element: UIAElementNil from target.frontMostApp().keyboard()  typeString@[native code]\\nkeyboard_enter_text__delegate@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:26635:66\\nkeyboard_enter_text@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:26643:46\\napply_to@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:10922:22\\napply__2@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:11126:39\\napply@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:11219:29\\ntypeString__delegate@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:28133:64\\ntypeString@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:28140:37\\neval code\\neval@[native code]\\nglobal code@file://localhost/tmp/run_loop20171030-2474-f8p0nc/_run_loop.js:28602:35\",\"index\":221}],\"outcome\":\"SUCCESS\"}\n    at Xamarin.UITest.iOS.iOSGestures.ValidateSuccessfulCalabashResult (Xamarin.UITest.Shared.Http.HttpResult result) [0x00021] in &lt;0d617a84142b49c5bfa7670d2eeb5494>:0 \n    at Xamarin.UITest.iOS.iOSGestures.EnterText (Xamarin.UITest.Shared.Queries.SingleQuoteEscapedString text) [0x00069] in &lt;0d617a84142b49c5bfa7670d2eeb5494>:0 \n    at Xamarin.UITest.iOS.iOSApp+c__AnonStorey6.&lt;>m__0 () [0x00194] in &lt;0d617a84142b49c5bfa7670d2eeb5494>:0 \n    at Xamarin.UITest.Utils.ErrorReporting.With (System.Action func, System.Object[] args, System.String memberName) [0x00006] in &lt;0d617a84142b49c5bfa7670d2eeb5494>:0 \n  FTook final screenshot. { Title: \"After test\", FileName: \"/Volumes/Data/xamarin/workspaces/b566c470-cb84-4bf6-a4aa-a328396a2e3f/workspace/screenshot-final-c8f3657d9b934652b8d54d234d597041.png\", ElapsedMilliseconds: 2820 }</p>\n</blockquote>\n\n<p>The value is a string but if i change it to int i can't execute.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pandas",
+                "dataframe",
+                "pandas-groupby"
+            ],
+            "owner": {
+                "reputation": 100,
+                "user_id": 5035552,
+                "user_type": "registered",
+                "accept_rate": 81,
+                "profile_image": "https://www.gravatar.com/avatar/126f7299eef11146c1845a8d4626e0b9?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Jeremy Hunts",
+                "link": "https://stackoverflow.com/users/5035552/jeremy-hunts"
+            },
+            "is_answered": true,
+            "view_count": 13,
+            "accepted_answer_id": 49924472,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524151473,
+            "creation_date": 1524150469,
+            "last_edit_date": 1524151473,
+            "question_id": 49924427,
+            "body_markdown": "I have the following dataframe (df) (All columns contain lists, except type, contains strings)\r\n\r\n    Type    Components        names\r\n    Zebra  [hand,arm,nose]   [bubu,kuku]\r\n    Zebra   [eyes,fingers]   [gaga,timber]\r\n    Zebra   [paws]           []\r\n    Lion    [teeth]          [scar]\r\n    Tiger   [fingers]        [figgy]\r\n\r\nI want to group them based on Type so the output is like this:\r\n\r\n    Type    Components                           Names\r\n    Zebra   [hand,arm,nose,eyes,fingers,paws]    [bubu,kuku,gaga,timber]\r\n    Lion    [teeth]                              [scar]\r\n    Tiger   [fingers]                            [figgy]\r\n\r\nI tried things like:\r\n\r\n    df.groupby(&#39;role&#39;)\r\n\r\nI wasn&#39;t successful with using .agg in the end also.\r\n\r\n \r\n",
+            "link": "https://stackoverflow.com/questions/49924427/in-a-dataframe-group-rows-containing-a-list-over-one-column",
+            "title": "In a dataframe group rows containing a list over one column",
+            "body": "<p>I have the following dataframe (df) (All columns contain lists, except type, contains strings)</p>\n\n<pre><code>Type    Components        names\nZebra  [hand,arm,nose]   [bubu,kuku]\nZebra   [eyes,fingers]   [gaga,timber]\nZebra   [paws]           []\nLion    [teeth]          [scar]\nTiger   [fingers]        [figgy]\n</code></pre>\n\n<p>I want to group them based on Type so the output is like this:</p>\n\n<pre><code>Type    Components                           Names\nZebra   [hand,arm,nose,eyes,fingers,paws]    [bubu,kuku,gaga,timber]\nLion    [teeth]                              [scar]\nTiger   [fingers]                            [figgy]\n</code></pre>\n\n<p>I tried things like:</p>\n\n<pre><code>df.groupby('role')\n</code></pre>\n\n<p>I wasn't successful with using .agg in the end also.</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 39
+}

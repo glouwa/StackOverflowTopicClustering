@@ -1,0 +1,820 @@
+{
+    "items": [
+        {
+            "tags": [
+                "java",
+                "listview",
+                "javafx"
+            ],
+            "owner": {
+                "reputation": 5,
+                "user_id": 7174848,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/c460d4ec108446d50e52b7bde9532046?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Zumalo",
+                "link": "https://stackoverflow.com/users/7174848/zumalo"
+            },
+            "is_answered": true,
+            "view_count": 24,
+            "accepted_answer_id": 49923719,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1524148947,
+            "creation_date": 1524145902,
+            "last_edit_date": 1524147562,
+            "question_id": 49922833,
+            "body_markdown": "I have a problem with JavaFX ListView. \r\nI have three of them and want to be able to drag and drop custom objects between them. There is no problem with that if at least one item is in the destination list. If there is none, the drag and drop can&#39;t be completed. The cursor changes from default mouse to a crossed circle.\r\n\r\nAlso if the listview has no elements the list looks &#39;plain&#39;, if there is one or more it looks &#39;normal&#39; with striped background.\r\n\r\nHere is my code:\r\nController.java\r\n\r\n    public class Controller\r\n    {\r\n    private final ObjectProperty&lt;ListCell&lt;Task&gt;&gt; dragSource = new SimpleObjectProperty&lt;&gt;();\r\n    @FXML\r\n    public ListView&lt;Task&gt; listView1;\r\n    @FXML\r\n    public ListView&lt;Task&gt; listView2;\r\n    @FXML\r\n    public ListView&lt;Task&gt; listView3;\r\n    \r\n    public ObservableList&lt;Task&gt; toDoList = FXCollections.observableArrayList();\r\n    public ObservableList&lt;Task&gt; inProgressList = FXCollections.observableArrayList();\r\n    public ObservableList&lt;Task&gt; doneList = FXCollections.observableArrayList();\r\n    private boolean isDragSuccessful;\r\n    private Task currentTask = null;\r\n    private ListView&lt;Task&gt; currentListView;\r\n\r\n    public void closeApp()\r\n    {\r\n        Platform.exit();\r\n    }\r\n\r\n    public void openTaskAddingWindow()\r\n    {\r\n        FXMLLoader loader = new FXMLLoader(getClass().getResource(&quot;TaskAddWindow.fxml&quot;));\r\n\r\n        Stage stage = new Stage(StageStyle.DECORATED);\r\n        try\r\n        {\r\n            stage.setScene(new Scene((Pane) loader.load()));\r\n        } catch (IOException e)\r\n        {\r\n            e.printStackTrace();\r\n        }\r\n        TaskAddWindow controller = loader.getController();\r\n        stage.setResizable(false);\r\n\r\n        controller.init(currentListView, currentTask);\r\n        stage.setTitle(&quot;Add new Task&quot;);\r\n        stage.setWidth(450);\r\n        stage.setHeight(400);\r\n        stage.setOnCloseRequest(event -&gt;\r\n        {\r\n            stage.close();\r\n            event.consume();\r\n        });\r\n\r\n        stage.initModality(Modality.APPLICATION_MODAL);\r\n        stage.showAndWait();\r\n\r\n    }\r\n\r\n    public void createCellFactory(ListView&lt;Task&gt; listView, ObservableList&lt;Task&gt; list)\r\n    {\r\n        listView.setItems(list);\r\n        listView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);\r\n\r\n        listView.setCellFactory(new Callback&lt;ListView&lt;Task&gt;, ListCell&lt;Task&gt;&gt;()\r\n        {\r\n            @Override\r\n            public ListCell&lt;Task&gt; call(ListView&lt;Task&gt; param)\r\n            {\r\n                final ListCell&lt;Task&gt; cell = new ListCell&lt;Task&gt;()\r\n                {\r\n                    @Override\r\n                    public void updateItem(Task item, boolean empty)\r\n                    {\r\n                        super.updateItem(item, empty);\r\n                        if (item != null) {\r\n                            setText(item.getTaskName());\r\n                        } else {\r\n                            setText(null);\r\n                        }\r\n                    }\r\n                };\r\n\r\n                cell.setOnDragDetected(event -&gt;\r\n                {\r\n\r\n                    if (!cell.isEmpty())\r\n                    {\r\n                        isDragSuccessful = false;\r\n                        Dragboard db = cell.startDragAndDrop(TransferMode.MOVE);\r\n                        ClipboardContent cc = new ClipboardContent();\r\n                        Task tt = cell.getItem();\r\n                        cc.putString(tt.getTaskName());\r\n                        db.setContent(cc);\r\n                        dragSource.set(cell);\r\n                    }\r\n                });\r\n\r\n                cell.setOnDragOver(event -&gt;\r\n                {\r\n                    Dragboard db = event.getDragboard();\r\n                    if (db.hasString())\r\n                    {\r\n                        event.acceptTransferModes(TransferMode.MOVE);\r\n                    }\r\n\r\n                });\r\n\r\n                cell.setOnDragDone(event -&gt;\r\n                {\r\n                    if (isDragSuccessful)\r\n                        listView.getItems().remove(cell.getItem());\r\n                    ;\r\n                });\r\n\r\n                cell.setOnDragDropped(event -&gt;\r\n                {\r\n                    Dragboard db = event.getDragboard();\r\n                    if (db.hasString() &amp;&amp; dragSource.get() != null)\r\n                    {\r\n                        ListCell&lt;Task&gt; dragSourceCell = dragSource.get();\r\n                        listView.getItems().add(dragSourceCell.getItem());\r\n                        isDragSuccessful = true; // This is here beacuse the line under this one, doesn&#39;t work\r\n                        event.setDropCompleted(true);\r\n                        dragSource.set(null);\r\n                    } else\r\n                    {\r\n                        event.setDropCompleted(false);\r\n                    }\r\n                });\r\n\r\n                return cell;\r\n            }\r\n\r\n        }); // setCellFactory\r\n\r\n    }//createCellFactory  ---- end\r\n\r\n    public void initialize()\r\n    {\r\n        createCellFactory(listView1, toDoList);\r\n        createCellFactory(listView2, inProgressList);\r\n        createCellFactory(listView3, doneList);\r\n\r\n        for (int i = 0; i &lt; 5; i++)\r\n        {\r\n            listView2.getItems().add(new Task(&quot;2+&quot; + i, &quot;LOW&quot;, LocalDate.now(), &quot;&quot;));\r\n            listView3.getItems().add(new Task(&quot;3+&quot; + i, &quot;LOW&quot;, LocalDate.now(), &quot;&quot;));\r\n        }\r\n        currentListView = listView1;\r\n    }\r\n    }\r\n\r\n\r\n[This is how the lists look both empty and with elements][1]\r\n\r\nI tried searching the internet for similar problems, but to no avail.\r\n\r\nThanks for any help.\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/BmztZ.png",
+            "link": "https://stackoverflow.com/questions/49922833/javafx-listview-not-active",
+            "title": "JavaFX ListView not active",
+            "body": "<p>I have a problem with JavaFX ListView. \nI have three of them and want to be able to drag and drop custom objects between them. There is no problem with that if at least one item is in the destination list. If there is none, the drag and drop can't be completed. The cursor changes from default mouse to a crossed circle.</p>\n\n<p>Also if the listview has no elements the list looks 'plain', if there is one or more it looks 'normal' with striped background.</p>\n\n<p>Here is my code:\nController.java</p>\n\n<pre><code>public class Controller\n{\nprivate final ObjectProperty&lt;ListCell&lt;Task&gt;&gt; dragSource = new SimpleObjectProperty&lt;&gt;();\n@FXML\npublic ListView&lt;Task&gt; listView1;\n@FXML\npublic ListView&lt;Task&gt; listView2;\n@FXML\npublic ListView&lt;Task&gt; listView3;\n\npublic ObservableList&lt;Task&gt; toDoList = FXCollections.observableArrayList();\npublic ObservableList&lt;Task&gt; inProgressList = FXCollections.observableArrayList();\npublic ObservableList&lt;Task&gt; doneList = FXCollections.observableArrayList();\nprivate boolean isDragSuccessful;\nprivate Task currentTask = null;\nprivate ListView&lt;Task&gt; currentListView;\n\npublic void closeApp()\n{\n    Platform.exit();\n}\n\npublic void openTaskAddingWindow()\n{\n    FXMLLoader loader = new FXMLLoader(getClass().getResource(\"TaskAddWindow.fxml\"));\n\n    Stage stage = new Stage(StageStyle.DECORATED);\n    try\n    {\n        stage.setScene(new Scene((Pane) loader.load()));\n    } catch (IOException e)\n    {\n        e.printStackTrace();\n    }\n    TaskAddWindow controller = loader.getController();\n    stage.setResizable(false);\n\n    controller.init(currentListView, currentTask);\n    stage.setTitle(\"Add new Task\");\n    stage.setWidth(450);\n    stage.setHeight(400);\n    stage.setOnCloseRequest(event -&gt;\n    {\n        stage.close();\n        event.consume();\n    });\n\n    stage.initModality(Modality.APPLICATION_MODAL);\n    stage.showAndWait();\n\n}\n\npublic void createCellFactory(ListView&lt;Task&gt; listView, ObservableList&lt;Task&gt; list)\n{\n    listView.setItems(list);\n    listView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);\n\n    listView.setCellFactory(new Callback&lt;ListView&lt;Task&gt;, ListCell&lt;Task&gt;&gt;()\n    {\n        @Override\n        public ListCell&lt;Task&gt; call(ListView&lt;Task&gt; param)\n        {\n            final ListCell&lt;Task&gt; cell = new ListCell&lt;Task&gt;()\n            {\n                @Override\n                public void updateItem(Task item, boolean empty)\n                {\n                    super.updateItem(item, empty);\n                    if (item != null) {\n                        setText(item.getTaskName());\n                    } else {\n                        setText(null);\n                    }\n                }\n            };\n\n            cell.setOnDragDetected(event -&gt;\n            {\n\n                if (!cell.isEmpty())\n                {\n                    isDragSuccessful = false;\n                    Dragboard db = cell.startDragAndDrop(TransferMode.MOVE);\n                    ClipboardContent cc = new ClipboardContent();\n                    Task tt = cell.getItem();\n                    cc.putString(tt.getTaskName());\n                    db.setContent(cc);\n                    dragSource.set(cell);\n                }\n            });\n\n            cell.setOnDragOver(event -&gt;\n            {\n                Dragboard db = event.getDragboard();\n                if (db.hasString())\n                {\n                    event.acceptTransferModes(TransferMode.MOVE);\n                }\n\n            });\n\n            cell.setOnDragDone(event -&gt;\n            {\n                if (isDragSuccessful)\n                    listView.getItems().remove(cell.getItem());\n                ;\n            });\n\n            cell.setOnDragDropped(event -&gt;\n            {\n                Dragboard db = event.getDragboard();\n                if (db.hasString() &amp;&amp; dragSource.get() != null)\n                {\n                    ListCell&lt;Task&gt; dragSourceCell = dragSource.get();\n                    listView.getItems().add(dragSourceCell.getItem());\n                    isDragSuccessful = true; // This is here beacuse the line under this one, doesn't work\n                    event.setDropCompleted(true);\n                    dragSource.set(null);\n                } else\n                {\n                    event.setDropCompleted(false);\n                }\n            });\n\n            return cell;\n        }\n\n    }); // setCellFactory\n\n}//createCellFactory  ---- end\n\npublic void initialize()\n{\n    createCellFactory(listView1, toDoList);\n    createCellFactory(listView2, inProgressList);\n    createCellFactory(listView3, doneList);\n\n    for (int i = 0; i &lt; 5; i++)\n    {\n        listView2.getItems().add(new Task(\"2+\" + i, \"LOW\", LocalDate.now(), \"\"));\n        listView3.getItems().add(new Task(\"3+\" + i, \"LOW\", LocalDate.now(), \"\"));\n    }\n    currentListView = listView1;\n}\n}\n</code></pre>\n\n<p><a href=\"https://i.stack.imgur.com/BmztZ.png\" rel=\"nofollow noreferrer\">This is how the lists look both empty and with elements</a></p>\n\n<p>I tried searching the internet for similar problems, but to no avail.</p>\n\n<p>Thanks for any help.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "reactjs",
+                "components"
+            ],
+            "owner": {
+                "reputation": 26,
+                "user_id": 1164728,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/1ab022402fad445763033c0cab30690f?s=128&d=identicon&r=PG",
+                "display_name": "juancho",
+                "link": "https://stackoverflow.com/users/1164728/juancho"
+            },
+            "is_answered": true,
+            "view_count": 33,
+            "accepted_answer_id": 49921820,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1524148937,
+            "creation_date": 1524140991,
+            "last_edit_date": 1524148779,
+            "question_id": 49921174,
+            "body_markdown": "Is there a way to list the expected props of a component A or B from another component C?\r\n\r\nWhy ? to dynamically add/remove Components and their props using User input.\r\n\r\nIs it possible ? All I need, is to know which props each Component expects.\r\n\r\nA and B accept different props. Ex: \r\n     \r\n     &lt;A bar=&quot;foo&quot;/&gt;, &lt;B baz=5 other=&quot;thing&quot; /&gt;\r\n\r\n**Hypothetical sketch:**\r\n\r\n    import A from &quot;A&quot;\r\n    import B from &quot;B&quot;\r\n    \r\n    class C extends React.Component {\r\n        \r\n        componentDidMount() {\r\n            const props_for_A = A.props; // ??\r\n            const props_for_B = B.props; // ??\r\n\r\n            const user_input_props = [];\r\n\r\n            const _flag = prompt(&quot;Insert Component A or B ?&quot;)\r\n            switch(_flag) {\r\n                case A:\r\n                    // Get the props for A\r\n                    forEach(prop in props_for_A)\r\n                        user_input_props[prop] = prompt(`Please input ${prop}`);          \r\n                    break;\r\n                case B:\r\n                    // Get the props for B\r\n                    forEach(prop in props_for_B)\r\n                        user_input_props[prop] = prompt(`Please input ${prop}`);          break;    \r\n            }                       \r\n        }\r\n \r\n        render() {\r\n            switch(_flag) {\r\n                 case A:\r\n                     return &lt;A ...user_input_props /&gt;;\r\n                 case B:\r\n                     return &lt;B ...user_input_props /&gt;;\r\n            }\r\n    }\r\n",
+            "link": "https://stackoverflow.com/questions/49921174/know-react-component-expected-props-from-another-component",
+            "title": "Know React Component expected props from another Component",
+            "body": "<p>Is there a way to list the expected props of a component A or B from another component C?</p>\n\n<p>Why ? to dynamically add/remove Components and their props using User input.</p>\n\n<p>Is it possible ? All I need, is to know which props each Component expects.</p>\n\n<p>A and B accept different props. Ex: </p>\n\n<pre><code> &lt;A bar=\"foo\"/&gt;, &lt;B baz=5 other=\"thing\" /&gt;\n</code></pre>\n\n<p><strong>Hypothetical sketch:</strong></p>\n\n<pre><code>import A from \"A\"\nimport B from \"B\"\n\nclass C extends React.Component {\n\n    componentDidMount() {\n        const props_for_A = A.props; // ??\n        const props_for_B = B.props; // ??\n\n        const user_input_props = [];\n\n        const _flag = prompt(\"Insert Component A or B ?\")\n        switch(_flag) {\n            case A:\n                // Get the props for A\n                forEach(prop in props_for_A)\n                    user_input_props[prop] = prompt(`Please input ${prop}`);          \n                break;\n            case B:\n                // Get the props for B\n                forEach(prop in props_for_B)\n                    user_input_props[prop] = prompt(`Please input ${prop}`);          break;    \n        }                       \n    }\n\n    render() {\n        switch(_flag) {\n             case A:\n                 return &lt;A ...user_input_props /&gt;;\n             case B:\n                 return &lt;B ...user_input_props /&gt;;\n        }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "ajax",
+                "ubuntu",
+                "nginx"
+            ],
+            "owner": {
+                "reputation": 356,
+                "user_id": 1596143,
+                "user_type": "registered",
+                "accept_rate": 62,
+                "profile_image": "https://www.gravatar.com/avatar/a1650259a7e11e2548b5b1e81f72ee37?s=128&d=identicon&r=PG",
+                "display_name": "ZioBit",
+                "link": "https://stackoverflow.com/users/1596143/ziobit"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524148930,
+            "creation_date": 1524148930,
+            "question_id": 49923889,
+            "body_markdown": "I am using http://simpleupload.michaelcbrook.com/ to upload files (HTML/Ajax) from a website of mine.\r\n\r\nWhen I try to upload a file bigger than about 1MB, after the 1MB threshold I see the upload slowing down a lot, and this is consistent.\r\n\r\nThe website is hosted on a VPS (mine, so I have full control), which I just formatted with:\r\n\r\n - Ubuntu 16.04\r\n - VestaCP (which uses NGINX as proxy/HTTP cache)\r\n\r\nWhere could be the problem? Client side, server side, or maybe both? Or it&#39;s just a coincidence? But the behavior is pretty consistent.\r\n\r\nThank you",
+            "link": "https://stackoverflow.com/questions/49923889/is-there-some-sort-of-cache-limit-to-ajax-upload",
+            "title": "Is there some sort of cache limit to Ajax upload?",
+            "body": "<p>I am using <a href=\"http://simpleupload.michaelcbrook.com/\" rel=\"nofollow noreferrer\">http://simpleupload.michaelcbrook.com/</a> to upload files (HTML/Ajax) from a website of mine.</p>\n\n<p>When I try to upload a file bigger than about 1MB, after the 1MB threshold I see the upload slowing down a lot, and this is consistent.</p>\n\n<p>The website is hosted on a VPS (mine, so I have full control), which I just formatted with:</p>\n\n<ul>\n<li>Ubuntu 16.04</li>\n<li>VestaCP (which uses NGINX as proxy/HTTP cache)</li>\n</ul>\n\n<p>Where could be the problem? Client side, server side, or maybe both? Or it's just a coincidence? But the behavior is pretty consistent.</p>\n\n<p>Thank you</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "xcode",
+                "uitextfield",
+                "uidatepicker"
+            ],
+            "owner": {
+                "reputation": 1198,
+                "user_id": 2511630,
+                "user_type": "registered",
+                "accept_rate": 12,
+                "profile_image": "https://www.gravatar.com/avatar/ab46844bcb903f3cd2a8fad84e81c42f?s=128&d=identicon&r=PG",
+                "display_name": "user2511630",
+                "link": "https://stackoverflow.com/users/2511630/user2511630"
+            },
+            "is_answered": true,
+            "view_count": 7181,
+            "accepted_answer_id": 25958407,
+            "answer_count": 5,
+            "score": 5,
+            "last_activity_date": 1524148930,
+            "creation_date": 1410860202,
+            "last_edit_date": 1495541286,
+            "question_id": 25865391,
+            "body_markdown": "i have an app which work fine in iOS 7 and Xcode 5. As soon as I updated it to iOS 8 and Xcode 6 it crashes when app try to slide up UIDatePicker in the view when a textField is tapped. \r\nI am using storyboard.\r\nAnybody has idea why?\r\n\r\ni have read upon this but its for Xib.\r\n\r\nhttps://stackoverflow.com/questions/12641833/app-crashes-on-ios-6-uiviewcontrollerhierarchyinconsistency\r\n\r\nplease help \r\nthanks\r\n\r\nmy code:\r\n\r\n    - (void)textFieldDidBeginEditing:(UITextField *)textField\r\n    {\r\n        \r\n        //set picker color start\r\n        [self.myDatePicker setBackgroundColor:[UIColor greenColor]];\r\n        \r\n        \r\n        //set picker color finish\r\n        //calculate bounds start\r\n        CGRect textFieldRect = [self.view.window convertRect:textField.bounds fromView:textField];\r\n        CGRect viewRect = [self.view.window convertRect:self.view.bounds fromView:self.view];\r\n        //calculate bounds finish\r\n        //calculate the fraction between the top and bottom of the middle section for the text field&#39;s midline start\r\n        CGFloat midline = textFieldRect.origin.y + 0.5 * textFieldRect.size.height;\r\n        CGFloat numerator = midline - viewRect.origin.y\r\n        - MINIMUM_SCROLL_FRACTION * viewRect.size.height;\r\n        CGFloat denominator = (MAXIMUM_SCROLL_FRACTION - MINIMUM_SCROLL_FRACTION)\r\n        * viewRect.size.height;\r\n        CGFloat heightFraction = numerator / denominator;\r\n        //calculate the fraction between the top and bottom of the middle section for the text field&#39;s midline finish\r\n        //Clamp this fraction so that the top section is all &quot;0.0&quot; and the bottom section is all &quot;1.0 start\r\n        if (heightFraction &lt; 0.0)\r\n        {\r\n            heightFraction = 0.0;\r\n        }\r\n        else if (heightFraction &gt; 1.0)\r\n        {\r\n            heightFraction = 1.0;\r\n        }\r\n        //Clamp this fraction so that the top section is all &quot;0.0&quot; and the bottom section is all &quot;1.0 finish\r\n        /*start\r\n         Now take this fraction and convert it into an amount to scroll by multiplying by the keyboard height for the current screen orientation. Notice the calls to floor so that we only scroll by whole pixel amounts */\r\n         UIInterfaceOrientation orientation =\r\n         [[UIApplication sharedApplication] statusBarOrientation];\r\n         if (orientation == UIInterfaceOrientationPortrait ||\r\n         orientation == UIInterfaceOrientationPortraitUpsideDown)\r\n         {\r\n         animatedDistance = floor(PORTRAIT_KEYBOARD_HEIGHT * heightFraction);\r\n         }\r\n         else\r\n         {\r\n         animatedDistance = floor(LANDSCAPE_KEYBOARD_HEIGHT * heightFraction);\r\n         }\r\n         //finish\r\n        //Finally, apply the animation start\r\n        CGRect viewFrame = self.view.frame;\r\n        viewFrame.origin.y -= animatedDistance;\r\n       \r\n        [UIView beginAnimations:nil context:NULL];\r\n        [UIView setAnimationBeginsFromCurrentState:YES];\r\n        [UIView setAnimationDuration:KEYBOARD_ANIMATION_DURATION];\r\n        [self.view addSubview:self.myDatePicker];\r\n        [self.view setFrame:viewFrame];\r\n        \r\n        [UIView commitAnimations];\r\n        \r\n    \r\n    }\r\n        //Finally, apply the animation finish\r\n        //Animate back again start\r\n\r\nmy crash log\r\n\r\n    2014-09-14 13:12:52.930 Pay 2014-15 free[2191:83060]\r\n     *** Terminating app due to uncaught exception &#39;UIViewControllerHierarchyInconsistency&#39;, \r\n    reason: &#39;child view controller:&lt;UICompatibilityInputViewController: 0x7be0a570&gt; should have parent view controller:&lt;AddHoursViewController: 0x7c38e800&gt; but requested parent is:&lt;UIInputWindowController: 0x7c238a00&gt;&#39;\r\n    *** First throw call stack:\r\n    (\r\n    \t0   CoreFoundation                      0x02101df6 __exceptionPreprocess + 182\r\n    \t1   libobjc.A.dylib                     0x01d8ba97 objc_exception_throw + 44\r\n    \t2   CoreFoundation                      0x02101d1d +[NSException raise:format:] + 141\r\n    \t3   UIKit                               0x008cff9c -[UIViewController _addChildViewController:performHierarchyCheck:notifyWillMove:] + 210\r\n    \t4   UIKit                               0x00f4b44d -[UIInputWindowController changeToInputViewSet:] + 576\r\n    \t5   UIKit                               0x00f4c1be __43-[UIInputWindowController setInputViewSet:]_block_invoke + 103\r\n    \t6   UIKit                               0x007f73bf +[UIView(Animation) performWithoutAnimation:] + 82\r\n    \t7   UIKit                               0x00f4bf9c -[UIInputWindowController setInputViewSet:] + 374\r\n    \t8   UIKit                               0x00ce9101 __64-[UIPeripheralHost(UIKitInternal) setInputViews:animationStyle:]_block_invoke1459 + 43\r\n    \t9   UIKit                               0x00f473af -[UIInputWindowController performOperations:withAnimationStyle:] + 56\r\n    \t10  UIKit                               0x00ce9006 -[UIPeripheralHost(UIKitInternal) setInputViews:animationStyle:] + 1242\r\n    \t11  UIKit                               0x00ce91df -[UIPeripheralHost(UIKitInternal) setInputViews:animated:] + 73\r\n    \t12  UIKit                               0x00ce922b -[UIPeripheralHost(UIKitInternal) setInputViews:] + 68\r\n    \t13  UIKit                               0x00ce1478 -[UIPeripheralHost(UIKitInternal) _reloadInputViewsForResponder:] + 1803\r\n    \t14  UIKit                               0x0092be95 -[UIResponder(UIResponderInputViewAdditions) reloadInputViews] + 316\r\n    \t15  UIKit                               0x0092b1dc -[UIResponder becomeFirstResponder] + 562\r\n    \t16  UIKit                               0x007f1de0 -[UIView(Hierarchy) becomeFirstResponder] + 114\r\n    \t17  UIKit                               0x00fb7ffb -[UITextField becomeFirstResponder] + 51\r\n    \t18  UIKit                               0x00bbde8f -[UITextInteractionAssistant(UITextInteractionAssistant_Internal) setFirstResponderIfNecessary] + 200\r\n    \t19  UIKit                               0x00bc04b6 -[UITextInteractionAssistant(UITextInteractionAssistant_Internal) oneFingerTap:] + 2762\r\n    \t20  UIKit                               0x00bb3d27 _UIGestureRecognizerSendActions + 327\r\n    \t21  UIKit                               0x00bb25a4 -[UIGestureRecognizer _updateGestureWithEvent:buttonEvent:] + 561\r\n    \t22  UIKit                               0x00bb45ed -[UIGestureRecognizer _delayedUpdateGesture] + 60\r\n    \t23  UIKit                               0x00bb7f6a ___UIGestureRecognizerUpdate_block_invoke661 + 57\r\n    \t24  UIKit                               0x00bb7e2d _UIGestureRecognizerRemoveObjectsFromArrayAndApplyBlocks + 317\r\n    \t25  UIKit                               0x00babd36 _UIGestureRecognizerUpdate + 3720\r\n    \t26  UIKit                               0x007c771b -[UIWindow _sendGesturesForEvent:] + 1356\r\n    \t27  UIKit                               0x007c857f -[UIWindow sendEvent:] + 769\r\n    \t28  UIKit                               0x0078daa9 -[UIApplication sendEvent:] + 242\r\n    \t29  UIKit                               0x0079d8de _UIApplicationHandleEventFromQueueEvent + 20690\r\n    \t30  UIKit                               0x00772079 _UIApplicationHandleEventQueue + 2206\r\n    \t31  CoreFoundation                      0x020257bf __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE0_PERFORM_FUNCTION__ + 15\r\n    \t32  CoreFoundation                      0x0201b2cd __CFRunLoopDoSources0 + 253\r\n    \t33  CoreFoundation                      0x0201a828 __CFRunLoopRun + 952\r\n    \t34  CoreFoundation                      0x0201a1ab CFRunLoopRunSpecific + 443\r\n    \t35  CoreFoundation                      0x02019fdb CFRunLoopRunInMode + 123\r\n    \t36  GraphicsServices                    0x0394624f GSEventRunModal + 192\r\n    \t37  GraphicsServices                    0x0394608c GSEventRun + 104\r\n    \t38  UIKit                               0x00775e16 UIApplicationMain + 1526\r\n    \t39  Pay 2014-15 free                    0x0014ed7d main + 141\r\n    \t40  libdyld.dylib                       0x0736cac9 start + 1\r\n    )\r\n    libc++abi.dylib: terminating with uncaught exception of type NSException\r\n    (lldb) `enter code here`\r\n",
+            "link": "https://stackoverflow.com/questions/25865391/uiviewcontrollerhierarchyinconsistency-crashes-app-only-in-ios-8-and-xcode-6",
+            "title": "UIViewControllerHierarchyInconsistency crashes app only in iOS 8 and Xcode 6",
+            "body": "<p>i have an app which work fine in iOS 7 and Xcode 5. As soon as I updated it to iOS 8 and Xcode 6 it crashes when app try to slide up UIDatePicker in the view when a textField is tapped. \nI am using storyboard.\nAnybody has idea why?</p>\n\n<p>i have read upon this but its for Xib.</p>\n\n<p><a href=\"https://stackoverflow.com/questions/12641833/app-crashes-on-ios-6-uiviewcontrollerhierarchyinconsistency\">App crashes on IOS 6 - UIViewControllerHierarchyInconsistency</a></p>\n\n<p>please help \nthanks</p>\n\n<p>my code:</p>\n\n<pre><code>- (void)textFieldDidBeginEditing:(UITextField *)textField\n{\n\n    //set picker color start\n    [self.myDatePicker setBackgroundColor:[UIColor greenColor]];\n\n\n    //set picker color finish\n    //calculate bounds start\n    CGRect textFieldRect = [self.view.window convertRect:textField.bounds fromView:textField];\n    CGRect viewRect = [self.view.window convertRect:self.view.bounds fromView:self.view];\n    //calculate bounds finish\n    //calculate the fraction between the top and bottom of the middle section for the text field's midline start\n    CGFloat midline = textFieldRect.origin.y + 0.5 * textFieldRect.size.height;\n    CGFloat numerator = midline - viewRect.origin.y\n    - MINIMUM_SCROLL_FRACTION * viewRect.size.height;\n    CGFloat denominator = (MAXIMUM_SCROLL_FRACTION - MINIMUM_SCROLL_FRACTION)\n    * viewRect.size.height;\n    CGFloat heightFraction = numerator / denominator;\n    //calculate the fraction between the top and bottom of the middle section for the text field's midline finish\n    //Clamp this fraction so that the top section is all \"0.0\" and the bottom section is all \"1.0 start\n    if (heightFraction &lt; 0.0)\n    {\n        heightFraction = 0.0;\n    }\n    else if (heightFraction &gt; 1.0)\n    {\n        heightFraction = 1.0;\n    }\n    //Clamp this fraction so that the top section is all \"0.0\" and the bottom section is all \"1.0 finish\n    /*start\n     Now take this fraction and convert it into an amount to scroll by multiplying by the keyboard height for the current screen orientation. Notice the calls to floor so that we only scroll by whole pixel amounts */\n     UIInterfaceOrientation orientation =\n     [[UIApplication sharedApplication] statusBarOrientation];\n     if (orientation == UIInterfaceOrientationPortrait ||\n     orientation == UIInterfaceOrientationPortraitUpsideDown)\n     {\n     animatedDistance = floor(PORTRAIT_KEYBOARD_HEIGHT * heightFraction);\n     }\n     else\n     {\n     animatedDistance = floor(LANDSCAPE_KEYBOARD_HEIGHT * heightFraction);\n     }\n     //finish\n    //Finally, apply the animation start\n    CGRect viewFrame = self.view.frame;\n    viewFrame.origin.y -= animatedDistance;\n\n    [UIView beginAnimations:nil context:NULL];\n    [UIView setAnimationBeginsFromCurrentState:YES];\n    [UIView setAnimationDuration:KEYBOARD_ANIMATION_DURATION];\n    [self.view addSubview:self.myDatePicker];\n    [self.view setFrame:viewFrame];\n\n    [UIView commitAnimations];\n\n\n}\n    //Finally, apply the animation finish\n    //Animate back again start\n</code></pre>\n\n<p>my crash log</p>\n\n<pre><code>2014-09-14 13:12:52.930 Pay 2014-15 free[2191:83060]\n *** Terminating app due to uncaught exception 'UIViewControllerHierarchyInconsistency', \nreason: 'child view controller:&lt;UICompatibilityInputViewController: 0x7be0a570&gt; should have parent view controller:&lt;AddHoursViewController: 0x7c38e800&gt; but requested parent is:&lt;UIInputWindowController: 0x7c238a00&gt;'\n*** First throw call stack:\n(\n    0   CoreFoundation                      0x02101df6 __exceptionPreprocess + 182\n    1   libobjc.A.dylib                     0x01d8ba97 objc_exception_throw + 44\n    2   CoreFoundation                      0x02101d1d +[NSException raise:format:] + 141\n    3   UIKit                               0x008cff9c -[UIViewController _addChildViewController:performHierarchyCheck:notifyWillMove:] + 210\n    4   UIKit                               0x00f4b44d -[UIInputWindowController changeToInputViewSet:] + 576\n    5   UIKit                               0x00f4c1be __43-[UIInputWindowController setInputViewSet:]_block_invoke + 103\n    6   UIKit                               0x007f73bf +[UIView(Animation) performWithoutAnimation:] + 82\n    7   UIKit                               0x00f4bf9c -[UIInputWindowController setInputViewSet:] + 374\n    8   UIKit                               0x00ce9101 __64-[UIPeripheralHost(UIKitInternal) setInputViews:animationStyle:]_block_invoke1459 + 43\n    9   UIKit                               0x00f473af -[UIInputWindowController performOperations:withAnimationStyle:] + 56\n    10  UIKit                               0x00ce9006 -[UIPeripheralHost(UIKitInternal) setInputViews:animationStyle:] + 1242\n    11  UIKit                               0x00ce91df -[UIPeripheralHost(UIKitInternal) setInputViews:animated:] + 73\n    12  UIKit                               0x00ce922b -[UIPeripheralHost(UIKitInternal) setInputViews:] + 68\n    13  UIKit                               0x00ce1478 -[UIPeripheralHost(UIKitInternal) _reloadInputViewsForResponder:] + 1803\n    14  UIKit                               0x0092be95 -[UIResponder(UIResponderInputViewAdditions) reloadInputViews] + 316\n    15  UIKit                               0x0092b1dc -[UIResponder becomeFirstResponder] + 562\n    16  UIKit                               0x007f1de0 -[UIView(Hierarchy) becomeFirstResponder] + 114\n    17  UIKit                               0x00fb7ffb -[UITextField becomeFirstResponder] + 51\n    18  UIKit                               0x00bbde8f -[UITextInteractionAssistant(UITextInteractionAssistant_Internal) setFirstResponderIfNecessary] + 200\n    19  UIKit                               0x00bc04b6 -[UITextInteractionAssistant(UITextInteractionAssistant_Internal) oneFingerTap:] + 2762\n    20  UIKit                               0x00bb3d27 _UIGestureRecognizerSendActions + 327\n    21  UIKit                               0x00bb25a4 -[UIGestureRecognizer _updateGestureWithEvent:buttonEvent:] + 561\n    22  UIKit                               0x00bb45ed -[UIGestureRecognizer _delayedUpdateGesture] + 60\n    23  UIKit                               0x00bb7f6a ___UIGestureRecognizerUpdate_block_invoke661 + 57\n    24  UIKit                               0x00bb7e2d _UIGestureRecognizerRemoveObjectsFromArrayAndApplyBlocks + 317\n    25  UIKit                               0x00babd36 _UIGestureRecognizerUpdate + 3720\n    26  UIKit                               0x007c771b -[UIWindow _sendGesturesForEvent:] + 1356\n    27  UIKit                               0x007c857f -[UIWindow sendEvent:] + 769\n    28  UIKit                               0x0078daa9 -[UIApplication sendEvent:] + 242\n    29  UIKit                               0x0079d8de _UIApplicationHandleEventFromQueueEvent + 20690\n    30  UIKit                               0x00772079 _UIApplicationHandleEventQueue + 2206\n    31  CoreFoundation                      0x020257bf __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE0_PERFORM_FUNCTION__ + 15\n    32  CoreFoundation                      0x0201b2cd __CFRunLoopDoSources0 + 253\n    33  CoreFoundation                      0x0201a828 __CFRunLoopRun + 952\n    34  CoreFoundation                      0x0201a1ab CFRunLoopRunSpecific + 443\n    35  CoreFoundation                      0x02019fdb CFRunLoopRunInMode + 123\n    36  GraphicsServices                    0x0394624f GSEventRunModal + 192\n    37  GraphicsServices                    0x0394608c GSEventRun + 104\n    38  UIKit                               0x00775e16 UIApplicationMain + 1526\n    39  Pay 2014-15 free                    0x0014ed7d main + 141\n    40  libdyld.dylib                       0x0736cac9 start + 1\n)\nlibc++abi.dylib: terminating with uncaught exception of type NSException\n(lldb) `enter code here`\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "amazon-s3",
+                "gitlab",
+                "gitlab-ci"
+            ],
+            "owner": {
+                "reputation": 106,
+                "user_id": 5485961,
+                "user_type": "registered",
+                "accept_rate": 68,
+                "profile_image": "https://www.gravatar.com/avatar/5597e23ef4faa4d8c7e5fd04fc77ed45?s=128&d=identicon&r=PG&f=1",
+                "display_name": "SmiffyKmc",
+                "link": "https://stackoverflow.com/users/5485961/smiffykmc"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524148924,
+            "creation_date": 1524148924,
+            "question_id": 49923886,
+            "body_markdown": "I&#39;m trying to use GitLabs DevOps feature to build, test and deploy a Vue.js application to S3. I can deploy the app fine on my local machine. But when setting up the .gitlab-ci.yml file to deploy to S3 I get this error.\r\n\r\n&gt; fatal error: An error occurred (SignatureDoesNotMatch) when calling the ListObjects operation: The request signature we calculated does not match the signature you provided. Check your key and signing method.\r\nERROR: Job failed: exit code 1\r\n\r\nMy .gitlab-ci.yml file is this...\r\n\r\n\r\n    variables:\r\n        AWS_ACCESS_KEY_ID: &quot;****&quot;\r\n        AWS_SECRET_ACCESS_KEY: “****”\r\n\r\n    build site:\r\n        image: node:8.8.1\r\n        stage: build\r\n    script:\r\n        - npm install --progress=false\r\n        - npm run build\r\n    artifacts:\r\n        expire_in: 1 week\r\n        paths:\r\n            - dist\r\n\r\n    cache:\r\n        paths:\r\n            - node_modules/\r\n\r\n    all_tests:\r\n        image: node:8.8.1\r\n        stage: test\r\n        script:\r\n            - npm install\r\n            - npm run test\r\n\r\n    deploy:\r\n        environment: production\r\n        image: python:latest\r\n        script:\r\n            - pip install awscli==1.11.89\r\n            - aws s3 sync --acl public-read --delete dist/ s3://bucket\r\n\r\n\r\nMy bucket is public and also has this policy...\r\n\r\n    {\r\n    &quot;Version&quot;: &quot;2012-10-17&quot;,\r\n    &quot;Id&quot;: &quot;Policy1524147868577&quot;,\r\n    &quot;Statement&quot;: [\r\n        {\r\n            &quot;Sid&quot;: &quot;****&quot;,\r\n            &quot;Effect&quot;: &quot;Allow&quot;,\r\n            &quot;Principal&quot;: &quot;*&quot;,\r\n            &quot;Action&quot;: &quot;s3:*&quot;,\r\n            &quot;Resource&quot;: &quot;arn:aws:s3:::bucket&quot;\r\n        }\r\n    ]\r\n    }\r\n\r\nI have no idea why it&#39;s working locally and not on GitLab. I am learning to do this and I want to do it right. If you have any information for me or anyone else who might read this please let me know.\r\n\r\nThanks in advance",
+            "link": "https://stackoverflow.com/questions/49923886/fatal-error-an-error-occurred-signaturedoesnotmatch",
+            "title": "fatal error: An error occurred (SignatureDoesNotMatch)",
+            "body": "<p>I'm trying to use GitLabs DevOps feature to build, test and deploy a Vue.js application to S3. I can deploy the app fine on my local machine. But when setting up the .gitlab-ci.yml file to deploy to S3 I get this error.</p>\n\n<blockquote>\n  <p>fatal error: An error occurred (SignatureDoesNotMatch) when calling the ListObjects operation: The request signature we calculated does not match the signature you provided. Check your key and signing method.\n  ERROR: Job failed: exit code 1</p>\n</blockquote>\n\n<p>My .gitlab-ci.yml file is this...</p>\n\n<pre><code>variables:\n    AWS_ACCESS_KEY_ID: \"****\"\n    AWS_SECRET_ACCESS_KEY: “****”\n\nbuild site:\n    image: node:8.8.1\n    stage: build\nscript:\n    - npm install --progress=false\n    - npm run build\nartifacts:\n    expire_in: 1 week\n    paths:\n        - dist\n\ncache:\n    paths:\n        - node_modules/\n\nall_tests:\n    image: node:8.8.1\n    stage: test\n    script:\n        - npm install\n        - npm run test\n\ndeploy:\n    environment: production\n    image: python:latest\n    script:\n        - pip install awscli==1.11.89\n        - aws s3 sync --acl public-read --delete dist/ s3://bucket\n</code></pre>\n\n<p>My bucket is public and also has this policy...</p>\n\n<pre><code>{\n\"Version\": \"2012-10-17\",\n\"Id\": \"Policy1524147868577\",\n\"Statement\": [\n    {\n        \"Sid\": \"****\",\n        \"Effect\": \"Allow\",\n        \"Principal\": \"*\",\n        \"Action\": \"s3:*\",\n        \"Resource\": \"arn:aws:s3:::bucket\"\n    }\n]\n}\n</code></pre>\n\n<p>I have no idea why it's working locally and not on GitLab. I am learning to do this and I want to do it right. If you have any information for me or anyone else who might read this please let me know.</p>\n\n<p>Thanks in advance</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "oracle",
+                "ssl",
+                "sslhandshakeexception"
+            ],
+            "owner": {
+                "reputation": 15,
+                "user_id": 7567648,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/624384c9e8edf60cbef4d472a5574d49?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Iv&#225;n ",
+                "link": "https://stackoverflow.com/users/7567648/iv%c3%a1n"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524148923,
+            "creation_date": 1524057966,
+            "last_edit_date": 1524094160,
+            "question_id": 49900952,
+            "body_markdown": "I am trying to make an HTTP GET petition from Java in Oracle Sql Developer.\r\n\r\nIn my computer all works fine.\r\n\r\nThe only thing that doesn&#39;t work is when I access https subdomains it gives an `SSLHandshakeException` error (for example if I access https://www.example.com it works, but if I access https://subdomain.example.com it fails)\r\n\r\nWhat I did then was to add the certificate in Java caches and then it worked.\r\n\r\nHowever when I do it on the server, to do it from SQL Developer using PL / SQL calling a Java function, it fails, and I have done the same thing with the certificate.\r\n\r\nWhat I do not know is if you are referencing cacerts in the Java of sql developer, since in my machine if I had to refer to this (-Djavax.net.ssl.keyStore = C: \\ Oracle \\ Middleware \\ Oracle_Home \\ oracle_common \\ jdk \\ jre \\ lib \\ security \\ cacerts)\r\n\r\nIf I do in the Java code this keeps giving error:\r\n\r\n    System.setProperty (&quot;javax.net.ssl.trustStore&quot;, &quot;/path/jdk/jdk6/lib/security/cacerts.jks&quot;);\r\n\r\n\r\nHow can I know if it is taking the certificates?\r\n\r\nMy machine: Java 1.7 and 1.8 works\r\nServer: Java 1.6 does not work\r\n\r\nGreetings and thanks",
+            "link": "https://stackoverflow.com/questions/49900952/javax-net-ssl-sslhandshakeexception-received-fatal-alert-handshake-failure-onl",
+            "title": "javax.net.ssl.SSLHandshakeException: Received fatal alert: handshake_failure only in server",
+            "body": "<p>I am trying to make an HTTP GET petition from Java in Oracle Sql Developer.</p>\n\n<p>In my computer all works fine.</p>\n\n<p>The only thing that doesn't work is when I access https subdomains it gives an <code>SSLHandshakeException</code> error (for example if I access <a href=\"https://www.example.com\" rel=\"nofollow noreferrer\">https://www.example.com</a> it works, but if I access <a href=\"https://subdomain.example.com\" rel=\"nofollow noreferrer\">https://subdomain.example.com</a> it fails)</p>\n\n<p>What I did then was to add the certificate in Java caches and then it worked.</p>\n\n<p>However when I do it on the server, to do it from SQL Developer using PL / SQL calling a Java function, it fails, and I have done the same thing with the certificate.</p>\n\n<p>What I do not know is if you are referencing cacerts in the Java of sql developer, since in my machine if I had to refer to this (-Djavax.net.ssl.keyStore = C: \\ Oracle \\ Middleware \\ Oracle_Home \\ oracle_common \\ jdk \\ jre \\ lib \\ security \\ cacerts)</p>\n\n<p>If I do in the Java code this keeps giving error:</p>\n\n<pre><code>System.setProperty (\"javax.net.ssl.trustStore\", \"/path/jdk/jdk6/lib/security/cacerts.jks\");\n</code></pre>\n\n<p>How can I know if it is taking the certificates?</p>\n\n<p>My machine: Java 1.7 and 1.8 works\nServer: Java 1.6 does not work</p>\n\n<p>Greetings and thanks</p>\n"
+        },
+        {
+            "tags": [
+                "scala",
+                "sbt"
+            ],
+            "owner": {
+                "reputation": 69,
+                "user_id": 4576434,
+                "user_type": "registered",
+                "accept_rate": 70,
+                "profile_image": "https://www.gravatar.com/avatar/ea3268be7ce007507db2949a75e14ebc?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Glef",
+                "link": "https://stackoverflow.com/users/4576434/glef"
+            },
+            "is_answered": true,
+            "view_count": 4424,
+            "answer_count": 5,
+            "score": 5,
+            "last_activity_date": 1524148920,
+            "creation_date": 1493301845,
+            "last_edit_date": 1493388556,
+            "question_id": 43660137,
+            "body_markdown": "I would like to use environment variables to pass my repo credentials when using built.sbt. \r\n\r\nI have tried things like this but the details arent picked up.\r\n\r\n    credentials += Credentials(&quot;Some Nexus Repository Manager&quot;, &quot;my.artifact.repo.net&quot;, System.getenv(&quot;USERNAME&quot;), System.getenv(&quot;PASSWORD&quot;))\r\n\r\nI have also tried a credentials file under ~/.sbt/ but I&#39;m not sure how to add environment variables to that.\r\n\r\nIf I just type my username and password normally in the credentials file it works so I know that the log in details are ok.\r\n\r\nAdditional:\r\nI source the environment vars in a shell before running sbt compile. \r\n\r\nRunning \r\n\r\n    credentials += Credentials(&quot;Realm&quot;, &quot;my.artifact.repo.net&quot;, sys.env(&quot;USERNAME&quot;), sys.env(&quot;PASSWORD&quot;))\r\n\r\nresults in a forbidden url error.\r\n\r\nI should say I&#39;m stuck trying to resolve dependencies\r\n\r\nUPDATE:\r\nThe Following returns the correct value\r\n\r\n    eval scala.sys.env(&quot;ARTIFACTORY_USERNAME&quot;)\r\nBut when I add this into my script\r\n\r\n    val username = scala.sys.env(&quot;ARTIFACTORY_USERNAME&quot;)\r\n    val password = scala.sys.env(&quot;ARTIFACTORY_PASSWORD&quot;)\r\n    credentials += Credentials(&quot;Artifactory Realm&quot;, &quot;artifactory.link.io&quot;, username, password)\r\n\r\n    resolvers ++= Seq(\r\n    &quot;Artifactory Snapshot&quot; at &quot;https://artifactory.link.io/art/libs-snapshot&quot;\r\n    )\r\n\r\nor  \r\n    \r\n    credentials += Credentials(&quot;Artifactory Realm&quot;, &quot;my.artifact.repo.net&quot;, sys.env(&quot;ARTIFACTORY_USERNAME&quot;), sys.env(&quot;ARTIFACTORY_PASSWORD&quot;))   \r\n\r\nI get a FORBIDDEN URL error which suggests that the scala part runs ok but for some reason the credentials are still incorrect. If I explicitly set the credentials in the build.sbt it works.",
+            "link": "https://stackoverflow.com/questions/43660137/how-to-use-environment-variables-in-build-sbt",
+            "title": "How to use Environment Variables in build.sbt?",
+            "body": "<p>I would like to use environment variables to pass my repo credentials when using built.sbt. </p>\n\n<p>I have tried things like this but the details arent picked up.</p>\n\n<pre><code>credentials += Credentials(\"Some Nexus Repository Manager\", \"my.artifact.repo.net\", System.getenv(\"USERNAME\"), System.getenv(\"PASSWORD\"))\n</code></pre>\n\n<p>I have also tried a credentials file under ~/.sbt/ but I'm not sure how to add environment variables to that.</p>\n\n<p>If I just type my username and password normally in the credentials file it works so I know that the log in details are ok.</p>\n\n<p>Additional:\nI source the environment vars in a shell before running sbt compile. </p>\n\n<p>Running </p>\n\n<pre><code>credentials += Credentials(\"Realm\", \"my.artifact.repo.net\", sys.env(\"USERNAME\"), sys.env(\"PASSWORD\"))\n</code></pre>\n\n<p>results in a forbidden url error.</p>\n\n<p>I should say I'm stuck trying to resolve dependencies</p>\n\n<p>UPDATE:\nThe Following returns the correct value</p>\n\n<pre><code>eval scala.sys.env(\"ARTIFACTORY_USERNAME\")\n</code></pre>\n\n<p>But when I add this into my script</p>\n\n<pre><code>val username = scala.sys.env(\"ARTIFACTORY_USERNAME\")\nval password = scala.sys.env(\"ARTIFACTORY_PASSWORD\")\ncredentials += Credentials(\"Artifactory Realm\", \"artifactory.link.io\", username, password)\n\nresolvers ++= Seq(\n\"Artifactory Snapshot\" at \"https://artifactory.link.io/art/libs-snapshot\"\n)\n</code></pre>\n\n<p>or  </p>\n\n<pre><code>credentials += Credentials(\"Artifactory Realm\", \"my.artifact.repo.net\", sys.env(\"ARTIFACTORY_USERNAME\"), sys.env(\"ARTIFACTORY_PASSWORD\"))   \n</code></pre>\n\n<p>I get a FORBIDDEN URL error which suggests that the scala part runs ok but for some reason the credentials are still incorrect. If I explicitly set the credentials in the build.sbt it works.</p>\n"
+        },
+        {
+            "tags": [
+                "server",
+                "shiny",
+                "ip"
+            ],
+            "owner": {
+                "reputation": 333,
+                "user_id": 1268542,
+                "user_type": "registered",
+                "accept_rate": 86,
+                "profile_image": "https://www.gravatar.com/avatar/0ccf41d66ae3cf3eecd0f5eefef2ad65?s=128&d=identicon&r=PG",
+                "display_name": "biojl",
+                "link": "https://stackoverflow.com/users/1268542/biojl"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524148920,
+            "creation_date": 1524148920,
+            "question_id": 49923880,
+            "body_markdown": "We have created a simple shiny-server and hosting an app for visualization of data.\r\nIs there an easy way to see who is using it? So we can restart it when no one is accessing it.\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49923880/see-who-is-using-a-shiny-app-in-a-server",
+            "title": "See who is using a shiny app in a server",
+            "body": "<p>We have created a simple shiny-server and hosting an app for visualization of data.\nIs there an easy way to see who is using it? So we can restart it when no one is accessing it.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pip",
+                "install"
+            ],
+            "owner": {
+                "reputation": 41,
+                "user_id": 5951239,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-ZYx1TkG4sqY/AAAAAAAAAAI/AAAAAAAAARM/z2PhQHZh9SA/photo.jpg?sz=128",
+                "display_name": "WebDevNewbieGirl",
+                "link": "https://stackoverflow.com/users/5951239/webdevnewbiegirl"
+            },
+            "is_answered": true,
+            "view_count": 38,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524148895,
+            "creation_date": 1524148294,
+            "question_id": 49923671,
+            "body_markdown": "When I try to import pip package and use pip.get_installed_distributions(), console is printing error:\r\n\r\n     AttributeError: &#39;module&#39; object has no attribute &#39;get_installed_distributions&#39;\r\n\r\nAre there any solutions which exclude downgrading pip? \r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49923671/are-there-any-function-replacement-for-pip-get-installed-distributions-in-pip",
+            "title": "Are there any function replacement for pip.get_installed_distributions() in pip 10.0.0 version?",
+            "body": "<p>When I try to import pip package and use pip.get_installed_distributions(), console is printing error:</p>\n\n<pre><code> AttributeError: 'module' object has no attribute 'get_installed_distributions'\n</code></pre>\n\n<p>Are there any solutions which exclude downgrading pip? </p>\n"
+        },
+        {
+            "tags": [
+                "excel",
+                "xlsx"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9670058,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/674018f07d793862ec85e1ac7948a3d9?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Sapphire",
+                "link": "https://stackoverflow.com/users/9670058/sapphire"
+            },
+            "is_answered": false,
+            "view_count": 29,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524148889,
+            "creation_date": 1524146916,
+            "last_edit_date": 1524148889,
+            "question_id": 49923210,
+            "body_markdown": "When doing an INDEX/MATCH formula in cell `H14` the lookup_value part of my formula references a cell(`N5`) that contains an IF/INDEX/MATCH formula. I know my formula is correct but it returns `&quot;N/A&quot;`. It has something to do with the cell value it&#39;s looking up but I don&#39;t know what.\r\n\r\nH14 formula is \r\n\r\n    =INDEX(OSARP!L6:L466,MATCH(Summary!N5,OSARP!H6:H466,0)) \r\n\r\nand it returns and `N/A` error. \r\n\r\nN5 formula is \r\n\r\n    =IF($H$5=&quot;&quot;,&quot;&quot;,INDEX(Table_owssvr_1[GUUID],MATCH($H$5,Table_owssvr_1[Emp Name],0))) \r\n\r\nI need it to use the result of `N5` formula which is an ID number that was index/matched from another sheet. \r\n\r\nWorksheet\r\n\r\n\r\n[![Worksheet][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/fmNrQ.png",
+            "link": "https://stackoverflow.com/questions/49923210/index-match-lookup-value-referencing-a-cell-that-contains-an-index-match-formula",
+            "title": "INDEX/MATCH lookup_value referencing a cell that contains an index/match formula is giving a N/A error",
+            "body": "<p>When doing an INDEX/MATCH formula in cell <code>H14</code> the lookup_value part of my formula references a cell(<code>N5</code>) that contains an IF/INDEX/MATCH formula. I know my formula is correct but it returns <code>\"N/A\"</code>. It has something to do with the cell value it's looking up but I don't know what.</p>\n\n<p>H14 formula is </p>\n\n<pre><code>=INDEX(OSARP!L6:L466,MATCH(Summary!N5,OSARP!H6:H466,0)) \n</code></pre>\n\n<p>and it returns and <code>N/A</code> error. </p>\n\n<p>N5 formula is </p>\n\n<pre><code>=IF($H$5=\"\",\"\",INDEX(Table_owssvr_1[GUUID],MATCH($H$5,Table_owssvr_1[Emp Name],0))) \n</code></pre>\n\n<p>I need it to use the result of <code>N5</code> formula which is an ID number that was index/matched from another sheet. </p>\n\n<p>Worksheet</p>\n\n<p><a href=\"https://i.stack.imgur.com/fmNrQ.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/fmNrQ.png\" alt=\"Worksheet\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "mysql"
+            ],
+            "owner": {
+                "reputation": 3322,
+                "user_id": 296635,
+                "user_type": "registered",
+                "accept_rate": 74,
+                "profile_image": "https://www.gravatar.com/avatar/51267751f65d4e80aa63d4d41e6c5cdf?s=128&d=identicon&r=PG",
+                "display_name": "Mercer",
+                "link": "https://stackoverflow.com/users/296635/mercer"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524148878,
+            "creation_date": 1524142491,
+            "last_edit_date": 1524148878,
+            "question_id": 49921690,
+            "body_markdown": "I have this query:\r\n\r\n    SELECT * \r\n    FROM (\r\n        SELECT @z := ticketing_ticket.id_ticket_category as id, ticketing_ticket.email,\r\n        CONCAT(\r\n              TIMESTAMPDIFF(day,date_create,date_close) , &#39; jours &#39;\r\n        ) AS &#39;temps de traitement &#39;\r\n        FROM ticketing_ticket \r\n        WHERE DATE(date_close) = CURDATE()\r\n    ) AS X\r\n    CROSS JOIN (\r\n        SELECT GROUP_CONCAT(T2.label SEPARATOR &#39;;&#39;) AS &#39;Domaines&#39;, @z as id\r\n        FROM (\r\n            SELECT @r AS _id,\r\n                 (SELECT @r := id_parent \r\n                  FROM ticketing_category \r\n                  WHERE id_category = _id) AS parent_id,\r\n                  @l := @l + 1 AS lvl\r\n            FROM ( SELECT @r :=@z , @l := 0) vars\r\n            CROSS JOIN ticketing_category m\r\n            WHERE @r &lt;&gt; 0\r\n        ) T1\r\n        JOIN ticketing_category T2\r\n            ON T1._id = T2.id_category\r\n    ) AS Y;\r\n\r\nOutput:\r\n\r\n    +----+------------------+----------+-----------------------------+----+\r\n\t| ID |       EMAIL      | DURATION |           DOMAINS           | ID |\r\n\t+----+------------------+----------+-----------------------------+----+\r\n\t| 35 |  p.p@yopmail.com | 65 jours | Elec_Domain;Help_Sub_Domain | 38 |\r\n\t+----+------------------+----------+-----------------------------+----+\r\n\t| 36 | test@yopmail.com | 63 jours | Elec_Domain;Help_Sub_Domain | 38 |\r\n\t+----+------------------+----------+-----------------------------+----+\r\n\t| 28 |  admin@admin.com | 29 jours | Elec_Domain;Help_Sub_Domain | 38 |\r\n\t+----+------------------+----------+-----------------------------+----+\r\n\t| 38 |   test@test.com  | 21 jours | Elec_Domain;Help_Sub_Domain | 38 |\r\n\t+----+------------------+----------+-----------------------------+----+\r\n\t| 38 |   test@test.com  | 21 jours | Elec_Domain;Help_Sub_Domain | 38 |\r\n\t+----+------------------+----------+-----------------------------+----+\r\n\r\nMy problem is i want to use the `id` on my second `sub-select` but on the output is the same `id`.\r\nWhat&#39;s wrong on my request ?",
+            "link": "https://stackoverflow.com/questions/49921690/use-variable-on-sql-select",
+            "title": "Use variable on Sql Select",
+            "body": "<p>I have this query:</p>\n\n<pre><code>SELECT * \nFROM (\n    SELECT @z := ticketing_ticket.id_ticket_category as id, ticketing_ticket.email,\n    CONCAT(\n          TIMESTAMPDIFF(day,date_create,date_close) , ' jours '\n    ) AS 'temps de traitement '\n    FROM ticketing_ticket \n    WHERE DATE(date_close) = CURDATE()\n) AS X\nCROSS JOIN (\n    SELECT GROUP_CONCAT(T2.label SEPARATOR ';') AS 'Domaines', @z as id\n    FROM (\n        SELECT @r AS _id,\n             (SELECT @r := id_parent \n              FROM ticketing_category \n              WHERE id_category = _id) AS parent_id,\n              @l := @l + 1 AS lvl\n        FROM ( SELECT @r :=@z , @l := 0) vars\n        CROSS JOIN ticketing_category m\n        WHERE @r &lt;&gt; 0\n    ) T1\n    JOIN ticketing_category T2\n        ON T1._id = T2.id_category\n) AS Y;\n</code></pre>\n\n<p>Output:</p>\n\n<pre><code>+----+------------------+----------+-----------------------------+----+\n| ID |       EMAIL      | DURATION |           DOMAINS           | ID |\n+----+------------------+----------+-----------------------------+----+\n| 35 |  p.p@yopmail.com | 65 jours | Elec_Domain;Help_Sub_Domain | 38 |\n+----+------------------+----------+-----------------------------+----+\n| 36 | test@yopmail.com | 63 jours | Elec_Domain;Help_Sub_Domain | 38 |\n+----+------------------+----------+-----------------------------+----+\n| 28 |  admin@admin.com | 29 jours | Elec_Domain;Help_Sub_Domain | 38 |\n+----+------------------+----------+-----------------------------+----+\n| 38 |   test@test.com  | 21 jours | Elec_Domain;Help_Sub_Domain | 38 |\n+----+------------------+----------+-----------------------------+----+\n| 38 |   test@test.com  | 21 jours | Elec_Domain;Help_Sub_Domain | 38 |\n+----+------------------+----------+-----------------------------+----+\n</code></pre>\n\n<p>My problem is i want to use the <code>id</code> on my second <code>sub-select</code> but on the output is the same <code>id</code>.\nWhat's wrong on my request ?</p>\n"
+        },
+        {
+            "tags": [
+                "node.js",
+                "postgresql",
+                "jsonb"
+            ],
+            "owner": {
+                "reputation": 88,
+                "user_id": 1229208,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ac59ff1d120d538489ee77fee9e9f181?s=128&d=identicon&r=PG",
+                "display_name": "Martin8768",
+                "link": "https://stackoverflow.com/users/1229208/martin8768"
+            },
+            "is_answered": true,
+            "view_count": 30,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1524148876,
+            "creation_date": 1524140003,
+            "question_id": 49920845,
+            "body_markdown": "I would like to do more complex queries on jsonb/documents that contain arrays of objects. Is there any library anyone would recommend for Node? I am using `pg` but I want to do more advanced queries like select the document where a document has an array with an object with a certain key/value. If there aren&#39;t any libraries that do this, does anyone know how I could do it with json functions/etc in psql? or point me to a book/resource where I could learn this advanced querying?",
+            "link": "https://stackoverflow.com/questions/49920845/what-library-do-you-use-for-postgresjsonb-in-node",
+            "title": "What library do you use for postgres+jsonb in Node?",
+            "body": "<p>I would like to do more complex queries on jsonb/documents that contain arrays of objects. Is there any library anyone would recommend for Node? I am using <code>pg</code> but I want to do more advanced queries like select the document where a document has an array with an object with a certain key/value. If there aren't any libraries that do this, does anyone know how I could do it with json functions/etc in psql? or point me to a book/resource where I could learn this advanced querying?</p>\n"
+        },
+        {
+            "tags": [
+                "spring",
+                "criteria"
+            ],
+            "owner": {
+                "reputation": 24,
+                "user_id": 5265472,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://www.gravatar.com/avatar/b3ac4be16b8bcb80140ee207e3d57503?s=128&d=identicon&r=PG&f=1",
+                "display_name": "LunaticJape",
+                "link": "https://stackoverflow.com/users/5265472/lunaticjape"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524148876,
+            "creation_date": 1524148876,
+            "question_id": 49923867,
+            "body_markdown": "I&#39;m trying to search all objects which are located within a radius of coordinates.\r\nI found [this equation](https://stackoverflow.com/questions/7783684/select-coordinates-which-fall-within-a-radius-of-a-central-point) to calculate the criteria.\r\n\r\nSince I&#39;m using spring specification, I did a bit modification:\r\n\r\n                double latitude = Double.parseDouble(coordinates[0]);\r\n                double longitude = Double.parseDouble(coordinates[1]);\r\n                Join join = root.join(&quot;address&quot;);\r\n                \r\n                predicate = cb.lessThanOrEqualTo(\r\n                        Math.acos(Math.sin(Double.valueOf(join.get(&quot;latitude&quot;)) * 0.0175) * Math.sin(latitude * 0.0175)\r\n                        + Math.cos(Double.valueOf(join.get(&quot;latitude&quot;)) * 0.0175) * Math.cos(latitude * 0.0175) *\r\n                        Math.cos(longitude * 0.0175 - Double.valueOf(join.get(&quot;longitude&quot;)) * 0.0175))\r\n                 * 3959, 3);\r\n\r\n\r\nBut I cannot call `Double.valueOf(join.get(&quot;latitude&quot;))` because it&#39;s `Path`, is there a way to make it possible? or is there a better way to search by coordinates within the radius?\r\n\r\nThanks.",
+            "link": "https://stackoverflow.com/questions/49923867/spring-specification-search-by-coordinates-withing-a-radius",
+            "title": "Spring specification search by coordinates withing a radius",
+            "body": "<p>I'm trying to search all objects which are located within a radius of coordinates.\nI found <a href=\"https://stackoverflow.com/questions/7783684/select-coordinates-which-fall-within-a-radius-of-a-central-point\">this equation</a> to calculate the criteria.</p>\n\n<p>Since I'm using spring specification, I did a bit modification:</p>\n\n<pre><code>            double latitude = Double.parseDouble(coordinates[0]);\n            double longitude = Double.parseDouble(coordinates[1]);\n            Join join = root.join(\"address\");\n\n            predicate = cb.lessThanOrEqualTo(\n                    Math.acos(Math.sin(Double.valueOf(join.get(\"latitude\")) * 0.0175) * Math.sin(latitude * 0.0175)\n                    + Math.cos(Double.valueOf(join.get(\"latitude\")) * 0.0175) * Math.cos(latitude * 0.0175) *\n                    Math.cos(longitude * 0.0175 - Double.valueOf(join.get(\"longitude\")) * 0.0175))\n             * 3959, 3);\n</code></pre>\n\n<p>But I cannot call <code>Double.valueOf(join.get(\"latitude\"))</code> because it's <code>Path</code>, is there a way to make it possible? or is there a better way to search by coordinates within the radius?</p>\n\n<p>Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "reactjs",
+                "react-router"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 7990485,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/8582321822267a0be0619632a09d9c10?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Neskews",
+                "link": "https://stackoverflow.com/users/7990485/neskews"
+            },
+            "is_answered": false,
+            "view_count": 43,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1524148872,
+            "creation_date": 1524147820,
+            "question_id": 49923520,
+            "body_markdown": "I&#39;d like to build a one-way route to a subpage with [react-router][1]. From that subpage I do not want to be able to go back.\r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    class Home extends Component {\r\n      render() {\r\n        return &lt;h3&gt;Im Home&lt;/h3&gt;;\r\n      }\r\n    }\r\n\r\n    export default class Navigation extends Component {\r\n      render() {\r\n        return (\r\n          &lt;Router&gt;\r\n            &lt;div&gt;\r\n              &lt;Link to=&quot;/reports/home&quot;&gt;Home&lt;/Link&gt;\r\n              &lt;Route path=&quot;/reports/home&quot; component={Home} /&gt;\r\n            &lt;/div&gt;\r\n          &lt;/Router&gt;\r\n        );\r\n      }\r\n    }\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\n**Current behaviour**: I see the Link to &quot;Home&quot;, even though I already clicked it.\r\n\r\n**Wanted behaviour**: As soon as I click the Link to &quot;Home&quot;, I don&#39;t want to see any navigation related components - only the pure Home Component.\r\n\r\n\r\n  [1]: https://reacttraining.com/react-router/",
+            "link": "https://stackoverflow.com/questions/49923520/react-router-one-way",
+            "title": "React Router: one way",
+            "body": "<p>I'd like to build a one-way route to a subpage with <a href=\"https://reacttraining.com/react-router/\" rel=\"nofollow noreferrer\">react-router</a>. From that subpage I do not want to be able to go back.</p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-js lang-js prettyprint-override\"><code>class Home extends Component {\r\n  render() {\r\n    return &lt;h3&gt;Im Home&lt;/h3&gt;;\r\n  }\r\n}\r\n\r\nexport default class Navigation extends Component {\r\n  render() {\r\n    return (\r\n      &lt;Router&gt;\r\n        &lt;div&gt;\r\n          &lt;Link to=\"/reports/home\"&gt;Home&lt;/Link&gt;\r\n          &lt;Route path=\"/reports/home\" component={Home} /&gt;\r\n        &lt;/div&gt;\r\n      &lt;/Router&gt;\r\n    );\r\n  }\r\n}</code></pre>\r\n</div>\r\n</div>\r\n</p>\n\n<p><strong>Current behaviour</strong>: I see the Link to \"Home\", even though I already clicked it.</p>\n\n<p><strong>Wanted behaviour</strong>: As soon as I click the Link to \"Home\", I don't want to see any navigation related components - only the pure Home Component.</p>\n"
+        },
+        {
+            "tags": [
+                "amazon-web-services",
+                "celery",
+                "elastic-beanstalk",
+                "amazon-sqs",
+                "django-celery"
+            ],
+            "owner": {
+                "reputation": 58,
+                "user_id": 1244114,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ba9f4becc8192e76ae1b1b375a241953?s=128&d=identicon&r=PG",
+                "display_name": "tamarabyte",
+                "link": "https://stackoverflow.com/users/1244114/tamarabyte"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524148867,
+            "creation_date": 1524148867,
+            "question_id": 49923862,
+            "body_markdown": "I recently installed Celery on AWS Elastic Beanstalk and hooked it up to Amazon SQS. \r\n\r\nThe Celery Worker is processing tasks properly, but the log is full of the following messages:\r\n\r\n    [2018-04-19 09:34:01,410: INFO/MainProcess] Resetting dropped \r\n    connection: queue.amazonaws.com\r\n    [2018-04-19 09:42:27,410: INFO/MainProcess] Resetting dropped \r\n    connection: queue.amazonaws.com\r\n    [2018-04-19 09:50:54,239: INFO/MainProcess] Resetting dropped \r\n    connection: queue.amazonaws.com\r\n    [2018-04-19 09:59:19,964: INFO/MainProcess] Resetting dropped \r\n    connection: queue.amazonaws.com\r\n    [2018-04-19 10:07:46,949: INFO/MainProcess] Resetting dropped \r\n    connection: queue.amazonaws.com\r\n    [2018-04-19 10:16:14,792: INFO/MainProcess] Resetting dropped \r\n    connection: queue.amazonaws.com\r\n\r\nIs this an issue with how my SQS is configured or how my celery worker is configured and how can I resolve it?\r\n\r\nI can&#39;t find any information on how to resolve this message in Celery&#39;s documentation.\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49923862/celery-log-resetting-dropped-connection-queue-amazonaws-com",
+            "title": "Celery Log: Resetting dropped connection: queue.amazonaws.com",
+            "body": "<p>I recently installed Celery on AWS Elastic Beanstalk and hooked it up to Amazon SQS. </p>\n\n<p>The Celery Worker is processing tasks properly, but the log is full of the following messages:</p>\n\n<pre><code>[2018-04-19 09:34:01,410: INFO/MainProcess] Resetting dropped \nconnection: queue.amazonaws.com\n[2018-04-19 09:42:27,410: INFO/MainProcess] Resetting dropped \nconnection: queue.amazonaws.com\n[2018-04-19 09:50:54,239: INFO/MainProcess] Resetting dropped \nconnection: queue.amazonaws.com\n[2018-04-19 09:59:19,964: INFO/MainProcess] Resetting dropped \nconnection: queue.amazonaws.com\n[2018-04-19 10:07:46,949: INFO/MainProcess] Resetting dropped \nconnection: queue.amazonaws.com\n[2018-04-19 10:16:14,792: INFO/MainProcess] Resetting dropped \nconnection: queue.amazonaws.com\n</code></pre>\n\n<p>Is this an issue with how my SQS is configured or how my celery worker is configured and how can I resolve it?</p>\n\n<p>I can't find any information on how to resolve this message in Celery's documentation.</p>\n"
+        },
+        {
+            "tags": [
+                "c",
+                "string",
+                "function",
+                "character"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9667369,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/eca1a85feeac65245b728e7401314044?s=128&d=identicon&r=PG&f=1",
+                "display_name": "lm_margaux",
+                "link": "https://stackoverflow.com/users/9667369/lm-margaux"
+            },
+            "is_answered": false,
+            "view_count": 37,
+            "closed_date": 1524153488,
+            "answer_count": 0,
+            "score": -4,
+            "last_activity_date": 1524148864,
+            "creation_date": 1524148864,
+            "question_id": 49923861,
+            "body_markdown": "Are there functions for string where you can identify each character in a string if it&#39;s an alphabet, number or special characters?\n\nI was using isalpha, isdigit, and ispunct but they only work for characters. Is there any way I can scan the string? ",
+            "link": "https://stackoverflow.com/questions/49923861/function-for-string-in-c",
+            "closed_reason": "duplicate",
+            "title": "Function for string in C",
+            "body": "<p>Are there functions for string where you can identify each character in a string if it's an alphabet, number or special characters?</p>\n\n<p>I was using isalpha, isdigit, and ispunct but they only work for characters. Is there any way I can scan the string? </p>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "fortran",
+                "output",
+                "ofstream"
+            ],
+            "owner": {
+                "reputation": 55,
+                "user_id": 6831734,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://graph.facebook.com/10206587986686335/picture?type=large",
+                "display_name": "Dave Lass",
+                "link": "https://stackoverflow.com/users/6831734/dave-lass"
+            },
+            "is_answered": true,
+            "view_count": 68,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524148858,
+            "creation_date": 1524146826,
+            "question_id": 49923179,
+            "body_markdown": "I&#39;m looking to convert some FORTRAN code to C++. \r\nI&#39;m having some issues around the unformatted outputs.\r\n\r\nIn FORTRAN I have some code as follows \r\n\r\n    program main\r\n    integer*4 :: one\r\n    one = 1\r\n    open(unit = temp, file = &quot;temp.dat&quot;, status = &#39;replace&#39;, form=&#39;unformatted&#39;)\r\n    WRITE(temp) one, one\r\n    end\r\n\r\nThe output of this code ends up being\r\n    \r\n    0x0800 0000 0100 0000 0100 0000 0800 0000 \r\n    0x0a\r\n\r\nSo to me it appears as if the output is a little bit strange. I&#39;ve been playing around with it, and I think the 0x08 is for a size of the variables being written, the two 0x00000001 are for the two four byte ones being written and the 0x00000008 may be a closing size buffer (I don&#39;t know why this would be 4 bytes when the opening buffer is a single byte). The 0x00000a appears to be an EOF character.\r\n\r\nWhen I try to mimic the output with C++, I do\r\n\r\n    int main(){\r\n        long one = 1;\r\n        std::ofstream outFile;\r\n        outFile.open(&quot;temp.dat&quot;, std::ofstream::out)\r\n        outFile &lt;&lt; one &lt;&lt; one;\r\n        outFile.close()\r\n    }\r\n\r\nThis didn&#39;t work because it tried to write the string for 1 out instead of the binary, so then I tried:\r\n\r\n    int main(){\r\n        long one = 1;\r\n        std::ofstream outFile;\r\n        outFile.open(&quot;temp.dat&quot;, std::ofstream::out) \r\n        outFile.write((char*) one, sizeof(one));  //Line a\r\n        outFile.write((char*) one, sizeof(one));\r\n        outFile.close()\r\n    }\r\n\r\nIn hopes that by casting it as a char, the direct binary would be output. \r\nUnfortunately this has a SigSev fault on line a. I&#39;m not quite sure why.\r\n\r\nIs an approach like this a good approach, or should I try to go in a different direction?",
+            "link": "https://stackoverflow.com/questions/49923179/output-unformatted-c-similar-to-fortran",
+            "title": "Output unformatted C++ similar to FORTRAN",
+            "body": "<p>I'm looking to convert some FORTRAN code to C++. \nI'm having some issues around the unformatted outputs.</p>\n\n<p>In FORTRAN I have some code as follows </p>\n\n<pre><code>program main\ninteger*4 :: one\none = 1\nopen(unit = temp, file = \"temp.dat\", status = 'replace', form='unformatted')\nWRITE(temp) one, one\nend\n</code></pre>\n\n<p>The output of this code ends up being</p>\n\n<pre><code>0x0800 0000 0100 0000 0100 0000 0800 0000 \n0x0a\n</code></pre>\n\n<p>So to me it appears as if the output is a little bit strange. I've been playing around with it, and I think the 0x08 is for a size of the variables being written, the two 0x00000001 are for the two four byte ones being written and the 0x00000008 may be a closing size buffer (I don't know why this would be 4 bytes when the opening buffer is a single byte). The 0x00000a appears to be an EOF character.</p>\n\n<p>When I try to mimic the output with C++, I do</p>\n\n<pre><code>int main(){\n    long one = 1;\n    std::ofstream outFile;\n    outFile.open(\"temp.dat\", std::ofstream::out)\n    outFile &lt;&lt; one &lt;&lt; one;\n    outFile.close()\n}\n</code></pre>\n\n<p>This didn't work because it tried to write the string for 1 out instead of the binary, so then I tried:</p>\n\n<pre><code>int main(){\n    long one = 1;\n    std::ofstream outFile;\n    outFile.open(\"temp.dat\", std::ofstream::out) \n    outFile.write((char*) one, sizeof(one));  //Line a\n    outFile.write((char*) one, sizeof(one));\n    outFile.close()\n}\n</code></pre>\n\n<p>In hopes that by casting it as a char, the direct binary would be output. \nUnfortunately this has a SigSev fault on line a. I'm not quite sure why.</p>\n\n<p>Is an approach like this a good approach, or should I try to go in a different direction?</p>\n"
+        },
+        {
+            "tags": [
+                "c"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9670333,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-dw7IrU_le8g/AAAAAAAAAAI/AAAAAAAAAKw/8ELdnC9xVxU/photo.jpg?sz=128",
+                "display_name": "shirayuki",
+                "link": "https://stackoverflow.com/users/9670333/shirayuki"
+            },
+            "is_answered": false,
+            "view_count": 43,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524148851,
+            "creation_date": 1524148814,
+            "last_edit_date": 1524148851,
+            "question_id": 49923847,
+            "body_markdown": "The case is like this :\r\n\r\nA supermarket have 2 cashiers, cashier A &amp; B and the max queue is 10 person/cashier.\r\nif one of those cashier A have more queue than the cashier B then the the most last person of cashier A will move to the cashier B (for Example Cashier A = 10 and B = 8, then the last person will move then Cashier A = 9 and Cashier B= 9) but the difference queue is max 1 person.\r\n\r\nCreate the simulation program of the case above.\r\n\r\n1. The Queue must be input.\r\n2. Display the Queue.\r\n\r\nI make menu for this program and already do till display but still can&#39;t solve that case above.\r\n\r\nP.S : I&#39;m sorry and i hope you can understand my English is not good at all.\r\n\r\n    #include &lt;stdio.h&gt;\r\n    #include &lt;cstdlib&gt;\r\n    #define MAX 10\r\n\r\n    typedef struct {\r\n\t\r\n\t    int data[MAX];\r\n\t    int head;\r\n\t    int tail;\r\n    } Queue;\r\n\r\n    Queue antrian1;\r\n    Queue antrian2;\r\n\r\n\r\n    void create1(){\r\n\r\n\t    antrian1.head=antrian1.tail=-1;\r\n    }\r\n\r\n    void create2(){\r\n\r\n\t    antrian2.head=antrian2.tail=-1;\r\n    }\r\n\r\n    int isEmpty1(){\r\n\t\r\n\t    if(antrian1.tail==-1)\r\n\t\t    return 1;\r\n\t    else\r\n\t\t    return 0;\r\n    }\r\n\r\n    int isEmpty2(){\r\n\t\r\n\t    if(antrian2.tail==-1)\r\n\t\t    return 1;\r\n\t    else\r\n\t\t    return 0;\r\n     }\r\n\r\n    int isFull1(){\r\n\t \r\n\t    if(antrian1.tail==MAX-1)\r\n\t \t    return 1;\r\n\t    else\r\n\t\t    return 0;\r\n    }\r\n\r\n    int isFull2(){\r\n\t \r\n\t    if(antrian2.tail==MAX-1)\r\n\t \t    return 1;\r\n\t    else\r\n\t\t    return 0;\r\n    }\r\n\r\n    void enqueue1(){\r\n\t\r\n\t    int data;\r\n\t\r\n\t    printf(&quot;\\nEnter the element to Cashier A : &quot;);\r\n\t    scanf(&quot;%d&quot;,&amp;data);\r\n\t\r\n\t    if(isEmpty1()==1){\r\n\t\t\r\n\t\t    antrian1.head=antrian1.tail=0;\r\n\t\t    antrian1.data[antrian1.tail]=data;\r\n\t\t    printf(&quot;%d masuk!&quot;, antrian1.data[antrian1.tail]);\r\n\t    }\r\n\t\r\n\t    else\r\n\t\t\r\n\t\t    if(isFull1()==0){\r\n\t\t\t\r\n\t\t\t    antrian1.tail++;\r\n\t\t\t    antrian1.data[antrian1.tail]=data;\r\n\t\t\t    printf(&quot;%d masuk!&quot;, antrian1.data[antrian1.tail]);\r\n\t\t    }\r\n\t\t\r\n\t     system(&quot;cls&quot;);\r\n    } \r\n\r\n    void enqueue2(){\r\n\t\r\n\t     int data;\r\n\t\r\n\t     printf(&quot;\\nEnter the element Cashier B : &quot;);\r\n\t     scanf(&quot;%d&quot;,&amp;data);\r\n\t\r\n\tif(isEmpty2()==1){\r\n\t\t\r\n\t\tantrian2.head=antrian2.tail=0;\r\n\t\tantrian2.data[antrian2.tail]=data;\r\n\t\tprintf(&quot;\\n%d masuk!\\n&quot;, antrian2.data[antrian2.tail]);\r\n\t}\r\n\t\r\n\telse\r\n\t\t\r\n\t\tif(isFull2()==0){\r\n\t\t\t\r\n\t\t\tantrian2.tail++;\r\n\t\t\tantrian2.data[antrian2.tail]=data;\r\n\t\t\tprintf(&quot;%d masuk!\\n&quot;, antrian2.data[antrian2.tail]);\r\n\t\t}\r\n\t\t\r\n\tsystem(&quot;cls&quot;);\r\n    }\r\n\r\n    int dequeue(){\r\n\r\n\t int i;\r\n\t int e = antrian1.data[antrian1.head];\r\n\t \r\n\t for(i=antrian1.head; i&lt;=antrian1.tail-1; i++){\r\n\t \t\r\n\t \tantrian1.data[i] = antrian1.data[i+1];\r\n\t }\r\n\t \r\n\t antrian2.tail--;\r\n\t \r\n\t printf(&quot;\\n\\n%d telah dihapus!\\n&quot;, e);\r\n\t return e;\r\n     }\r\n\r\n    void clear(){\r\n\t\r\n\tantrian1.head=antrian1.tail=-1;\r\n\tprintf(&quot;\\n data clear&quot;);\r\n    }\r\n\r\n    void display1(){\r\n\r\n\t\r\n\tif(isEmpty1()==0){\r\n\t\t\r\n\t\tprintf(&quot;\\nElement dalam Cashier A adalah\\n&quot;);\r\n\t\t\t\r\n\t\tfor(int i=antrian1.head; i&lt;=antrian1.tail; i++){\r\n\t\t\r\n\t\t\tprintf(&quot;%d &quot;, antrian1.data[i]);\r\n\t\t}\r\n\t}\r\n\t\r\n\telse\r\n\t\t\r\n\t\tprintf(&quot;\\n\\n&quot;);\r\n    }\r\n\r\n    void display2(){\r\n\r\n\t\r\n\tif(isEmpty2()==0){\r\n\t\t\r\n\t\tprintf(&quot;\\nElement dalam Cashier B adalah\\n&quot;);\r\n\t\t\t\r\n\t\tfor(int i=antrian2.head; i&lt;=antrian2.tail; i++){\r\n\t\t\r\n\t\t\tprintf(&quot;%d &quot;, antrian2.data[i]);\r\n\t\t}\r\n\t}\r\n\t\r\n\telse\r\n\t\t\r\n\t\tprintf(&quot;\\n\\n&quot;);\r\n    }\r\n\r\n    void jockey(){\r\n\t\r\n\tif(antrian1.tail+1 &gt; antrian2.tail){\r\n\t\t\r\n\t\tantrian1.data[antrian1.tail+1] = antrian2.tail;\r\n\t\tantrian2.data[antrian2.tail] = antrian2.data[antrian2.tail];\r\n\t}\r\n    }\r\n\r\n    int main(){\r\n\tint choice;\r\n\t\r\n\tcreate1();\r\n\tcreate2();\r\n\t\r\n\tdo {\r\n\t\r\n\t\tprintf(&quot;\\n------------------------------------------\\n&quot;);\r\n\t\tprintf(&quot;1. ENTER ELEMENT CASHIER A\\n&quot;);\r\n\t\tprintf(&quot;2. ENTER ELEMENT CASHIER B\\n&quot;);\r\n\t\tprintf(&quot;3. DISPLAY CASHIER A &amp; B\\n&quot;);\r\n\t\tprintf(&quot;4. JOCKEY\\n&quot;);\r\n\t\tprintf(&quot;5. EXIT\\n&quot;);\r\n\t\tprintf(&quot;------------------------------------------\\n&quot;);\r\n\t\r\n\t\tprintf(&quot;Enter your choice : &quot;);\r\n\t\tscanf(&quot;%d&quot;, &amp;choice);\r\n\t\r\n\t\tswitch (choice) {\r\n\t\r\n\t\t\tcase 1: enqueue1();\r\n\t\t\t\tbreak;\r\n\t\t\t\r\n\t\t\tcase 2: enqueue2();\r\n\t\t\t\tbreak;\r\n\t\t\t\r\n\t\t\tcase 3: display1(); display2();\r\n\t\t\t\tbreak;\r\n\t\t\t\t\r\n\t\t\tcase 4: jockey();\r\n\t\t\t\tbreak;\r\n\t\t}\r\n\t\t\r\n\t} while (choice!=5);\r\n\t\r\n\treturn 0;\r\n    }",
+            "link": "https://stackoverflow.com/questions/49923847/how-can-i-get-the-last-value-of-the-array-a-to-array-b",
+            "title": "How can i get the last value of the array A to array B?",
+            "body": "<p>The case is like this :</p>\n\n<p>A supermarket have 2 cashiers, cashier A &amp; B and the max queue is 10 person/cashier.\nif one of those cashier A have more queue than the cashier B then the the most last person of cashier A will move to the cashier B (for Example Cashier A = 10 and B = 8, then the last person will move then Cashier A = 9 and Cashier B= 9) but the difference queue is max 1 person.</p>\n\n<p>Create the simulation program of the case above.</p>\n\n<ol>\n<li>The Queue must be input.</li>\n<li>Display the Queue.</li>\n</ol>\n\n<p>I make menu for this program and already do till display but still can't solve that case above.</p>\n\n<p>P.S : I'm sorry and i hope you can understand my English is not good at all.</p>\n\n<pre><code>#include &lt;stdio.h&gt;\n#include &lt;cstdlib&gt;\n#define MAX 10\n\ntypedef struct {\n\n    int data[MAX];\n    int head;\n    int tail;\n} Queue;\n\nQueue antrian1;\nQueue antrian2;\n\n\nvoid create1(){\n\n    antrian1.head=antrian1.tail=-1;\n}\n\nvoid create2(){\n\n    antrian2.head=antrian2.tail=-1;\n}\n\nint isEmpty1(){\n\n    if(antrian1.tail==-1)\n        return 1;\n    else\n        return 0;\n}\n\nint isEmpty2(){\n\n    if(antrian2.tail==-1)\n        return 1;\n    else\n        return 0;\n }\n\nint isFull1(){\n\n    if(antrian1.tail==MAX-1)\n        return 1;\n    else\n        return 0;\n}\n\nint isFull2(){\n\n    if(antrian2.tail==MAX-1)\n        return 1;\n    else\n        return 0;\n}\n\nvoid enqueue1(){\n\n    int data;\n\n    printf(\"\\nEnter the element to Cashier A : \");\n    scanf(\"%d\",&amp;data);\n\n    if(isEmpty1()==1){\n\n        antrian1.head=antrian1.tail=0;\n        antrian1.data[antrian1.tail]=data;\n        printf(\"%d masuk!\", antrian1.data[antrian1.tail]);\n    }\n\n    else\n\n        if(isFull1()==0){\n\n            antrian1.tail++;\n            antrian1.data[antrian1.tail]=data;\n            printf(\"%d masuk!\", antrian1.data[antrian1.tail]);\n        }\n\n     system(\"cls\");\n} \n\nvoid enqueue2(){\n\n     int data;\n\n     printf(\"\\nEnter the element Cashier B : \");\n     scanf(\"%d\",&amp;data);\n\nif(isEmpty2()==1){\n\n    antrian2.head=antrian2.tail=0;\n    antrian2.data[antrian2.tail]=data;\n    printf(\"\\n%d masuk!\\n\", antrian2.data[antrian2.tail]);\n}\n\nelse\n\n    if(isFull2()==0){\n\n        antrian2.tail++;\n        antrian2.data[antrian2.tail]=data;\n        printf(\"%d masuk!\\n\", antrian2.data[antrian2.tail]);\n    }\n\nsystem(\"cls\");\n}\n\nint dequeue(){\n\n int i;\n int e = antrian1.data[antrian1.head];\n\n for(i=antrian1.head; i&lt;=antrian1.tail-1; i++){\n\n    antrian1.data[i] = antrian1.data[i+1];\n }\n\n antrian2.tail--;\n\n printf(\"\\n\\n%d telah dihapus!\\n\", e);\n return e;\n }\n\nvoid clear(){\n\nantrian1.head=antrian1.tail=-1;\nprintf(\"\\n data clear\");\n}\n\nvoid display1(){\n\n\nif(isEmpty1()==0){\n\n    printf(\"\\nElement dalam Cashier A adalah\\n\");\n\n    for(int i=antrian1.head; i&lt;=antrian1.tail; i++){\n\n        printf(\"%d \", antrian1.data[i]);\n    }\n}\n\nelse\n\n    printf(\"\\n\\n\");\n}\n\nvoid display2(){\n\n\nif(isEmpty2()==0){\n\n    printf(\"\\nElement dalam Cashier B adalah\\n\");\n\n    for(int i=antrian2.head; i&lt;=antrian2.tail; i++){\n\n        printf(\"%d \", antrian2.data[i]);\n    }\n}\n\nelse\n\n    printf(\"\\n\\n\");\n}\n\nvoid jockey(){\n\nif(antrian1.tail+1 &gt; antrian2.tail){\n\n    antrian1.data[antrian1.tail+1] = antrian2.tail;\n    antrian2.data[antrian2.tail] = antrian2.data[antrian2.tail];\n}\n}\n\nint main(){\nint choice;\n\ncreate1();\ncreate2();\n\ndo {\n\n    printf(\"\\n------------------------------------------\\n\");\n    printf(\"1. ENTER ELEMENT CASHIER A\\n\");\n    printf(\"2. ENTER ELEMENT CASHIER B\\n\");\n    printf(\"3. DISPLAY CASHIER A &amp; B\\n\");\n    printf(\"4. JOCKEY\\n\");\n    printf(\"5. EXIT\\n\");\n    printf(\"------------------------------------------\\n\");\n\n    printf(\"Enter your choice : \");\n    scanf(\"%d\", &amp;choice);\n\n    switch (choice) {\n\n        case 1: enqueue1();\n            break;\n\n        case 2: enqueue2();\n            break;\n\n        case 3: display1(); display2();\n            break;\n\n        case 4: jockey();\n            break;\n    }\n\n} while (choice!=5);\n\nreturn 0;\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html",
+                "dom"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9030423,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://www.gravatar.com/avatar/c4a34a4d5f2ab689044052e627e12380?s=128&d=identicon&r=PG&f=1",
+                "display_name": "ice cold",
+                "link": "https://stackoverflow.com/users/9030423/ice-cold"
+            },
+            "is_answered": false,
+            "view_count": 28,
+            "closed_date": 1524148920,
+            "answer_count": 2,
+            "score": -1,
+            "last_activity_date": 1524148851,
+            "creation_date": 1524148491,
+            "last_edit_date": 1524148851,
+            "question_id": 49923741,
+            "body_markdown": "I&#39;m sorry. I don&#39;t know how to describe this problem carefully.so I hope put my code first.\r\n\r\n    var test = &#39;less&#39;;\r\n    function test_I(tite) {\r\n        console.log(tite);\r\n    }\r\n    var repeat = &quot;test_I(&#39;&quot;+test+&quot;&#39;)&quot;;\r\n    setTimeout(repeat,10);\r\n\r\nThe code is right, but when I change:  \r\n`var repeat = &quot;test_I(&#39; &quot;+test+&quot; &#39;)&quot;;`  \r\nto:  \r\n`var repeat = &quot;test_I(&quot;+test+&quot;)&quot;;`,\r\n\r\nI get this error in Chrom&#39;s console. Why do I need a `&#39; &#39;` When I pass a \t\t\r\nString parameter? The error is below.\r\n\r\n![error][1]\r\n\r\n  [1]: https://i.stack.imgur.com/OCBt1.png",
+            "link": "https://stackoverflow.com/questions/49923741/i-had-an-error-when-i-passing-a-string-argument-to-a-function",
+            "closed_reason": "duplicate",
+            "title": "I had an error when I passing a string argument to a function?",
+            "body": "<p>I'm sorry. I don't know how to describe this problem carefully.so I hope put my code first.</p>\n\n<pre><code>var test = 'less';\nfunction test_I(tite) {\n    console.log(tite);\n}\nvar repeat = \"test_I('\"+test+\"')\";\nsetTimeout(repeat,10);\n</code></pre>\n\n<p>The code is right, but when I change:<br>\n<code>var repeat = \"test_I(' \"+test+\" ')\";</code><br>\nto:<br>\n<code>var repeat = \"test_I(\"+test+\")\";</code>,</p>\n\n<p>I get this error in Chrom's console. Why do I need a <code>' '</code> When I pass a<br>\nString parameter? The error is below.</p>\n\n<p><img src=\"https://i.stack.imgur.com/OCBt1.png\" alt=\"error\"></p>\n"
+        },
+        {
+            "tags": [
+                "security",
+                "encryption",
+                "token",
+                "quickbooks",
+                "intuit"
+            ],
+            "owner": {
+                "reputation": 679,
+                "user_id": 5631798,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1726953117538823/picture?type=large",
+                "display_name": "Zack Knopp",
+                "link": "https://stackoverflow.com/users/5631798/zack-knopp"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524148841,
+            "creation_date": 1524148841,
+            "question_id": 49923856,
+            "body_markdown": "I&#39;m building an application that provides different views of accounting data for whoever signs up. It connects to their Quickbooks accounts and pulls financial data from there. To do this it fetches and stores a Quickbooks Access Token and a Refresh Token. The Access Token can be used to fetch data, and the Refresh Token can be used to get a new Access Token.\r\n\r\nTheir developer forums say that the Refresh Token **should be encrypted and stored in the database so the user only has to grant authorization once** and the app can keep accessing Quickbooks data, refreshing access tokens automatically.\r\n\r\nWe&#39;re looking to have **multiple users** that can access **the same Quickbooks company**, so we&#39;ll store the token and say what users can access it through an invite system where the Admin User (the one who initially authorized the use of their Quickbooks data) **can invite other users to access the data as well**.\r\n\r\nOur application is separated into a python backend and a react frontend. **None of the tokens ever make their way to the frontend**, when the authorization to Connect to Quickbooks occurs it is fully encapsulated in the backend and intuit&#39;s login servers. The tokens are then saved in the database, and used to hit Quickbooks&#39; API for data if the user has access to that company.\r\n\r\nWith storing Access Tokens that offer full access to a company&#39;s financial data **we&#39;re worried that a rogue employee could use it to pull all of our User&#39;s financial data and publish it**.  I&#39;m not sure how to handle encryption to keep the data out of the eyes and use of developers while having it accessable by the application. The backend needs to be able to decrypt the Access Token to use it to grab Quickboos data. If it were user to user encryption then they&#39;d have their own private keys, but since the **users never see it and the app needs to decrypt it how do I keep it away from the &quot;rogue employee&quot;?**\r\n\r\nAny input is appreciated.",
+            "link": "https://stackoverflow.com/questions/49923856/how-to-securely-store-quickbooks-access-tokens-and-keep-rogue-employees-from-dow",
+            "title": "How to securely store Quickbooks access tokens and keep rogue employees from downloading user financial data?",
+            "body": "<p>I'm building an application that provides different views of accounting data for whoever signs up. It connects to their Quickbooks accounts and pulls financial data from there. To do this it fetches and stores a Quickbooks Access Token and a Refresh Token. The Access Token can be used to fetch data, and the Refresh Token can be used to get a new Access Token.</p>\n\n<p>Their developer forums say that the Refresh Token <strong>should be encrypted and stored in the database so the user only has to grant authorization once</strong> and the app can keep accessing Quickbooks data, refreshing access tokens automatically.</p>\n\n<p>We're looking to have <strong>multiple users</strong> that can access <strong>the same Quickbooks company</strong>, so we'll store the token and say what users can access it through an invite system where the Admin User (the one who initially authorized the use of their Quickbooks data) <strong>can invite other users to access the data as well</strong>.</p>\n\n<p>Our application is separated into a python backend and a react frontend. <strong>None of the tokens ever make their way to the frontend</strong>, when the authorization to Connect to Quickbooks occurs it is fully encapsulated in the backend and intuit's login servers. The tokens are then saved in the database, and used to hit Quickbooks' API for data if the user has access to that company.</p>\n\n<p>With storing Access Tokens that offer full access to a company's financial data <strong>we're worried that a rogue employee could use it to pull all of our User's financial data and publish it</strong>.  I'm not sure how to handle encryption to keep the data out of the eyes and use of developers while having it accessable by the application. The backend needs to be able to decrypt the Access Token to use it to grab Quickboos data. If it were user to user encryption then they'd have their own private keys, but since the <strong>users never see it and the app needs to decrypt it how do I keep it away from the \"rogue employee\"?</strong></p>\n\n<p>Any input is appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "matlab"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9670389,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2ab2181c57a556ee46aa0c8d7c00ce45?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Ehsan",
+                "link": "https://stackoverflow.com/users/9670389/ehsan"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524148837,
+            "creation_date": 1524148837,
+            "question_id": 49923853,
+            "body_markdown": "I have 20 random variables with log-normal distribution and known mean and standard deviation (mu and sigma). How can I randomly pick 200 unique samples from these random variables using Latin Hypercube Sampling in Matlab? I&#39;ve tried lhsnorm(mu,sigma,n) to test the normal distribution. How can I do it for LN distribution? \r\n\r\n    fileID1 = fopen(&#39;Mean.txt&#39;);\r\n    Mean= fscanf(fileID1,&#39;%f&#39;);\r\n    fclose(fileID1);\r\n    fileID2 = fopen(&#39;COV.txt&#39;);\r\n    COV= fscanf(fileID2,&#39;%f&#39;);\r\n    fclose(fileID2);\r\n    numvar=size(Mean,1);\r\n    X=nan(numvar,numvar);\r\n    Sigma=nan(numvar,1);\r\n        for i=1:numvar\r\n            Sigma(i,1)=Mean(i)*COV(i);\r\n            X(:,i) = lhsnorm(Mean(i),Sigma(i,1),numvar);\r\n        end",
+            "link": "https://stackoverflow.com/questions/49923853/latin-hypercube-sample-from-log-normal-distribution-in-matlab",
+            "title": "Latin hypercube sample from log-normal distribution in Matlab",
+            "body": "<p>I have 20 random variables with log-normal distribution and known mean and standard deviation (mu and sigma). How can I randomly pick 200 unique samples from these random variables using Latin Hypercube Sampling in Matlab? I've tried lhsnorm(mu,sigma,n) to test the normal distribution. How can I do it for LN distribution? </p>\n\n<pre><code>fileID1 = fopen('Mean.txt');\nMean= fscanf(fileID1,'%f');\nfclose(fileID1);\nfileID2 = fopen('COV.txt');\nCOV= fscanf(fileID2,'%f');\nfclose(fileID2);\nnumvar=size(Mean,1);\nX=nan(numvar,numvar);\nSigma=nan(numvar,1);\n    for i=1:numvar\n        Sigma(i,1)=Mean(i)*COV(i);\n        X(:,i) = lhsnorm(Mean(i),Sigma(i,1),numvar);\n    end\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "linux",
+                "drupal-7",
+                "tar"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 5889456,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/RO2CB.jpg?s=128&g=1",
+                "display_name": "n8thanael",
+                "link": "https://stackoverflow.com/users/5889456/n8thanael"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1524148835,
+            "creation_date": 1524148835,
+            "question_id": 49923852,
+            "body_markdown": "I ran a backup process - which is writing a .tar file.\r\nI started downloading this .tar forgetting that it may still be in a process - so I quit the download process.\r\n\r\nOver an SSH connection, I can see the file starting to load...it&#39;s several GB - the process that is running will turn it into a tar.gz - did I accidentally corrupt this file by beginning a download during it&#39;s creation?\r\n\r\nI would guess I should re-start the whole process to be sure, but I would like to know more about how this works.\r\n\r\nIt is a linux server hosted by Acquia running drupal 7 - I used Drush archive-dump.",
+            "link": "https://stackoverflow.com/questions/49923852/does-it-corrupt-a-tar-file-to-start-downloading-it-via-ssh-while-it-is-still-be",
+            "title": "Does it corrupt a .tar file to start downloading it via SSH while it is still being made?",
+            "body": "<p>I ran a backup process - which is writing a .tar file.\nI started downloading this .tar forgetting that it may still be in a process - so I quit the download process.</p>\n\n<p>Over an SSH connection, I can see the file starting to load...it's several GB - the process that is running will turn it into a tar.gz - did I accidentally corrupt this file by beginning a download during it's creation?</p>\n\n<p>I would guess I should re-start the whole process to be sure, but I would like to know more about how this works.</p>\n\n<p>It is a linux server hosted by Acquia running drupal 7 - I used Drush archive-dump.</p>\n"
+        },
+        {
+            "tags": [
+                "swift"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9668843,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Zeryx",
+                "link": "https://stackoverflow.com/users/9668843/zeryx"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1524148825,
+            "creation_date": 1524130541,
+            "last_edit_date": 1524148825,
+            "question_id": 49917646,
+            "body_markdown": "    public class BLE: NSObject, CBCentralManagerDelegate {\r\n        \r\n        var centralManager:CBCentralManager!\r\n        \r\n        public override init() {\r\n            super.init()\r\n            self.centralManager = CBCentralManager.init(delegate: self, queue: nil)\r\n        }\r\n        \r\n        public func centralManagerDidUpdateState(_ central: CBCentralManager) {\r\n            \r\n            switch central.state {\r\n            case .unknown:\r\n                print(&quot;unknown&quot;)\r\n            case .resetting:\r\n                print(&quot;resetting&quot;)\r\n            case .unsupported:\r\n                print(&quot;unsupported&quot;)\r\n            case .unauthorized:\r\n                print(&quot;unauthorized&quot;)\r\n            case .poweredOff:\r\n                print(&quot;powered off&quot;)\r\n            case .poweredOn:\r\n                print(&quot;powered on&quot;)\r\n                self.centralManager.scanForPeripherals(withServices: nil, options: nil)\r\n            }\r\n        }\r\n    }\r\n\r\nThis is my code, whenever I run it, it gives me the message \r\n\r\n&gt; “[CoreBlueooth] XPC Connection Invalid”\r\n\r\nI did try adding **NSBluetoothPeripheralUsageDescription** into my info.plist file but that didn’t work. \r\n\r\nThe weird part though is that, if I initialize **CBCentralManager** directly instead of using a class then everything works fine. \r\n\r\nThis problem only arises when I try to initialize **CBCentralManager** by creating on object of the class **BLE** or any other class for that matter.",
+            "link": "https://stackoverflow.com/questions/49917646/corebluetooth-xpc-connection-invalid",
+            "title": "CoreBluetooth XPC connection invalid",
+            "body": "<pre><code>public class BLE: NSObject, CBCentralManagerDelegate {\n\n    var centralManager:CBCentralManager!\n\n    public override init() {\n        super.init()\n        self.centralManager = CBCentralManager.init(delegate: self, queue: nil)\n    }\n\n    public func centralManagerDidUpdateState(_ central: CBCentralManager) {\n\n        switch central.state {\n        case .unknown:\n            print(\"unknown\")\n        case .resetting:\n            print(\"resetting\")\n        case .unsupported:\n            print(\"unsupported\")\n        case .unauthorized:\n            print(\"unauthorized\")\n        case .poweredOff:\n            print(\"powered off\")\n        case .poweredOn:\n            print(\"powered on\")\n            self.centralManager.scanForPeripherals(withServices: nil, options: nil)\n        }\n    }\n}\n</code></pre>\n\n<p>This is my code, whenever I run it, it gives me the message </p>\n\n<blockquote>\n  <p>“[CoreBlueooth] XPC Connection Invalid”</p>\n</blockquote>\n\n<p>I did try adding <strong>NSBluetoothPeripheralUsageDescription</strong> into my info.plist file but that didn’t work. </p>\n\n<p>The weird part though is that, if I initialize <strong>CBCentralManager</strong> directly instead of using a class then everything works fine. </p>\n\n<p>This problem only arises when I try to initialize <strong>CBCentralManager</strong> by creating on object of the class <strong>BLE</strong> or any other class for that matter.</p>\n"
+        },
+        {
+            "tags": [
+                "vb.net",
+                "arabic",
+                "collation"
+            ],
+            "owner": {
+                "reputation": 18,
+                "user_id": 3448197,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/QWGev.png?s=128&g=1",
+                "display_name": "Hesham Mohamed",
+                "link": "https://stackoverflow.com/users/3448197/hesham-mohamed"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524148821,
+            "creation_date": 1524148821,
+            "question_id": 49923848,
+            "body_markdown": "I have a database that contains the data as in the following picture\r\n\r\n[![enter image description here][1]][1]\r\n\r\nThis database is outdated and may not be modified by anyone ( Collation [rows] or Collation [databases])\r\n\r\nWhen you link the database to a new standalone program through Visual Basic 2015 to use some data from the database, the following format appears as in the picture...\r\n\r\n[![enter image description here][2]][2]\r\n\r\nWhat I want is to display the content of the database to change the (&#227;&#223;&#199;&#198;&#228; &#230;&#194;&#225;&#199;&#202;) sentence to the default language which is Arabic.\r\n\r\nI hope to find a solution through the Visual Basic code and not through the amendment to the database.\r\n\r\nThanks to all\r\n\r\n  [1]: https://i.stack.imgur.com/B9bOt.png\r\n  [2]: https://i.stack.imgur.com/yNPVQ.png",
+            "link": "https://stackoverflow.com/questions/49923848/view-content-from-the-database-sqlserver-within-the-project-visual-basic",
+            "title": "View content from the database sqlserver within the project visual basic",
+            "body": "<p>I have a database that contains the data as in the following picture</p>\n\n<p><a href=\"https://i.stack.imgur.com/B9bOt.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/B9bOt.png\" alt=\"enter image description here\"></a></p>\n\n<p>This database is outdated and may not be modified by anyone ( Collation [rows] or Collation [databases])</p>\n\n<p>When you link the database to a new standalone program through Visual Basic 2015 to use some data from the database, the following format appears as in the picture...</p>\n\n<p><a href=\"https://i.stack.imgur.com/yNPVQ.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/yNPVQ.png\" alt=\"enter image description here\"></a></p>\n\n<p>What I want is to display the content of the database to change the (ãßÇÆä æÂáÇÊ) sentence to the default language which is Arabic.</p>\n\n<p>I hope to find a solution through the Visual Basic code and not through the amendment to the database.</p>\n\n<p>Thanks to all</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "machine-learning",
+                "tensorflow",
+                "keras"
+            ],
+            "owner": {
+                "reputation": 342,
+                "user_id": 3775778,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://www.gravatar.com/avatar/1ea20875193007e04d1d571e31389395?s=128&d=identicon&r=PG",
+                "display_name": "mauna",
+                "link": "https://stackoverflow.com/users/3775778/mauna"
+            },
+            "is_answered": true,
+            "view_count": 560,
+            "accepted_answer_id": 46913596,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524148821,
+            "creation_date": 1508850976,
+            "last_edit_date": 1508856174,
+            "question_id": 46911596,
+            "body_markdown": "Consider the following code:\r\n\r\n    import tensorflow as tf\r\n    \r\n    from tensorflow.python.estimator.model_fn import EstimatorSpec\r\n    from tensorflow.contrib.keras.api.keras.layers import Dense\r\n    \r\n    \r\n    def model_fn_1(features, labels, mode):\r\n        x = [[1]]\r\n        labels = [[10]]\r\n        m = tf.constant([[1, 2], [3, 4]], tf.float32)\r\n        lookup = tf.nn.embedding_lookup(m, x, name=&#39;embedding_lookup&#39;)\r\n    \r\n        preds = Dense(1)(lookup)\r\n        loss = tf.reduce_mean(labels - preds)\r\n        train_op = tf.train.GradientDescentOptimizer(0.01).minimize(loss, tf.train.get_global_step())\r\n    \r\n        eval_metric_ops = {&#39;accuracy&#39;: tf.metrics.accuracy(labels, preds)}\r\n        return EstimatorSpec(mode=mode, loss=loss, train_op=train_op, eval_metric_ops=eval_metric_ops)\r\n    \r\n    \r\n    model_1 = tf.estimator.Estimator(model_fn_1)\r\n    model_1.train(input_fn=lambda: None, steps=1)\r\n\r\nAs expected, I can execute `model_1.train(input_fn=lambda: None, steps=1)` multiple times and the training will continue from the previous execution.\r\n\r\nNow, consider the following code:\r\n\r\n    import tensorflow as tf\r\n    import numpy as np\r\n    \r\n    from tensorflow.python.estimator.model_fn import EstimatorSpec\r\n    from tensorflow.contrib.keras.api.keras.layers import Embedding, Dense\r\n\r\n    def model_fn_2(features, labels, mode):\r\n        x = tf.constant([[1]])\r\n        labels = [[10]]\r\n        m = np.array([[1, 2], [3, 4]])\r\n        m = Embedding(2, 2, weights=[m], input_length=1, name=&#39;embedding_lookup&#39;)\r\n        lookup = m(x)\r\n    \r\n        preds = Dense(1)(lookup)\r\n        loss = tf.reduce_mean(labels - preds)\r\n        train_op = tf.train.GradientDescentOptimizer(0.01).minimize(loss, tf.train.get_global_step())\r\n    \r\n        eval_metric_ops = {&#39;accuracy&#39;: tf.metrics.accuracy(labels, preds)}\r\n        return EstimatorSpec(mode=mode, loss=loss, train_op=train_op, eval_metric_ops=eval_metric_ops)\r\n    \r\n    \r\n    model_2 = tf.estimator.Estimator(model_fn_2)\r\n    model_2.train(input_fn=lambda: None, steps=1)\r\n\r\nIn this case, I can execute `model_2.train(input_fn=lambda: None, steps=1)` only once and when i attempt to execute it again, I get the following error:\r\n\r\n&gt; ValueError: Fetch argument &lt;tf.Variable\r\n&gt; &#39;embedding_lookup/embeddings:0&#39; shape=(2, 2) dtype=float32_ref&gt; cannot\r\n&gt; be interpreted as a Tensor. (Tensor\r\n&gt; Tensor(&quot;embedding_lookup/embeddings:0&quot;, shape=(2, 2),\r\n&gt; dtype=float32_ref) is not an element of this graph.)\r\n\r\nWhy does this happen and how can I fix it?\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/46911596/why-does-tensorflow-say-a-tensor-is-not-an-element-of-this-graph-when-training-a",
+            "title": "Why does tensorflow say a Tensor is not an element of this graph when training an Estimator many times?",
+            "body": "<p>Consider the following code:</p>\n\n<pre><code>import tensorflow as tf\n\nfrom tensorflow.python.estimator.model_fn import EstimatorSpec\nfrom tensorflow.contrib.keras.api.keras.layers import Dense\n\n\ndef model_fn_1(features, labels, mode):\n    x = [[1]]\n    labels = [[10]]\n    m = tf.constant([[1, 2], [3, 4]], tf.float32)\n    lookup = tf.nn.embedding_lookup(m, x, name='embedding_lookup')\n\n    preds = Dense(1)(lookup)\n    loss = tf.reduce_mean(labels - preds)\n    train_op = tf.train.GradientDescentOptimizer(0.01).minimize(loss, tf.train.get_global_step())\n\n    eval_metric_ops = {'accuracy': tf.metrics.accuracy(labels, preds)}\n    return EstimatorSpec(mode=mode, loss=loss, train_op=train_op, eval_metric_ops=eval_metric_ops)\n\n\nmodel_1 = tf.estimator.Estimator(model_fn_1)\nmodel_1.train(input_fn=lambda: None, steps=1)\n</code></pre>\n\n<p>As expected, I can execute <code>model_1.train(input_fn=lambda: None, steps=1)</code> multiple times and the training will continue from the previous execution.</p>\n\n<p>Now, consider the following code:</p>\n\n<pre><code>import tensorflow as tf\nimport numpy as np\n\nfrom tensorflow.python.estimator.model_fn import EstimatorSpec\nfrom tensorflow.contrib.keras.api.keras.layers import Embedding, Dense\n\ndef model_fn_2(features, labels, mode):\n    x = tf.constant([[1]])\n    labels = [[10]]\n    m = np.array([[1, 2], [3, 4]])\n    m = Embedding(2, 2, weights=[m], input_length=1, name='embedding_lookup')\n    lookup = m(x)\n\n    preds = Dense(1)(lookup)\n    loss = tf.reduce_mean(labels - preds)\n    train_op = tf.train.GradientDescentOptimizer(0.01).minimize(loss, tf.train.get_global_step())\n\n    eval_metric_ops = {'accuracy': tf.metrics.accuracy(labels, preds)}\n    return EstimatorSpec(mode=mode, loss=loss, train_op=train_op, eval_metric_ops=eval_metric_ops)\n\n\nmodel_2 = tf.estimator.Estimator(model_fn_2)\nmodel_2.train(input_fn=lambda: None, steps=1)\n</code></pre>\n\n<p>In this case, I can execute <code>model_2.train(input_fn=lambda: None, steps=1)</code> only once and when i attempt to execute it again, I get the following error:</p>\n\n<blockquote>\n  <p>ValueError: Fetch argument  cannot\n  be interpreted as a Tensor. (Tensor\n  Tensor(\"embedding_lookup/embeddings:0\", shape=(2, 2),\n  dtype=float32_ref) is not an element of this graph.)</p>\n</blockquote>\n\n<p>Why does this happen and how can I fix it?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "range",
+                "character"
+            ],
+            "owner": {
+                "reputation": 311,
+                "user_id": 854503,
+                "user_type": "unregistered",
+                "profile_image": "https://www.gravatar.com/avatar/06b4286ee42b1779ee55c4c00e3b6de9?s=128&d=identicon&r=PG",
+                "display_name": "huan",
+                "link": "https://stackoverflow.com/users/854503/huan"
+            },
+            "is_answered": true,
+            "view_count": 43740,
+            "answer_count": 13,
+            "score": 50,
+            "last_activity_date": 1524148816,
+            "creation_date": 1312915065,
+            "last_edit_date": 1322128972,
+            "question_id": 7001144,
+            "body_markdown": "Is there an way to range over characters? something like this.\r\n\r\n    for c in xrange( &#39;a&#39;, &#39;z&#39; ):\r\n        print c\r\n\r\nI hope you guys can help.",
+            "link": "https://stackoverflow.com/questions/7001144/range-over-character-in-python",
+            "title": "range over character in python",
+            "body": "<p>Is there an way to range over characters? something like this.</p>\n\n<pre><code>for c in xrange( 'a', 'z' ):\n    print c\n</code></pre>\n\n<p>I hope you guys can help.</p>\n"
+        },
+        {
+            "tags": [
+                "quickfix",
+                "quickfixn"
+            ],
+            "owner": {
+                "reputation": 78,
+                "user_id": 3385758,
+                "user_type": "registered",
+                "accept_rate": 25,
+                "profile_image": "https://i.stack.imgur.com/IDLgO.jpg?s=128&g=1",
+                "display_name": "Omar Isaid",
+                "link": "https://stackoverflow.com/users/3385758/omar-isaid"
+            },
+            "is_answered": false,
+            "view_count": 38,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524148811,
+            "creation_date": 1513520306,
+            "last_edit_date": 1513524578,
+            "question_id": 47856005,
+            "body_markdown": "We are using QuickFixN for sending orders to exchange and receiving execution reports. \r\n\r\nIf the VPN for exchange is disconnected during the day, the QuickFixN could not reconnect until the next day, despite having the `ResetOnLogon` and `ResetOnDisconnected` settings set to N. \r\n\r\nWe do not understand the reason: the sequence, or something else?\r\n\r\n    0171217-12:15:39.122 : Created session\r\n    20171217-12:15:39.129 : Connecting to 172.16.105.151 on port 10060\r\n    20171217-12:15:39.399 : Connection succeeded\r\n    20171217-12:15:39.423 : Initiated logon request\r\n    20171217-12:15:39.680 : Session FIX.4.2:NOOR-&gt;MBS disconnecting: System.Net.Sockets.SocketException (0x80004005): An existing connection was forcibly closed by the remote host\r\n       at QuickFix.SocketInitiatorThread.ReadSome(Byte[] buffer, Int32 timeoutMilliseconds)\r\n       at QuickFix.SocketInitiatorThread.Read()\r\n    20171217-12:15:41.140 : Connecting to 172.16.105.151 on port 10060\r\n    20171217-12:15:41.398 : Connection succeeded\r\n    20171217-12:15:41.399 : Initiated logon request\r\n    20171217-12:15:41.654 : Session FIX.4.2:NOOR-&gt;MBS disconnecting: System.Net.Sockets.SocketException (0x80004005): An existing connection was forcibly closed by the remote host\r\n       at QuickFix.SocketInitiatorThread.ReadSome(Byte[] buffer, Int32 timeoutMilliseconds)\r\n       at QuickFix.SocketInitiatorThread.Read()\r\n\r\nRequests to exchange \r\n\r\n    20171217-12:15:39.423 : 8=FIX.4.2|9=65|35=A|34=7304|49=NOOR|52=20171217-12:15:39.415|56=MBS|98=0|108=30|10=192|\r\n    20171217-12:15:41.398 : 8=FIX.4.2|9=65|35=A|34=7305|49=NOOR|52=20171217-12:15:41.398|56=MBS|98=0|108=30|10=196|\r\n    20171217-12:15:43.397 : 8=FIX.4.2|9=65|35=A|34=7306|49=NOOR|52=20171217-12:15:43.397|56=MBS|98=0|108=30|10=198|\r\n    20171217-12:15:45.398 : 8=FIX.4.2|9=65|35=A|34=7307|49=NOOR|52=20171217-12:15:45.398|56=MBS|98=0|108=30|10=202|\r\n    20171217-12:15:47.399 : 8=FIX.4.2|9=65|35=A|34=7308|49=NOOR|52=20171217-12:15:47.399|56=MBS|98=0|108=30|10=206|\r\n    20171217-12:15:49.400 : 8=FIX.4.2|9=65|35=A|34=7309|49=NOOR|52=20171217-12:15:49.400|56=MBS|98=0|108=30|10=192|\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/47856005/quickfixn-disconnect-during-the-day-and-could-not-reconnect",
+            "title": "QuickFixN disconnect during the day and could not reconnect",
+            "body": "<p>We are using QuickFixN for sending orders to exchange and receiving execution reports. </p>\n\n<p>If the VPN for exchange is disconnected during the day, the QuickFixN could not reconnect until the next day, despite having the <code>ResetOnLogon</code> and <code>ResetOnDisconnected</code> settings set to N. </p>\n\n<p>We do not understand the reason: the sequence, or something else?</p>\n\n<pre><code>0171217-12:15:39.122 : Created session\n20171217-12:15:39.129 : Connecting to 172.16.105.151 on port 10060\n20171217-12:15:39.399 : Connection succeeded\n20171217-12:15:39.423 : Initiated logon request\n20171217-12:15:39.680 : Session FIX.4.2:NOOR-&gt;MBS disconnecting: System.Net.Sockets.SocketException (0x80004005): An existing connection was forcibly closed by the remote host\n   at QuickFix.SocketInitiatorThread.ReadSome(Byte[] buffer, Int32 timeoutMilliseconds)\n   at QuickFix.SocketInitiatorThread.Read()\n20171217-12:15:41.140 : Connecting to 172.16.105.151 on port 10060\n20171217-12:15:41.398 : Connection succeeded\n20171217-12:15:41.399 : Initiated logon request\n20171217-12:15:41.654 : Session FIX.4.2:NOOR-&gt;MBS disconnecting: System.Net.Sockets.SocketException (0x80004005): An existing connection was forcibly closed by the remote host\n   at QuickFix.SocketInitiatorThread.ReadSome(Byte[] buffer, Int32 timeoutMilliseconds)\n   at QuickFix.SocketInitiatorThread.Read()\n</code></pre>\n\n<p>Requests to exchange </p>\n\n<pre><code>20171217-12:15:39.423 : 8=FIX.4.2|9=65|35=A|34=7304|49=NOOR|52=20171217-12:15:39.415|56=MBS|98=0|108=30|10=192|\n20171217-12:15:41.398 : 8=FIX.4.2|9=65|35=A|34=7305|49=NOOR|52=20171217-12:15:41.398|56=MBS|98=0|108=30|10=196|\n20171217-12:15:43.397 : 8=FIX.4.2|9=65|35=A|34=7306|49=NOOR|52=20171217-12:15:43.397|56=MBS|98=0|108=30|10=198|\n20171217-12:15:45.398 : 8=FIX.4.2|9=65|35=A|34=7307|49=NOOR|52=20171217-12:15:45.398|56=MBS|98=0|108=30|10=202|\n20171217-12:15:47.399 : 8=FIX.4.2|9=65|35=A|34=7308|49=NOOR|52=20171217-12:15:47.399|56=MBS|98=0|108=30|10=206|\n20171217-12:15:49.400 : 8=FIX.4.2|9=65|35=A|34=7309|49=NOOR|52=20171217-12:15:49.400|56=MBS|98=0|108=30|10=192|\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "visual-studio",
+                "azure",
+                "iis"
+            ],
+            "owner": {
+                "reputation": 113,
+                "user_id": 1568554,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/96a33669c895f184f0c33804a397f2b4?s=128&d=identicon&r=PG",
+                "display_name": "Blowingfish",
+                "link": "https://stackoverflow.com/users/1568554/blowingfish"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524148809,
+            "creation_date": 1524148809,
+            "question_id": 49923845,
+            "body_markdown": "I&#39;m trying to deploy 2 C# applications on a Azure server with Web Deploy from Visual Studio.\r\n\r\nThe first one works fine, but the second always get me &quot;Object reference not set to an instance of an object.&quot;. When I look closer at the error log, it seems that it is trying to fetch a file using the path of my computer, not the server&#39;s.\r\n\r\nDo I need to specify something? I found it weird since the first application worked without problem.\r\n\r\nI&#39;m new to the world of C#, IIS and Azure. I know that the application works, it&#39;s in production right now, so I should not have to change any code.\r\n\r\nCheers",
+            "link": "https://stackoverflow.com/questions/49923845/visual-studio-web-deploy-use-local-path",
+            "title": "Visual Studio Web Deploy use local path",
+            "body": "<p>I'm trying to deploy 2 C# applications on a Azure server with Web Deploy from Visual Studio.</p>\n\n<p>The first one works fine, but the second always get me \"Object reference not set to an instance of an object.\". When I look closer at the error log, it seems that it is trying to fetch a file using the path of my computer, not the server's.</p>\n\n<p>Do I need to specify something? I found it weird since the first application worked without problem.</p>\n\n<p>I'm new to the world of C#, IIS and Azure. I know that the application works, it's in production right now, so I should not have to change any code.</p>\n\n<p>Cheers</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "telegram-bot"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9337664,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/0f5e21708a90e1ae78b11ab4504ead80?s=128&d=identicon&r=PG&f=1",
+                "display_name": "S. Scholte",
+                "link": "https://stackoverflow.com/users/9337664/s-scholte"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524148807,
+            "creation_date": 1524134970,
+            "last_edit_date": 1524148807,
+            "question_id": 49919212,
+            "body_markdown": "So i have this button which i want to be removed after it is clicked.\r\nbut clicking it does not generate an update?\r\n\r\n    if (Objects.equals(text.toUpperCase(), &quot;TEST&quot;)){\r\n                String out = link;\r\n                try {\r\n                    SendMessage sendMessage=new SendMessage().setChatId(update.getMessage().getChatId()).setText(&quot;JOIN THE CHANNEL!&quot;);\r\n                    InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();\r\n                    List&lt;List&lt;InlineKeyboardButton&gt;&gt; rowsInline = new ArrayList&lt;&gt;();\r\n                    List&lt;InlineKeyboardButton&gt; rowInline = new ArrayList&lt;&gt;();\r\n                    rowInline.add(new InlineKeyboardButton().setText(&quot;JOIN&quot;).setCallbackData(&quot;JOIN_PREMIUM&quot;).setUrl(link));\r\n                    rowsInline.add(rowInline);\r\n                    markupInline.setKeyboard(rowsInline);\r\n                    sendMessage.setReplyMarkup(markupInline);\r\n                    sendMessage(sendMessage);\r\n                } catch (TelegramApiException e) {\r\n                    e.printStackTrace();\r\n                }\r\n            }\r\n\r\nand to decide an action when it is pressed i have:\r\n\r\n    else if (update.hasInlineQuery()||update.hasCallbackQuery()||update.hasChosenInlineQuery()||update.hasPreCheckoutQuery()||update.hasShippingQuery()){\r\n            String call_data = update.getCallbackQuery().getData();\r\n            System.out.println(&quot;CALL DATA: &quot;+call_data);\r\n            int message_id = update.getCallbackQuery().getMessage().getMessageId();\r\n            long chat_id = update.getCallbackQuery().getMessage().getChatId();\r\n\r\n            if (Objects.equals(call_data, &quot;JOIN_PREMIUM&quot;)){\r\n                EditMessageText editMessageText = new EditMessageText().setMessageId(message_id).setChatId(chat_id);\r\n                editMessageText.setText(&quot;Welcome to the club!&quot;);\r\n                try {\r\n                    editMessageText(editMessageText);\r\n                } catch (TelegramApiException e) {\r\n                    e.printStackTrace();\r\n                }\r\n            }\r\n        }\r\n\r\nbut that is useless since it doesn&#39;t give an update, but is should!\r\nDoes anyone have a solution?",
+            "link": "https://stackoverflow.com/questions/49919212/telegram-bot-java-inline-url-button-does-not-create-an-update-and-thus-no-callb",
+            "title": "Telegram bot java: inline url button does not create an update and thus no callback data to respond on",
+            "body": "<p>So i have this button which i want to be removed after it is clicked.\nbut clicking it does not generate an update?</p>\n\n<pre><code>if (Objects.equals(text.toUpperCase(), \"TEST\")){\n            String out = link;\n            try {\n                SendMessage sendMessage=new SendMessage().setChatId(update.getMessage().getChatId()).setText(\"JOIN THE CHANNEL!\");\n                InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();\n                List&lt;List&lt;InlineKeyboardButton&gt;&gt; rowsInline = new ArrayList&lt;&gt;();\n                List&lt;InlineKeyboardButton&gt; rowInline = new ArrayList&lt;&gt;();\n                rowInline.add(new InlineKeyboardButton().setText(\"JOIN\").setCallbackData(\"JOIN_PREMIUM\").setUrl(link));\n                rowsInline.add(rowInline);\n                markupInline.setKeyboard(rowsInline);\n                sendMessage.setReplyMarkup(markupInline);\n                sendMessage(sendMessage);\n            } catch (TelegramApiException e) {\n                e.printStackTrace();\n            }\n        }\n</code></pre>\n\n<p>and to decide an action when it is pressed i have:</p>\n\n<pre><code>else if (update.hasInlineQuery()||update.hasCallbackQuery()||update.hasChosenInlineQuery()||update.hasPreCheckoutQuery()||update.hasShippingQuery()){\n        String call_data = update.getCallbackQuery().getData();\n        System.out.println(\"CALL DATA: \"+call_data);\n        int message_id = update.getCallbackQuery().getMessage().getMessageId();\n        long chat_id = update.getCallbackQuery().getMessage().getChatId();\n\n        if (Objects.equals(call_data, \"JOIN_PREMIUM\")){\n            EditMessageText editMessageText = new EditMessageText().setMessageId(message_id).setChatId(chat_id);\n            editMessageText.setText(\"Welcome to the club!\");\n            try {\n                editMessageText(editMessageText);\n            } catch (TelegramApiException e) {\n                e.printStackTrace();\n            }\n        }\n    }\n</code></pre>\n\n<p>but that is useless since it doesn't give an update, but is should!\nDoes anyone have a solution?</p>\n"
+        },
+        {
+            "tags": [
+                "jquery",
+                "ajax",
+                "http-status-codes"
+            ],
+            "owner": {
+                "reputation": 9496,
+                "user_id": 161266,
+                "user_type": "registered",
+                "accept_rate": 87,
+                "profile_image": "https://www.gravatar.com/avatar/61d87c147115e5d1979c032bc837fe08?s=128&d=identicon&r=PG",
+                "display_name": "tarnfeld",
+                "link": "https://stackoverflow.com/users/161266/tarnfeld"
+            },
+            "is_answered": true,
+            "view_count": 127627,
+            "protected_date": 1404844714,
+            "answer_count": 18,
+            "score": 117,
+            "last_activity_date": 1524148806,
+            "creation_date": 1262622957,
+            "last_edit_date": 1508942602,
+            "question_id": 2000609,
+            "body_markdown": "For some reason, my [tag:dashcode] developed application has just stopped AJAXing and returns status codes of 0. Has this happened to you? Does anybody have an idea why this happens?",
+            "link": "https://stackoverflow.com/questions/2000609/jquery-ajax-status-code-0",
+            "title": "jQuery Ajax - Status Code 0?",
+            "body": "<p>For some reason, my <a href=\"/questions/tagged/dashcode\" class=\"post-tag\" title=\"show questions tagged &#39;dashcode&#39;\" rel=\"tag\">dashcode</a> developed application has just stopped AJAXing and returns status codes of 0. Has this happened to you? Does anybody have an idea why this happens?</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 39
+}

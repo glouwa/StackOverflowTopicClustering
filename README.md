@@ -6,11 +6,16 @@ https://api.stackexchange.com/docs
 User Authorized with account id = 11442814, 
 got access token = 7pv4lwwEzDqZsT5Z3ucn2g))
 
-## 
-sudo apt-get install node python3
+##
+``` 
+sudo apt-get install node npm python3
 npm install
-pip install nlpk -u
-
+pip install -U nltk 
+python3 
+> import nltk
+> nltk.download()
+install all and more
+```
 
 ## Pipeline:
 Use root folder as working path:
@@ -19,26 +24,28 @@ Use root folder as working path:
 
 | Module            | Input                 | Output              |
 | ----------------- | --------------------- | -----------------:  |
-| 1. webget.js      |   -                   |  #.json[]
-| 2. merge.js       |   #.json[]            |  merge.json
-| 3. htmlclean.py   |   merge.json          |  htmlclean.json
-| 4. stemming.py    |   htmlclean.json      |  stemming.json
-| 5. lemmatizing.py |   htmlclean.json      |  lemmatizing.json
-| 6. tfidf.py       |   lemmatizing.json    |  itf.json, docvecs.json
-| 7. ngram.py       |   ngrams.json         |  ngramitf.json, docngrams.json
+| 1. webget.js      |  -                    | #.json[]
+| 2. merge.js       |  #.json[]             | merge.json
+| 3. htmlclean.py   |  merge.json           | htmlclean.json
+| 4. stemming.py    |  htmlclean.json       | stemming.json
+| 5. lemmatizing.py |  htmlclean.json       | lemmatizing.json
+| 6. tfidf.py       |  lemmatizing.json     | itf.json, doc-vecs.json
+| 7. ngram.py       |  ngrams.json          | ngram-itf.json, doc-ngrams.json
+| 8. classification |
+| 9. evauation      |
 
 
 ### htmlclean.json:
 ```json
-{
-    "8800": "So I been poking around with C# a bit"
+{    
+    "8800": ["So I been poking around",  "with C# a bit"]
 }
 ```
 
+### stemmed.json, lemmatizing.json:
 ```json
-#### stemmed.json, lemmatizing.json:
 {
-    "8800": ["So", "I", "been", "poking"]
+    "8800": ["I", "be", "poke", "be", "C#", "bit"]
 }
 ```
 
