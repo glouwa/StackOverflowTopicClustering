@@ -13,7 +13,11 @@ npm install
 pip install -U nltk 
 python3 
 > import nltk
-> nltk.download()
+> nltk.download('stopwords')
+> nltk.download('punkt')
+> nltk.download('averaged_perceptron_tagger')
+> nltk.download('universal_tagset')
+> nltk.download('wordnet')
 install all and more
 ```
 

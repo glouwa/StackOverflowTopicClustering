@@ -10,7 +10,9 @@ from nltk.tag import pos_tag
 snow_stemmer = SnowballStemmer("english", ignore_stopwords=True)
 title_sentences = []
 body_sentences = []
-data = json.load(open('htmlcleaned.json'))
+data = json.load(open('./dist/htmlcleaned.json'))
+
+print(len(data))
 
 stem_map = {}
 for question, values in data.items():
@@ -18,15 +20,16 @@ for question, values in data.items():
     for entry in values:
         words = []
         stems = []
-        for title_sentence in values[entry]:
-            tokens = nltk.word_tokenize(title_sentence)
-            tagged = nltk.pos_tag(tokens,tagset='universal')
+        for title_sentence in values[entry]:            
             tmp_words = list(title_sentence.lower().split(" "))
             words += (tmp_words)
             for word in tmp_words:
                 stems.append(snow_stemmer.stem(word))
         tmp_dict[entry] = stems
     stem_map.update({question: tmp_dict})
+    done = len(stem_map)
+    if done % 1000 == 0:
+        print(done)
 
-with open('stemmed.json', 'w') as outfile:
+with open('./dist/stemmed.json', 'w') as outfile:
     json.dump(stem_map, outfile, sort_keys=True, indent=4)

@@ -21,7 +21,8 @@ lemmatizer = WordNetLemmatizer()
 title_sentences = []
 body_sentences = []
 lem_map = {}
-data = json.load(open('htmlcleaned.json'))
+data = json.load(open('./dist/htmlcleaned.json'))
+print(len(data))
 
 for question, values in data.items():
     tmp_dict = {}
@@ -37,6 +38,9 @@ for question, values in data.items():
                 lemmas.append(lemmatizer.lemmatize(tmp_words[i],convert_tagset(tagged[i][1])))
         tmp_dict[entry] = lemmas
     lem_map.update({question: tmp_dict})
+    done = len(lem_map)
+    if done % 500 == 0:
+        print(done)
 
-with open('lemmatized.json', 'w') as outfile:
+with open('./dist/lemmatized.json', 'w') as outfile:
     json.dump(lem_map, outfile,sort_keys=True, indent=4)
