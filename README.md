@@ -38,7 +38,10 @@ Use root folder as working path:
 ### htmlclean.json:
 ```json
 {    
-    "8800": ["So I been poking around",  "with C# a bit"]
+    "8800": {
+        "title": ["So I been poking around",  "with C# a bit"],
+        "body": ["So I been poking around",  "with C# a bit"]
+    }
 }
 ```
 
