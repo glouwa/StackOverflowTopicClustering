@@ -30,10 +30,6 @@ const batch = qids.slice(begin, begin+5000)
 
 for (var qid of batch) {    
     cleaned[qid] = clean(merge[qid].body)
-
-    const count = Object.keys(cleaned).length    
-    if (count % 1000 === 1)
-        console.log(count)    
 }
 
 const outfile = 'htmlcleaned'

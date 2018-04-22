@@ -1,6 +1,8 @@
 'use strict'
 const fs = require('fs')
 
+const minwordlen = 2
+
 exports.tag_tf = function tag_tf(merge) {
     let result = {}
     for (var qid in merge)             
@@ -16,7 +18,7 @@ exports.title_tf = function tag_tf(merge) {
     for (var qid in merge) {        
         const terms = merge[qid].title.split(' ')
         terms.forEach(t=> {
-            if(t.length > 2 && !stopwords.includes(t)) 
+            if(t.length > minwordlen && !stopwords.includes(t)) 
                 result[t] = result[t]+1 || 1
         })                
     }
@@ -55,7 +57,7 @@ exports.bodyterm_dist = function bodyterm_dist(merge) {
             .forEach(sentence=> {
                 const terms = sentence.split(' ')
                 terms.forEach(t=> {
-                    if(t.length > 5 && !stopwords.includes(t)) 
+                    if(t.length > minwordlen && !stopwords.includes(t)) 
                         result[t] = result[t]+1 || 1
                 })                
             })

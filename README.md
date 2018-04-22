@@ -37,8 +37,13 @@ Use root folder as working path:
 
 ### htmlclean.json:
 ```json
-{    
-    "8800": ["So I been poking around",  "with C# a bit"]
+{  
+    "8800": {
+        "score": 123,
+        "title": ["So I been poking around",  "with C# a bit"],
+        "body": ["So I been poking around",  "with C# a bit"],
+        "code": ["So I been poking around",  "with C# a bit"]
+    }
 }
 ```
 
@@ -73,5 +78,21 @@ Use root folder as working path:
 }
 ```
 
-read write functions
-htmlclean
+### todo
+
+Michi:
+tagcloud
+generated data to dist
+cleaning fertig machen: documentieren 
+ -encoding
+ -sonderzeichen
+ -min word len, 
+docu für webget
+zusammenfügen (file format) 
+
+
+Veri:
+remove stopweord
+stemming lemming refac
+zusammenfügen
+reaserch: was is a besserer lemma input: mit oder ohne stopwords

@@ -2,7 +2,7 @@
 const fs = require('fs')
 const extract = require('./tools/ttf-extract')
 
-const filecount = 900
+const filecount = 1000
 
 const merge = {}
 const meta = {
@@ -98,4 +98,8 @@ fs.writeFileSync(`./res/merge-meta.js`, 'var mergemeta = ' + metajson)
     "dupquestions": 2595,
     "questions": 15975,
     "tagcount": 8093,
+
+
+    Downloaded: 900 Files, 26460 Raw-Questions, 8319 duplicate, 17 invalid
+    Merged: 75MB, 18141 Valid-Questions, 8655 Tags
 */
