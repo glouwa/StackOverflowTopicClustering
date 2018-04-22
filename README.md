@@ -81,7 +81,6 @@ Use root folder as working path:
 ### todo
 
 Michi:
-generated data to dist
 gulp
 tagcloud
 cleaning fertig machen: documentieren 

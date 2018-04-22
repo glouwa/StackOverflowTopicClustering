@@ -1,0 +1,107 @@
+<head>
+    <link href="./visualisations/billboard.css" rel="stylesheet">
+    <script src="./visualisations/billboard.pkgd.js"></script>
+    <script src="./merge-meta.js"></script>    
+    <script src="./htmlcleaned-meta.js"></script>    
+</head>
+<body>
+    <style>
+        body {
+            overflow-x: hidden;
+            padding: 0;
+            margin: 0;
+            font-family: "Roboto";
+            font-size: 1.4em;
+            font-weight: 200;
+        }
+        body > div:not(.bb){
+            background-color: #eee;
+            padding: .2em 70;
+        }
+        .bb path {
+            stroke: #f3f3f3;
+        }
+    </style>
+
+    <div id="downloadheader"></div>    
+    <div id="mergeheader"></div>    
+    <br>        
+    <div id="SCOChart" style="width:42%;float:left;"></div>
+    <div id="ANCChart" style="width:42%;float:left;"></div>    
+    <div id="ISAChart" style="width:16%;float:left;"></div>    
+    <div id="TTFChart"></div>        
+    <div id="HTFChart" style="clear:both;"></div>        
+    <br>
+
+    <div id="cleanedheader"></div>    
+    <div id="stemmedheader"></div>    
+    <div id="lemmatizedheader"></div>    
+    <br>
+    
+    <div id="BTFChart"></div>
+    <div id="STFChart"></div>
+    <div id="LTFChart"></div>
+    <br>
+
+    <div>Precicino</div> 
+    <div>Recall</div>     
+    
+    <script>       
+        function write(divid, text){
+            document.querySelector(divid).innerText = text
+        }
+        function plot(divid, data, xlabel, min, small) {
+            var entries = Object.entries(data)
+            entries = entries.sort((a, b)=> b[1] - a[1])
+            entries = entries.filter(e=> e[1] > min)
+
+            var numbers = entries.map(e=> e[1])
+            var labels = entries.map(e=> e[0])
+
+            var chart = bb.generate({
+                size: {
+                    height: small?120:200,                    
+                },
+                data: {
+                    columns: [[xlabel].concat(numbers)],
+                    type: "bar"
+                },
+                bar: { width: { ratio: 1 }},
+                axis: {
+                    x: {
+                        type: "category",
+                        categories: labels,                       
+                        tick: {
+                            count: small?10:undefined,       
+                            fit: true,                     
+                            rotate: 90, 
+                            multiline: false,
+                        },
+                    },
+                    y: {
+                        tick: { count:2, format:x=> x.toFixed(0) }
+                    }
+                },
+                padding: {    
+                    left: 70,
+                    right: 70,
+                },   
+                //zoom: { enabled: true },
+                bindto: divid
+            })
+        }        
+        write("#downloadheader",   `Downloaded: ${mergemeta.files} Files, ${mergemeta.rawquestions} Raw-Questions, ${mergemeta.dupquestions} duplicate, ${mergemeta.errquestions} invalid`)
+        write("#mergeheader",      `Merged: ${(mergemeta.size/1024/1024).toFixed(0)}MB, ${mergemeta.questions} Valid-Questions, ${mergemeta.tagcount} Tags`)
+        write("#cleanedheader",    `Cleaned: ${htmlcleanedmeta.termcount} Terms`)
+        write("#stemmedheader",    `Stemmed: ${htmlcleanedmeta.termcount-20000} stemmed Terms`)
+        write("#lemmatizedheader", `Lemmatized: ${htmlcleanedmeta.termcount-30000} lemmed Terms`)
+        plot("#SCOChart",          mergemeta.scodist, "Question Score distribution", 0, true)
+        plot("#ANCChart",          mergemeta.ancdist, "Answer Count distribution", 0, true)
+        plot("#ISAChart",          mergemeta.isadist, "Is Answered distribution", 0, true)
+        plot("#TTFChart",          mergemeta.tagdist, "Tag frequency", 50)        
+        plot("#HTFChart",          mergemeta.titletermdist, "Title Term frequency", 100)        
+        plot("#BTFChart",          htmlcleanedmeta.termdist, "Body terms frequency (cleaned)", 600)        
+        plot("#STFChart",          htmlcleanedmeta.termdist, "Body terms frequency (stemmed)", 600)        
+        plot("#LTFChart",          htmlcleanedmeta.termdist, "Body terms frequency (lemmed)", 600)
+    </script>
+</body>
