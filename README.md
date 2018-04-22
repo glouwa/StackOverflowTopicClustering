@@ -81,13 +81,13 @@ Use root folder as working path:
 ### todo
 
 Michi:
-tagcloud
 generated data to dist
+gulp
+tagcloud
 cleaning fertig machen: documentieren 
  -encoding
  -sonderzeichen
  -min word len, 
-docu für webget
 zusammenfügen (file format) 
 
 

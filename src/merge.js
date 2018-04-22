@@ -49,7 +49,7 @@ for (var i = 1; i < filecount; i++) {
 const json = JSON.stringify(merge, null, 4)
 meta.questions =  Object.keys(merge).length        
 meta.size = json.length
-fs.writeFileSync(`./res/merge.json`, json)
+fs.writeFileSync(`./dist/merge.json`, json)
 
 meta.tagdist  = extract.tag_tf(merge)
 meta.tagcount = Object.keys(meta.tagdist).length
@@ -62,8 +62,8 @@ meta.anccount = Object.keys(meta.ancdist).length
 meta.scodist  = extract.sco_dist(merge)
 meta.scocount = Object.keys(meta.scodist).length
 const metajson = JSON.stringify(meta, null, 4)
-fs.writeFileSync(`./res/merge-meta.json`, metajson)
-fs.writeFileSync(`./res/merge-meta.js`, 'var mergemeta = ' + metajson)
+fs.writeFileSync(`./dist/merge-meta.json`, metajson)
+fs.writeFileSync(`./dist/merge-meta.js`, 'var mergemeta = ' + metajson)
 
 //console.log(`${meta.filecount} Files, 
 //${metaerr_count} Invalid, ${raw_count}, ${meta}`)
