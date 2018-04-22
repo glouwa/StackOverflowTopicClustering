@@ -33,9 +33,13 @@ for question, values in data.items():
             tokens = nltk.word_tokenize(title_sentence)
             tagged = nltk.pos_tag(tokens,tagset='universal')
             tmp_words = list(title_sentence.lower().split(" "))
-            words += (tmp_words)
-            for i in range(len(tmp_words)):
-                lemmas.append(lemmatizer.lemmatize(tmp_words[i],convert_tagset(tagged[i][1])))
+            termset = tokens
+            words += (termset)
+            for i in range(len(termset)):
+                interm = termset[i]        
+                postag = convert_tagset(tagged[i][1])                
+                lemterm = lemmatizer.lemmatize(interm, postag)
+                lemmas.append(lemterm)
         tmp_dict[entry] = lemmas
     lem_map.update({question: tmp_dict})
     done = len(lem_map)
@@ -44,3 +48,16 @@ for question, values in data.items():
 
 with open('./dist/lemmatized.json', 'w') as outfile:
     json.dump(lem_map, outfile,sort_keys=True, indent=4)
+
+lem_ttf = {}
+lem_ttf['body_terms'] = {}
+lem_ttf['title_terms'] = {}
+for qid, question in lem_map.items():
+    for body_term in question['body']:
+        lem_ttf['body_terms'][body_term] = lem_ttf['body_terms'].get(body_term, 0)+1
+
+    for title_term in question['title']:
+        lem_ttf['title_terms'][title_term] = lem_ttf['title_terms'].get(title_term, 0)+1
+
+with open('./dist/lemmatized-meta.json', 'w') as outfile:
+    json.dump(lem_ttf, outfile, sort_keys=True, indent=4)

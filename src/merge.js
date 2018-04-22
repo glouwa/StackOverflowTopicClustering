@@ -53,8 +53,6 @@ fs.writeFileSync(`./dist/merge.json`, json)
 
 meta.tagdist  = extract.tag_tf(merge)
 meta.tagcount = Object.keys(meta.tagdist).length
-meta.titletermdist  = extract.title_tf(merge)
-meta.titletermcount = Object.keys(meta.titletermdist).length
 meta.isadist  = extract.isa_dist(merge)
 meta.isacount = Object.keys(meta.isadist).length
 meta.ancdist  = extract.anc_dist(merge)

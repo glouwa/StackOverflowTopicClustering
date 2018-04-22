@@ -26,20 +26,27 @@ Use root folder as working path:
 - JS: node src/webget.js
 - PY: python3 src/lemmatizing.py
 
+
 | Module            | Input                 | Output              |
 | ----------------- | --------------------- | -----------------:  |
 | 1. webget.js      |  -                    | #.json[]
-| 2. merge.js       |  #.json[]             | merge.json
-| 3. htmlclean.py   |  merge.json           | htmlclean.json
-| 4. stemming.py    |  htmlclean.json       | stemming.json
-| 5. lemmatizing.py |  htmlclean.json       | lemmatizing.json
-| 6. tfidf.py       |  lemmatizing.json     | itf.json, doc-vecs.json
-| 7. ngram.py       |  ngrams.json          | ngram-itf.json, doc-ngrams.json
+| 2. merge.js       |  #.json[]             | merge.json,       merge-meta.json
+| 3. htmlclean.py   |  merge.json           | htmlcleaned.json, htmlcleaned-meta.json
+| 4. stemming.py    |  htmlcleaned.json     | stemming.json,    stemming-meta.json
+| 5. lemmatizing.py |  htmlcleaned.json     | lemmatizing.json, lemmatizing-meta.json
+
+### Next Steps
+| Module            | Input                 | Output              |
+| ----------------- | --------------------- | -----------------:  |
+| 6. tfidf.py       |  lemmatizing.json     | itf.json,         doc-vecs.json
+| 7. ngram.py       |  ngrams.json          | ngram-itf.json,   doc-ngrams.json
 | 8. classification |
 | 9. evauation      |
 
+- Machine Learning Algorithms
+- Evaluation methods (especially for multi-classification)
 
-### htmlclean.json:
+### merge
 ```json
 {  
     "8800": {
@@ -49,53 +56,62 @@ Use root folder as working path:
         "code": ["So I been poking around",  "with C# a bit"]
     }
 }
-```
-
-### stemmed.json, lemmatizing.json:
-```json
 {
-    "8800": ["I", "be", "poke", "be", "C#", "bit"]
+    "files": 1000,
+    "rawquestions": 26460,  //raw_question
+    "errquestions": 117,    //err_question
+    "dupquestions": 8319,  //dup_question
+    "questions": 18141,
+    "size": 78717106,
+    "tagdist": {},      // tag_dist
+    "tagcount": 8655,   // tag_count
+    ...
 }
+
 ```
 
-### docvec.json:
+### clean
 ```json
-{
-    "8800":{
-        "So":.3, 
-        "I":.4,
-        "been": .3
-    },
-    "3800":{
-        "bla":.3,         
+{  
+    "8800": {
+        "title": ["accessing post variables using java servlets"],
+        "body": ["what is the java equivalent of php's","after searching the web for an hour, i'm still"]
     }
 }
-```
 
-### idf.json:
-```json
 {
-    "So":.2, 
-    "I":.14,
-    "been": .23,
-    "bla": .1,
+    "termdist": {},   // body_term_dist
+    "titletermdist": {}  // title_term_dist
 }
 ```
 
-### todo
+### stem & lem
+```json
+{      
+    "10012019": {
+        "body": ["i", "need", "to", "see"...],
+        "title": [ "how", "to", ...]
+    }
+}
+
+{
+    "body_terms": {},  // body_term_dist
+    "title_terms": {}  // title_term_dist
+}
+```
+
+
+### TODO
 
 Michi:
 gulp
 tagcloud
 cleaning fertig machen: documentieren 
- -encoding
- -sonderzeichen
- -min word len, 
-zusammenfügen (file format) 
+ -encoding 
 
 
 Veri:
-remove stopweord
-stemming lemming refac
-zusammenfügen
+remove stopword, change stemming tokenizer
+clean tokenizer(remove all single special characters)
 reaserch: was is a besserer lemma input: mit oder ohne stopwords
+what to do for evaluation? (precision, recall, accuracy)

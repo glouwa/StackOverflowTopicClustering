@@ -48,7 +48,9 @@ const outfile = 'htmlcleaned'
 fs.writeFileSync(`./dist/${outfile}.json`, JSON.stringify(cleaned, null, 4))
 meta.termdist = extract.bodyterm_dist(cleaned)
 meta.termcount = Object.keys(meta.termdist).length
-const metajson = JSON.stringify(meta)
+meta.titletermdist = extract.titleterm_dist(cleaned)
+meta.titletermcount = Object.keys(meta.titletermdist).length
+const metajson = JSON.stringify(meta, null, 4)
 fs.writeFileSync(`./dist/${outfile}-meta.json`, metajson)
 fs.writeFileSync(`./dist/${outfile}-meta.js`, 'var htmlcleanedmeta = ' + metajson)
 

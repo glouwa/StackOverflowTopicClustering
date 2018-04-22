@@ -33,3 +33,16 @@ for question, values in data.items():
 
 with open('./dist/stemmed.json', 'w') as outfile:
     json.dump(stem_map, outfile, sort_keys=True, indent=4)
+
+stem_ttf = {}
+stem_ttf['body_terms'] = {}
+stem_ttf['title_terms'] = {}
+for qid, question in stem_map.items():
+    for body_term in question['body']:
+        stem_ttf['body_terms'][body_term] = stem_ttf['body_terms'].get(body_term, 0)+1
+
+    for title_term in question['title']:
+        stem_ttf['title_terms'][title_term] = stem_ttf['title_terms'].get(title_term, 0)+1
+
+with open('./dist/stemmed-meta.json', 'w') as outfile:
+    json.dump(stem_ttf, outfile, sort_keys=True, indent=4)

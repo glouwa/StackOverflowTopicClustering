@@ -12,18 +12,6 @@ exports.tag_tf = function tag_tf(merge) {
     return result
 }
 
-exports.title_tf = function tag_tf(merge) {
-    let result = {}
-    for (var qid in merge) {        
-        const terms = merge[qid].title.split(' ')
-        terms.forEach(t=> {
-            if(t.length > minwordlen && !stopwords.includes(t)) 
-                result[t] = result[t]+1 || 1
-        })                
-    }
-    return result
-}
-
 exports.anc_dist = function anc_dist(merge) {
     let result = {}
     for (var qid in merge) 
@@ -44,6 +32,21 @@ exports.sco_dist = function sco_dist(merge) {
         result[merge[qid].score] = result[merge[qid].score]+1 || 1    
     
     //sort---
+    return result
+}
+
+exports.titleterm_dist = function bodyterm_dist(merge) {
+    let result = {}
+    for (var qid in merge)             
+        merge[qid].title            
+            .forEach(sentence=> {
+                const terms = sentence.split(' ')
+                terms.forEach(t=> {
+                    if(t.length > minwordlen && !stopwords.includes(t)) 
+                        result[t] = result[t]+1 || 1
+                })                
+            })
+    
     return result
 }
 
