@@ -26,7 +26,6 @@ function html() {
     return gulp.src(paths.src + '**/*.html')
         .pipe(plumber()) 
         .pipe(gulp.dest(paths.dist))
-        .pipe(browserSync.stream())
 }
 
 function tsc() {
@@ -51,10 +50,14 @@ function web() {
             plugins: []
         }))
         .pipe(gulp.dest(paths.dist))
-        .pipe(browserSync.stream())
 }
 
-const build = gulp.parallel(html, gulp.series(tsc, web))
+function bs() {
+    return gulp.src(paths.dist + '**/*.html')        
+        .pipe(browserSync.stream())        
+}
+
+const build = gulp.series(gulp.parallel(html, gulp.series(tsc, web)), bs)
 
 function watch() {
     browserSync.init({
