@@ -28,7 +28,6 @@ export class TagDistribution
     {   
         this.view = HTML.parse(html)()
         args.parent.appendChild(this.view)
-        
      
         this.update(args)
     }

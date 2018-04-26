@@ -10168,7 +10168,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const d3 = __webpack_require__(50);
 const bb_counter_1 = __webpack_require__(175);
 const tagdistribution_1 = __webpack_require__(506);
-var mergemeta;
 document.body.onload = function init() {
     // stackoverflow dataset
     const scores = new bb_counter_1.BillboardCounter({
@@ -10187,42 +10186,42 @@ document.body.onload = function init() {
         height: 120,
         data: [],
     });
-    // Tags
     const tags = new tagdistribution_1.TagDistribution({
         parent: document.body,
         name: 'Tag',
         data: {},
     });
-    // Title
+    // Plain
     const plaintitle = new tagdistribution_1.TagDistribution({
         parent: document.body,
-        name: 'Title plain',
+        name: 'Plain Title',
         data: {}
     });
-    const stemmedtitle = new tagdistribution_1.TagDistribution({
-        parent: document.body,
-        name: 'Title stemmed',
-        data: {}
-    });
-    const lemmedtitle = new tagdistribution_1.TagDistribution({
-        parent: document.body,
-        name: 'Title lemmed',
-        data: {}
-    });
-    // Body
     const plainbody = new tagdistribution_1.TagDistribution({
         parent: document.body,
-        name: 'Body plain',
+        name: 'Plain Body',
+        data: {}
+    });
+    // Stemmed
+    const stemmedtitle = new tagdistribution_1.TagDistribution({
+        parent: document.body,
+        name: 'Stemmed Title',
         data: {}
     });
     const stemmedbody = new tagdistribution_1.TagDistribution({
         parent: document.body,
-        name: 'Body stemmed',
+        name: 'Stemmed Body',
+        data: {}
+    });
+    // Lemmed
+    const lemmedtitle = new tagdistribution_1.TagDistribution({
+        parent: document.body,
+        name: 'Lemmed Title',
         data: {}
     });
     const lemmedbody = new tagdistribution_1.TagDistribution({
         parent: document.body,
-        name: 'Body lemmed',
+        name: 'Lemmed Body',
         data: {}
     });
     d3.json("tasks/bag-of-sentences/merge-meta.json")
@@ -10258,33 +10257,33 @@ document.body.onload = function init() {
     d3.json("tasks/bag-of-sentences/htmlcleaned-meta.json")
         .then((htmlcleanedmeta) => {
         plaintitle.update({
-            name: 'Title plain',
+            name: 'Plain Title',
             data: htmlcleanedmeta.titletermdist,
         });
         plainbody.update({
-            name: 'Body plain',
+            name: 'Plain Body',
             data: htmlcleanedmeta.termdist
         });
     });
     d3.json("tasks/bag-of-words/stemmed-meta.json")
         .then((stemmeta) => {
         stemmedtitle.update({
-            name: 'Title stemmed',
+            name: 'Stemmed Title',
             data: stemmeta.title_terms,
         });
         stemmedbody.update({
-            name: 'Body stemmed',
+            name: 'Stemmed Body',
             data: stemmeta.body_terms
         });
     });
     d3.json("tasks/bag-of-words/lemmatized-meta.json")
         .then((lemmmeta) => {
         lemmedtitle.update({
-            name: 'Title lemmed',
+            name: 'Lemmed Title',
             data: lemmmeta.title_terms,
         });
         lemmedbody.update({
-            name: 'Body lemmed',
+            name: 'Lemmed Body',
             data: lemmmeta.body_terms
         });
     });
