@@ -20,11 +20,23 @@ export class TagDistribution
 {
     private args
     private stats
+    private view : HTMLElement
+    private bb
+    private tc
 
     constructor(args)
     {   
+        this.view = HTML.parse(html)()
+        args.parent.appendChild(this.view)
+        
+     
+        this.update(args)
+    }
+
+    public update(args) {
+
         this.args = args
-         
+
         const keyvaluepairs = Object.entries(this.args.data)
             .sort((a:any, b:any)=> b[1] - a[1])
 
@@ -33,23 +45,20 @@ export class TagDistribution
 
         this.stats = new Stats(valuevector)
 
-        const view = HTML.parse(html)()
-        args.parent.appendChild(view)
+        this.view.querySelector<HTMLElement>(".header > .title").innerText = args.name
+        this.view.querySelector<HTMLElement>(".header > .desc").innerText = this.stats
         
-        view.querySelector(".header > .title").innerText = args.name
-        view.querySelector(".header > .desc").innerText = this.stats
-
-        new BillboardCounter({
-            parent: view.querySelector("#XTTFChart"), 
-            data: keyvaluepairs.slice(0, 100)
+        this.bb = new BillboardCounter({
+            parent: this.view.querySelector("#XTTFChart"), 
+            data: keyvaluepairs.slice(0, 100),
             title: "Tag frequency" 
         })
         
-        new TagCloud({ 
-            parent: view.querySelector('#XTTFcloud'),
+        this.tc = new TagCloud({ 
+            parent: this.view.querySelector('#XTTFcloud'),
             words: keyvaluepairs
                 .slice(0, 75)
-                .map(e=> ({ text:e[0], size:9+e[1]/this.stats.max*20 }))
+                .map((e:any)=> ({ text:e[0], size:9+e[1]/this.stats.max*23 }))
         })
     }
 }

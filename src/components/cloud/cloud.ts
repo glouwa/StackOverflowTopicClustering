@@ -32,11 +32,11 @@ export class TagCloud
             .selectAll("text")
             .data(words)
             .enter().append("text")
-            .style("font-size", d=> d.size + "px")
+            .style("font-size", (d:any)=> d.size + "px")
             .style("font-family", "Impact")
-            .style("fill", (d, i)=> this.fill(i))
+            .style("fill", (d, i)=> this.fill(''+i))
             .attr("text-anchor", "middle")
-            .attr("transform", d=> "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")")
-            .text(d=> d.text);
+            .attr("transform", (d:any)=> "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")")
+            .text((d:any)=> d.text);
     }
 }

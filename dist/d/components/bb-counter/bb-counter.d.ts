@@ -1,4 +1,5 @@
 export declare class BillboardCounter {
+    private args;
     constructor(args: any);
+    update(args: any): void;
 }
-export declare function plot(divid: any, data: any, xlabel: any, min: any, small: any): void;

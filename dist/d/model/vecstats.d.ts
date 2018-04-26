@@ -8,6 +8,6 @@ export declare class Stats {
     median: any;
     variance: any;
     entropy: any;
-    constructor(v: []);
+    constructor(v: any);
     toString(): string;
 }

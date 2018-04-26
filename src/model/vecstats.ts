@@ -10,7 +10,7 @@ export class Stats
     variance
     entropy
 
-    constructor(v:[])
+    constructor(v)
     {
         this.count = v.length
         this.elementtype = this.count ? typeof v[0] : undefined
@@ -19,8 +19,8 @@ export class Stats
 
         const E = (v, f)=> v.reduce((a, v)=> a+f(v)/this.count, 0)
 
-        this.min = v.reduce((a, v)=> (a<v ? a:v ))
-        this.max = v.reduce((a, v)=> (a>v ? a:v ))
+        this.min = v.reduce((a, v)=> (a<v ? a:v ), 0)
+        this.max = v.reduce((a, v)=> (a>v ? a:v ), 0)
         this.median = v[~~(this.count/2)]
         this.mean = E(v, ve=> ve)
         //this.variance = E(v.map(e=> (e-this.mean)*(e-this.mean)), de=> de)
@@ -30,6 +30,6 @@ export class Stats
 
     public toString()
     {
-        return `${this.count}#, [${this.min} - ${this.max}], ~${this.mean.toFixed(2)}, Ø${this.median}, σ${this.variance.toExponential(2)}, H${this.entropy.toExponential(2)}`
+        return `${this.count}#, [${this.min} - ${this.max}], μ${this.mean.toFixed(2)}, ∅${this.median}, 𝕍${this.variance.toFixed(0)}, ℍ${this.entropy.toExponential(2)}`
     }
 }

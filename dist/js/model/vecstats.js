@@ -7,8 +7,8 @@ class Stats {
         //v.forEach(e=> console.assert(typeof e === this.elementtype, e, typeof e))
         v = v.filter(e => typeof e === this.elementtype);
         const E = (v, f) => v.reduce((a, v) => a + f(v) / this.count, 0);
-        this.min = v.reduce((a, v) => (a < v ? a : v));
-        this.max = v.reduce((a, v) => (a > v ? a : v));
+        this.min = v.reduce((a, v) => (a < v ? a : v), 0);
+        this.max = v.reduce((a, v) => (a > v ? a : v), 0);
         this.median = v[~~(this.count / 2)];
         this.mean = E(v, ve => ve);
         //this.variance = E(v.map(e=> (e-this.mean)*(e-this.mean)), de=> de)
@@ -16,7 +16,7 @@ class Stats {
         this.entropy = E(v, ve => Math.log2(ve));
     }
     toString() {
-        return `${this.count}#, [${this.min} - ${this.max}], ~${this.mean.toFixed(2)}, Ø${this.median}, σ${this.variance.toExponential(2)}, H${this.entropy.toExponential(2)}`;
+        return `${this.count}#, [${this.min} - ${this.max}], μ${this.mean.toFixed(2)}, ∅${this.median}, 𝕍${this.variance.toFixed(0)}, ℍ${this.entropy.toExponential(2)}`;
     }
 }
 exports.Stats = Stats;
