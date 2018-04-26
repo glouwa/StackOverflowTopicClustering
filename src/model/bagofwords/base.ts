@@ -60,9 +60,8 @@ interface Meta {
     }
 }
 interface StackOverflowMeta {
-    idindex: { PostId:PostId } 
-    timeindex: { Date:PostId }
-        
+    datasource: {        
+    }   
     distributions: {
         size: Distribution<boolean>
         isAnswered: Distribution<boolean>

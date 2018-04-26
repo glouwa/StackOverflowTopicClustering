@@ -1,0 +1,830 @@
+{
+    "items": [
+        {
+            "tags": [
+                "c#",
+                "optimization",
+                "flow"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9692104,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/c3f1eebf1446a3fb4b752df9b8b93eac?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Dude",
+                "link": "https://stackoverflow.com/users/9692104/dude"
+            },
+            "is_answered": false,
+            "view_count": 25,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524600837,
+            "creation_date": 1524586047,
+            "last_edit_date": 1524600837,
+            "question_id": 50006308,
+            "body_markdown": "SHORT VERSION OF THE QUESTION :\r\nHello, how to use the Google.OrTools.Graph to show the optimal path of choosed nodes in a &quot;[minimum cost maximum flow][1]&quot; program?\r\n\r\nLONG VERSION OF THE QUESTION :\r\nHello, I created a minimum cost maximum flow program (using C# in visual studio).\r\n[Here][2] you have a screenshot of the input resulted (extra info: on the left side of the window you can see the 5 arrays I used). Instead of showing &quot;Minimum cost: 150&quot; I need it to show the choosen optimal path of nodes. \r\n\r\nCode:\r\n\r\n    using System;\r\n    using System.Collections.Generic;\r\n    using System.ComponentModel;\r\n    using System.Data;\r\n    using System.Drawing;\r\n    using System.Linq;\r\n    using System.Text;\r\n    using System.Threading.Tasks;\r\n    using System.Windows.Forms;\r\n    using Google.OrTools.Graph;\r\n    \r\n    namespace MaxFlowMinCost\r\n    {\r\n        public partial class Form1 : Form\r\n        {\r\n            public Form1()\r\n            {\r\n                InitializeComponent();\r\n            }\r\n    \r\n            private void SolveMinCostFlow()\r\n            {\r\n                // Definesc arrays: sources, destinations, capacities, si unit costs\r\n                // Pentru fiecare startNodes + endNodes(acestea reprezentand startul si finisul unei arce) am o capacitate si us cost corspunzator\r\n                // Am folosit informatia din Taha&#39;s &quot;Introduction to Operations Research&quot;,\r\n    \r\n                int numNodes = 5;\r\n                int numArcs = 9;\r\n                int[] startNodes = { 0, 0, 1, 1, 1, 2, 2, 3, 4 };\r\n                int[] endNodes = { 1, 2, 2, 3, 4, 3, 4, 4, 2 };\r\n                int[] capacities = { 15, 8, 20, 4, 10, 15, 5, 20, 4 };\r\n                int[] unitCosts = { 4, 4, 2, 2, 6, 1, 3, 2, 3 };\r\n    \r\n                // Array-ul cu supply-ul fiecarui nod, in cazul meu supply-ul va intra prin nodul de start si va ajunge la destinatie(1 sau mai multe) unde se reprezinte cu semnul &quot;-&quot;\r\n    \r\n                int[] supplies = { 20, 0, 0, -5, -15 };\r\n    \r\n    \r\n    \r\n                // Definirea solverului de tip SimpleMinCostFlow.\r\n                MinCostFlow minCostFlow = new MinCostFlow();\r\n    \r\n                // Adaug fiecare arca\r\n                for (int i = 0; i &lt; numArcs; ++i)\r\n                {\r\n                    int arc = minCostFlow.AddArcWithCapacityAndUnitCost(startNodes[i], endNodes[i],\r\n                                                         capacities[i], unitCosts[i]);\r\n                    if (arc != i) throw new Exception(&quot;Internal error&quot;);\r\n                }\r\n    \r\n                // Adaug supply-ul.\r\n                for (int i = 0; i &lt; numNodes; ++i)\r\n                {\r\n                    minCostFlow.SetNodeSupply(i, supplies[i]);\r\n                }\r\n    \r\n    \r\n                //Rezolvarea + afisarea rezultatului\r\n    \r\n                // Se gaseste min cost flow.\r\n                int solveStatus = minCostFlow.Solve();\r\n                if (solveStatus == MinCostFlow.OPTIMAL)\r\n                {\r\n                    long optimalCost = minCostFlow.OptimalCost();\r\n                    textBox1.AppendText(&quot;Costul minim: &quot; + optimalCost + &quot;\\r\\n&quot;);\r\n                    textBox1.AppendText(&quot;&quot;);\r\n                    textBox1.AppendText(&quot; Arc           Flux / Capacitate  Cost\\r\\n&quot;);\r\n                    for (int i = 0; i &lt; numArcs; ++i)\r\n                    {\r\n                        long cost = minCostFlow.Flow(i) * minCostFlow.UnitCost(i);\r\n                        textBox1.AppendText(minCostFlow.Tail(i) + &quot; -&gt; &quot; +\r\n                                            minCostFlow.Head(i) + &quot;  &quot; +\r\n                                            string.Format(&quot;{0,11}&quot;, minCostFlow.Flow(i)) + &quot;  / &quot; +\r\n                                            string.Format(&quot;{0,5}&quot;, minCostFlow.Capacity(i)) + &quot;       &quot; +\r\n                                            string.Format(&quot;{0,6}&quot;, cost));\r\n                        textBox1.AppendText(&quot;\\r\\n&quot;);\r\n                                          \r\n                    }\r\n                }\r\n                else\r\n                {\r\n                    textBox1.AppendText(&quot;Rezolvarea problemei min cost flow a esuat. Statusul solverului: &quot; +\r\n                                      solveStatus);\r\n                }\r\n            }\r\n    \r\n            private void button1_Click(object sender, EventArgs e)\r\n            {\r\n                SolveMinCostFlow();\r\n            }\r\n        }\r\n    }\r\n\r\nIf you want to test it yourself. You need to install the google package: Go to Tools -&gt; NuGet Package Manager -&gt; Package Manager Console and type &quot;Install-Package Google.OrTools&quot;, to solve the error with x32 x64 compatibility, go to Configuration manager([see picture][3]) and add a new solution platform named x64, then select it and the program should work.\r\n\r\nNow the QUESTION: How can I show the path of nodes that the function &quot;Solve()&quot; considered as being optimal?\r\n\r\nMy program shows the optimal cost, but I need the optimal path to be shown.\r\n\r\nI searched everywhere, but can&#39;t seem to find an solution.\r\n\r\nI&#39;m active 24/7 on this question so ask away for any details that I might forgot to add.\r\n\r\nPS: I used this [guide][4] to create the program, maybe this info helps.\r\n\r\nThank you !\r\n\r\n\r\n  [1]: https://developers.google.com/optimization/reference/graph/min_cost_flow/SimpleMinCostFlow/\r\n  [2]: https://i.stack.imgur.com/9RKZY.jpg\r\n  [3]: https://i.stack.imgur.com/BYt0M.jpg\r\n  [4]: https://developers.google.com/optimization/flow/mincostflow",
+            "link": "https://stackoverflow.com/questions/50006308/how-to-use-google-ortools-graph-to-show-optimal-path-of-a-mincostmaxflow-c",
+            "title": "How to use Google.OrTools.Graph to show optimal path of a MinCostMaxFlow - C#",
+            "body": "<p>SHORT VERSION OF THE QUESTION :\nHello, how to use the Google.OrTools.Graph to show the optimal path of choosed nodes in a \"<a href=\"https://developers.google.com/optimization/reference/graph/min_cost_flow/SimpleMinCostFlow/\" rel=\"nofollow noreferrer\">minimum cost maximum flow</a>\" program?</p>\n\n<p>LONG VERSION OF THE QUESTION :\nHello, I created a minimum cost maximum flow program (using C# in visual studio).\n<a href=\"https://i.stack.imgur.com/9RKZY.jpg\" rel=\"nofollow noreferrer\">Here</a> you have a screenshot of the input resulted (extra info: on the left side of the window you can see the 5 arrays I used). Instead of showing \"Minimum cost: 150\" I need it to show the choosen optimal path of nodes. </p>\n\n<p>Code:</p>\n\n<pre><code>using System;\nusing System.Collections.Generic;\nusing System.ComponentModel;\nusing System.Data;\nusing System.Drawing;\nusing System.Linq;\nusing System.Text;\nusing System.Threading.Tasks;\nusing System.Windows.Forms;\nusing Google.OrTools.Graph;\n\nnamespace MaxFlowMinCost\n{\n    public partial class Form1 : Form\n    {\n        public Form1()\n        {\n            InitializeComponent();\n        }\n\n        private void SolveMinCostFlow()\n        {\n            // Definesc arrays: sources, destinations, capacities, si unit costs\n            // Pentru fiecare startNodes + endNodes(acestea reprezentand startul si finisul unei arce) am o capacitate si us cost corspunzator\n            // Am folosit informatia din Taha's \"Introduction to Operations Research\",\n\n            int numNodes = 5;\n            int numArcs = 9;\n            int[] startNodes = { 0, 0, 1, 1, 1, 2, 2, 3, 4 };\n            int[] endNodes = { 1, 2, 2, 3, 4, 3, 4, 4, 2 };\n            int[] capacities = { 15, 8, 20, 4, 10, 15, 5, 20, 4 };\n            int[] unitCosts = { 4, 4, 2, 2, 6, 1, 3, 2, 3 };\n\n            // Array-ul cu supply-ul fiecarui nod, in cazul meu supply-ul va intra prin nodul de start si va ajunge la destinatie(1 sau mai multe) unde se reprezinte cu semnul \"-\"\n\n            int[] supplies = { 20, 0, 0, -5, -15 };\n\n\n\n            // Definirea solverului de tip SimpleMinCostFlow.\n            MinCostFlow minCostFlow = new MinCostFlow();\n\n            // Adaug fiecare arca\n            for (int i = 0; i &lt; numArcs; ++i)\n            {\n                int arc = minCostFlow.AddArcWithCapacityAndUnitCost(startNodes[i], endNodes[i],\n                                                     capacities[i], unitCosts[i]);\n                if (arc != i) throw new Exception(\"Internal error\");\n            }\n\n            // Adaug supply-ul.\n            for (int i = 0; i &lt; numNodes; ++i)\n            {\n                minCostFlow.SetNodeSupply(i, supplies[i]);\n            }\n\n\n            //Rezolvarea + afisarea rezultatului\n\n            // Se gaseste min cost flow.\n            int solveStatus = minCostFlow.Solve();\n            if (solveStatus == MinCostFlow.OPTIMAL)\n            {\n                long optimalCost = minCostFlow.OptimalCost();\n                textBox1.AppendText(\"Costul minim: \" + optimalCost + \"\\r\\n\");\n                textBox1.AppendText(\"\");\n                textBox1.AppendText(\" Arc           Flux / Capacitate  Cost\\r\\n\");\n                for (int i = 0; i &lt; numArcs; ++i)\n                {\n                    long cost = minCostFlow.Flow(i) * minCostFlow.UnitCost(i);\n                    textBox1.AppendText(minCostFlow.Tail(i) + \" -&gt; \" +\n                                        minCostFlow.Head(i) + \"  \" +\n                                        string.Format(\"{0,11}\", minCostFlow.Flow(i)) + \"  / \" +\n                                        string.Format(\"{0,5}\", minCostFlow.Capacity(i)) + \"       \" +\n                                        string.Format(\"{0,6}\", cost));\n                    textBox1.AppendText(\"\\r\\n\");\n\n                }\n            }\n            else\n            {\n                textBox1.AppendText(\"Rezolvarea problemei min cost flow a esuat. Statusul solverului: \" +\n                                  solveStatus);\n            }\n        }\n\n        private void button1_Click(object sender, EventArgs e)\n        {\n            SolveMinCostFlow();\n        }\n    }\n}\n</code></pre>\n\n<p>If you want to test it yourself. You need to install the google package: Go to Tools -> NuGet Package Manager -> Package Manager Console and type \"Install-Package Google.OrTools\", to solve the error with x32 x64 compatibility, go to Configuration manager(<a href=\"https://i.stack.imgur.com/BYt0M.jpg\" rel=\"nofollow noreferrer\">see picture</a>) and add a new solution platform named x64, then select it and the program should work.</p>\n\n<p>Now the QUESTION: How can I show the path of nodes that the function \"Solve()\" considered as being optimal?</p>\n\n<p>My program shows the optimal cost, but I need the optimal path to be shown.</p>\n\n<p>I searched everywhere, but can't seem to find an solution.</p>\n\n<p>I'm active 24/7 on this question so ask away for any details that I might forgot to add.</p>\n\n<p>PS: I used this <a href=\"https://developers.google.com/optimization/flow/mincostflow\" rel=\"nofollow noreferrer\">guide</a> to create the program, maybe this info helps.</p>\n\n<p>Thank you !</p>\n"
+        },
+        {
+            "tags": [
+                "swift",
+                "xcode"
+            ],
+            "owner": {
+                "reputation": 1315,
+                "user_id": 232812,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://www.gravatar.com/avatar/2341808a845a8c7bab38ac837a80bf13?s=128&d=identicon&r=PG",
+                "display_name": "Infinite",
+                "link": "https://stackoverflow.com/users/232812/infinite"
+            },
+            "is_answered": true,
+            "view_count": 44,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1524600837,
+            "creation_date": 1524485895,
+            "question_id": 49980915,
+            "body_markdown": "With XCode 9.3 the swift compiler introduced conditional conformance, allowing us to compare two optionals.\r\n\r\nWe are working on a library that used to support Swift 3.2 and Swift 4.0 and where we had to define the following comparator for dictionaries:\r\n\r\n    fileprivate func ==(lhs:[String: NSObject]?, rhs: [String:NSObject]?) -&gt; Bool {\r\n        var match = true\r\n        if let lhs = lhs {\r\n            if let rhs = rhs {\r\n                match = lhs == rhs\r\n            } else {\r\n                match = false\r\n           }\r\n        }\r\n        return match\r\n    }\r\n\r\nIn Swift 3.3 and Swift 4.1 this comparator is no longer valid and cause an infinite loop on the line that says \r\n\r\n    match = lhs == rhs\r\n\r\nWhere the matcher now calls itself.\r\nIt is a library so we can not force our clients to use the newest XCode version, yet.\r\n\r\nIs there a way to check whether the compiler supports conditional conformance?",
+            "link": "https://stackoverflow.com/questions/49980915/swift-check-whether-compiler-supports-conditional-conformance",
+            "title": "Swift: check whether compiler supports conditional conformance",
+            "body": "<p>With XCode 9.3 the swift compiler introduced conditional conformance, allowing us to compare two optionals.</p>\n\n<p>We are working on a library that used to support Swift 3.2 and Swift 4.0 and where we had to define the following comparator for dictionaries:</p>\n\n<pre><code>fileprivate func ==(lhs:[String: NSObject]?, rhs: [String:NSObject]?) -&gt; Bool {\n    var match = true\n    if let lhs = lhs {\n        if let rhs = rhs {\n            match = lhs == rhs\n        } else {\n            match = false\n       }\n    }\n    return match\n}\n</code></pre>\n\n<p>In Swift 3.3 and Swift 4.1 this comparator is no longer valid and cause an infinite loop on the line that says </p>\n\n<pre><code>match = lhs == rhs\n</code></pre>\n\n<p>Where the matcher now calls itself.\nIt is a library so we can not force our clients to use the newest XCode version, yet.</p>\n\n<p>Is there a way to check whether the compiler supports conditional conformance?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "jacoco",
+                "powermockito"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9292517,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3d927469630f66a88e59672a2f96a01e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Kiran Kumar",
+                "link": "https://stackoverflow.com/users/9292517/kiran-kumar"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524600834,
+            "creation_date": 1524511134,
+            "last_edit_date": 1524600834,
+            "question_id": 49988453,
+            "body_markdown": "I am new to Java. I am using PowerMockito with JUnit test cases and JaCoCo for code coverage. Some Googling revealed that PowerMockito doesn&#39;t work with JaCoCo and suggested using offline instrumentation. I created an ant task for JaCoCo instrumentation, and on compilation, it is throwing the following error:\r\n\r\n    java.lang.ExceptionInInitializerError\r\n            at org.jacoco.core.instr.Instrumenter.instrument(Instrumenter.java:99)\r\n            at org.jacoco.core.instr.Instrumenter.instrument(Instrumenter.java:121)\r\n            at org.jacoco.core.instr.Instrumenter.instrument(Instrumenter.java:148)\r\n            at org.jacoco.core.instr.Instrumenter.instrument(Instrumenter.java:168)\r\n            at org.jacoco.core.instr.Instrumenter.instrumentAll(Instrumenter.java:207)\r\n    \r\n            at org.apache.tools.ant.launch.Launcher.run(Launcher.java:280)\r\n            at org.apache.tools.ant.launch.Launcher.main(Launcher.java:109)\r\n    Caused by: java.lang.IllegalArgumentException\r\n            at org.objectweb.asm.MethodVisitor.&lt;init&gt;(Unknown Source)\r\n            at org.jacoco.core.internal.flow.MethodProbesVisitor.&lt;init&gt;(MethodProbesVisitor.java:39)\r\n            at org.jacoco.core.internal.flow.MethodProbesVisitor.&lt;init&gt;(MethodProbesVisitor.java:29)\r\n            at org.jacoco.core.internal.flow.ClassProbesAdapter$1.&lt;init&gt;(ClassProbesAdapter.java:26)\r\n            at org.jacoco.core.internal.flow.ClassProbesAdapter.&lt;clinit&gt;(ClassProbesAdapter.java:26)\r\n\r\nThis is its entry in `build.xml`:\r\n\r\n       &lt;target name=&quot;instrument&quot; depends=&quot;test-compile&quot;&gt;\r\n          &lt;taskdef uri=&quot;antlib:org.jacoco.ant&quot; resource=&quot;org/jacoco/ant/antlib.xml&quot;&gt;\r\n            &lt;classpath path=&quot;lib/asm-all-5.1.jar&quot;/&gt;\r\n            &lt;classpath path=&quot;lib/jacocoagent.jar&quot;/&gt;\r\n            &lt;classpath path=&quot;lib/jacocoreport.jar&quot;/&gt;\r\n            &lt;classpath path=&quot;lib/jacococore.jar&quot;/&gt;\r\n            &lt;classpath path=&quot;lib/jacocoant.jar&quot;/&gt;\r\n          &lt;/taskdef&gt;\r\n          &lt;mkdir dir=&quot;${instrument.dir}&quot;/&gt;\r\n          &lt;jacoco:instrument destdir=&quot;${instrument.dir}&quot;&gt;\r\n            &lt;fileset dir=&quot;${test.build.dir}&quot; includes=&quot;**/*.class&quot;/&gt;\r\n          &lt;/jacoco:instrument&gt;\r\n        &lt;/target&gt;\r\n\r\nWhat might be the issue here? And is there any better way to get the test coverage and its report?",
+            "link": "https://stackoverflow.com/questions/49988453/exceptionininitializererror-with-jacoco-ant-instrumentation-task",
+            "title": "ExceptionInInitializerError with JaCoCo ant instrumentation task",
+            "body": "<p>I am new to Java. I am using PowerMockito with JUnit test cases and JaCoCo for code coverage. Some Googling revealed that PowerMockito doesn't work with JaCoCo and suggested using offline instrumentation. I created an ant task for JaCoCo instrumentation, and on compilation, it is throwing the following error:</p>\n\n<pre><code>java.lang.ExceptionInInitializerError\n        at org.jacoco.core.instr.Instrumenter.instrument(Instrumenter.java:99)\n        at org.jacoco.core.instr.Instrumenter.instrument(Instrumenter.java:121)\n        at org.jacoco.core.instr.Instrumenter.instrument(Instrumenter.java:148)\n        at org.jacoco.core.instr.Instrumenter.instrument(Instrumenter.java:168)\n        at org.jacoco.core.instr.Instrumenter.instrumentAll(Instrumenter.java:207)\n\n        at org.apache.tools.ant.launch.Launcher.run(Launcher.java:280)\n        at org.apache.tools.ant.launch.Launcher.main(Launcher.java:109)\nCaused by: java.lang.IllegalArgumentException\n        at org.objectweb.asm.MethodVisitor.&lt;init&gt;(Unknown Source)\n        at org.jacoco.core.internal.flow.MethodProbesVisitor.&lt;init&gt;(MethodProbesVisitor.java:39)\n        at org.jacoco.core.internal.flow.MethodProbesVisitor.&lt;init&gt;(MethodProbesVisitor.java:29)\n        at org.jacoco.core.internal.flow.ClassProbesAdapter$1.&lt;init&gt;(ClassProbesAdapter.java:26)\n        at org.jacoco.core.internal.flow.ClassProbesAdapter.&lt;clinit&gt;(ClassProbesAdapter.java:26)\n</code></pre>\n\n<p>This is its entry in <code>build.xml</code>:</p>\n\n<pre><code>   &lt;target name=\"instrument\" depends=\"test-compile\"&gt;\n      &lt;taskdef uri=\"antlib:org.jacoco.ant\" resource=\"org/jacoco/ant/antlib.xml\"&gt;\n        &lt;classpath path=\"lib/asm-all-5.1.jar\"/&gt;\n        &lt;classpath path=\"lib/jacocoagent.jar\"/&gt;\n        &lt;classpath path=\"lib/jacocoreport.jar\"/&gt;\n        &lt;classpath path=\"lib/jacococore.jar\"/&gt;\n        &lt;classpath path=\"lib/jacocoant.jar\"/&gt;\n      &lt;/taskdef&gt;\n      &lt;mkdir dir=\"${instrument.dir}\"/&gt;\n      &lt;jacoco:instrument destdir=\"${instrument.dir}\"&gt;\n        &lt;fileset dir=\"${test.build.dir}\" includes=\"**/*.class\"/&gt;\n      &lt;/jacoco:instrument&gt;\n    &lt;/target&gt;\n</code></pre>\n\n<p>What might be the issue here? And is there any better way to get the test coverage and its report?</p>\n"
+        },
+        {
+            "tags": [
+                "windows",
+                "psexec"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8897354,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-CYadfGJV2HI/AAAAAAAAAAI/AAAAAAAAASo/bSHZ83gi8E4/photo.jpg?sz=128",
+                "display_name": "JK81",
+                "link": "https://stackoverflow.com/users/8897354/jk81"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524600833,
+            "creation_date": 1524600833,
+            "question_id": 50010081,
+            "body_markdown": "I&#39;d like to be able to run WinDirStat on a remote machine that I have administrative rights over but it does not work. \r\n\r\nThis is what I have done:\r\nRun CMD as admin:\r\n`psexe.exe -i -s cmd.exe`\r\n\r\nFrom the new prompt: \r\n`psexec.exe \\\\host -u username winddirstate.exe`\r\n\r\nI type in my PW and it does not launch\r\n\r\nBoth running Windows 7 Enterprise.",
+            "link": "https://stackoverflow.com/questions/50010081/psexec-and-winddirstat-on-a-remote-system-how-to-run",
+            "title": "PsExec and WindDirStat on a remote system - how to run",
+            "body": "<p>I'd like to be able to run WinDirStat on a remote machine that I have administrative rights over but it does not work. </p>\n\n<p>This is what I have done:\nRun CMD as admin:\n<code>psexe.exe -i -s cmd.exe</code></p>\n\n<p>From the new prompt: \n<code>psexec.exe \\\\host -u username winddirstate.exe</code></p>\n\n<p>I type in my PW and it does not launch</p>\n\n<p>Both running Windows 7 Enterprise.</p>\n"
+        },
+        {
+            "tags": [
+                "curl",
+                "amazon-s3",
+                "file-upload",
+                "put",
+                "pre-signed-url"
+            ],
+            "owner": {
+                "reputation": 23,
+                "user_id": 2447981,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://www.gravatar.com/avatar/2b8991597c413f5ebac058548f8ad7e1?s=128&d=identicon&r=PG",
+                "display_name": "AsteriK",
+                "link": "https://stackoverflow.com/users/2447981/asterik"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524600832,
+            "creation_date": 1524598956,
+            "last_edit_date": 1524600832,
+            "question_id": 50009662,
+            "body_markdown": "I am in need of providing an API to end user to upload large files to S3. To achieve this, I generate a pre-signed url. They use it with the curl command (PUT method) to directly upload files to S3 from their local system. \r\n\r\nThis is working fine for small files (~50MB) but failing for larger files (size could go up to 2GB) as it gives timeout error. I did try increasing url expiry but the issue persists.\r\n\r\nI went through similar questions but could not resolve my issue. For my requirement, I cannot use multipart upload or POST method.\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50009662/aws-s3-upload-using-pre-signed-failing-for-larger-files",
+            "title": "AWS S3 Upload using Pre-Signed failing for larger files",
+            "body": "<p>I am in need of providing an API to end user to upload large files to S3. To achieve this, I generate a pre-signed url. They use it with the curl command (PUT method) to directly upload files to S3 from their local system. </p>\n\n<p>This is working fine for small files (~50MB) but failing for larger files (size could go up to 2GB) as it gives timeout error. I did try increasing url expiry but the issue persists.</p>\n\n<p>I went through similar questions but could not resolve my issue. For my requirement, I cannot use multipart upload or POST method.</p>\n"
+        },
+        {
+            "tags": [
+                "excel",
+                "vba",
+                "cell"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9693385,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/0659f0f4e305337cdf7e6380337c1a1b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "A R",
+                "link": "https://stackoverflow.com/users/9693385/a-r"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1524600820,
+            "creation_date": 1524600820,
+            "question_id": 50010078,
+            "body_markdown": "I want to create a game board in VBA on excel and need to figure out how to move an object based on the number from the dice. I am just thinking using an active cell color would work to loop through the different cells as it moves, but need it to stay when the other players play. Any ideas?",
+            "link": "https://stackoverflow.com/questions/50010078/learn-how-to-move-cell-color-on-vba",
+            "title": "Learn how to move cell color on VBA",
+            "body": "<p>I want to create a game board in VBA on excel and need to figure out how to move an object based on the number from the dice. I am just thinking using an active cell color would work to loop through the different cells as it moves, but need it to stay when the other players play. Any ideas?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "generics",
+                "enums"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 3349673,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/339f53a50264ac0a719876e4742432c4?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3349673",
+                "link": "https://stackoverflow.com/users/3349673/user3349673"
+            },
+            "is_answered": true,
+            "view_count": 70,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524600815,
+            "creation_date": 1411142321,
+            "last_edit_date": 1524600815,
+            "question_id": 25937977,
+            "body_markdown": "I would like to have an enum to return an instance of an interface, using generics.  I can&#39;t quite figure it out yet.  I&#39;m not exactly sure how to phrase my question.  Below is the code that I am trying to get working.  It won&#39;t compile because the enum wants the constructor to handle ImplementingClass explicity. \r\n\r\nMy interface\r\n\r\n    public interface MyInterface {\r\n    \t\r\n    }\r\n\r\nMy implementing class\r\n\r\n\r\n    public class ImplementingClass implements MyInterface {\r\n    \r\n    }\r\n\r\nThe enum I&#39;m trying to get working\r\n\r\n    public enum MyEnum {\r\n    \r\n\t    CASE1(“CODE1”, ImplementingClass.class);\r\n    \r\n\t    private String code;\r\n\t    private Class&lt;MyInterface&gt; aClass;\r\n\r\n\t    private MyEnum(String code, Class&lt;MyInterface&gt; aClass) {\r\n\t    \tthis.code = code;\r\n\t    \tthis.aClass = aClass;\r\n\t    }    \r\n    \r\n\t    public String getCode() {\r\n\t\t    return this.code;\r\n\t    }\r\n\r\n\t    public MyInterface getInstance() {\r\n\t\t    return this.aClass.newInstance();\r\n\t    }\r\n    }",
+            "link": "https://stackoverflow.com/questions/25937977/enum-to-return-an-instance-of-an-interface-using-generics-in-java",
+            "title": "Enum to return an instance of an interface using generics in Java?",
+            "body": "<p>I would like to have an enum to return an instance of an interface, using generics.  I can't quite figure it out yet.  I'm not exactly sure how to phrase my question.  Below is the code that I am trying to get working.  It won't compile because the enum wants the constructor to handle ImplementingClass explicity. </p>\n\n<p>My interface</p>\n\n<pre><code>public interface MyInterface {\n\n}\n</code></pre>\n\n<p>My implementing class</p>\n\n<pre><code>public class ImplementingClass implements MyInterface {\n\n}\n</code></pre>\n\n<p>The enum I'm trying to get working</p>\n\n<pre><code>public enum MyEnum {\n\n    CASE1(“CODE1”, ImplementingClass.class);\n\n    private String code;\n    private Class&lt;MyInterface&gt; aClass;\n\n    private MyEnum(String code, Class&lt;MyInterface&gt; aClass) {\n        this.code = code;\n        this.aClass = aClass;\n    }    \n\n    public String getCode() {\n        return this.code;\n    }\n\n    public MyInterface getInstance() {\n        return this.aClass.newInstance();\n    }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "selenium"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 6769263,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/78c6960ce02c88da529df9f7eca71b75?s=128&d=identicon&r=PG&f=1",
+                "display_name": "eagin",
+                "link": "https://stackoverflow.com/users/6769263/eagin"
+            },
+            "is_answered": false,
+            "view_count": 246,
+            "answer_count": 2,
+            "score": -3,
+            "last_activity_date": 1524600810,
+            "creation_date": 1478583557,
+            "last_edit_date": 1524600810,
+            "question_id": 40479748,
+            "body_markdown": "When automating with Selenium, a UAC (user account control) window pops up as shown in Figure, need accept the relevant license. I could not use the AutoIt tool to click that. \r\n\r\nI am searching for a long time on Internet. But no use. Please help or try to give some ideas how to achieve this.\r\n\r\n[![Enter image description here][1]][1]\r\n\r\n  [1]: https://i.stack.imgur.com/LcYdp.jpg\r\n",
+            "link": "https://stackoverflow.com/questions/40479748/how-to-achieve-the-click-action-of-uac-window-in-ui-automation",
+            "title": "How to achieve the click action of UAC window in UI automation",
+            "body": "<p>When automating with Selenium, a UAC (user account control) window pops up as shown in Figure, need accept the relevant license. I could not use the AutoIt tool to click that. </p>\n\n<p>I am searching for a long time on Internet. But no use. Please help or try to give some ideas how to achieve this.</p>\n\n<p><a href=\"https://i.stack.imgur.com/LcYdp.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/LcYdp.jpg\" alt=\"Enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "design-patterns",
+                "state"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 7852920,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/f9305c72f80d5d6d60c7c59d5f795ce7?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Denny",
+                "link": "https://stackoverflow.com/users/7852920/denny"
+            },
+            "is_answered": true,
+            "view_count": 52,
+            "closed_date": 1524604988,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524600808,
+            "creation_date": 1524600344,
+            "question_id": 50009972,
+            "body_markdown": "I am very new to Java so excuse me if this sounds like a dumb question.  \r\n\r\nWhy is such a big effort made when following the state-design-pattern (creating an interface, context and concrete sub-classes for each state) when you could just save the state of a given object in a variable and then make decisions based on switch and if-else statements later on?",
+            "link": "https://stackoverflow.com/questions/50009972/java-why-would-one-use-the-state-design-pattern-over-saving-the-state-in-a-var",
+            "closed_reason": "primarily opinion-based",
+            "title": "Java - why would one use the state design pattern over saving the state in a variable?",
+            "body": "<p>I am very new to Java so excuse me if this sounds like a dumb question.  </p>\n\n<p>Why is such a big effort made when following the state-design-pattern (creating an interface, context and concrete sub-classes for each state) when you could just save the state of a given object in a variable and then make decisions based on switch and if-else statements later on?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "tensorflow",
+                "object-detection"
+            ],
+            "owner": {
+                "reputation": 63,
+                "user_id": 8057661,
+                "user_type": "registered",
+                "accept_rate": 20,
+                "profile_image": "https://www.gravatar.com/avatar/d16ca902a21ab4a91acd83a9779aa6ac?s=128&d=identicon&r=PG&f=1",
+                "display_name": "DavimusPrime",
+                "link": "https://stackoverflow.com/users/8057661/davimusprime"
+            },
+            "is_answered": false,
+            "view_count": 160,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524600803,
+            "creation_date": 1510558468,
+            "question_id": 47259171,
+            "body_markdown": "I&#39;m running the typical code found in the github repository tensorflow/object_deteciton:\r\nhttps://github.com/tensorflow/models/tree/master/research/object_detection\r\n\r\nSpecifically the &#39;object_detection_tutorial.ipynb&#39; file. The main loop is this section here:\r\n\r\n    with detection_graph.as_default():\r\n      with tf.Session(graph=detection_graph) as sess:\r\n        # Definite input and output Tensors for detection_graph\r\n        image_tensor = detection_graph.get_tensor_by_name(&#39;image_tensor:0&#39;)\r\n        # Each box represents a part of the image where a particular object was detected.\r\n        detection_boxes = detection_graph.get_tensor_by_name(&#39;detection_boxes:0&#39;)\r\n        # Each score represent how level of confidence for each of the objects.\r\n        # Score is shown on the result image, together with the class label.\r\n        detection_scores = detection_graph.get_tensor_by_name(&#39;detection_scores:0&#39;)\r\n        detection_classes = detection_graph.get_tensor_by_name(&#39;detection_classes:0&#39;)\r\n        num_detections = detection_graph.get_tensor_by_name(&#39;num_detections:0&#39;)\r\n        for image_path in TEST_IMAGE_PATHS:\r\n          image = Image.open(image_path)\r\n          # the array based representation of the image will be used later in order to prepare the\r\n          # result image with boxes and labels on it.\r\n          image_np = load_image_into_numpy_array(image)\r\n          # Expand dimensions since the model expects images to have shape: [1, None, None, 3]\r\n          image_np_expanded = np.expand_dims(image_np, axis=0)\r\n          # Actual detection.\r\n          (boxes, scores, classes, num) = sess.run(\r\n              [detection_boxes, detection_scores, detection_classes, num_detections],\r\n              feed_dict={image_tensor: image_np_expanded})\r\n          # Visualization of the results of a detection.\r\n          vis_util.visualize_boxes_and_labels_on_image_array(\r\n              image_np,\r\n              np.squeeze(boxes),\r\n              np.squeeze(classes).astype(np.int32),\r\n              np.squeeze(scores),\r\n              category_index,\r\n              use_normalized_coordinates=True,\r\n              line_thickness=8)\r\n          plt.figure(figsize=IMAGE_SIZE)\r\n          plt.imshow(image_np)\r\n\r\nI&#39;m just looking for some advise as to the best way to actually save what the image has identified int a dataframe that would ideally store the category of the object detected for each object detected in the image.\r\n\r\nAny help would be appreciate (:",
+            "link": "https://stackoverflow.com/questions/47259171/saving-the-objects-detected-in-a-dataframe-tensorflow-object-detection",
+            "title": "Saving the objects detected in a dataframe: tensorflow object_detection",
+            "body": "<p>I'm running the typical code found in the github repository tensorflow/object_deteciton:\n<a href=\"https://github.com/tensorflow/models/tree/master/research/object_detection\" rel=\"nofollow noreferrer\">https://github.com/tensorflow/models/tree/master/research/object_detection</a></p>\n\n<p>Specifically the 'object_detection_tutorial.ipynb' file. The main loop is this section here:</p>\n\n<pre><code>with detection_graph.as_default():\n  with tf.Session(graph=detection_graph) as sess:\n    # Definite input and output Tensors for detection_graph\n    image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')\n    # Each box represents a part of the image where a particular object was detected.\n    detection_boxes = detection_graph.get_tensor_by_name('detection_boxes:0')\n    # Each score represent how level of confidence for each of the objects.\n    # Score is shown on the result image, together with the class label.\n    detection_scores = detection_graph.get_tensor_by_name('detection_scores:0')\n    detection_classes = detection_graph.get_tensor_by_name('detection_classes:0')\n    num_detections = detection_graph.get_tensor_by_name('num_detections:0')\n    for image_path in TEST_IMAGE_PATHS:\n      image = Image.open(image_path)\n      # the array based representation of the image will be used later in order to prepare the\n      # result image with boxes and labels on it.\n      image_np = load_image_into_numpy_array(image)\n      # Expand dimensions since the model expects images to have shape: [1, None, None, 3]\n      image_np_expanded = np.expand_dims(image_np, axis=0)\n      # Actual detection.\n      (boxes, scores, classes, num) = sess.run(\n          [detection_boxes, detection_scores, detection_classes, num_detections],\n          feed_dict={image_tensor: image_np_expanded})\n      # Visualization of the results of a detection.\n      vis_util.visualize_boxes_and_labels_on_image_array(\n          image_np,\n          np.squeeze(boxes),\n          np.squeeze(classes).astype(np.int32),\n          np.squeeze(scores),\n          category_index,\n          use_normalized_coordinates=True,\n          line_thickness=8)\n      plt.figure(figsize=IMAGE_SIZE)\n      plt.imshow(image_np)\n</code></pre>\n\n<p>I'm just looking for some advise as to the best way to actually save what the image has identified int a dataframe that would ideally store the category of the object detected for each object detected in the image.</p>\n\n<p>Any help would be appreciate (:</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "encryption",
+                "amazon-s3",
+                "cryptography",
+                "pycrypto"
+            ],
+            "owner": {
+                "reputation": 73,
+                "user_id": 4173377,
+                "user_type": "registered",
+                "accept_rate": 65,
+                "profile_image": "https://www.gravatar.com/avatar/521266d0e24991e961efe1343b9eef8e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Harry Robinson",
+                "link": "https://stackoverflow.com/users/4173377/harry-robinson"
+            },
+            "is_answered": false,
+            "view_count": 44,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524600794,
+            "creation_date": 1524500545,
+            "last_edit_date": 1524600794,
+            "question_id": 49985718,
+            "body_markdown": "I&#39;m trying to decrypt some S3 files that use client side encryption (not by me). I&#39;ve been given the public and private keys and told RSA is used... but I&#39;m struggling to figure out how to decrypt this file.\r\n\r\nMy understanding is that it&#39;s a 2 step process:\r\n\r\n1. Download the meta data of the file which contains `metadata[&#39;x-amz-key&#39;]` - This is the first key that need to be decrypted using my private key.\r\n\r\n2. Once this is decrypted it produces a new key that I can use to decrypt the actual file?\r\n\r\nI&#39;m not really sure how to do this. So far I&#39;ve tried this (which I think is covering step 1).\r\n\r\nWould love some help with this - very confused.\r\n\r\n    import base64\r\n    from Crypto.PublicKey import RSA\r\n    \r\n    key = &quot;-----BEGIN PRIVATE KEY-----\\nMAHJKxxxxxxxx\\n-----END PRIVATE KEY-----&quot;\r\n    rsa_Key =RSA.importKey(key)\r\n    raw_cipher_data = envelope_key\r\n    second_key = rsa_Key.decrypt(raw_cipher_data)\r\n\r\nThis then produces something that looks like this:\r\n\r\n    b&quot;\\x15\\\\xc0\\\\s&#39;\r\n\r\nEven if this is correct... which I suspect it isn&#39;t. How would I then go on to decrypt the actual S3 file?\r\n\r\nThanks again.\r\n\r\n\r\nNEXT STEP\r\n\r\nThis is as far as I got with it... seems like a reasonable approach and I&#39;m more confident after lots of reading (this post also helped a lot (https://stackoverflow.com/questions/29784535/how-to-decrypt-aws-ruby-client-side-encryption-in-python).\r\n\r\nHowever, still can&#39;t get this working...\r\n\r\n    from Crypto.Cipher import AES\r\n    \r\n    object_info = s3.head_object(Bucket=&quot;xxxx&quot;, Key=&quot;Secret.txt&quot;)\r\n    \r\n    metadata = object_info[&#39;Metadata&#39;]\r\n    envelope_key = base64.b64decode(metadata[&#39;x-amz-key&#39;])\r\n    envelope_iv = base64.b64decode(metadata[&#39;x-amz-iv&#39;])\r\n    \r\n    ENV_KEY_LENGTH = 32\r\n    \r\n    ENCRYPTION_KEY = base64.b64decode(KEY)\r\n    \r\n    key = &quot;-----BEGIN PRIVATE KEY-----\\nXXXX\\n-----END PRIVATE KEY-----&quot;\r\n    rsa_Key =RSA.importKey(key)\r\n    envelope_key = rsa_Key.decrypt(envelope_key)[:ENV_KEY_LENGTH]\r\n    envelope_iv = rsa_Key.decrypt(envelope_iv)[:ENV_KEY_LENGTH]\r\n    \r\n    decryptor = AES.new(envelope_key, AES.MODE_CBC, envelope_iv)\r\n    \r\n    with open(&#39;Desktop/test.txt&#39;, &#39;r&#39;) as f:\r\n        f.read()\r\n        secret_de = decryptor.decrypt(f)\r\n        print(secret_de)",
+            "link": "https://stackoverflow.com/questions/49985718/client-side-encryption-python",
+            "title": "Client side encryption Python",
+            "body": "<p>I'm trying to decrypt some S3 files that use client side encryption (not by me). I've been given the public and private keys and told RSA is used... but I'm struggling to figure out how to decrypt this file.</p>\n\n<p>My understanding is that it's a 2 step process:</p>\n\n<ol>\n<li><p>Download the meta data of the file which contains <code>metadata['x-amz-key']</code> - This is the first key that need to be decrypted using my private key.</p></li>\n<li><p>Once this is decrypted it produces a new key that I can use to decrypt the actual file?</p></li>\n</ol>\n\n<p>I'm not really sure how to do this. So far I've tried this (which I think is covering step 1).</p>\n\n<p>Would love some help with this - very confused.</p>\n\n<pre><code>import base64\nfrom Crypto.PublicKey import RSA\n\nkey = \"-----BEGIN PRIVATE KEY-----\\nMAHJKxxxxxxxx\\n-----END PRIVATE KEY-----\"\nrsa_Key =RSA.importKey(key)\nraw_cipher_data = envelope_key\nsecond_key = rsa_Key.decrypt(raw_cipher_data)\n</code></pre>\n\n<p>This then produces something that looks like this:</p>\n\n<pre><code>b\"\\x15\\\\xc0\\\\s'\n</code></pre>\n\n<p>Even if this is correct... which I suspect it isn't. How would I then go on to decrypt the actual S3 file?</p>\n\n<p>Thanks again.</p>\n\n<p>NEXT STEP</p>\n\n<p>This is as far as I got with it... seems like a reasonable approach and I'm more confident after lots of reading (this post also helped a lot (<a href=\"https://stackoverflow.com/questions/29784535/how-to-decrypt-aws-ruby-client-side-encryption-in-python\">How To Decrypt AWS Ruby Client-side Encryption in Python</a>).</p>\n\n<p>However, still can't get this working...</p>\n\n<pre><code>from Crypto.Cipher import AES\n\nobject_info = s3.head_object(Bucket=\"xxxx\", Key=\"Secret.txt\")\n\nmetadata = object_info['Metadata']\nenvelope_key = base64.b64decode(metadata['x-amz-key'])\nenvelope_iv = base64.b64decode(metadata['x-amz-iv'])\n\nENV_KEY_LENGTH = 32\n\nENCRYPTION_KEY = base64.b64decode(KEY)\n\nkey = \"-----BEGIN PRIVATE KEY-----\\nXXXX\\n-----END PRIVATE KEY-----\"\nrsa_Key =RSA.importKey(key)\nenvelope_key = rsa_Key.decrypt(envelope_key)[:ENV_KEY_LENGTH]\nenvelope_iv = rsa_Key.decrypt(envelope_iv)[:ENV_KEY_LENGTH]\n\ndecryptor = AES.new(envelope_key, AES.MODE_CBC, envelope_iv)\n\nwith open('Desktop/test.txt', 'r') as f:\n    f.read()\n    secret_de = decryptor.decrypt(f)\n    print(secret_de)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "webview",
+                "storage",
+                "google-chrome-app"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 8128281,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/4srOX.jpg?s=128&g=1",
+                "display_name": "Santiago",
+                "link": "https://stackoverflow.com/users/8128281/santiago"
+            },
+            "is_answered": false,
+            "view_count": 46,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1524600786,
+            "creation_date": 1510081108,
+            "question_id": 47165546,
+            "body_markdown": "I have a webview inside a Chrome Packaged App and the app has permissions for storage and unlimitedStorage. When I ask for the available storage space from the app It says 8 GB (that It is the whole space available in the device) but when I do it from the web app that the webview loads It says 600 MB aprox.\r\n\r\nHow can I do to set unlimitedStorage space to the webview?\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/47165546/unlimitedstorage-permission-to-a-webview-inside-a-chrome-app",
+            "title": "&quot;unlimitedStorage&quot; permission to a &lt;webview&gt; inside a Chrome App",
+            "body": "<p>I have a webview inside a Chrome Packaged App and the app has permissions for storage and unlimitedStorage. When I ask for the available storage space from the app It says 8 GB (that It is the whole space available in the device) but when I do it from the web app that the webview loads It says 600 MB aprox.</p>\n\n<p>How can I do to set unlimitedStorage space to the webview?</p>\n"
+        },
+        {
+            "tags": [
+                "windows",
+                "bluetooth-lowenergy",
+                "ancs",
+                "psoc"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8912660,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/901e444ddbde02c20480e2b5f83bf83e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "J.Doe",
+                "link": "https://stackoverflow.com/users/8912660/j-doe"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524600786,
+            "creation_date": 1518505707,
+            "question_id": 48761245,
+            "body_markdown": "\r\nI want to make an application to get my notifications from an iphone through psoc 4 ble. I&#39;m subscribing to ANCS service, i get the notifications, and after i want that data to send to windows to a java or c# application. What I don&#39;t know how to do or if it&#39;s possible: how do I make the connection between psoc and windows to send the data.",
+            "link": "https://stackoverflow.com/questions/48761245/psoc-4-ble-communicate-with-windows",
+            "title": "Psoc 4 ble communicate with windows",
+            "body": "<p>I want to make an application to get my notifications from an iphone through psoc 4 ble. I'm subscribing to ANCS service, i get the notifications, and after i want that data to send to windows to a java or c# application. What I don't know how to do or if it's possible: how do I make the connection between psoc and windows to send the data.</p>\n"
+        },
+        {
+            "tags": [
+                "jsf",
+                "https",
+                "websocket",
+                "glassfish",
+                "web.xml"
+            ],
+            "owner": {
+                "reputation": 28,
+                "user_id": 6262815,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/b31cacccc327f1c6e65782a568786bec?s=128&d=identicon&r=PG&f=1",
+                "display_name": "tonder",
+                "link": "https://stackoverflow.com/users/6262815/tonder"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524600786,
+            "creation_date": 1524600786,
+            "question_id": 50010068,
+            "body_markdown": "I am trying to enable WebSocket connections under HTTPS. I understood that I must use wss instead of ws to enable WebSockets. My server endpoint is &quot;/actions&quot;. Client websocket:\r\n\r\n    var socket = new WebSocket(&quot;wss://serverName/appName/actions/&quot;);\r\n\r\nI want to load all pages under https and I use WebSockets only in one page. However, I get &quot;ERR_TOO_MANY_REDIRECTS&quot; error when I connect to the main page(or any other). It started to happen after I added the security constraints to the web.xml. I read many other posts but couldn&#39;t solve the problem. How can I fix this error? My server is Glassfish 4.1. My web.xml file is as follows:\r\n\r\n    &lt;web-app version=&quot;3.1&quot; xmlns=&quot;http://xmlns.jcp.org/xml/ns/javaee&quot; xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot; xsi:schemaLocation=&quot;http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd&quot;&gt;\r\n\r\n    &lt;context-param&gt;\r\n        &lt;param-name&gt;javax.faces.PROJECT_STAGE&lt;/param-name&gt;\r\n        &lt;param-value&gt;Development&lt;/param-value&gt;\r\n    &lt;/context-param&gt;\r\n  \r\n    &lt;!-- This enables you to insert comments within a panel grid --&gt;\r\n    &lt;context-param&gt;\r\n        &lt;param-name&gt;facelets.SKIP_COMMENTS&lt;/param-name&gt;\r\n        &lt;param-value&gt;true&lt;/param-value&gt;\r\n    &lt;/context-param&gt;\r\n  \r\n    &lt;servlet&gt;\r\n        &lt;servlet-name&gt;Faces Servlet&lt;/servlet-name&gt;\r\n        &lt;servlet-class&gt;javax.faces.webapp.FacesServlet&lt;/servlet-class&gt;\r\n        &lt;load-on-startup&gt;1&lt;/load-on-startup&gt;\r\n    &lt;/servlet&gt;\r\n\r\n    --&gt;\r\n    &lt;servlet-mapping&gt;\r\n        &lt;servlet-name&gt;Faces Servlet&lt;/servlet-name&gt;\r\n        &lt;url-pattern&gt;*.xhtml&lt;/url-pattern&gt;\r\n    &lt;/servlet-mapping&gt;\r\n    \r\n    \r\n    &lt;context-param&gt;\r\n        &lt;param-name&gt;primefaces.UPLOADER&lt;/param-name&gt;\r\n        &lt;param-value&gt;auto&lt;/param-value&gt;\r\n    &lt;/context-param&gt;\r\n\r\n    &lt;session-config&gt;\r\n        &lt;session-timeout&gt;\r\n            30\r\n        &lt;/session-timeout&gt;\r\n    &lt;/session-config&gt;\r\n\r\n    &lt;welcome-file-list&gt;\r\n        &lt;welcome-file&gt;index.xhtml&lt;/welcome-file&gt;\r\n    &lt;/welcome-file-list&gt;\r\n    \r\n    &lt;security-constraint&gt;\r\n        &lt;web-resource-collection&gt;\r\n            &lt;web-resource-name&gt;httpsResource&lt;/web-resource-name&gt;\r\n            &lt;url-pattern&gt;/*&lt;/url-pattern&gt;\r\n            &lt;http-method&gt;GET&lt;/http-method&gt;\r\n        &lt;/web-resource-collection&gt;\r\n        &lt;user-data-constraint&gt;\r\n            &lt;transport-guarantee&gt;CONFIDENTIAL&lt;/transport-guarantee&gt;\r\n        &lt;/user-data-constraint&gt;\r\n    &lt;/security-constraint&gt;\r\n&lt;/web-app&gt;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50010068/enable-java-websocket-over-https-err-too-many-redirect",
+            "title": "Enable Java WebSocket over HTTPS (ERR_TOO_MANY_REDIRECT)",
+            "body": "<p>I am trying to enable WebSocket connections under HTTPS. I understood that I must use wss instead of ws to enable WebSockets. My server endpoint is \"/actions\". Client websocket:</p>\n\n<pre><code>var socket = new WebSocket(\"wss://serverName/appName/actions/\");\n</code></pre>\n\n<p>I want to load all pages under https and I use WebSockets only in one page. However, I get \"ERR_TOO_MANY_REDIRECTS\" error when I connect to the main page(or any other). It started to happen after I added the security constraints to the web.xml. I read many other posts but couldn't solve the problem. How can I fix this error? My server is Glassfish 4.1. My web.xml file is as follows:</p>\n\n<pre><code>&lt;web-app version=\"3.1\" xmlns=\"http://xmlns.jcp.org/xml/ns/javaee\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd\"&gt;\n\n&lt;context-param&gt;\n    &lt;param-name&gt;javax.faces.PROJECT_STAGE&lt;/param-name&gt;\n    &lt;param-value&gt;Development&lt;/param-value&gt;\n&lt;/context-param&gt;\n\n&lt;!-- This enables you to insert comments within a panel grid --&gt;\n&lt;context-param&gt;\n    &lt;param-name&gt;facelets.SKIP_COMMENTS&lt;/param-name&gt;\n    &lt;param-value&gt;true&lt;/param-value&gt;\n&lt;/context-param&gt;\n\n&lt;servlet&gt;\n    &lt;servlet-name&gt;Faces Servlet&lt;/servlet-name&gt;\n    &lt;servlet-class&gt;javax.faces.webapp.FacesServlet&lt;/servlet-class&gt;\n    &lt;load-on-startup&gt;1&lt;/load-on-startup&gt;\n&lt;/servlet&gt;\n\n--&gt;\n&lt;servlet-mapping&gt;\n    &lt;servlet-name&gt;Faces Servlet&lt;/servlet-name&gt;\n    &lt;url-pattern&gt;*.xhtml&lt;/url-pattern&gt;\n&lt;/servlet-mapping&gt;\n\n\n&lt;context-param&gt;\n    &lt;param-name&gt;primefaces.UPLOADER&lt;/param-name&gt;\n    &lt;param-value&gt;auto&lt;/param-value&gt;\n&lt;/context-param&gt;\n\n&lt;session-config&gt;\n    &lt;session-timeout&gt;\n        30\n    &lt;/session-timeout&gt;\n&lt;/session-config&gt;\n\n&lt;welcome-file-list&gt;\n    &lt;welcome-file&gt;index.xhtml&lt;/welcome-file&gt;\n&lt;/welcome-file-list&gt;\n\n&lt;security-constraint&gt;\n    &lt;web-resource-collection&gt;\n        &lt;web-resource-name&gt;httpsResource&lt;/web-resource-name&gt;\n        &lt;url-pattern&gt;/*&lt;/url-pattern&gt;\n        &lt;http-method&gt;GET&lt;/http-method&gt;\n    &lt;/web-resource-collection&gt;\n    &lt;user-data-constraint&gt;\n        &lt;transport-guarantee&gt;CONFIDENTIAL&lt;/transport-guarantee&gt;\n    &lt;/user-data-constraint&gt;\n&lt;/security-constraint&gt;\n</code></pre>\n\n<p></p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "laravel",
+                "homebrew",
+                "laravel-valet"
+            ],
+            "owner": {
+                "reputation": 1184,
+                "user_id": 719689,
+                "user_type": "registered",
+                "accept_rate": 66,
+                "profile_image": "https://www.gravatar.com/avatar/396b7f0237506d495e7d07dc2f7d817f?s=128&d=identicon&r=PG",
+                "display_name": "AlxVallejo",
+                "link": "https://stackoverflow.com/users/719689/alxvallejo"
+            },
+            "is_answered": true,
+            "view_count": 4060,
+            "answer_count": 2,
+            "score": 5,
+            "last_activity_date": 1524600786,
+            "creation_date": 1508183888,
+            "question_id": 46778133,
+            "body_markdown": "I&#39;m trying to install Laravel Valet, which requires php 7.1, but when i run brew install php71, I get the following error:\r\n\r\n    ==&gt; Pouring php71-7.1.10_21.high_sierra.bottle.tar.gz\r\n    Error: The `brew link` step did not complete successfully\r\n    The formula built, but is not symlinked into /usr/local\r\n    Could not symlink sbin/php-fpm\r\n    /usr/local/sbin is not writable.\r\n\r\nI get the same error when i run `brew link php71`. If i run `php -v`, I actually see that I&#39;m currently running PHP 7.1.7.\r\n\r\nBut when I run valet install, I get:\r\n\r\n      [DomainException]\r\n      Unable to determine linked PHP.\r\n\r\nI don&#39;t even have an sbin directory in /usr/local. \r\n\r\nAny suggestions?",
+            "link": "https://stackoverflow.com/questions/46778133/brew-link-php71-could-not-symlink-sbin-php-fpm",
+            "title": "brew link php71: Could not symlink sbin/php-fpm",
+            "body": "<p>I'm trying to install Laravel Valet, which requires php 7.1, but when i run brew install php71, I get the following error:</p>\n\n<pre><code>==&gt; Pouring php71-7.1.10_21.high_sierra.bottle.tar.gz\nError: The `brew link` step did not complete successfully\nThe formula built, but is not symlinked into /usr/local\nCould not symlink sbin/php-fpm\n/usr/local/sbin is not writable.\n</code></pre>\n\n<p>I get the same error when i run <code>brew link php71</code>. If i run <code>php -v</code>, I actually see that I'm currently running PHP 7.1.7.</p>\n\n<p>But when I run valet install, I get:</p>\n\n<pre><code>  [DomainException]\n  Unable to determine linked PHP.\n</code></pre>\n\n<p>I don't even have an sbin directory in /usr/local. </p>\n\n<p>Any suggestions?</p>\n"
+        },
+        {
+            "tags": [
+                ".htaccess"
+            ],
+            "owner": {
+                "reputation": 32720,
+                "user_id": 1146363,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://www.gravatar.com/avatar/071bc4c7c6229920fd24f2f37d42b382?s=128&d=identicon&r=PG",
+                "display_name": "Cerad",
+                "link": "https://stackoverflow.com/users/1146363/cerad"
+            },
+            "is_answered": true,
+            "view_count": 1345,
+            "accepted_answer_id": 29321034,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524600768,
+            "creation_date": 1427565905,
+            "last_edit_date": 1427567631,
+            "question_id": 29320684,
+            "body_markdown": "Such a simple problem but htaccess and I have never got along.\r\n\r\n1. Serve the file if it exists.\r\n2. If the URI is just / and if index.html exists then serve index.html\r\n3. Otherwise serve app.php\r\n\r\nHere is .htaccess:\r\n\r\n    # Disable the directory processing, Apache 2.4\r\n    DirectoryIndex disabled xxx\r\n    \r\n    RewriteEngine On\r\n    \r\n    # Serve existing files\r\n    RewriteCond %{REQUEST_FILENAME} -f\r\n\r\n    RewriteRule .? - [L]\r\n    \r\n    # For / serve index.html if it exists\r\n    RewriteCond %{REQUEST_URI} ^/$\r\n\r\n    RewriteCond    index.html -f\r\n\r\n    RewriteRule .? index.html [L]\r\n    \r\n    # Otherwise use front controller\r\n    RewriteRule .? app.php [L]\r\n\r\nIt works if I comment out the RewriteCond index.html -f line as long as index.html does in fact exists.  But I also want to check for index.php so I need the file exists check.  And if nothing else I&#39;d like to understand why the posted lines do not work.",
+            "link": "https://stackoverflow.com/questions/29320684/rewritecond-file-exists",
+            "title": "RewriteCond file exists",
+            "body": "<p>Such a simple problem but htaccess and I have never got along.</p>\n\n<ol>\n<li>Serve the file if it exists.</li>\n<li>If the URI is just / and if index.html exists then serve index.html</li>\n<li>Otherwise serve app.php</li>\n</ol>\n\n<p>Here is .htaccess:</p>\n\n<pre><code># Disable the directory processing, Apache 2.4\nDirectoryIndex disabled xxx\n\nRewriteEngine On\n\n# Serve existing files\nRewriteCond %{REQUEST_FILENAME} -f\n\nRewriteRule .? - [L]\n\n# For / serve index.html if it exists\nRewriteCond %{REQUEST_URI} ^/$\n\nRewriteCond    index.html -f\n\nRewriteRule .? index.html [L]\n\n# Otherwise use front controller\nRewriteRule .? app.php [L]\n</code></pre>\n\n<p>It works if I comment out the RewriteCond index.html -f line as long as index.html does in fact exists.  But I also want to check for index.php so I need the file exists check.  And if nothing else I'd like to understand why the posted lines do not work.</p>\n"
+        },
+        {
+            "tags": [
+                "excel",
+                "list",
+                "filter",
+                "criteria",
+                "advanced-filter"
+            ],
+            "owner": {
+                "reputation": 29,
+                "user_id": 9341705,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/69a187b6fc1d11a97ef1087bdea68d91?s=128&d=identicon&r=PG&f=1",
+                "display_name": "forestaker",
+                "link": "https://stackoverflow.com/users/9341705/forestaker"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524600761,
+            "creation_date": 1524600761,
+            "question_id": 50010062,
+            "body_markdown": "Is there a way to have a list of possible values as one of the criteria in an advanced filter **without** placing the possible values in separate rows.\r\n\r\nE.g. Is there a way to apply a list of comma-separated values in one of the columns of the AdvancedFilter&#39;s Criteria Range like the following:\r\n\r\n[![example of list of values as criteria][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/8m86v.png",
+            "link": "https://stackoverflow.com/questions/50010062/advanced-filter-list-as-criteria-without-using-multiple-rows",
+            "title": "Advanced Filter: List as Criteria Without Using Multiple Rows",
+            "body": "<p>Is there a way to have a list of possible values as one of the criteria in an advanced filter <strong>without</strong> placing the possible values in separate rows.</p>\n\n<p>E.g. Is there a way to apply a list of comma-separated values in one of the columns of the AdvancedFilter's Criteria Range like the following:</p>\n\n<p><a href=\"https://i.stack.imgur.com/8m86v.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/8m86v.png\" alt=\"example of list of values as criteria\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "linux",
+                "linux-kernel",
+                "parallella"
+            ],
+            "owner": {
+                "reputation": 3648,
+                "user_id": 999676,
+                "user_type": "registered",
+                "accept_rate": 57,
+                "profile_image": "https://www.gravatar.com/avatar/d79b593c2c65eba8f545e3f8cefcb0ba?s=128&d=identicon&r=PG",
+                "display_name": "Jason",
+                "link": "https://stackoverflow.com/users/999676/jason"
+            },
+            "is_answered": false,
+            "view_count": 28,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1524600751,
+            "creation_date": 1524526474,
+            "last_edit_date": 1524600751,
+            "question_id": 49991340,
+            "body_markdown": "I am running Debian 8 on a Parallella board, OS is Parabuntu.\r\n\r\nI am trying to install the Linux headers so I can build a wireless driver I need. \r\n\r\n    root@parallella:~# uname -a\r\n    Linux parallella 4.6.0+ #1 SMP PREEMPT Wed Dec 7 13:27:40 CET 2016 armv7l armv7l armv7l GNU/Linux\r\n\r\n    root@parallella:~# sudo apt install linux-headers-$(uname -r)\r\n    Reading package lists... Done\r\n    Building dependency tree\r\n    Reading state information... Done\r\n    E: Unable to locate package linux-headers-4.6.0\r\n    E: Couldn&#39;t find any package by regex &#39;linux-headers-4.6.0&#39;\r\n",
+            "link": "https://stackoverflow.com/questions/49991340/how-to-install-linux-headers",
+            "title": "How to install Linux headers?",
+            "body": "<p>I am running Debian 8 on a Parallella board, OS is Parabuntu.</p>\n\n<p>I am trying to install the Linux headers so I can build a wireless driver I need. </p>\n\n<pre><code>root@parallella:~# uname -a\nLinux parallella 4.6.0+ #1 SMP PREEMPT Wed Dec 7 13:27:40 CET 2016 armv7l armv7l armv7l GNU/Linux\n\nroot@parallella:~# sudo apt install linux-headers-$(uname -r)\nReading package lists... Done\nBuilding dependency tree\nReading state information... Done\nE: Unable to locate package linux-headers-4.6.0\nE: Couldn't find any package by regex 'linux-headers-4.6.0'\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "angular-ui-router"
+            ],
+            "owner": {
+                "reputation": 81,
+                "user_id": 6914106,
+                "user_type": "registered",
+                "accept_rate": 32,
+                "profile_image": "https://www.gravatar.com/avatar/a43b62e1e3b016f31ff7b555d9b34cd9?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Alavi1412",
+                "link": "https://stackoverflow.com/users/6914106/alavi1412"
+            },
+            "is_answered": true,
+            "view_count": 189,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1524600746,
+            "creation_date": 1512810356,
+            "question_id": 47727014,
+            "body_markdown": "I want to separate my params in URL by dash like below:\r\n\r\n    localhost/add/5-ninja\r\n\r\nin here the id is 5 and the name is ninja. When i changed the config to this:\r\n`path: &#39;/:id-:name&#39;`\r\nIt doesn&#39;t work properly.\r\nHow can I create dash separated params in URL",
+            "link": "https://stackoverflow.com/questions/47727014/dash-separated-params-in-routing-angular-5",
+            "title": "dash separated params in routing angular 5",
+            "body": "<p>I want to separate my params in URL by dash like below:</p>\n\n<pre><code>localhost/add/5-ninja\n</code></pre>\n\n<p>in here the id is 5 and the name is ninja. When i changed the config to this:\n<code>path: '/:id-:name'</code>\nIt doesn't work properly.\nHow can I create dash separated params in URL</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-3.x"
+            ],
+            "owner": {
+                "reputation": 24,
+                "user_id": 6545673,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://www.gravatar.com/avatar/ef52a80fb635e739f0ef67a96c9a0fc1?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Arun",
+                "link": "https://stackoverflow.com/users/6545673/arun"
+            },
+            "is_answered": true,
+            "view_count": 40,
+            "answer_count": 2,
+            "score": -1,
+            "last_activity_date": 1524600727,
+            "creation_date": 1524599849,
+            "last_edit_date": 1524600727,
+            "question_id": 50009866,
+            "body_markdown": "I am using this code in a function inside pyqt5 class.\r\n\r\n            print(len(k))\r\n            print(len(u))\r\n\r\n            if len(k) / 3 &lt; len(u):\r\n                c = len(k) / 3 + 1\r\n                c = round(c, 0)\r\n            elif len(k) / 3 &lt; len(u):\r\n                c = len(u) + 1\r\n\r\n            print(c)\r\n\r\nhere k and u are lists\r\n\r\nMy IDE(PyCharm) is giving a warning &quot;Variable referenced before assignment&quot; on hovering over variable &quot;c&quot; line &quot;print(c)&quot;\r\n\r\nThe output is printed as \r\n8\r\n2\r\nand after that python stopped working\r\n\r\nWhere 8 and 2 are the lengths of the lists\r\n\r\n\r\nI have tried using functions and global variables as\r\n\r\n            print(len(k))\r\n            print(len(u))\r\n\r\n            def getvar(a,b):\r\n                global c\r\n                if a / 3 &lt; b:\r\n                    c = a / 3 + 1\r\n                    c = round(c, 0)\r\n                elif a / 3 &lt; b:\r\n                    c = b + 1\r\n                return c\r\n\r\n\r\n            print(getvar(len(k),len(u)))\r\n\r\n\r\nThis is printing\r\n8\r\n2\r\n\r\nand again python stopped working\r\n\r\nCan someone suggest how i can work my way around this.\r\n\r\nPS all this code is inside a fuction in a pyqt5 class\r\n\r\ne.g.\r\n\r\n    class Ui_Dialog(object):\r\n        def setupUi(self, Dialog):\r\n           ...some..code..\r\n           self.startBtn.clicked.connect(self.run)\r\n\r\n        def run(self):\r\n           ...some..code..\r\n\r\n           ** code mentioned above**\r\n\r\n\r\nI am using python3.6\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50009866/variable-referenced-before-assignment-error-even-after-using-global-variables-py",
+            "title": "Variable referenced before assignment error even after using global variables python",
+            "body": "<p>I am using this code in a function inside pyqt5 class.</p>\n\n<pre><code>        print(len(k))\n        print(len(u))\n\n        if len(k) / 3 &lt; len(u):\n            c = len(k) / 3 + 1\n            c = round(c, 0)\n        elif len(k) / 3 &lt; len(u):\n            c = len(u) + 1\n\n        print(c)\n</code></pre>\n\n<p>here k and u are lists</p>\n\n<p>My IDE(PyCharm) is giving a warning \"Variable referenced before assignment\" on hovering over variable \"c\" line \"print(c)\"</p>\n\n<p>The output is printed as \n8\n2\nand after that python stopped working</p>\n\n<p>Where 8 and 2 are the lengths of the lists</p>\n\n<p>I have tried using functions and global variables as</p>\n\n<pre><code>        print(len(k))\n        print(len(u))\n\n        def getvar(a,b):\n            global c\n            if a / 3 &lt; b:\n                c = a / 3 + 1\n                c = round(c, 0)\n            elif a / 3 &lt; b:\n                c = b + 1\n            return c\n\n\n        print(getvar(len(k),len(u)))\n</code></pre>\n\n<p>This is printing\n8\n2</p>\n\n<p>and again python stopped working</p>\n\n<p>Can someone suggest how i can work my way around this.</p>\n\n<p>PS all this code is inside a fuction in a pyqt5 class</p>\n\n<p>e.g.</p>\n\n<pre><code>class Ui_Dialog(object):\n    def setupUi(self, Dialog):\n       ...some..code..\n       self.startBtn.clicked.connect(self.run)\n\n    def run(self):\n       ...some..code..\n\n       ** code mentioned above**\n</code></pre>\n\n<p>I am using python3.6</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "oop",
+                "typing"
+            ],
+            "owner": {
+                "reputation": 2741,
+                "user_id": 2151286,
+                "user_type": "registered",
+                "accept_rate": 61,
+                "profile_image": "https://i.stack.imgur.com/Arwv4.jpg?s=128&g=1",
+                "display_name": "Anoop",
+                "link": "https://stackoverflow.com/users/2151286/anoop"
+            },
+            "is_answered": true,
+            "view_count": 40,
+            "answer_count": 1,
+            "score": 3,
+            "last_activity_date": 1524600721,
+            "creation_date": 1524600252,
+            "question_id": 50009947,
+            "body_markdown": "I see the following idiom repeated several times in python  ` X = filter(lambda x: x is not None, X))`\r\n\r\nI was hoping there is a builtin function for `is not None`(in its standard library or something similar to apache-commons for java) in python. \r\n\r\nIn my code I have organized it as \r\n\r\n    def isNotNone(X: Any) -&gt; bool:\r\n        return True if X is not None else False\r\n    \r\n    X = filter(isNotNone, X)\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50009947/is-there-any-built-in-lambda-for-is-notnone-in-python",
+            "title": "Is there any built in lambda for is notNone in python",
+            "body": "<p>I see the following idiom repeated several times in python  <code>X = filter(lambda x: x is not None, X))</code></p>\n\n<p>I was hoping there is a builtin function for <code>is not None</code>(in its standard library or something similar to apache-commons for java) in python. </p>\n\n<p>In my code I have organized it as </p>\n\n<pre><code>def isNotNone(X: Any) -&gt; bool:\n    return True if X is not None else False\n\nX = filter(isNotNone, X)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "numpy"
+            ],
+            "owner": {
+                "reputation": 140,
+                "user_id": 4652113,
+                "user_type": "registered",
+                "accept_rate": 89,
+                "profile_image": "https://www.gravatar.com/avatar/2687559d3bdee14381c20625a485262a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Jam1",
+                "link": "https://stackoverflow.com/users/4652113/jam1"
+            },
+            "is_answered": false,
+            "view_count": 59,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524600710,
+            "creation_date": 1524595551,
+            "question_id": 50008833,
+            "body_markdown": "I have an array with elements, and I want to sum up the accuracy. I want to sum the arrays that have the elements in the same order. I rather not be writing a for loop going through each element with `zip` and summing them up, is there an easier way to do this?\r\n\r\nThe two arrays are as follows, and currently my code is below for calculating the sum.\r\n\r\n    yp = [[0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1]]\r\n    y = [[0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1]]\r\n\r\n    sums = np.sum(yp == y)\r\n\r\nI am getting an accuracy of zero.",
+            "link": "https://stackoverflow.com/questions/50008833/sum-up-indentical-list-elements",
+            "title": "Sum up indentical list elements",
+            "body": "<p>I have an array with elements, and I want to sum up the accuracy. I want to sum the arrays that have the elements in the same order. I rather not be writing a for loop going through each element with <code>zip</code> and summing them up, is there an easier way to do this?</p>\n\n<p>The two arrays are as follows, and currently my code is below for calculating the sum.</p>\n\n<pre><code>yp = [[0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1]]\ny = [[0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1]]\n\nsums = np.sum(yp == y)\n</code></pre>\n\n<p>I am getting an accuracy of zero.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "arrays"
+            ],
+            "owner": {
+                "reputation": 12,
+                "user_id": 9523892,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-Ub1ljHOxFK8/AAAAAAAAAAI/AAAAAAAAABA/eFJblMTLGgQ/photo.jpg?sz=128",
+                "display_name": "MacKenzie Cutler",
+                "link": "https://stackoverflow.com/users/9523892/mackenzie-cutler"
+            },
+            "is_answered": true,
+            "view_count": 56,
+            "accepted_answer_id": 50006825,
+            "answer_count": 3,
+            "score": -1,
+            "last_activity_date": 1524600705,
+            "creation_date": 1524586993,
+            "last_edit_date": 1524588963,
+            "question_id": 50006579,
+            "body_markdown": "I am doing a class in Computer Programming and right now we&#39;re using Arrays. My objective is to do the following:\r\n\r\n~ Prompt users for how many math tests they have written this year.\r\n~ Asks the users their score on each of these math tests.\r\n~ Place each score in an array.\r\n~ Sort the array and give their math scores from least to greatest.\r\n~ Calculate an average of the math scores.\r\n\r\nMy problem occurs when it just only keeps the scores at 0 and later wont recognize the testGrade int variable so it won&#39;t average them.\r\n\r\nHere is my full code as of right now:\r\n\r\n\r\n    public static void main(String... args) throws Exception\r\n    {\r\n        for (int i = 0;i &lt; testResults.length; i++)\r\n        {\r\n            System.out.print(&quot;Thank you, now please enter your grade on each test:     &quot;);\r\n            int testGrades = k.nextInt();\r\n        }\r\n        System.out.print(&quot;The original sequence is: \\n   &quot;);\r\n        for (int i = 0;i &lt; testResults.length; i++)\r\n        {\r\n            System.out.print(testResults [i] + &quot;, &quot;);\r\n        }\r\n        System.out.println();\r\n        SortEm(testResults);\r\n        System.out.print(&quot;The new sequence is : \\n   &quot;);\r\n        for (int i=0; i &lt; testResults.length; i++)\r\n        {\r\n            System.out.print (testResults[i] + &quot;, &quot;);\r\n        }\r\n        System.out.println();\r\n        for (int i = 0;i &lt; testResults.length; i++)\r\n        {\r\n            System.out.println(&quot;The average of all your tests is &quot; + (testGrades / testNum));\r\n        }\r\n    }\r\n    private static void SortEm (int [] ar)\r\n    {\r\n        int temp;\r\n        for (int i = ar.length - 1; i &gt; 0; i--)\r\n        {\r\n            for (int j = 0; j &lt; i; j++)\r\n            {\r\n                if (ar[j] &gt; ar[j + 1])\r\n                {\r\n                    temp = ar[j];\r\n                    ar[j] = ar[j + 1];\r\n                    ar[j+1] = temp;\r\n                }\r\n            }\r\n        }\r\n    }\r\n\r\nI would really appreciate some insight on what&#39;s going on and how to fix it.\r\nThank you all in advance :)\r\n\r\nMy Errors after answer:\r\n    6 errors found:\r\n    File: C:\\Users\\herhstudent\\Desktop\\gg.java  [line: 1]\r\n    Error: Syntax error on tokens, delete these tokens\r\n    File: C:\\Users\\herhstudent\\Desktop\\gg.java  [line: 3]\r\n    Error: Syntax error on token &quot;void&quot;, @ expected\r\n    File: C:\\Users\\herhstudent\\Desktop\\gg.java  [line: 3]\r\n    Error: Syntax error on token &quot;...&quot;, . expected\r\n    File: C:\\Users\\herhstudent\\Desktop\\gg.java  [line: 3]\r\n    Error: Syntax error on token &quot;throws&quot;, interface expected\r\n    File: C:\\Users\\herhstudent\\Desktop\\gg.java  [line: 6]\r\n    Error: Syntax error on token &quot;;&quot;, { expected after this token\r\n    File: C:\\Users\\herhstudent\\Desktop\\gg.java  [line: 44]\r\n    Error: Syntax error, insert &quot;}&quot; to complete InterfaceBody",
+            "link": "https://stackoverflow.com/questions/50006579/java-is-setting-array-sequence-to-0-and-not-recognizing-specific-variables",
+            "title": "Java is setting Array sequence to 0 and not recognizing specific variables",
+            "body": "<p>I am doing a class in Computer Programming and right now we're using Arrays. My objective is to do the following:</p>\n\n<p>~ Prompt users for how many math tests they have written this year.\n~ Asks the users their score on each of these math tests.\n~ Place each score in an array.\n~ Sort the array and give their math scores from least to greatest.\n~ Calculate an average of the math scores.</p>\n\n<p>My problem occurs when it just only keeps the scores at 0 and later wont recognize the testGrade int variable so it won't average them.</p>\n\n<p>Here is my full code as of right now:</p>\n\n<pre><code>public static void main(String... args) throws Exception\n{\n    for (int i = 0;i &lt; testResults.length; i++)\n    {\n        System.out.print(\"Thank you, now please enter your grade on each test:     \");\n        int testGrades = k.nextInt();\n    }\n    System.out.print(\"The original sequence is: \\n   \");\n    for (int i = 0;i &lt; testResults.length; i++)\n    {\n        System.out.print(testResults [i] + \", \");\n    }\n    System.out.println();\n    SortEm(testResults);\n    System.out.print(\"The new sequence is : \\n   \");\n    for (int i=0; i &lt; testResults.length; i++)\n    {\n        System.out.print (testResults[i] + \", \");\n    }\n    System.out.println();\n    for (int i = 0;i &lt; testResults.length; i++)\n    {\n        System.out.println(\"The average of all your tests is \" + (testGrades / testNum));\n    }\n}\nprivate static void SortEm (int [] ar)\n{\n    int temp;\n    for (int i = ar.length - 1; i &gt; 0; i--)\n    {\n        for (int j = 0; j &lt; i; j++)\n        {\n            if (ar[j] &gt; ar[j + 1])\n            {\n                temp = ar[j];\n                ar[j] = ar[j + 1];\n                ar[j+1] = temp;\n            }\n        }\n    }\n}\n</code></pre>\n\n<p>I would really appreciate some insight on what's going on and how to fix it.\nThank you all in advance :)</p>\n\n<p>My Errors after answer:\n    6 errors found:\n    File: C:\\Users\\herhstudent\\Desktop\\gg.java  [line: 1]\n    Error: Syntax error on tokens, delete these tokens\n    File: C:\\Users\\herhstudent\\Desktop\\gg.java  [line: 3]\n    Error: Syntax error on token \"void\", @ expected\n    File: C:\\Users\\herhstudent\\Desktop\\gg.java  [line: 3]\n    Error: Syntax error on token \"...\", . expected\n    File: C:\\Users\\herhstudent\\Desktop\\gg.java  [line: 3]\n    Error: Syntax error on token \"throws\", interface expected\n    File: C:\\Users\\herhstudent\\Desktop\\gg.java  [line: 6]\n    Error: Syntax error on token \";\", { expected after this token\n    File: C:\\Users\\herhstudent\\Desktop\\gg.java  [line: 44]\n    Error: Syntax error, insert \"}\" to complete InterfaceBody</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "hibernate",
+                "jpa",
+                "reference",
+                "soft-delete"
+            ],
+            "owner": {
+                "reputation": 146,
+                "user_id": 5539800,
+                "user_type": "registered",
+                "accept_rate": 81,
+                "profile_image": "https://i.stack.imgur.com/rO4xS.jpg?s=128&g=1",
+                "display_name": "Pablo De Luca",
+                "link": "https://stackoverflow.com/users/5539800/pablo-de-luca"
+            },
+            "is_answered": true,
+            "view_count": 44,
+            "accepted_answer_id": 50009577,
+            "answer_count": 3,
+            "score": 2,
+            "last_activity_date": 1524600698,
+            "creation_date": 1524597895,
+            "last_edit_date": 1524600281,
+            "question_id": 50009441,
+            "body_markdown": "As you can see I am using soft/logical deletion on my system:\r\n\r\nMy entities:\r\n\r\n    @Where(clause = &quot;deleted=&#39;false&#39;&quot;)\r\n    public class Person { \r\n      //...\r\n    }\r\n\r\nMy services:\r\n\r\n    @Override\r\n    public ServiceResponse DeletePerson (Person entity) {\r\n        ServiceResponse sr = new ServiceResponse&lt;&gt;();\r\n\r\n        try {\r\n            sr = ValidateDeletePerson(entity); //Business logic treatment\r\n            if (sr.hasError())\r\n                return sr;\r\n\r\n            Person dbEntity = GetPerson(entity.getPersonID());\r\n            dbEntity.setDeleted(true);\r\n            _repository.save(dbEntity);\r\n\r\n        } catch (Exception ex) {\r\n            sr.getErrors().add(new ServiceError(ex));\r\n        }\r\n\r\n        return sr;\r\n    }\r\n\r\nWhen the user try to delete an object - actually only the boolean **deleted** is switched to **true** on the DB as I demonstrate above -, I want to **check if the object is being referenced** to another **before** doing this **logical deletion**.\r\n\r\nSo, if the object is being used/referenced by other, I want to catch this action as an error, or another similar treatment to prevent the deletion.\r\n\r\nExample, If a `Person with ID 5` is attached to a `Student`, the user cannot delete this person.\r\n\r\n\r\nWhat is the **&quot;best practice&quot; to prevent it**?\r\n\r\nImportant EDIT:\r\n\r\n1) **Person is referenced in N tables**, not only on Student, so I am investigating a generic way to achieve it (Maybe you can tell hibernate to check it?)\r\n\r\n2) The idea is to do it programatically, **avoiding modifications on DB**.",
+            "link": "https://stackoverflow.com/questions/50009441/check-if-object-is-referenced-to-prevent-soft-deleting-without-modifying-databas",
+            "title": "Check if object is referenced to prevent soft-deleting without modifying database",
+            "body": "<p>As you can see I am using soft/logical deletion on my system:</p>\n\n<p>My entities:</p>\n\n<pre><code>@Where(clause = \"deleted='false'\")\npublic class Person { \n  //...\n}\n</code></pre>\n\n<p>My services:</p>\n\n<pre><code>@Override\npublic ServiceResponse DeletePerson (Person entity) {\n    ServiceResponse sr = new ServiceResponse&lt;&gt;();\n\n    try {\n        sr = ValidateDeletePerson(entity); //Business logic treatment\n        if (sr.hasError())\n            return sr;\n\n        Person dbEntity = GetPerson(entity.getPersonID());\n        dbEntity.setDeleted(true);\n        _repository.save(dbEntity);\n\n    } catch (Exception ex) {\n        sr.getErrors().add(new ServiceError(ex));\n    }\n\n    return sr;\n}\n</code></pre>\n\n<p>When the user try to delete an object - actually only the boolean <strong>deleted</strong> is switched to <strong>true</strong> on the DB as I demonstrate above -, I want to <strong>check if the object is being referenced</strong> to another <strong>before</strong> doing this <strong>logical deletion</strong>.</p>\n\n<p>So, if the object is being used/referenced by other, I want to catch this action as an error, or another similar treatment to prevent the deletion.</p>\n\n<p>Example, If a <code>Person with ID 5</code> is attached to a <code>Student</code>, the user cannot delete this person.</p>\n\n<p>What is the <strong>\"best practice\" to prevent it</strong>?</p>\n\n<p>Important EDIT:</p>\n\n<p>1) <strong>Person is referenced in N tables</strong>, not only on Student, so I am investigating a generic way to achieve it (Maybe you can tell hibernate to check it?)</p>\n\n<p>2) The idea is to do it programatically, <strong>avoiding modifications on DB</strong>.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "configuration",
+                "log4j",
+                "log4j2",
+                "log-rotation"
+            ],
+            "owner": {
+                "reputation": 1303,
+                "user_id": 1472416,
+                "user_type": "registered",
+                "accept_rate": 96,
+                "profile_image": "https://www.gravatar.com/avatar/7b29bdd4037fe62aa667a5ed517d9790?s=128&d=identicon&r=PG",
+                "display_name": "jgr208",
+                "link": "https://stackoverflow.com/users/1472416/jgr208"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524600682,
+            "creation_date": 1524574302,
+            "last_edit_date": 1524574647,
+            "question_id": 50002172,
+            "body_markdown": "I am using `log4j2 2.11` to create log files. I have these log files rotated based on time and size. The rotating based on time works great however, I am having a weird issue when I rotate based on size.\r\n\r\nWhen I rotated based on size I compress the log file into the following named gzip file `${logdir}/${eventfilename}-%d{yyyyMMddHHmmss}{GMT+0}.log.gz`, however, the `log.gz` file keeps ending up with the same time and thus overwrites the previous zipped log file endlessly. Where my understanding is that the current time will be used for the gzip file and not the first time grabbed to create the gzip file.\r\n\r\nWhat could be causing this issue where my rotated file based on size keeps ending up with the same name and does not update to the current time to be used in the file name?\r\n\r\nAs of note here is my complete configuration file:\r\n\r\n    &lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;\r\n    &lt;Configuration status=&quot;ALL&quot; shutdownHook=&quot;disable&quot;&gt;\r\n        &lt;Properties&gt;\r\n            &lt;Property name=&quot;logdir&quot;&gt;${env:DIR}/log&lt;/Property&gt;\r\n            &lt;Property name=&quot;eventfilename&quot;&gt;foo_event&lt;/Property&gt;\r\n            &lt;Property name=&quot;errorfilename&quot;&gt;foo_error&lt;/Property&gt;\r\n            &lt;Property name=&quot;msgformat&quot;&gt;%d{yyyy-MM-dd HH:mm:ss.SSS}{GMT+0}Z [%t] %-5level %logger{1} - %msg%n&lt;/Property&gt;\r\n        &lt;/Properties&gt;\r\n        &lt;Appenders&gt;\r\n            &lt;Console name=&quot;Console&quot; target=&quot;SYSTEM_OUT&quot;&gt;\r\n                &lt;PatternLayout pattern=&quot;${msgformat}&quot;/&gt;\r\n            &lt;/Console&gt;\r\n            &lt;RollingFile name=&quot;ERROR_FILE&quot; fileName=&quot;${logdir}/${errorfilename}.log&quot;\r\n                filePattern=&quot;${logdir}/${errorfilename}-%d{yyyyMMddHHmmss}{GMT+0}.log.gz&quot;&gt;\r\n                &lt;PatternLayout charset=&quot;UTF-8&quot; pattern=&quot;${msgformat}&quot;/&gt;\r\n                &lt;Policies&gt;\r\n                    &lt;SizeBasedTriggeringPolicy size=&quot;10 MB&quot;/&gt;\r\n                &lt;/Policies&gt;\r\n                &lt;DefaultRolloverStrategy&gt;\r\n                    &lt;Delete basePath=&quot;${logdir}&quot;&gt;\r\n                        &lt;IfFileName glob=&quot;${errorfilename}-*&quot;&gt;\r\n                            &lt;IfAccumulatedFileSize exceeds=&quot;100 MB&quot;/&gt;\r\n                        &lt;/IfFileName&gt;\r\n                    &lt;/Delete&gt;\r\n                &lt;/DefaultRolloverStrategy&gt;\r\n                &lt;ThresholdFilter level=&quot;WARN&quot;/&gt;\r\n            &lt;/RollingFile&gt;\r\n            &lt;RollingFile name=&quot;EVENT_FILE&quot; fileName=&quot;${logdir}/${eventfilename}.log&quot;\r\n                filePattern=&quot;${logdir}/${eventfilename}-%d{yyyyMMddHHmmss}{GMT+0}.log.gz&quot;&gt;\r\n                &lt;PatternLayout charset=&quot;UTF-8&quot; pattern=&quot;${msgformat}&quot;/&gt;\r\n                &lt;Policies&gt;\r\n    \t\t&lt;TimeBasedTriggeringPolicy interval=&quot;43200&quot; modulate=&quot;false&quot;/&gt;\r\n                    &lt;SizeBasedTriggeringPolicy size=&quot;1 MB&quot;/&gt;\r\n                &lt;/Policies&gt;\r\n                &lt;DefaultRolloverStrategy&gt;\r\n                    &lt;Delete basePath=&quot;${logdir}&quot;&gt;\r\n                        &lt;IfFileName glob=&quot;${eventfilename}-*&quot;&gt;\r\n                            &lt;IfAccumulatedFileSize exceeds=&quot;100 MB&quot;/&gt;\r\n                        &lt;/IfFileName&gt;\r\n                    &lt;/Delete&gt;\r\n                &lt;/DefaultRolloverStrategy&gt;\r\n                &lt;ThresholdFilter level=&quot;TRACE&quot;/&gt;\r\n            &lt;/RollingFile&gt;\r\n        &lt;/Appenders&gt;\r\n        &lt;Loggers&gt;\r\n            &lt;Logger name=&quot;foo.utils.FooLogger&quot; level=&quot;TRACE&quot;\r\n                additivity=&quot;false&quot;&gt;\r\n                &lt;AppenderRef ref=&quot;ERROR_FILE&quot;/&gt;\r\n                &lt;AppenderRef ref=&quot;EVENT_FILE&quot;/&gt;\r\n            &lt;/Logger&gt;\r\n            &lt;Logger name=&quot;foo.utils.foo.FooPathUtils&quot; level=&quot;INFO&quot;\r\n                additivity=&quot;false&quot;&gt;\r\n                &lt;!-- Change level to debug to log java path info at startup --&gt;\r\n                &lt;AppenderRef ref=&quot;ERROR_FILE&quot;/&gt;\r\n                &lt;AppenderRef ref=&quot;EVENT_FILE&quot;/&gt;\r\n            &lt;/Logger&gt;        \r\n            &lt;Logger name=&quot;foo&quot; level=&quot;INFO&quot; additivity=&quot;false&quot;&gt;\r\n                &lt;AppenderRef ref=&quot;ERROR_FILE&quot;/&gt;\r\n                &lt;AppenderRef ref=&quot;EVENT_FILE&quot;/&gt;\r\n            &lt;/Logger&gt;    \r\n            &lt;Root level=&quot;TRACE&quot;&gt;\r\n                &lt;AppenderRef ref=&quot;Console&quot; /&gt;\r\n            &lt;/Root&gt;\r\n        &lt;/Loggers&gt;\r\n    &lt;/Configuration&gt;",
+            "link": "https://stackoverflow.com/questions/50002172/log4j2-keeps-same-time-for-renaming-of-files",
+            "title": "Log4j2 keeps same time for renaming of files",
+            "body": "<p>I am using <code>log4j2 2.11</code> to create log files. I have these log files rotated based on time and size. The rotating based on time works great however, I am having a weird issue when I rotate based on size.</p>\n\n<p>When I rotated based on size I compress the log file into the following named gzip file <code>${logdir}/${eventfilename}-%d{yyyyMMddHHmmss}{GMT+0}.log.gz</code>, however, the <code>log.gz</code> file keeps ending up with the same time and thus overwrites the previous zipped log file endlessly. Where my understanding is that the current time will be used for the gzip file and not the first time grabbed to create the gzip file.</p>\n\n<p>What could be causing this issue where my rotated file based on size keeps ending up with the same name and does not update to the current time to be used in the file name?</p>\n\n<p>As of note here is my complete configuration file:</p>\n\n<pre><code>&lt;?xml version=\"1.0\" encoding=\"UTF-8\"?&gt;\n&lt;Configuration status=\"ALL\" shutdownHook=\"disable\"&gt;\n    &lt;Properties&gt;\n        &lt;Property name=\"logdir\"&gt;${env:DIR}/log&lt;/Property&gt;\n        &lt;Property name=\"eventfilename\"&gt;foo_event&lt;/Property&gt;\n        &lt;Property name=\"errorfilename\"&gt;foo_error&lt;/Property&gt;\n        &lt;Property name=\"msgformat\"&gt;%d{yyyy-MM-dd HH:mm:ss.SSS}{GMT+0}Z [%t] %-5level %logger{1} - %msg%n&lt;/Property&gt;\n    &lt;/Properties&gt;\n    &lt;Appenders&gt;\n        &lt;Console name=\"Console\" target=\"SYSTEM_OUT\"&gt;\n            &lt;PatternLayout pattern=\"${msgformat}\"/&gt;\n        &lt;/Console&gt;\n        &lt;RollingFile name=\"ERROR_FILE\" fileName=\"${logdir}/${errorfilename}.log\"\n            filePattern=\"${logdir}/${errorfilename}-%d{yyyyMMddHHmmss}{GMT+0}.log.gz\"&gt;\n            &lt;PatternLayout charset=\"UTF-8\" pattern=\"${msgformat}\"/&gt;\n            &lt;Policies&gt;\n                &lt;SizeBasedTriggeringPolicy size=\"10 MB\"/&gt;\n            &lt;/Policies&gt;\n            &lt;DefaultRolloverStrategy&gt;\n                &lt;Delete basePath=\"${logdir}\"&gt;\n                    &lt;IfFileName glob=\"${errorfilename}-*\"&gt;\n                        &lt;IfAccumulatedFileSize exceeds=\"100 MB\"/&gt;\n                    &lt;/IfFileName&gt;\n                &lt;/Delete&gt;\n            &lt;/DefaultRolloverStrategy&gt;\n            &lt;ThresholdFilter level=\"WARN\"/&gt;\n        &lt;/RollingFile&gt;\n        &lt;RollingFile name=\"EVENT_FILE\" fileName=\"${logdir}/${eventfilename}.log\"\n            filePattern=\"${logdir}/${eventfilename}-%d{yyyyMMddHHmmss}{GMT+0}.log.gz\"&gt;\n            &lt;PatternLayout charset=\"UTF-8\" pattern=\"${msgformat}\"/&gt;\n            &lt;Policies&gt;\n        &lt;TimeBasedTriggeringPolicy interval=\"43200\" modulate=\"false\"/&gt;\n                &lt;SizeBasedTriggeringPolicy size=\"1 MB\"/&gt;\n            &lt;/Policies&gt;\n            &lt;DefaultRolloverStrategy&gt;\n                &lt;Delete basePath=\"${logdir}\"&gt;\n                    &lt;IfFileName glob=\"${eventfilename}-*\"&gt;\n                        &lt;IfAccumulatedFileSize exceeds=\"100 MB\"/&gt;\n                    &lt;/IfFileName&gt;\n                &lt;/Delete&gt;\n            &lt;/DefaultRolloverStrategy&gt;\n            &lt;ThresholdFilter level=\"TRACE\"/&gt;\n        &lt;/RollingFile&gt;\n    &lt;/Appenders&gt;\n    &lt;Loggers&gt;\n        &lt;Logger name=\"foo.utils.FooLogger\" level=\"TRACE\"\n            additivity=\"false\"&gt;\n            &lt;AppenderRef ref=\"ERROR_FILE\"/&gt;\n            &lt;AppenderRef ref=\"EVENT_FILE\"/&gt;\n        &lt;/Logger&gt;\n        &lt;Logger name=\"foo.utils.foo.FooPathUtils\" level=\"INFO\"\n            additivity=\"false\"&gt;\n            &lt;!-- Change level to debug to log java path info at startup --&gt;\n            &lt;AppenderRef ref=\"ERROR_FILE\"/&gt;\n            &lt;AppenderRef ref=\"EVENT_FILE\"/&gt;\n        &lt;/Logger&gt;        \n        &lt;Logger name=\"foo\" level=\"INFO\" additivity=\"false\"&gt;\n            &lt;AppenderRef ref=\"ERROR_FILE\"/&gt;\n            &lt;AppenderRef ref=\"EVENT_FILE\"/&gt;\n        &lt;/Logger&gt;    \n        &lt;Root level=\"TRACE\"&gt;\n            &lt;AppenderRef ref=\"Console\" /&gt;\n        &lt;/Root&gt;\n    &lt;/Loggers&gt;\n&lt;/Configuration&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "shell"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 8772487,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://www.gravatar.com/avatar/9575a0518cdb47ccdf87f1d746d45f3c?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Chris99391700",
+                "link": "https://stackoverflow.com/users/8772487/chris99391700"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "closed_date": 1524600394,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524600679,
+            "creation_date": 1524591154,
+            "last_edit_date": 1524600679,
+            "question_id": 50007698,
+            "body_markdown": "I made a shell script to execute SQL procedures but I have an error during the execution. Here is my script:\r\n\r\n&gt; root@vps165498:/opt# sh script.sh\r\n: not found2: script.sh:\r\n: No such filescript.sh: cannot open /opt/orders.sql\r\n\r\nmy script shell:\r\n\r\n    #!/bin/bash\r\n\r\n    mysql -u user -p password databaseName &lt; orders.sql\r\n\r\nmy sql file: \r\n\r\n    CALL proc_commande_clts_detail7;\r\n    CALL proc_commande_clts_detail6;\r\n    CALL proc_commande_clts;\r\n    CALL proc_bilan (&#39;COMMANDE_CLTS&#39;);\r\n    CALL proc_commande_clts2;\r\n    CALL proc_bilan (&#39;COMMANDE_CLTS (SUPPR)&#39;);\r\n    CALL proc_commande_clts_detail;\r\n    CALL proc_bilan (&#39;COMMANDE_CLTS_DETAIL&#39;);\r\n    CALL proc_commande_clts_detail8;\r\n    CALL proc_bilan (&#39;COMMANDE_CLTS_DETAIL (PACK)&#39;);\r\n    CALL proc_commande_clts_detail2;\r\n    CALL proc_bilan (&#39;COMMANDE_CLTS_DETAIL (SUPPR)&#39;);\r\n    CALL proc_commande_clts_detail3;\r\n    CALL proc_bilan (&#39;COMMANDE_CLTS_DETAIL (PR ACHAT)&#39;);\r\n    CALL proc_commande_clts_detail9;\r\n    CALL proc_bilan (&#39;COMMANDE_CLTS (EXPE)&#39;);\r\n    CALL proc_clients;\r\n    CALL proc_bilan (&#39;CLIENTS&#39;);\r\n\r\nany idea? \r\n\r\nThanks.",
+            "link": "https://stackoverflow.com/questions/50007698/script-sh-linux-sql-procedure-execution",
+            "closed_reason": "duplicate",
+            "title": "script sh linux SQL procedure execution",
+            "body": "<p>I made a shell script to execute SQL procedures but I have an error during the execution. Here is my script:</p>\n\n<blockquote>\n  <p>root@vps165498:/opt# sh script.sh\n  : not found2: script.sh:\n  : No such filescript.sh: cannot open /opt/orders.sql</p>\n</blockquote>\n\n<p>my script shell:</p>\n\n<pre><code>#!/bin/bash\n\nmysql -u user -p password databaseName &lt; orders.sql\n</code></pre>\n\n<p>my sql file: </p>\n\n<pre><code>CALL proc_commande_clts_detail7;\nCALL proc_commande_clts_detail6;\nCALL proc_commande_clts;\nCALL proc_bilan ('COMMANDE_CLTS');\nCALL proc_commande_clts2;\nCALL proc_bilan ('COMMANDE_CLTS (SUPPR)');\nCALL proc_commande_clts_detail;\nCALL proc_bilan ('COMMANDE_CLTS_DETAIL');\nCALL proc_commande_clts_detail8;\nCALL proc_bilan ('COMMANDE_CLTS_DETAIL (PACK)');\nCALL proc_commande_clts_detail2;\nCALL proc_bilan ('COMMANDE_CLTS_DETAIL (SUPPR)');\nCALL proc_commande_clts_detail3;\nCALL proc_bilan ('COMMANDE_CLTS_DETAIL (PR ACHAT)');\nCALL proc_commande_clts_detail9;\nCALL proc_bilan ('COMMANDE_CLTS (EXPE)');\nCALL proc_clients;\nCALL proc_bilan ('CLIENTS');\n</code></pre>\n\n<p>any idea? </p>\n\n<p>Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "anaconda",
+                "jupyter-notebook"
+            ],
+            "owner": {
+                "reputation": 20,
+                "user_id": 7529755,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/8f502173f5e9c884450660494ab5e318?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Ken",
+                "link": "https://stackoverflow.com/users/7529755/ken"
+            },
+            "is_answered": true,
+            "view_count": 39,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524600677,
+            "creation_date": 1524587641,
+            "question_id": 50006772,
+            "body_markdown": "I receive an Application launch error whenever I launch Jupyter notebook.  I tried to follow the instructions in the last line of the error but the error never goes away.  Could it be something with the working directory?\r\n\r\nWhen I check the working directory in Jupyter notebook using %pwd, I get C:\\\\Users\\\\mayerk\r\n\r\nHowever, my Anaconda working directory is C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\r\n\r\nThis is the error that Anaconda Navigator returns each time I launch Jupyter Notebook:\r\n\r\n[I 09:30:37.269 NotebookApp] The port 8888 is already in use, trying another port.\r\n\r\n[I 09:30:37.269 NotebookApp] The port 8889 is already in use, trying another port.\r\n\r\n[I 09:30:37.270 NotebookApp] The port 8890 is already in use, trying another port.\r\n\r\n[I 09:30:37.324 NotebookApp] JupyterLab beta preview extension loaded from C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\r\n\r\n[I 09:30:37.324 NotebookApp] JupyterLab application directory is C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\share\\jupyter\\lab\r\n\r\n[W 09:30:37.334 NotebookApp] Error loading server extension jupyterlab\r\nTraceback (most recent call last):\r\n\r\nFile &quot;C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\commands.py&quot;, line 321, in __init__\r\nself._run([&#39;node&#39;, &#39;node-version-check.js&#39;], cwd=HERE, quiet=True)\r\n\r\nFile &quot;C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\commands.py&quot;, line 1165, in _run\r\nproc = Process(cmd, **kwargs)\r\n\r\nFile &quot;C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\process.py&quot;, line 73, in __init__\r\nself.proc = self._create_process(cwd=cwd, env=env)\r\n\r\nFile &quot;C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\process.py&quot;, line 131, in _create_process\r\ncmd[0] = which(cmd[0], kwargs.get(&#39;env&#39;))\r\n\r\nFile &quot;C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\jlpmapp.py&quot;, line 59, in which\r\nraise ValueError(msg)\r\n\r\nValueError: Please install nodejs 5+ and npm before continuing installation. nodejs may be installed using conda or directly from the nodejs website.\r\n\r\nDuring handling of the above exception, another exception occurred:\r\n\r\nTraceback (most recent call last):\r\nFile &quot;C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\notebook\\notebookapp.py&quot;, line 1454, in init_server_extensions\r\nfunc(self)\r\n\r\nFile &quot;C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\extension.py&quot;, line 111, in load_jupyter_server_extension\r\ninfo = get_app_info(app_dir)\r\n\r\nFile &quot;C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\commands.py&quot;, line 244, in get_app_info\r\nhandler = _AppHandler(app_dir, logger)\r\n\r\nFile &quot;C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\commands.py&quot;, line 324, in __init__\r\nraise ValueError(msg)\r\n\r\nValueError: Please install nodejs 5+ and npm before continuing installation. nodejs may be installed using conda or directly from the nodejs website.\r\n\r\n[I 09:30:37.410 NotebookApp] Serving notebooks from local directory: C:\\Users\\mayerk\r\n[I 09:30:37.410 NotebookApp] 0 active kernels\r\n[I 09:30:37.411 NotebookApp] The Jupyter Notebook is running at:\r\n[I 09:30:37.411 NotebookApp] http://localhost:8891/?token=fe440f0ea50e716458013d568b6f94f4a1c498959e39e490\r\n[I 09:30:37.411 NotebookApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).\r\n[C 09:30:37.420 NotebookApp] \r\n\r\nCopy/paste this URL into your browser when you connect for the first time,\r\nto login with a token:\r\nhttp://localhost:8891/?token=fe440f0ea50e716458013d568b6f94f4a1c498959e39e490\r\n[I 09:30:37.557 NotebookApp] Accepting one-time-token-authenticated connection from ::1\r\n\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50006772/application-launch-error-in-jupyter-notebook",
+            "title": "Application launch error in Jupyter notebook",
+            "body": "<p>I receive an Application launch error whenever I launch Jupyter notebook.  I tried to follow the instructions in the last line of the error but the error never goes away.  Could it be something with the working directory?</p>\n\n<p>When I check the working directory in Jupyter notebook using %pwd, I get C:\\Users\\mayerk</p>\n\n<p>However, my Anaconda working directory is C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3</p>\n\n<p>This is the error that Anaconda Navigator returns each time I launch Jupyter Notebook:</p>\n\n<p>[I 09:30:37.269 NotebookApp] The port 8888 is already in use, trying another port.</p>\n\n<p>[I 09:30:37.269 NotebookApp] The port 8889 is already in use, trying another port.</p>\n\n<p>[I 09:30:37.270 NotebookApp] The port 8890 is already in use, trying another port.</p>\n\n<p>[I 09:30:37.324 NotebookApp] JupyterLab beta preview extension loaded from C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab</p>\n\n<p>[I 09:30:37.324 NotebookApp] JupyterLab application directory is C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\share\\jupyter\\lab</p>\n\n<p>[W 09:30:37.334 NotebookApp] Error loading server extension jupyterlab\nTraceback (most recent call last):</p>\n\n<p>File \"C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\commands.py\", line 321, in <strong>init</strong>\nself._run(['node', 'node-version-check.js'], cwd=HERE, quiet=True)</p>\n\n<p>File \"C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\commands.py\", line 1165, in _run\nproc = Process(cmd, **kwargs)</p>\n\n<p>File \"C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\process.py\", line 73, in <strong>init</strong>\nself.proc = self._create_process(cwd=cwd, env=env)</p>\n\n<p>File \"C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\process.py\", line 131, in _create_process\ncmd[0] = which(cmd[0], kwargs.get('env'))</p>\n\n<p>File \"C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\jlpmapp.py\", line 59, in which\nraise ValueError(msg)</p>\n\n<p>ValueError: Please install nodejs 5+ and npm before continuing installation. nodejs may be installed using conda or directly from the nodejs website.</p>\n\n<p>During handling of the above exception, another exception occurred:</p>\n\n<p>Traceback (most recent call last):\nFile \"C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\notebook\\notebookapp.py\", line 1454, in init_server_extensions\nfunc(self)</p>\n\n<p>File \"C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\extension.py\", line 111, in load_jupyter_server_extension\ninfo = get_app_info(app_dir)</p>\n\n<p>File \"C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\commands.py\", line 244, in get_app_info\nhandler = _AppHandler(app_dir, logger)</p>\n\n<p>File \"C:\\Users\\mayerk\\AppData\\Local\\Continuum\\anaconda3\\lib\\site-packages\\jupyterlab\\commands.py\", line 324, in <strong>init</strong>\nraise ValueError(msg)</p>\n\n<p>ValueError: Please install nodejs 5+ and npm before continuing installation. nodejs may be installed using conda or directly from the nodejs website.</p>\n\n<p>[I 09:30:37.410 NotebookApp] Serving notebooks from local directory: C:\\Users\\mayerk\n[I 09:30:37.410 NotebookApp] 0 active kernels\n[I 09:30:37.411 NotebookApp] The Jupyter Notebook is running at:\n[I 09:30:37.411 NotebookApp] <a href=\"http://localhost:8891/?token=fe440f0ea50e716458013d568b6f94f4a1c498959e39e490\" rel=\"nofollow noreferrer\">http://localhost:8891/?token=fe440f0ea50e716458013d568b6f94f4a1c498959e39e490</a>\n[I 09:30:37.411 NotebookApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).\n[C 09:30:37.420 NotebookApp] </p>\n\n<p>Copy/paste this URL into your browser when you connect for the first time,\nto login with a token:\n<a href=\"http://localhost:8891/?token=fe440f0ea50e716458013d568b6f94f4a1c498959e39e490\" rel=\"nofollow noreferrer\">http://localhost:8891/?token=fe440f0ea50e716458013d568b6f94f4a1c498959e39e490</a>\n[I 09:30:37.557 NotebookApp] Accepting one-time-token-authenticated connection from ::1</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "unit-testing",
+                "mockito",
+                "powermock",
+                "retrofit2"
+            ],
+            "owner": {
+                "reputation": 100,
+                "user_id": 5130663,
+                "user_type": "registered",
+                "accept_rate": 33,
+                "profile_image": "https://graph.facebook.com/10152981710023314/picture?type=large",
+                "display_name": "Jian Le&#243;n",
+                "link": "https://stackoverflow.com/users/5130663/jian-le%c3%b3n"
+            },
+            "is_answered": false,
+            "view_count": 558,
+            "answer_count": 1,
+            "score": 5,
+            "last_activity_date": 1524600672,
+            "creation_date": 1463415313,
+            "last_edit_date": 1463418670,
+            "question_id": 37258494,
+            "body_markdown": "I want to do an unit test that verifies if `function1()` or `function2()` were called. I haven&#39;t work with callbacks before, can you give me any idea about how to do it?\r\n\r\n\r\n    public void sendData(HttpService service, Document userData) {\r\n        Call&lt;String&gt; call = service.updateDocument(getId(), userData);\r\n\r\n        call.enqueue(new Callback&lt;String&gt;() {\r\n        @Override\r\n        public void onResponse(Call&lt;String&gt; call, Response&lt;String&gt; response) {\r\n            function1(response.code());\r\n        }\r\n    \r\n        @Override\r\n        public void onFailure(Call&lt;String&gt; call, Throwable t) {\r\n            function2();\r\n        }\r\n        });\r\n    }",
+            "link": "https://stackoverflow.com/questions/37258494/how-to-do-unit-testing-for-retrofit2-callbacks",
+            "title": "How to do unit testing for retrofit2 callbacks?",
+            "body": "<p>I want to do an unit test that verifies if <code>function1()</code> or <code>function2()</code> were called. I haven't work with callbacks before, can you give me any idea about how to do it?</p>\n\n<pre><code>public void sendData(HttpService service, Document userData) {\n    Call&lt;String&gt; call = service.updateDocument(getId(), userData);\n\n    call.enqueue(new Callback&lt;String&gt;() {\n    @Override\n    public void onResponse(Call&lt;String&gt; call, Response&lt;String&gt; response) {\n        function1(response.code());\n    }\n\n    @Override\n    public void onFailure(Call&lt;String&gt; call, Throwable t) {\n        function2();\n    }\n    });\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "tensorflow",
+                "machine-learning",
+                "keras",
+                "classification"
+            ],
+            "owner": {
+                "reputation": 9,
+                "user_id": 9679935,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "kaecvtionr",
+                "link": "https://stackoverflow.com/users/9679935/kaecvtionr"
+            },
+            "is_answered": false,
+            "view_count": 35,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1524600671,
+            "creation_date": 1524600671,
+            "question_id": 50010040,
+            "body_markdown": "I am trying to classify a group of bee images into two classes - bumble bee and honey bee with the resulting format being a CSV file like - \r\n\r\n&gt;id,bumble_bee,honey_bee\r\n\r\n&gt;20000,0.75, 0.25.\r\n\r\nI have a running model, but the accuracy is very low and I&#39;ve tried a bunch of different things such as adding a base_model like VGG16 or InceptionV3, adjusting the epochs, adjusting the optimizer type... and I just haven&#39;t noticed much difference. All of my changes still result in an accuracy of around 70-79%. \r\n\r\n**How can I increase the accuracy of my model?**\r\n\r\nHere is my code:\r\n\r\n    from keras.preprocessing.image import ImageDataGenerator\r\n    from keras.models import Sequential\r\n    from keras.layers import Conv2D, MaxPooling2D\r\n    from keras.layers import Activation, Dropout, Flatten, Dense\r\n    from keras import backend as K\r\n    \r\n    # dimensions of our images.\r\n    img_width, img_height = 200, 200\r\n    \r\n    train_data_dir = &#39;data/train/&#39;\r\n    validation_data_dir = &#39;data/validation/&#39;\r\n    nb_train_samples = 2978\r\n    nb_validation_samples = 991\r\n    epochs = 50\r\n    batch_size = 25\r\n    \r\n    if K.image_data_format() == &#39;channels_first&#39;:\r\n        input_shape = (3, img_width, img_height)\r\n    else:\r\n        input_shape = (img_width, img_height, 3)\r\n    \r\n    model = Sequential()\r\n    model.add(Conv2D(32, (3, 3), input_shape=input_shape))\r\n    model.add(Activation(&#39;relu&#39;))\r\n    model.add(MaxPooling2D(pool_size=(2, 2)))\r\n    \r\n    model.add(Conv2D(32, (3, 3)))\r\n    model.add(Activation(&#39;relu&#39;))\r\n    model.add(MaxPooling2D(pool_size=(2, 2)))\r\n    \r\n    model.add(Conv2D(64, (3, 3)))\r\n    model.add(Activation(&#39;relu&#39;))\r\n    model.add(MaxPooling2D(pool_size=(2, 2)))\r\n    \r\n    model.add(Flatten())\r\n    model.add(Dense(64))\r\n    model.add(Activation(&#39;relu&#39;))\r\n    model.add(Dropout(0.5))\r\n    model.add(Dense(2))\r\n    model.add(Activation(&#39;softmax&#39;))\r\n    \r\n    model.compile(loss=&#39;categorical_crossentropy&#39;,\r\n                  optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),\r\n                  metrics=[&#39;accuracy&#39;])\r\n    \r\n    # this is the augmentation configuration we will use for training\r\n    train_datagen = ImageDataGenerator(\r\n        rescale=1. / 255,\r\n        shear_range=0.2,\r\n        zoom_range=0.2,\r\n        horizontal_flip=True)\r\n    \r\n    # this is the augmentation configuration we will use for testing:\r\n    # only rescaling\r\n    test_datagen = ImageDataGenerator(rescale=1. / 255)\r\n    \r\n    train_generator = train_datagen.flow_from_directory(\r\n        train_data_dir,\r\n        target_size=(img_width, img_height),\r\n        batch_size=batch_size,\r\n        class_mode=&#39;categorical&#39;)\r\n    \r\n    validation_generator = test_datagen.flow_from_directory(\r\n        validation_data_dir,\r\n        target_size=(img_width, img_height),\r\n        batch_size=batch_size,\r\n        class_mode=&#39;categorical&#39;)\r\n    \r\n    model.fit_generator(\r\n        train_generator,\r\n        steps_per_epoch=nb_train_samples // batch_size,\r\n        epochs=epochs,\r\n        validation_data=validation_generator,\r\n        validation_steps=nb_validation_samples // batch_size)\r\n    \r\n    model.save_weights(&#39;thirdtry.h5&#39;)\r\n    \r\n    pred = model.predict(pred_images)\r\n    np.savetxt(&#39;resultsfrom3no.csv&#39;,pred)\r\n\r\nHere is an example of its output:\r\n\r\n&gt; Found 2978 images belonging to 2 classes. \r\n&gt; Found 991 images belonging to 2 classes. \r\n\r\n&gt; Epoch 1/50 119/119 [==============================] -\r\n&gt; 238s 2s/step - loss: 0.5570 - acc: 0.7697 - val_loss: 0.5275 -\r\n&gt; val_acc: 0.7908 \r\n\r\n&gt; Epoch 2/50 119/119 [==============================] -\r\n&gt; 237s 2s/step - loss: 0.5337 - acc: 0.7894 - val_loss: 0.5270 -\r\n&gt; val_acc: 0.7908 \r\n\r\n&gt; Epoch 3/50 119/119 [==============================] -\r\n&gt; 282s 2s/step - loss: 0.5299 - acc: 0.7939 - val_loss: 0.5215 -\r\n&gt; val_acc: 0.7908\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50010040/how-can-i-increase-the-accuracy-of-my-image-classification-keras-model-in-python",
+            "title": "How can I increase the accuracy of my image classification keras model in Python?",
+            "body": "<p>I am trying to classify a group of bee images into two classes - bumble bee and honey bee with the resulting format being a CSV file like - </p>\n\n<blockquote>\n  <p>id,bumble_bee,honey_bee</p>\n  \n  <p>20000,0.75, 0.25.</p>\n</blockquote>\n\n<p>I have a running model, but the accuracy is very low and I've tried a bunch of different things such as adding a base_model like VGG16 or InceptionV3, adjusting the epochs, adjusting the optimizer type... and I just haven't noticed much difference. All of my changes still result in an accuracy of around 70-79%. </p>\n\n<p><strong>How can I increase the accuracy of my model?</strong></p>\n\n<p>Here is my code:</p>\n\n<pre><code>from keras.preprocessing.image import ImageDataGenerator\nfrom keras.models import Sequential\nfrom keras.layers import Conv2D, MaxPooling2D\nfrom keras.layers import Activation, Dropout, Flatten, Dense\nfrom keras import backend as K\n\n# dimensions of our images.\nimg_width, img_height = 200, 200\n\ntrain_data_dir = 'data/train/'\nvalidation_data_dir = 'data/validation/'\nnb_train_samples = 2978\nnb_validation_samples = 991\nepochs = 50\nbatch_size = 25\n\nif K.image_data_format() == 'channels_first':\n    input_shape = (3, img_width, img_height)\nelse:\n    input_shape = (img_width, img_height, 3)\n\nmodel = Sequential()\nmodel.add(Conv2D(32, (3, 3), input_shape=input_shape))\nmodel.add(Activation('relu'))\nmodel.add(MaxPooling2D(pool_size=(2, 2)))\n\nmodel.add(Conv2D(32, (3, 3)))\nmodel.add(Activation('relu'))\nmodel.add(MaxPooling2D(pool_size=(2, 2)))\n\nmodel.add(Conv2D(64, (3, 3)))\nmodel.add(Activation('relu'))\nmodel.add(MaxPooling2D(pool_size=(2, 2)))\n\nmodel.add(Flatten())\nmodel.add(Dense(64))\nmodel.add(Activation('relu'))\nmodel.add(Dropout(0.5))\nmodel.add(Dense(2))\nmodel.add(Activation('softmax'))\n\nmodel.compile(loss='categorical_crossentropy',\n              optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),\n              metrics=['accuracy'])\n\n# this is the augmentation configuration we will use for training\ntrain_datagen = ImageDataGenerator(\n    rescale=1. / 255,\n    shear_range=0.2,\n    zoom_range=0.2,\n    horizontal_flip=True)\n\n# this is the augmentation configuration we will use for testing:\n# only rescaling\ntest_datagen = ImageDataGenerator(rescale=1. / 255)\n\ntrain_generator = train_datagen.flow_from_directory(\n    train_data_dir,\n    target_size=(img_width, img_height),\n    batch_size=batch_size,\n    class_mode='categorical')\n\nvalidation_generator = test_datagen.flow_from_directory(\n    validation_data_dir,\n    target_size=(img_width, img_height),\n    batch_size=batch_size,\n    class_mode='categorical')\n\nmodel.fit_generator(\n    train_generator,\n    steps_per_epoch=nb_train_samples // batch_size,\n    epochs=epochs,\n    validation_data=validation_generator,\n    validation_steps=nb_validation_samples // batch_size)\n\nmodel.save_weights('thirdtry.h5')\n\npred = model.predict(pred_images)\nnp.savetxt('resultsfrom3no.csv',pred)\n</code></pre>\n\n<p>Here is an example of its output:</p>\n\n<blockquote>\n  <p>Found 2978 images belonging to 2 classes. \n  Found 991 images belonging to 2 classes. </p>\n  \n  <p>Epoch 1/50 119/119 [==============================] -\n  238s 2s/step - loss: 0.5570 - acc: 0.7697 - val_loss: 0.5275 -\n  val_acc: 0.7908 </p>\n  \n  <p>Epoch 2/50 119/119 [==============================] -\n  237s 2s/step - loss: 0.5337 - acc: 0.7894 - val_loss: 0.5270 -\n  val_acc: 0.7908 </p>\n  \n  <p>Epoch 3/50 119/119 [==============================] -\n  282s 2s/step - loss: 0.5299 - acc: 0.7939 - val_loss: 0.5215 -\n  val_acc: 0.7908</p>\n</blockquote>\n"
+        },
+        {
+            "tags": [
+                "unix",
+                "awk"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9690794,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/0be40814cc3d106f0a523188effb17eb?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Shantanu",
+                "link": "https://stackoverflow.com/users/9690794/shantanu"
+            },
+            "is_answered": true,
+            "view_count": 31,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524600661,
+            "creation_date": 1524569379,
+            "last_edit_date": 1524575676,
+            "question_id": 50000583,
+            "body_markdown": "I have file as\r\n\r\n    1|dev|Smith|78|minus  \r\n    1|ana|jhon|23|plus  \r\n    1|ana|peter|22|plus  \r\n    2|dev|dash|45|minus  \r\n    2|dev||44|plus\r\n\r\nI want output as, against uniq value of column 1 and 2 print multiple values of column 3 and 5\r\n\r\n    1|dev|Smith|minus  \r\n    1|ana|jhon;peter|plus;plus  \r\n    2|dev|dash;|minus;plus\r\n\r\nI can accumulate multiple records into 1 just for one column , I want to do it for 2 column in one command\r\n\r\n    awk -F&quot;|&quot; &#39;{if(a[$1&quot;|&quot;$2])a[$1&quot;|&quot;$2]=a[$1&quot;|&quot;$2]&quot;;&quot;$5; else\r\n    a[$1&quot;|&quot;$2]=$5;}END{for (i in a)print i, a[i];}&#39; OFS=&quot;|&quot; input.txt &gt; output.txt\r\n\r\n\r\nIt is giving output as   \r\n\r\n    2|dev|minus;plus  \r\n    1|ana|plus;plus  \r\n    1|dev|minus  ",
+            "link": "https://stackoverflow.com/questions/50000583/accumulate-multiple-values-against-one-record-in-awk",
+            "title": "accumulate multiple values against one record in awk",
+            "body": "<p>I have file as</p>\n\n<pre><code>1|dev|Smith|78|minus  \n1|ana|jhon|23|plus  \n1|ana|peter|22|plus  \n2|dev|dash|45|minus  \n2|dev||44|plus\n</code></pre>\n\n<p>I want output as, against uniq value of column 1 and 2 print multiple values of column 3 and 5</p>\n\n<pre><code>1|dev|Smith|minus  \n1|ana|jhon;peter|plus;plus  \n2|dev|dash;|minus;plus\n</code></pre>\n\n<p>I can accumulate multiple records into 1 just for one column , I want to do it for 2 column in one command</p>\n\n<pre><code>awk -F\"|\" '{if(a[$1\"|\"$2])a[$1\"|\"$2]=a[$1\"|\"$2]\";\"$5; else\na[$1\"|\"$2]=$5;}END{for (i in a)print i, a[i];}' OFS=\"|\" input.txt &gt; output.txt\n</code></pre>\n\n<p>It is giving output as   </p>\n\n<pre><code>2|dev|minus;plus  \n1|ana|plus;plus  \n1|dev|minus  \n</code></pre>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 299
+}

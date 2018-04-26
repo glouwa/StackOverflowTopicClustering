@@ -1,0 +1,840 @@
+{
+    "items": [
+        {
+            "tags": [
+                ".net",
+                "sql-server-2012",
+                "ado.net",
+                "iis-8"
+            ],
+            "owner": {
+                "reputation": 1827,
+                "user_id": 1088069,
+                "user_type": "registered",
+                "accept_rate": 69,
+                "profile_image": "https://www.gravatar.com/avatar/897f6836d960a2f0925be7f9b544cc30?s=128&d=identicon&r=PG",
+                "display_name": "PatFromCanada",
+                "link": "https://stackoverflow.com/users/1088069/patfromcanada"
+            },
+            "is_answered": true,
+            "view_count": 33,
+            "bounty_amount": 50,
+            "bounty_closes_date": 1525103793,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524621540,
+            "creation_date": 1524258111,
+            "last_edit_date": 1524513806,
+            "question_id": 49949671,
+            "body_markdown": "I have an intermittent performance problem on a new production environment. We have moved to a datacentre and have a new DB server and a new app server. When the problem starts some of my queries start running pretty much exactly a half second slower. All of my queries user stored procedures. Not all of them are affected by this problem but it is always the same subset. This issue tends to disappear after resetting my IIS application. All the queries run through the same data layer.\r\nI have monitored the application pool on the app server using perfmon and it show no failures.\r\nI have checked sys.dm_exec_query_stats on the DB and it shows the procs as running fast (tens of milliseconds).\r\nHere is the code that runs all of the queries.\r\n\r\n      Public Function ExecStoredProcCmd(ByVal SQLCmd As SqlCommand) As DataSet\r\n\r\n        Dim daAdapter As New SqlDataAdapter(SQLCmd)\r\n        Dim dsReturn As New DataSet\r\n        Dim start As Date\r\n        Try\r\n            Dim c = GetOpenConnection()\r\n            Using c\r\n                Using SQLCmd\r\n                    SQLCmd.Connection = c\r\n                    SQLCmd.CommandType = CommandType.StoredProcedure\r\n                    &#39;    PGF.Logging.LogMessage(&quot;cDataAccess.ExecStoredProcCmd &quot; &amp; SQLCmd.Connection.ConnectionString)\r\n                    start = Date.Now\r\n                    daAdapter.Fill(dsReturn)\r\n                    Return dsReturn\r\n                End Using\r\n            End Using\r\n        Catch ex As Exception\r\n            HandleError(ex)\r\n            Throw\r\n        Finally\r\n            Dim ts = Date.Now - start\r\n            If ts.TotalMilliseconds &gt; 250 Then\r\n                PGF.Logging.LogPerformance(&quot;ExecStoredProcCmd:&quot; &amp; SQLCmd.CommandText, ts.TotalMilliseconds, 1)\r\n            End If\r\n        End Try\r\n\r\n    End Function\r\n\r\nNothing ever gets logged that is under 490 milliseconds (and over 250). \r\n\r\nWhat would cause stored procs that normally run in 10 to 20 milliseconds to take an extra half second?\r\n\r\nWhere should I look to find this error?\r\n\r\nEDIT \r\nI have been comparing the sql profiler trace. In the test environment the slow proc has around 40 reads, zero writes.\r\nIn the prod environment, when the issue is occurring, the proc shows around 8 reads and zero writes for a duration of Zero! The big difference is in the audit logout times, the duration in prod is 506 which I guess is my problem as in test that shows as zero.\r\n\r\nHere is the slow proc.\r\n\r\n        SELECT cr.[CustomerRevisionID]\r\n          ,cr.[CustomerID]\r\n          ,cr.[ClientProducerRevisionID]\r\n          ,c.FirstName CustomerFirstName\r\n          ,c.MiddleName CustomerMiddleName\r\n          ,c.LastName CustomerLastName\r\n          ,c.CompanyName CustomerCompanyName\r\n          ,c.contact CustomerCareOf\r\n          ,Null CustomerRef\r\n          ,1 CustomerNameFormat\r\n          ,Null Verification\r\n      FROM [dbo].[PGFT_CustomerRevision] cr\r\n      JOIN PGF_External.Customer.CustomerMaster c on c.emscustomerID = cr.customerID\r\n      WHERE [CustomerRevisionID] = @CustomerRevisionID\r\n\r\nEDIT 2\r\nI have noticed in the SQL server trace that when it is quick the procs are all executing on the same SPID, when it is slow they are different SPIDs\r\n\r\nEDIT 3\r\nWhen i query sys.sysprocesses when it is slow I see new rows being created for each query. Still don&#39;t know how to fix it.",
+            "link": "https://stackoverflow.com/questions/49949671/new-app-server-db-server-intermittent-half-second-delay",
+            "title": "New App Server ,DB server , intermittent Half second delay",
+            "body": "<p>I have an intermittent performance problem on a new production environment. We have moved to a datacentre and have a new DB server and a new app server. When the problem starts some of my queries start running pretty much exactly a half second slower. All of my queries user stored procedures. Not all of them are affected by this problem but it is always the same subset. This issue tends to disappear after resetting my IIS application. All the queries run through the same data layer.\nI have monitored the application pool on the app server using perfmon and it show no failures.\nI have checked sys.dm_exec_query_stats on the DB and it shows the procs as running fast (tens of milliseconds).\nHere is the code that runs all of the queries.</p>\n\n<pre><code>  Public Function ExecStoredProcCmd(ByVal SQLCmd As SqlCommand) As DataSet\n\n    Dim daAdapter As New SqlDataAdapter(SQLCmd)\n    Dim dsReturn As New DataSet\n    Dim start As Date\n    Try\n        Dim c = GetOpenConnection()\n        Using c\n            Using SQLCmd\n                SQLCmd.Connection = c\n                SQLCmd.CommandType = CommandType.StoredProcedure\n                '    PGF.Logging.LogMessage(\"cDataAccess.ExecStoredProcCmd \" &amp; SQLCmd.Connection.ConnectionString)\n                start = Date.Now\n                daAdapter.Fill(dsReturn)\n                Return dsReturn\n            End Using\n        End Using\n    Catch ex As Exception\n        HandleError(ex)\n        Throw\n    Finally\n        Dim ts = Date.Now - start\n        If ts.TotalMilliseconds &gt; 250 Then\n            PGF.Logging.LogPerformance(\"ExecStoredProcCmd:\" &amp; SQLCmd.CommandText, ts.TotalMilliseconds, 1)\n        End If\n    End Try\n\nEnd Function\n</code></pre>\n\n<p>Nothing ever gets logged that is under 490 milliseconds (and over 250). </p>\n\n<p>What would cause stored procs that normally run in 10 to 20 milliseconds to take an extra half second?</p>\n\n<p>Where should I look to find this error?</p>\n\n<p>EDIT \nI have been comparing the sql profiler trace. In the test environment the slow proc has around 40 reads, zero writes.\nIn the prod environment, when the issue is occurring, the proc shows around 8 reads and zero writes for a duration of Zero! The big difference is in the audit logout times, the duration in prod is 506 which I guess is my problem as in test that shows as zero.</p>\n\n<p>Here is the slow proc.</p>\n\n<pre><code>    SELECT cr.[CustomerRevisionID]\n      ,cr.[CustomerID]\n      ,cr.[ClientProducerRevisionID]\n      ,c.FirstName CustomerFirstName\n      ,c.MiddleName CustomerMiddleName\n      ,c.LastName CustomerLastName\n      ,c.CompanyName CustomerCompanyName\n      ,c.contact CustomerCareOf\n      ,Null CustomerRef\n      ,1 CustomerNameFormat\n      ,Null Verification\n  FROM [dbo].[PGFT_CustomerRevision] cr\n  JOIN PGF_External.Customer.CustomerMaster c on c.emscustomerID = cr.customerID\n  WHERE [CustomerRevisionID] = @CustomerRevisionID\n</code></pre>\n\n<p>EDIT 2\nI have noticed in the SQL server trace that when it is quick the procs are all executing on the same SPID, when it is slow they are different SPIDs</p>\n\n<p>EDIT 3\nWhen i query sys.sysprocesses when it is slow I see new rows being created for each query. Still don't know how to fix it.</p>\n"
+        },
+        {
+            "tags": [
+                "gcc",
+                "visual-c++",
+                "c-preprocessor"
+            ],
+            "owner": {
+                "reputation": 397,
+                "user_id": 234542,
+                "user_type": "registered",
+                "accept_rate": 68,
+                "profile_image": "https://www.gravatar.com/avatar/14b7b64ead87801c8a98ddb9848add7c?s=128&d=identicon&r=PG",
+                "display_name": "Surya",
+                "link": "https://stackoverflow.com/users/234542/surya"
+            },
+            "is_answered": true,
+            "view_count": 720,
+            "answer_count": 1,
+            "score": 6,
+            "last_activity_date": 1524621537,
+            "creation_date": 1294590465,
+            "last_edit_date": 1467831953,
+            "question_id": 4640267,
+            "body_markdown": "I&#39;m trying to find out all the preprocessor defines of the [Visual C++ compiler][1] (MSVC). I can do\r\n\r\n    gcc -dM -E - &lt; /dev/null\r\n\r\non GCC to dump all the preprocessor defines. Do we have something similar with the Visual C++ compiler compiler?\r\n\r\nI&#39;m using [Visual C++ 9.0][2].\r\n\r\n  [1]: http://en.wikipedia.org/wiki/Visual_C++#32-bit_versions\r\n  [2]: http://en.wikipedia.org/wiki/Visual_C++#32-bit_and_64-bit_versions\r\n",
+            "link": "https://stackoverflow.com/questions/4640267/visual-c-dump-preprocessor-defines",
+            "title": "Visual C++ dump preprocessor defines",
+            "body": "<p>I'm trying to find out all the preprocessor defines of the <a href=\"http://en.wikipedia.org/wiki/Visual_C++#32-bit_versions\" rel=\"nofollow noreferrer\">Visual C++ compiler</a> (MSVC). I can do</p>\n\n<pre><code>gcc -dM -E - &lt; /dev/null\n</code></pre>\n\n<p>on GCC to dump all the preprocessor defines. Do we have something similar with the Visual C++ compiler compiler?</p>\n\n<p>I'm using <a href=\"http://en.wikipedia.org/wiki/Visual_C++#32-bit_and_64-bit_versions\" rel=\"nofollow noreferrer\">Visual C++ 9.0</a>.</p>\n"
+        },
+        {
+            "tags": [
+                "hadoop",
+                "oozie",
+                "cloudera-cdh",
+                "oozie-coordinator",
+                "oozie-workflow"
+            ],
+            "owner": {
+                "reputation": 154,
+                "user_id": 3710715,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://www.gravatar.com/avatar/a7f4971fa4975906c63b139be3a06913?s=128&d=identicon&r=PG&f=1",
+                "display_name": "sinshiva",
+                "link": "https://stackoverflow.com/users/3710715/sinshiva"
+            },
+            "is_answered": false,
+            "view_count": 29,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524621536,
+            "creation_date": 1524492235,
+            "last_edit_date": 1524553485,
+            "question_id": 49983154,
+            "body_markdown": "I am working on Oozie to automate ETL which involves more than 100 steps.I am able to create the workflow successfully in the development cluster.The problem comes when I am trying to move this huge workflow using export and import feature of Hue. I am getting a weird(Pardon my ignorance) error while importing workflows. Exports are working fine.\r\n\r\n    {&quot;message&quot;: &quot;Problem installing fixture &#39;/tmp/tmp31Ptfm.json&#39;: Document2 matching query does not exist.&quot;}\r\n\r\nThanks in advance.",
+            "link": "https://stackoverflow.com/questions/49983154/oozie-workflow-import-fails",
+            "title": "Oozie workflow import fails",
+            "body": "<p>I am working on Oozie to automate ETL which involves more than 100 steps.I am able to create the workflow successfully in the development cluster.The problem comes when I am trying to move this huge workflow using export and import feature of Hue. I am getting a weird(Pardon my ignorance) error while importing workflows. Exports are working fine.</p>\n\n<pre><code>{\"message\": \"Problem installing fixture '/tmp/tmp31Ptfm.json': Document2 matching query does not exist.\"}\n</code></pre>\n\n<p>Thanks in advance.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "apache-kafka",
+                "avro",
+                "confluent-kafka"
+            ],
+            "owner": {
+                "reputation": 11989,
+                "user_id": 484082,
+                "user_type": "registered",
+                "accept_rate": 78,
+                "profile_image": "https://i.stack.imgur.com/TiwYl.jpg?s=128&g=1",
+                "display_name": "blasteralfred Ψ",
+                "link": "https://stackoverflow.com/users/484082/blasteralfred-%ce%a8"
+            },
+            "is_answered": false,
+            "view_count": 53,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524621528,
+            "creation_date": 1524559147,
+            "last_edit_date": 1524563044,
+            "question_id": 49997037,
+            "body_markdown": "I am trying to send avro records to A Kafka topic using Kafka producer. I have a User class and I am sending object of that class. Below code works fine if i use `avroRecord.put();` to set each attribute. But what i want is to create A Generic Record from an object without using avroRecord.put(); for each and every attribute. \r\n\r\n\r\nUser class\r\n\r\n\r\n    public class User {\r\n    \tint id;\r\n    \r\n    \tString name;\r\n    \r\n    \tpublic User(int id, String name) {\r\n    \r\n    \t\tsuper();\r\n    \r\n    \t\tthis.id = id;\r\n    \r\n    \t\tthis.name = name;\r\n    \r\n    \t}\r\n    \r\n    \tpublic int getId() {\r\n    \r\n    \t\treturn id;\r\n    \r\n    \t}\r\n    \r\n    \tpublic void setId(int id) {\r\n    \r\n    \t\tthis.id = id;\r\n    \r\n    \t}\r\n    \r\n    \tpublic String getName() {\r\n    \r\n    \t\treturn name;\r\n    \r\n    \t}\r\n    \r\n    \tpublic void setName(String name) {\r\n    \r\n    \t\tthis.name = name;\r\n    \r\n    \t}\r\n    \r\n    }\r\n    \r\n    \r\nSender class   \r\n    \r\n    \r\n    import org.apache.avro.Schema;\r\n    \r\n    import org.apache.avro.generic.GenericData;\r\n    \r\n    import org.apache.avro.generic.GenericDatumWriter;\r\n    \r\n    import org.apache.avro.generic.GenericRecord;\r\n    \r\n    import org.apache.avro.io.DatumWriter;\r\n    \r\n    import org.apache.avro.io.Encoder;\r\n    \r\n    import org.apache.avro.io.EncoderFactory;\r\n    \r\n    import org.apache.avro.reflect.ReflectData;\r\n    \r\n    import org.apache.kafka.clients.producer.KafkaProducer;\r\n    \r\n    import org.apache.kafka.clients.producer.ProducerConfig;\r\n    \r\n    import org.apache.kafka.clients.producer.ProducerRecord;\r\n    \r\n    \r\n    \r\n    import java.io.ByteArrayOutputStream;\r\n    \r\n    import java.io.IOException;\r\n    \r\n    import java.util.Properties;\r\n    \r\n    \r\n    \r\n    import vo.User;\r\n    \r\n    \r\n    \r\n    public class Sender {\r\n    \r\n    \tpublic static void main(String[] args) {\r\n    \r\n    \t\t\r\n    \r\n    \t\tUser user = new User(10,&quot;testName&quot;);\r\n    \r\n    \t\tSchema schema = ReflectData.get().getSchema(user.getClass());\r\n    \r\n    \t\tGenericRecord avroRecord = new GenericData.Record(schema);\r\n    \r\n    \t\t\r\n    \r\n    \t\t//working fine\r\n    \r\n    \t\t/*avroRecord.put(&quot;id&quot;, user.getId());\r\n    \r\n    \t\tavroRecord.put(&quot;name&quot;, user.getName());*/\r\n    \r\n    \t\t\r\n    \r\n    \t\t//not working\r\n    \r\n    \t\tDatumWriter&lt;Object&gt; datumWriter = new GenericDatumWriter&lt;Object&gt;(schema);\r\n    \r\n    \t\tByteArrayOutputStream outputStream = new ByteArrayOutputStream();\r\n    \r\n    \t\tEncoder encoder = EncoderFactory.get().binaryEncoder(outputStream, null);\r\n    \r\n    \t\ttry {\r\n    \r\n    \t\t\tdatumWriter.write(user, encoder);\r\n    \r\n    \t\t\tencoder.flush();\r\n    \r\n    \t\t} catch (IOException e1) {\r\n    \r\n    \t\t\te1.printStackTrace();\r\n    \r\n    \t\t}\r\n    \r\n    \r\n    \r\n    \t\tProducerRecord&lt;String, GenericRecord&gt; record = new ProducerRecord&lt;&gt;(&quot;avrotesttopic1&quot;,avroRecord);\r\n    \r\n    \t\t\r\n    \r\n    \t\tProperties props = new Properties();\r\n    \r\n    \t\tprops.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, &quot;127.0.0.1:9092&quot;);\r\n    \r\n    \t\tprops.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,io.confluent.kafka.serializers.KafkaAvroSerializer.class);\r\n    \r\n    \t\tprops.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,io.confluent.kafka.serializers.KafkaAvroSerializer.class);\r\n    \r\n    \t\tprops.put(&quot;schema.registry.url&quot;, &quot;http://127.0.0.1:8081&quot;);\r\n    \r\n    \t\t\r\n    \r\n    \t\tKafkaProducer&lt;String, GenericRecord&gt; producer = new KafkaProducer&lt;String, GenericRecord&gt;(props);\r\n    \r\n    \t\t\r\n    \r\n    \t\ttry {\r\n    \r\n    \t\t\tproducer.send(record);\r\n    \r\n    \t\t\tproducer.flush();\r\n    \r\n    \t\t} catch (Exception e) {\r\n    \r\n    \t\t\te.printStackTrace();\r\n    \r\n    \t\t}\r\n    \r\n    \t\t\r\n    \r\n    \t\tproducer.close();\r\n    \r\n    \t}\r\n    \r\n    }\r\n\r\nHow can i publish this object to my Kafka topic as Avro? \r\n\r\nI have referred the below links\r\n\r\nhttps://github.com/akmalmuqeeth/confluent-kafka-spring-demo/blob/master/src/main/java/ConfluentProducerApp.java\r\n\r\nhttps://findusages.com/search/org.apache.avro.io.DatumWriter/write$2?offset=23\r\n\r\nhttps://www.ctheu.com/2017/03/02/serializing-data-efficiently-with-apache-avro-and-dealing-with-a-schema-registry/\r\n\r\nThank you. ",
+            "link": "https://stackoverflow.com/questions/49997037/unable-to-generate-avro-generic-record-from-object",
+            "title": "Unable to generate avro generic record from object",
+            "body": "<p>I am trying to send avro records to A Kafka topic using Kafka producer. I have a User class and I am sending object of that class. Below code works fine if i use <code>avroRecord.put();</code> to set each attribute. But what i want is to create A Generic Record from an object without using avroRecord.put(); for each and every attribute. </p>\n\n<p>User class</p>\n\n<pre><code>public class User {\n    int id;\n\n    String name;\n\n    public User(int id, String name) {\n\n        super();\n\n        this.id = id;\n\n        this.name = name;\n\n    }\n\n    public int getId() {\n\n        return id;\n\n    }\n\n    public void setId(int id) {\n\n        this.id = id;\n\n    }\n\n    public String getName() {\n\n        return name;\n\n    }\n\n    public void setName(String name) {\n\n        this.name = name;\n\n    }\n\n}\n</code></pre>\n\n<p>Sender class   </p>\n\n<pre><code>import org.apache.avro.Schema;\n\nimport org.apache.avro.generic.GenericData;\n\nimport org.apache.avro.generic.GenericDatumWriter;\n\nimport org.apache.avro.generic.GenericRecord;\n\nimport org.apache.avro.io.DatumWriter;\n\nimport org.apache.avro.io.Encoder;\n\nimport org.apache.avro.io.EncoderFactory;\n\nimport org.apache.avro.reflect.ReflectData;\n\nimport org.apache.kafka.clients.producer.KafkaProducer;\n\nimport org.apache.kafka.clients.producer.ProducerConfig;\n\nimport org.apache.kafka.clients.producer.ProducerRecord;\n\n\n\nimport java.io.ByteArrayOutputStream;\n\nimport java.io.IOException;\n\nimport java.util.Properties;\n\n\n\nimport vo.User;\n\n\n\npublic class Sender {\n\n    public static void main(String[] args) {\n\n\n\n        User user = new User(10,\"testName\");\n\n        Schema schema = ReflectData.get().getSchema(user.getClass());\n\n        GenericRecord avroRecord = new GenericData.Record(schema);\n\n\n\n        //working fine\n\n        /*avroRecord.put(\"id\", user.getId());\n\n        avroRecord.put(\"name\", user.getName());*/\n\n\n\n        //not working\n\n        DatumWriter&lt;Object&gt; datumWriter = new GenericDatumWriter&lt;Object&gt;(schema);\n\n        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();\n\n        Encoder encoder = EncoderFactory.get().binaryEncoder(outputStream, null);\n\n        try {\n\n            datumWriter.write(user, encoder);\n\n            encoder.flush();\n\n        } catch (IOException e1) {\n\n            e1.printStackTrace();\n\n        }\n\n\n\n        ProducerRecord&lt;String, GenericRecord&gt; record = new ProducerRecord&lt;&gt;(\"avrotesttopic1\",avroRecord);\n\n\n\n        Properties props = new Properties();\n\n        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, \"127.0.0.1:9092\");\n\n        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,io.confluent.kafka.serializers.KafkaAvroSerializer.class);\n\n        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,io.confluent.kafka.serializers.KafkaAvroSerializer.class);\n\n        props.put(\"schema.registry.url\", \"http://127.0.0.1:8081\");\n\n\n\n        KafkaProducer&lt;String, GenericRecord&gt; producer = new KafkaProducer&lt;String, GenericRecord&gt;(props);\n\n\n\n        try {\n\n            producer.send(record);\n\n            producer.flush();\n\n        } catch (Exception e) {\n\n            e.printStackTrace();\n\n        }\n\n\n\n        producer.close();\n\n    }\n\n}\n</code></pre>\n\n<p>How can i publish this object to my Kafka topic as Avro? </p>\n\n<p>I have referred the below links</p>\n\n<p><a href=\"https://github.com/akmalmuqeeth/confluent-kafka-spring-demo/blob/master/src/main/java/ConfluentProducerApp.java\" rel=\"nofollow noreferrer\">https://github.com/akmalmuqeeth/confluent-kafka-spring-demo/blob/master/src/main/java/ConfluentProducerApp.java</a></p>\n\n<p><a href=\"https://findusages.com/search/org.apache.avro.io.DatumWriter/write\" rel=\"nofollow noreferrer\">https://findusages.com/search/org.apache.avro.io.DatumWriter/write</a>$2?offset=23</p>\n\n<p><a href=\"https://www.ctheu.com/2017/03/02/serializing-data-efficiently-with-apache-avro-and-dealing-with-a-schema-registry/\" rel=\"nofollow noreferrer\">https://www.ctheu.com/2017/03/02/serializing-data-efficiently-with-apache-avro-and-dealing-with-a-schema-registry/</a></p>\n\n<p>Thank you. </p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "jdbc"
+            ],
+            "owner": {
+                "reputation": 30,
+                "user_id": 3666850,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/02f6e1cbf06c8105aa81a3c6b2dcf1a6?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Rodrigo Girckus",
+                "link": "https://stackoverflow.com/users/3666850/rodrigo-girckus"
+            },
+            "is_answered": true,
+            "view_count": 321,
+            "accepted_answer_id": 23953691,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1524621521,
+            "creation_date": 1401369354,
+            "last_edit_date": 1524621474,
+            "question_id": 23934260,
+            "body_markdown": "I&#39;m having trouble to find an example of usage of [JDBC 4.2][1] new interfaces [`DriverAction`](https://docs.oracle.com/javase/8/docs/api/java/sql/DriverAction.html) and [`SQLType`](https://docs.oracle.com/javase/8/docs/api/java/sql/SQLType.html). \r\n\r\nCan anyone give me an example?\r\n\r\n\r\n  [1]: https://docs.oracle.com/javase/8/docs/technotes/guides/jdbc/jdbc_42.html",
+            "link": "https://stackoverflow.com/questions/23934260/jdbc-4-2-interfaces-driveraction-and-sqltype-examples",
+            "title": "JDBC 4.2 Interfaces DriverAction and SQLType - Examples",
+            "body": "<p>I'm having trouble to find an example of usage of <a href=\"https://docs.oracle.com/javase/8/docs/technotes/guides/jdbc/jdbc_42.html\" rel=\"nofollow noreferrer\">JDBC 4.2</a> new interfaces <a href=\"https://docs.oracle.com/javase/8/docs/api/java/sql/DriverAction.html\" rel=\"nofollow noreferrer\"><code>DriverAction</code></a> and <a href=\"https://docs.oracle.com/javase/8/docs/api/java/sql/SQLType.html\" rel=\"nofollow noreferrer\"><code>SQLType</code></a>. </p>\n\n<p>Can anyone give me an example?</p>\n"
+        },
+        {
+            "tags": [
+                "build",
+                "wrapper",
+                "android-source",
+                "ninja"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 9570261,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5c6d0fbfb65e4baaf7dcf1c66fcac91b?s=128&d=identicon&r=PG",
+                "display_name": "Xuan An Nguyen",
+                "link": "https://stackoverflow.com/users/9570261/xuan-an-nguyen"
+            },
+            "is_answered": true,
+            "view_count": 49,
+            "accepted_answer_id": 50005120,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524621517,
+            "creation_date": 1524308985,
+            "question_id": 49955137,
+            "body_markdown": "    frameworks/av/camera/cameraserver/Android.mk:18: Target has integrated cameraserver into mediaserver. This is weakening security measures introduced in 7.0\r\n    find: ‘/home/xuanan/android/lineage/out/target/common/obj/SHARED_LIBRARIES/libwifi-hal-mock_intermediates’: No such file or directory\r\n    Starting build with ninja\r\n    ninja: Entering directory `.&#39;\r\n    [  0% 14/48263] Lex: aidl &lt;= system/tools/aidl/aidl_language_l.ll\r\n    FAILED: /bin/bash -c &quot;prebuilts/misc/linux-x86/flex/flex-2.5.39 -o/home/xuanan/android/lineage/out/host/linux-x86/obj/STATIC_LIBRARIES/libaidl-common_intermediates/aidl_language_l.cpp system/tools/aidl/aidl_language_l.ll&quot;\r\n    flex-2.5.39: loadlocale.c:130: _nl_intern_locale_data: Assertion `cnt &lt; (sizeof (_nl_value_type_LC_TIME) / sizeof (_nl_value_type_LC_TIME[0]))&#39; failed.\r\n    Aborted (core dumped)\r\n    [  0% 14/48263] target Java: libprotob...tobuf-java-nano_intermediates/classes)\r\n    Note: Some input files use unchecked or unsafe operations.\r\n    Note: Recompile with -Xlint:unchecked for details.\r\n    [  0% 14/48263] target Java: libphonen...number-platform_intermediates/classes)\r\n    ninja: build stopped: subcommand failed.\r\n    build/core/ninja.mk:151: recipe for target &#39;ninja_wrapper&#39; failed\r\n    make: *** [ninja_wrapper] Error 1\r\n    make: Leaving directory &#39;/home/xuanan/android/lineage&#39;\r\n\r\nI am trying to to build LineageOS for my device A6020. I did everything mention in official lineageos build guide for my device. But at the building step i encounter above error, at only less than 2 minutes after i enter `brunch A6020`. I would really appreciate if anyone can help me out since this is my school project. English is not my main language but i hope you guys can understand me. Thanks in advance.\r\n[picture of terminal when encounter error][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/9sWeB.png",
+            "link": "https://stackoverflow.com/questions/49955137/error-when-build-lineageos-make-ninja-wrapper-error-1",
+            "title": "Error when build LineageOS: &quot;make: *** [ninja_wrapper] Error 1&quot;",
+            "body": "<pre><code>frameworks/av/camera/cameraserver/Android.mk:18: Target has integrated cameraserver into mediaserver. This is weakening security measures introduced in 7.0\nfind: ‘/home/xuanan/android/lineage/out/target/common/obj/SHARED_LIBRARIES/libwifi-hal-mock_intermediates’: No such file or directory\nStarting build with ninja\nninja: Entering directory `.'\n[  0% 14/48263] Lex: aidl &lt;= system/tools/aidl/aidl_language_l.ll\nFAILED: /bin/bash -c \"prebuilts/misc/linux-x86/flex/flex-2.5.39 -o/home/xuanan/android/lineage/out/host/linux-x86/obj/STATIC_LIBRARIES/libaidl-common_intermediates/aidl_language_l.cpp system/tools/aidl/aidl_language_l.ll\"\nflex-2.5.39: loadlocale.c:130: _nl_intern_locale_data: Assertion `cnt &lt; (sizeof (_nl_value_type_LC_TIME) / sizeof (_nl_value_type_LC_TIME[0]))' failed.\nAborted (core dumped)\n[  0% 14/48263] target Java: libprotob...tobuf-java-nano_intermediates/classes)\nNote: Some input files use unchecked or unsafe operations.\nNote: Recompile with -Xlint:unchecked for details.\n[  0% 14/48263] target Java: libphonen...number-platform_intermediates/classes)\nninja: build stopped: subcommand failed.\nbuild/core/ninja.mk:151: recipe for target 'ninja_wrapper' failed\nmake: *** [ninja_wrapper] Error 1\nmake: Leaving directory '/home/xuanan/android/lineage'\n</code></pre>\n\n<p>I am trying to to build LineageOS for my device A6020. I did everything mention in official lineageos build guide for my device. But at the building step i encounter above error, at only less than 2 minutes after i enter <code>brunch A6020</code>. I would really appreciate if anyone can help me out since this is my school project. English is not my main language but i hope you guys can understand me. Thanks in advance.\n<a href=\"https://i.stack.imgur.com/9sWeB.png\" rel=\"nofollow noreferrer\">picture of terminal when encounter error</a></p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-import"
+            ],
+            "owner": {
+                "reputation": 44,
+                "user_id": 9477246,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-q6MVIyfSecY/AAAAAAAAAAI/AAAAAAAACaU/uakbZK4LPvo/photo.jpg?sz=128",
+                "display_name": "Hannah Lee",
+                "link": "https://stackoverflow.com/users/9477246/hannah-lee"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524621485,
+            "creation_date": 1524620429,
+            "question_id": 50012848,
+            "body_markdown": "Sorry that I have no idea how to describe this situation. The bigger package I like to install is &quot;finance&quot; (http://pydoc.net/finance/0.2502/finance.bankdate/). I downloaded it and unzipped to install using `python setup.py install`. \r\n\r\nHowever, I cannot resolve importing another sub-module \r\n&gt; bankdate(.py)\r\n\r\nWhen I use finance module, there comes the error message, `&quot;ImportError: No module named &#39;bankdate&#39;`.(It is required in `&quot;__init__.py&quot;` under finance.)  `bankdate.py` seems to be file under finance folder. How could I install &quot;bankdate&quot;?? Does anybody help me with this?? \r\n\r\nThank you~!\r\n\r\ncf) `pip install bankdate`, `easy_install bankdate` don&#39;t work in this case.",
+            "link": "https://stackoverflow.com/questions/50012848/no-module-named-bankdatehow-to-import-just-py",
+            "title": "No module named &#39;bankdate&#39;(How to import just .py??)",
+            "body": "<p>Sorry that I have no idea how to describe this situation. The bigger package I like to install is \"finance\" (<a href=\"http://pydoc.net/finance/0.2502/finance.bankdate/\" rel=\"nofollow noreferrer\">http://pydoc.net/finance/0.2502/finance.bankdate/</a>). I downloaded it and unzipped to install using <code>python setup.py install</code>. </p>\n\n<p>However, I cannot resolve importing another sub-module </p>\n\n<blockquote>\n  <p>bankdate(.py)</p>\n</blockquote>\n\n<p>When I use finance module, there comes the error message, <code>\"ImportError: No module named 'bankdate'</code>.(It is required in <code>\"__init__.py\"</code> under finance.)  <code>bankdate.py</code> seems to be file under finance folder. How could I install \"bankdate\"?? Does anybody help me with this?? </p>\n\n<p>Thank you~!</p>\n\n<p>cf) <code>pip install bankdate</code>, <code>easy_install bankdate</code> don't work in this case.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                ".net-core",
+                "authorize.net"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 6556920,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9d3213a4b89a9a35452ded96ad084cdc?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Martin Ruiz",
+                "link": "https://stackoverflow.com/users/6556920/martin-ruiz"
+            },
+            "is_answered": true,
+            "view_count": 22,
+            "accepted_answer_id": 50012967,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524621461,
+            "creation_date": 1524604390,
+            "question_id": 50010790,
+            "body_markdown": "I use ARBCreateSubscriptionRequest using opaqueData to create subsciptions but there is no validationMode like field to validate if the card is active, I would like to know if there is a mechanism similar to the validationMode on Customer Profiles for ARBCreateSubscriptionRequest that allow me to validate the card? Or if by default this endpoint already validates that and if the card is not active then an error code would be returned to us.",
+            "link": "https://stackoverflow.com/questions/50010790/validate-credit-or-debit-card-with-arbcreatesubscriptionrequest-like-validationm",
+            "title": "Validate credit or debit card with ARBCreateSubscriptionRequest like validationMode field of Customer Profile",
+            "body": "<p>I use ARBCreateSubscriptionRequest using opaqueData to create subsciptions but there is no validationMode like field to validate if the card is active, I would like to know if there is a mechanism similar to the validationMode on Customer Profiles for ARBCreateSubscriptionRequest that allow me to validate the card? Or if by default this endpoint already validates that and if the card is not active then an error code would be returned to us.</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "mysql"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 6764127,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1756120571297934/picture?type=large",
+                "display_name": "Nadir Abbas",
+                "link": "https://stackoverflow.com/users/6764127/nadir-abbas"
+            },
+            "is_answered": true,
+            "view_count": 21,
+            "answer_count": 1,
+            "score": -2,
+            "last_activity_date": 1524621448,
+            "creation_date": 1524619051,
+            "last_edit_date": 1524620396,
+            "question_id": 50012719,
+            "body_markdown": "I am new to PHP and MySQL.\r\nI wanted to know that if its possible to show all the rows from the table but first where id=&#39;some value&#39;. ie.\r\n\r\n    SELECT * FROM users ORDER BY id=&#39;some value&#39;\r\n\r\nThanks for answering.",
+            "link": "https://stackoverflow.com/questions/50012719/display-all-rows-from-table-but-first-where-id-x-php-and-mysql",
+            "title": "Display all rows from table but first where id=x - PHP and MySQL",
+            "body": "<p>I am new to PHP and MySQL.\nI wanted to know that if its possible to show all the rows from the table but first where id='some value'. ie.</p>\n\n<pre><code>SELECT * FROM users ORDER BY id='some value'\n</code></pre>\n\n<p>Thanks for answering.</p>\n"
+        },
+        {
+            "tags": [
+                "vim"
+            ],
+            "owner": {
+                "reputation": 118,
+                "user_id": 1989834,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ca41ac4f7e7bb10b93933c5ad4e4ddc5?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Uday",
+                "link": "https://stackoverflow.com/users/1989834/uday"
+            },
+            "is_answered": true,
+            "view_count": 4827,
+            "answer_count": 2,
+            "score": 15,
+            "last_activity_date": 1524621447,
+            "creation_date": 1409915394,
+            "last_edit_date": 1409916863,
+            "question_id": 25684559,
+            "body_markdown": "today I started to use vim. I get confused at `:g` and `:%s` commands. So, what is the difference between `:g` or `:%s` commands?",
+            "link": "https://stackoverflow.com/questions/25684559/what-is-the-difference-between-g-and-s-commands-in-vim",
+            "title": "What is the difference between :g and :%s commands in vim",
+            "body": "<p>today I started to use vim. I get confused at <code>:g</code> and <code>:%s</code> commands. So, what is the difference between <code>:g</code> or <code>:%s</code> commands?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "checkbox"
+            ],
+            "owner": {
+                "reputation": 1719,
+                "user_id": 511488,
+                "user_type": "registered",
+                "accept_rate": 56,
+                "profile_image": "https://www.gravatar.com/avatar/95f479e7478f98646128713ac2f82be5?s=128&d=identicon&r=PG",
+                "display_name": "bikey77",
+                "link": "https://stackoverflow.com/users/511488/bikey77"
+            },
+            "is_answered": true,
+            "view_count": 306719,
+            "accepted_answer_id": 6358754,
+            "answer_count": 7,
+            "score": 70,
+            "last_activity_date": 1524621433,
+            "creation_date": 1308145501,
+            "last_edit_date": 1308145902,
+            "question_id": 6358673,
+            "body_markdown": "I have a checkbox in a form and I&#39;d like it to work according to following scenario: \r\n\r\nif someone checks it, the value of a textfield (`totalCost`) should be set to `10`. Then, if I go back and uncheck it, a function `calculate()` sets the value of `totalCost` according to other parameters in the form. \r\n\r\nSo basically, I need the part where, when I check the checkbox I do one thing and when I uncheck it, i do another.",
+            "link": "https://stackoverflow.com/questions/6358673/javascript-checkbox-onchange",
+            "title": "Javascript checkbox onChange",
+            "body": "<p>I have a checkbox in a form and I'd like it to work according to following scenario: </p>\n\n<p>if someone checks it, the value of a textfield (<code>totalCost</code>) should be set to <code>10</code>. Then, if I go back and uncheck it, a function <code>calculate()</code> sets the value of <code>totalCost</code> according to other parameters in the form. </p>\n\n<p>So basically, I need the part where, when I check the checkbox I do one thing and when I uncheck it, i do another.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "machine-learning",
+                "scikit-learn",
+                "keras",
+                "lstm"
+            ],
+            "owner": {
+                "reputation": 343,
+                "user_id": 4829182,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://graph.facebook.com/10155393216740234/picture?type=large",
+                "display_name": "Henry Ollarves",
+                "link": "https://stackoverflow.com/users/4829182/henry-ollarves"
+            },
+            "is_answered": false,
+            "view_count": 38,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524621425,
+            "creation_date": 1521024106,
+            "question_id": 49275570,
+            "body_markdown": "I&#39;m having some trouble calculating the RMSE (root-mean-squared-error) in my LSTM model. The model fits fine and I&#39;m getting a good loss reduction, however when trying to inverse_transform my yhat results I get the following error: \r\n\r\n    non-broadcastable output operand with shape (399,1) doesn&#39;t match the broadcast shape (399,4)\r\n\r\nHere&#39;s my code:\r\n\r\nPreprocessing:\r\n\r\n    btc = pd.read_csv(&#39;live_bitcoin.csv&#39;)\r\n    twitter_sent = pd.read_csv(&#39;live_tweet.csv&#39;)\r\n    reddit_sent = pd.read_csv(&#39;live_reddit.csv&#39;)\r\n    \r\n    btc.columns = [&quot;price_usd&quot;,&quot;24h_volume_usd&quot;,&quot;market_cap_usd&quot;,&quot;available_supply&quot;,&quot;total_supply&quot;,&quot;percent_change_1h&quot;,&quot;percent_change_24h&quot;,&quot;percent_change_7d&quot;, &quot;Sell&quot;, &quot;Buy&quot;, &quot;15m&quot;, &quot;Stamp&quot;]\r\n    twitter_sent.columns = [&quot;Sentiment&quot;, &quot;Stamp&quot;]\r\n    reddit_sent.columns = [&quot;Sentiment&quot;, &quot;Stamp&quot;]\r\n    \r\n    merged = pd.merge(twitter_sent, btc,  on=&#39;Stamp&#39;, how=&#39;inner&#39;).merge(reddit_sent, on=&#39;Stamp&#39;, how=&#39;inner&#39;)\r\n    data = merged[[&quot;Sentiment_x&quot;, &quot;Sentiment_y&quot;,&quot;24h_volume_usd&quot;, &quot;market_cap_usd&quot;, &quot;available_supply&quot;,&quot;price_usd&quot;]].groupby(merged[&#39;Stamp&#39;]).mean()\r\n    datag = data[[&quot;24h_volume_usd&quot;, &quot;market_cap_usd&quot;, &quot;available_supply&quot;,&quot;price_usd&quot;]]\r\n    tw_sentiment = data[&quot;Sentiment_x&quot;]\r\n    rdt_sentiment = data[&quot;Sentiment_y&quot;]\r\n    \r\n    print &quot;Dataset size: &quot; + str(len(datag))\r\n    print &quot;Timespan: &quot; + str(len(datag)/60) + &quot; hours&quot;\r\n    \r\n    from sklearn.preprocessing import MinMaxScaler\r\n    \r\n    scaler = MinMaxScaler(feature_range=(0, 1))\r\n    values = datag.values.reshape(-1, datag.shape[1])\r\n    tw_sentiment = tw_sentiment.values.reshape(-1, 1)\r\n    rdt_sentiment = rdt_sentiment.values.reshape(-1, 1)\r\n    tw_sentiment = tw_sentiment.astype(&#39;float32&#39;)\r\n    rdt_sentiment = rdt_sentiment.astype(&#39;float32&#39;)\r\n    values = values.astype(&#39;float32&#39;)\r\n    scaled = scaler.fit_transform(values)\r\n\r\nTraining:\r\n\r\n    train_size = int(len(scaled) * 0.7)\r\n    test_size = len(scaled) - train_size\r\n    train, test = scaled[0:train_size,:], scaled[train_size:len(scaled),:]\r\n    split = train_size\r\n    \r\n    def create_dataset(dataset, look_back, tw_sentiment, rdt_sentiment, sent=False):\r\n        dataX, dataY = [], []\r\n        for i in range(len(dataset) - look_back):\r\n            if i &gt;= look_back:\r\n                a = dataset[i-look_back:i+1, 0]\r\n                a = a.tolist()\r\n                if(sent==True):                \r\n                    current_tw_sentiment = tw_sentiment[i].tolist()[0]\r\n                    current_rdt_sentiment = rdt_sentiment[i].tolist()[0]\r\n                    a.append(current_tw_sentiment)\r\n                    a.append(current_rdt_sentiment)\r\n                dataX.append(a)\r\n                dataY.append(dataset[i + look_back, 0])\r\n        print(len(dataY))\r\n        return np.array(dataX), np.array(dataY)\r\n    \r\n    look_back = 2\r\n    trainX, trainY = create_dataset(train, look_back, tw_sentiment[0:train_size], rdt_sentiment[0:train_size], sent=True)\r\n    testX, testY = create_dataset(test, look_back, tw_sentiment[train_size:len(scaled)], rdt_sentiment[train_size:len(scaled)], sent=True)\r\n    \r\n    trainX = np.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))\r\n    testX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))\r\n    \r\n    # Creating new model\r\n    model = Sequential()\r\n    model.add(LSTM(100, input_shape=(trainX.shape[1], trainX.shape[2]), return_sequences=True))\r\n    model.add(LSTM(100))\r\n    model.add(Dense(1))\r\n    model.compile(loss=&#39;mae&#39;, optimizer=&#39;adam&#39;)\r\n    model.save(&#39;LSTM_14-03-2018.h5&#39;)\r\n    \r\n    # Loading model\r\n    # model = load_model(&#39;models/LSTM_12-03-2018_GOOD.h5&#39;)\r\n    \r\n    history = model.fit(trainX, trainY, epochs=300, batch_size=100, validation_data=(testX, testY), verbose=0, shuffle=False)\r\n    yhat = model.predict(testX)\r\n    yhat_inverse = scaler.inverse_transform(yhat.reshape(-1, 1))\r\n    testY_inverse = scaler.inverse_transform(testY.reshape(-1, 1))\r\n    rmse_sent = sqrt(mean_squared_error(testY_inverse, yhat_inverse))\r\n    print &quot;Done&quot;\r\n    print &#39;Test RMSE: %.3f&#39; % rmse_sent\r\n\r\nThe main problem lies here: \r\n  \r\n\r\n      yhat_inverse = scaler.inverse_transform(yhat.reshape(-1,1))\r\n      testY_inverse = scaler.inverse_transform(testY.reshape(-1,1))\r\n\r\nFor what I understand (still a complete noob in ML), my yhat variable has a shape of (399, 1) as I&#39;m trying to make a prediction based on several features. I&#39;m only looking to revert my data to its previous transform so the RMSE error returns in an appropriate scale. I&#39;m basically trying to reconvert prices to their normal scale. I&#39;m also never re_transforming the data after the MinMaxScaler does it in the preprocessing stage.\r\n\r\nAny clues on what might be wrong?\r\nAny help would be much appreciated.\r\n\r\nThanks! ",
+            "link": "https://stackoverflow.com/questions/49275570/lstm-calculating-rmse-using-inverse-transform",
+            "title": "LSTM. Calculating RMSE using inverse_transform",
+            "body": "<p>I'm having some trouble calculating the RMSE (root-mean-squared-error) in my LSTM model. The model fits fine and I'm getting a good loss reduction, however when trying to inverse_transform my yhat results I get the following error: </p>\n\n<pre><code>non-broadcastable output operand with shape (399,1) doesn't match the broadcast shape (399,4)\n</code></pre>\n\n<p>Here's my code:</p>\n\n<p>Preprocessing:</p>\n\n<pre><code>btc = pd.read_csv('live_bitcoin.csv')\ntwitter_sent = pd.read_csv('live_tweet.csv')\nreddit_sent = pd.read_csv('live_reddit.csv')\n\nbtc.columns = [\"price_usd\",\"24h_volume_usd\",\"market_cap_usd\",\"available_supply\",\"total_supply\",\"percent_change_1h\",\"percent_change_24h\",\"percent_change_7d\", \"Sell\", \"Buy\", \"15m\", \"Stamp\"]\ntwitter_sent.columns = [\"Sentiment\", \"Stamp\"]\nreddit_sent.columns = [\"Sentiment\", \"Stamp\"]\n\nmerged = pd.merge(twitter_sent, btc,  on='Stamp', how='inner').merge(reddit_sent, on='Stamp', how='inner')\ndata = merged[[\"Sentiment_x\", \"Sentiment_y\",\"24h_volume_usd\", \"market_cap_usd\", \"available_supply\",\"price_usd\"]].groupby(merged['Stamp']).mean()\ndatag = data[[\"24h_volume_usd\", \"market_cap_usd\", \"available_supply\",\"price_usd\"]]\ntw_sentiment = data[\"Sentiment_x\"]\nrdt_sentiment = data[\"Sentiment_y\"]\n\nprint \"Dataset size: \" + str(len(datag))\nprint \"Timespan: \" + str(len(datag)/60) + \" hours\"\n\nfrom sklearn.preprocessing import MinMaxScaler\n\nscaler = MinMaxScaler(feature_range=(0, 1))\nvalues = datag.values.reshape(-1, datag.shape[1])\ntw_sentiment = tw_sentiment.values.reshape(-1, 1)\nrdt_sentiment = rdt_sentiment.values.reshape(-1, 1)\ntw_sentiment = tw_sentiment.astype('float32')\nrdt_sentiment = rdt_sentiment.astype('float32')\nvalues = values.astype('float32')\nscaled = scaler.fit_transform(values)\n</code></pre>\n\n<p>Training:</p>\n\n<pre><code>train_size = int(len(scaled) * 0.7)\ntest_size = len(scaled) - train_size\ntrain, test = scaled[0:train_size,:], scaled[train_size:len(scaled),:]\nsplit = train_size\n\ndef create_dataset(dataset, look_back, tw_sentiment, rdt_sentiment, sent=False):\n    dataX, dataY = [], []\n    for i in range(len(dataset) - look_back):\n        if i &gt;= look_back:\n            a = dataset[i-look_back:i+1, 0]\n            a = a.tolist()\n            if(sent==True):                \n                current_tw_sentiment = tw_sentiment[i].tolist()[0]\n                current_rdt_sentiment = rdt_sentiment[i].tolist()[0]\n                a.append(current_tw_sentiment)\n                a.append(current_rdt_sentiment)\n            dataX.append(a)\n            dataY.append(dataset[i + look_back, 0])\n    print(len(dataY))\n    return np.array(dataX), np.array(dataY)\n\nlook_back = 2\ntrainX, trainY = create_dataset(train, look_back, tw_sentiment[0:train_size], rdt_sentiment[0:train_size], sent=True)\ntestX, testY = create_dataset(test, look_back, tw_sentiment[train_size:len(scaled)], rdt_sentiment[train_size:len(scaled)], sent=True)\n\ntrainX = np.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))\ntestX = np.reshape(testX, (testX.shape[0], 1, testX.shape[1]))\n\n# Creating new model\nmodel = Sequential()\nmodel.add(LSTM(100, input_shape=(trainX.shape[1], trainX.shape[2]), return_sequences=True))\nmodel.add(LSTM(100))\nmodel.add(Dense(1))\nmodel.compile(loss='mae', optimizer='adam')\nmodel.save('LSTM_14-03-2018.h5')\n\n# Loading model\n# model = load_model('models/LSTM_12-03-2018_GOOD.h5')\n\nhistory = model.fit(trainX, trainY, epochs=300, batch_size=100, validation_data=(testX, testY), verbose=0, shuffle=False)\nyhat = model.predict(testX)\nyhat_inverse = scaler.inverse_transform(yhat.reshape(-1, 1))\ntestY_inverse = scaler.inverse_transform(testY.reshape(-1, 1))\nrmse_sent = sqrt(mean_squared_error(testY_inverse, yhat_inverse))\nprint \"Done\"\nprint 'Test RMSE: %.3f' % rmse_sent\n</code></pre>\n\n<p>The main problem lies here: </p>\n\n<pre><code>  yhat_inverse = scaler.inverse_transform(yhat.reshape(-1,1))\n  testY_inverse = scaler.inverse_transform(testY.reshape(-1,1))\n</code></pre>\n\n<p>For what I understand (still a complete noob in ML), my yhat variable has a shape of (399, 1) as I'm trying to make a prediction based on several features. I'm only looking to revert my data to its previous transform so the RMSE error returns in an appropriate scale. I'm basically trying to reconvert prices to their normal scale. I'm also never re_transforming the data after the MinMaxScaler does it in the preprocessing stage.</p>\n\n<p>Any clues on what might be wrong?\nAny help would be much appreciated.</p>\n\n<p>Thanks! </p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "nlp",
+                "visualization",
+                "plotly",
+                "networkx"
+            ],
+            "owner": {
+                "reputation": 2519,
+                "user_id": 1164246,
+                "user_type": "registered",
+                "accept_rate": 53,
+                "profile_image": "https://www.gravatar.com/avatar/0280d4df417855965a0964d22766c012?s=128&d=identicon&r=PG",
+                "display_name": "Daniel",
+                "link": "https://stackoverflow.com/users/1164246/daniel"
+            },
+            "is_answered": false,
+            "view_count": 35,
+            "closed_date": 1524694934,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524621389,
+            "creation_date": 1524621389,
+            "question_id": 50012959,
+            "body_markdown": "Wondering if anyone is aware of any libraries/examples for visualization of text and its annotations (like relations, etc). \r\n\r\nHere is an example from here: http://nlp.cogcomp.org \r\n\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\nI know a few libraries in JS, but looking for something in Python. \r\n\r\n  [1]: https://i.stack.imgur.com/Z930V.png",
+            "link": "https://stackoverflow.com/questions/50012959/python-visualization-of-text-and-its-annotations",
+            "closed_reason": "off-topic",
+            "title": "python visualization of text and its annotations",
+            "body": "<p>Wondering if anyone is aware of any libraries/examples for visualization of text and its annotations (like relations, etc). </p>\n\n<p>Here is an example from here: <a href=\"http://nlp.cogcomp.org\" rel=\"nofollow noreferrer\">http://nlp.cogcomp.org</a> </p>\n\n<p><a href=\"https://i.stack.imgur.com/Z930V.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/Z930V.png\" alt=\"enter image description here\"></a></p>\n\n<p>I know a few libraries in JS, but looking for something in Python. </p>\n"
+        },
+        {
+            "tags": [
+                "swift",
+                "firebase",
+                "google-cloud-firestore"
+            ],
+            "owner": {
+                "reputation": 779,
+                "user_id": 4320099,
+                "user_type": "registered",
+                "accept_rate": 94,
+                "profile_image": "https://i.stack.imgur.com/YJqNZ.jpg?s=128&g=1",
+                "display_name": "FrenchFalcon",
+                "link": "https://stackoverflow.com/users/4320099/frenchfalcon"
+            },
+            "is_answered": false,
+            "view_count": 46,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524621339,
+            "creation_date": 1524621339,
+            "question_id": 50012956,
+            "body_markdown": "I am new to Firestore/Firebase and I am trying to create a new document with one of the fields being a `document reference` to an other document. I have read all the guides and examples from Firebase and did not find anything...\r\n\r\nAlso, when I retrieve this document I created, I would be able to access what is inside the reference I added inside. I have no idea how to do that.\r\n\r\nHere is some code I tried for the creating part\r\n\r\n        let db = Firestore.firestore()\r\n\r\n        // Is this how you create a reference ??\r\n        let userRef = db.collection(&quot;users&quot;).document(documentId)\r\n        \r\n        db.collection(&quot;publications&quot;).document().setData([\r\n            &quot;author&quot;: userRef,\r\n            &quot;content&quot;: self.uploadedImagesURLs\r\n        ]) { err in\r\n            if let err = err {\r\n                print(&quot;Error writing document: \\(err)&quot;)\r\n            } else {\r\n                print(&quot;Document successfully written!&quot;)\r\n            }\r\n        }\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50012956/firestore-how-to-store-reference-to-document-how-to-retrieve-it",
+            "title": "Firestore how to store reference to document / how to retrieve it?",
+            "body": "<p>I am new to Firestore/Firebase and I am trying to create a new document with one of the fields being a <code>document reference</code> to an other document. I have read all the guides and examples from Firebase and did not find anything...</p>\n\n<p>Also, when I retrieve this document I created, I would be able to access what is inside the reference I added inside. I have no idea how to do that.</p>\n\n<p>Here is some code I tried for the creating part</p>\n\n<pre><code>    let db = Firestore.firestore()\n\n    // Is this how you create a reference ??\n    let userRef = db.collection(\"users\").document(documentId)\n\n    db.collection(\"publications\").document().setData([\n        \"author\": userRef,\n        \"content\": self.uploadedImagesURLs\n    ]) { err in\n        if let err = err {\n            print(\"Error writing document: \\(err)\")\n        } else {\n            print(\"Document successfully written!\")\n        }\n    }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "javafx-8"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 9691734,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/387dd9fff9a453ac7f27bcab995edeab?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Mzu",
+                "link": "https://stackoverflow.com/users/9691734/mzu"
+            },
+            "is_answered": true,
+            "view_count": 17,
+            "accepted_answer_id": 50012954,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524621324,
+            "creation_date": 1524581668,
+            "last_edit_date": 1524582728,
+            "question_id": 50004784,
+            "body_markdown": "I have TreeViewTable like image below:\r\n\r\n**TreeViewTable**\r\n\r\n\r\n  &lt;img src=&quot;https://i.stack.imgur.com/aQINL.png&quot;&gt;\r\n\r\nI want to set the second column to be hierarchical (with expander as well) instead of the first column. The first column is vertically aligned and the second column is tree-like displayed.\r\nI have tried for hours but couldn&#39;t figure out how. What should be the best approach achieve that?\r\n",
+            "link": "https://stackoverflow.com/questions/50004784/how-to-set-arbitrary-treeviewtable-expander-column-in-javafx",
+            "title": "How to set arbitrary TreeViewTable expander column in javafx",
+            "body": "<p>I have TreeViewTable like image below:</p>\n\n<p><strong>TreeViewTable</strong></p>\n\n<p><img src=\"https://i.stack.imgur.com/aQINL.png\"></p>\n\n<p>I want to set the second column to be hierarchical (with expander as well) instead of the first column. The first column is vertically aligned and the second column is tree-like displayed.\nI have tried for hours but couldn't figure out how. What should be the best approach achieve that?</p>\n"
+        },
+        {
+            "tags": [
+                "splunk",
+                "splunk-query"
+            ],
+            "owner": {
+                "reputation": 38,
+                "user_id": 2639322,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/b8ed078967fd3ed646bd9fd76e285720?s=128&d=identicon&r=PG",
+                "display_name": "marchocolate",
+                "link": "https://stackoverflow.com/users/2639322/marchocolate"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524621265,
+            "creation_date": 1524589973,
+            "question_id": 50007417,
+            "body_markdown": "My log files log a bunch of messages in the same instance, so simply search for a message id followed by a count will not work (I will only count 1 per event when I want to count as many as 50 per event). I want to first narrow down my search to the events which show messages being sent (&quot;enqueued&quot;), and then count all instances of the string &quot;mid&quot;.\r\n\r\nAny ideas? I am very bad with splunk. How to I get all instances of &quot;mid&quot; to be a countable field?\r\n\r\n    index=* service=myservice &quot;enqueued&quot; &quot;mid&quot; | stats count mid\r\n\r\n ",
+            "link": "https://stackoverflow.com/questions/50007417/splunk-get-a-count-of-all-occurrences-of-a-string",
+            "title": "Splunk: Get a count of all occurrences of a string?",
+            "body": "<p>My log files log a bunch of messages in the same instance, so simply search for a message id followed by a count will not work (I will only count 1 per event when I want to count as many as 50 per event). I want to first narrow down my search to the events which show messages being sent (\"enqueued\"), and then count all instances of the string \"mid\".</p>\n\n<p>Any ideas? I am very bad with splunk. How to I get all instances of \"mid\" to be a countable field?</p>\n\n<pre><code>index=* service=myservice \"enqueued\" \"mid\" | stats count mid\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "neo4j",
+                "locking",
+                "neo4j-driver"
+            ],
+            "owner": {
+                "reputation": 394,
+                "user_id": 3929917,
+                "user_type": "registered",
+                "accept_rate": 62,
+                "profile_image": "https://www.gravatar.com/avatar/0b49fc1a1f89e276d98919474fb8d431?s=128&d=identicon&r=PG&f=1",
+                "display_name": "silent-box",
+                "link": "https://stackoverflow.com/users/3929917/silent-box"
+            },
+            "is_answered": true,
+            "view_count": 15,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524621247,
+            "creation_date": 1524620931,
+            "question_id": 50012912,
+            "body_markdown": "Is there a way to manually acquire write lock on a certain set of nodes via Neo4J Java API or Cypher?\r\n\r\nThere are [examples in documentation][1], but only for embedded Neo4j version. Standard Java `Transaction` interface does not contain such methods: https://neo4j.com/docs/api/java-driver/current/org/neo4j/driver/v1/Transaction.html\r\n\r\nAlso I can&#39;t find a way to do it via Cypher.\r\n\r\n\r\n  [1]: https://neo4j.com/docs/java-reference/current/tutorials-java-embedded/#tutorials-java-embedded-unique-pessimistic",
+            "link": "https://stackoverflow.com/questions/50012912/neo4j-explicit-pessimistic-locking-via-java-api-or-cypher",
+            "title": "Neo4j: explicit pessimistic locking via Java API or Cypher",
+            "body": "<p>Is there a way to manually acquire write lock on a certain set of nodes via Neo4J Java API or Cypher?</p>\n\n<p>There are <a href=\"https://neo4j.com/docs/java-reference/current/tutorials-java-embedded/#tutorials-java-embedded-unique-pessimistic\" rel=\"nofollow noreferrer\">examples in documentation</a>, but only for embedded Neo4j version. Standard Java <code>Transaction</code> interface does not contain such methods: <a href=\"https://neo4j.com/docs/api/java-driver/current/org/neo4j/driver/v1/Transaction.html\" rel=\"nofollow noreferrer\">https://neo4j.com/docs/api/java-driver/current/org/neo4j/driver/v1/Transaction.html</a></p>\n\n<p>Also I can't find a way to do it via Cypher.</p>\n"
+        },
+        {
+            "tags": [
+                "c",
+                "numerical-analysis",
+                "cubic-spline"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9615926,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "신효준",
+                "link": "https://stackoverflow.com/users/9615926/%ec%8b%a0%ed%9a%a8%ec%a4%80"
+            },
+            "is_answered": false,
+            "view_count": 36,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524621239,
+            "creation_date": 1524498346,
+            "question_id": 49985047,
+            "body_markdown": "    #define _CRT_SECURE_NO_WARNINGS\r\n    #include &lt;stdio.h&gt;\r\n    #include &lt;stdlib.h&gt;\r\n    #include &lt;math.h&gt;\r\n    #define SIZE 11\r\n    \r\n    double cubicspline(double val);\r\n    void TDMA(void);\r\n    \r\n    double x[SIZE] = { -1.0, -0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0 };\r\n    double y[SIZE] = { 0.038, 0.058, 0.1, 0.2, 0.5, 1.0, 0.5, 0.2, 0.1, 0.058, 0.038 };\r\n    double M[SIZE];\r\n    \r\n    void main(void) {\r\n\t    FILE *fp1, *fp2;\r\n\t    double val;\r\n\t    int i;\r\n\t    fp2 = fopen(&quot;cubicSpline_output.txt&quot;, &quot;w&quot;);\r\n\t    val = -1;\r\n\t    while(val&lt;=1.0) \r\n    \t{\r\n\t    \tprintf(&quot;------------------------------\\n&quot;);\r\n\t\t    printf(&quot;val : %lf\\n&quot;,val);\r\n\t\t    printf(&quot;spline result : %.12lf\\n&quot;, cubicspline(val));\r\n\t\t    fprintf(fp2, &quot;%lf\\t%lf\\n&quot;, val, cubicspline(val));\r\n\t\t    printf(&quot;------------------------------\\n&quot;);\r\n\t\t    val += 0.1;\r\n\t    }\r\n\t    fclose(fp2);\r\n\t    system(&quot;pause&quot;);\r\n    }\r\n\r\n    void TDMA() {\r\n\t    double A[SIZE-1], B[SIZE-1], C[SIZE-1], R[SIZE-1];\r\n\t    double f[SIZE], g[SIZE];\r\n    \r\n\t    int i;\r\n    \r\n\t    for (i = 1; i &lt; SIZE - 1; i++) \r\n\t    {\r\n\t\t    A[i] = (x[i] - x[i - 1])/6;\r\n\t\t    B[i] = (x[i + 1] - x[i - 1])/3;\r\n    \t\tC[i] = (x[i + 1] - x[i])/6;\r\n\t    \tR[i] = (y[i + 1] - y[i]) / 6 * C[i] - (y[i] - y[i - 1]) / 6 * A[i];\r\n    \r\n\t    }\r\n\r\n    \tfor (i = 1; i &lt; SIZE - 2; i++) \r\n    \t{\r\n    \t\tf[i + 1] = B[i + 1] - (C[i] * A[i + 1]) / B[i];\r\n    \t\tg[i + 1] = R[i + 1] - (R[i] * A[i + 1]) / B[i];\r\n    \t}\r\n    \r\n    \tM[0] = 0;\r\n    \tM[SIZE - 1] = 0;\r\n    \tM[SIZE - 2] = g[SIZE - 2] / f[SIZE - 2];\r\n    \r\n    \tfor (i = SIZE - 3; i &gt; 1; i--) \r\n    \t{\r\n    \t\tM[i] = (g[i + 1] / f[i + 1]) - (C[i + 1]*M[i + 1]);\r\n    \t}  \r\n    \r\n    \tM[1] = (R[1] - C[1]*M[2])/B[1];\r\n    }\r\n    \r\n    double cubicspline(double val)\r\n    {\r\n    \tint i, j;\r\n    \tdouble result=0;\r\n    \r\n\t    TDMA();\r\n    \r\n\t    for (i = 1; i &lt; SIZE; i++)\r\n    \t{\r\n\t    \tif (x[i] &gt;= val) {\r\n\t\t    \tj = i;\r\n\t\t\t    break;\r\n    \t\t}\r\n\t    }\r\n    \tresult = ((pow((x[j] - val), 3.0) * M[j - 1]) + (pow((val - x[j - 1]), 3.0)) * M[j])/ 6 * (x[j] - x[j - 1]) + ((x[j] - val)*y[j - 1] + (val - x[j - 1])*y[j]) / (x[j] - x[j - 1]) - ((x[j] - x[j - 1])*((x[j] - val)*M[j - 1] + (val - x[j - 1])*M[j])) / 6;\r\n\t    return result;\r\n    }\r\n\r\nHere&#39;s my part of source code written in visual studio 2017 environment. Globally initialized array x,y is given data.\r\nI have to do cubic spline interpolation with these data. But after execute, the spline results comes little differently at given points. I think there&#39;s no logical problem in spline and TDMA function. Maybe these problems are from storing irrational numbers. Can you guys explain why this error occur and how to fix the code? \r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49985047/how-to-precisely-calculate-double-type-data-to-solve-cubic-spline-interpolation",
+            "title": "How to precisely calculate double type data to solve cubic spline interpolation in C?",
+            "body": "<pre><code>#define _CRT_SECURE_NO_WARNINGS\n#include &lt;stdio.h&gt;\n#include &lt;stdlib.h&gt;\n#include &lt;math.h&gt;\n#define SIZE 11\n\ndouble cubicspline(double val);\nvoid TDMA(void);\n\ndouble x[SIZE] = { -1.0, -0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0 };\ndouble y[SIZE] = { 0.038, 0.058, 0.1, 0.2, 0.5, 1.0, 0.5, 0.2, 0.1, 0.058, 0.038 };\ndouble M[SIZE];\n\nvoid main(void) {\n    FILE *fp1, *fp2;\n    double val;\n    int i;\n    fp2 = fopen(\"cubicSpline_output.txt\", \"w\");\n    val = -1;\n    while(val&lt;=1.0) \n    {\n        printf(\"------------------------------\\n\");\n        printf(\"val : %lf\\n\",val);\n        printf(\"spline result : %.12lf\\n\", cubicspline(val));\n        fprintf(fp2, \"%lf\\t%lf\\n\", val, cubicspline(val));\n        printf(\"------------------------------\\n\");\n        val += 0.1;\n    }\n    fclose(fp2);\n    system(\"pause\");\n}\n\nvoid TDMA() {\n    double A[SIZE-1], B[SIZE-1], C[SIZE-1], R[SIZE-1];\n    double f[SIZE], g[SIZE];\n\n    int i;\n\n    for (i = 1; i &lt; SIZE - 1; i++) \n    {\n        A[i] = (x[i] - x[i - 1])/6;\n        B[i] = (x[i + 1] - x[i - 1])/3;\n        C[i] = (x[i + 1] - x[i])/6;\n        R[i] = (y[i + 1] - y[i]) / 6 * C[i] - (y[i] - y[i - 1]) / 6 * A[i];\n\n    }\n\n    for (i = 1; i &lt; SIZE - 2; i++) \n    {\n        f[i + 1] = B[i + 1] - (C[i] * A[i + 1]) / B[i];\n        g[i + 1] = R[i + 1] - (R[i] * A[i + 1]) / B[i];\n    }\n\n    M[0] = 0;\n    M[SIZE - 1] = 0;\n    M[SIZE - 2] = g[SIZE - 2] / f[SIZE - 2];\n\n    for (i = SIZE - 3; i &gt; 1; i--) \n    {\n        M[i] = (g[i + 1] / f[i + 1]) - (C[i + 1]*M[i + 1]);\n    }  \n\n    M[1] = (R[1] - C[1]*M[2])/B[1];\n}\n\ndouble cubicspline(double val)\n{\n    int i, j;\n    double result=0;\n\n    TDMA();\n\n    for (i = 1; i &lt; SIZE; i++)\n    {\n        if (x[i] &gt;= val) {\n            j = i;\n            break;\n        }\n    }\n    result = ((pow((x[j] - val), 3.0) * M[j - 1]) + (pow((val - x[j - 1]), 3.0)) * M[j])/ 6 * (x[j] - x[j - 1]) + ((x[j] - val)*y[j - 1] + (val - x[j - 1])*y[j]) / (x[j] - x[j - 1]) - ((x[j] - x[j - 1])*((x[j] - val)*M[j - 1] + (val - x[j - 1])*M[j])) / 6;\n    return result;\n}\n</code></pre>\n\n<p>Here's my part of source code written in visual studio 2017 environment. Globally initialized array x,y is given data.\nI have to do cubic spline interpolation with these data. But after execute, the spline results comes little differently at given points. I think there's no logical problem in spline and TDMA function. Maybe these problems are from storing irrational numbers. Can you guys explain why this error occur and how to fix the code? </p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net",
+                "reporting-services",
+                "reportviewer",
+                "ssrs-2008-r2"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 8397527,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-f74M9fsbnXE/AAAAAAAAAAI/AAAAAAAAAA4/eMi46a-2Mhw/photo.jpg?sz=128",
+                "display_name": "Jerome Abril",
+                "link": "https://stackoverflow.com/users/8397527/jerome-abril"
+            },
+            "is_answered": false,
+            "view_count": 37,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1524621191,
+            "creation_date": 1524621191,
+            "question_id": 50012940,
+            "body_markdown": "I have created an asp webpage that calls an ssrs report using reportviewer (v11).\r\nThe calendar parameter works fine when viewing from the ssrs report server but when viewed from the asp page, the calendar drowdown is not showing, any ideas why?\r\n\r\nThis only happens when I view the asp page from chrome. it works fine in IE. Is there any fixes for this?",
+            "link": "https://stackoverflow.com/questions/50012940/calendar-parameter-not-showing-in-asp-report-viewer",
+            "title": "Calendar parameter not showing in asp report viewer",
+            "body": "<p>I have created an asp webpage that calls an ssrs report using reportviewer (v11).\nThe calendar parameter works fine when viewing from the ssrs report server but when viewed from the asp page, the calendar drowdown is not showing, any ideas why?</p>\n\n<p>This only happens when I view the asp page from chrome. it works fine in IE. Is there any fixes for this?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-3.x",
+                "pandas",
+                "dataframe"
+            ],
+            "owner": {
+                "reputation": 23,
+                "user_id": 8236556,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/05db65ab4c93cfe3184a9c33da05b7e6?s=128&d=identicon&r=PG&f=1",
+                "display_name": "amarion",
+                "link": "https://stackoverflow.com/users/8236556/amarion"
+            },
+            "is_answered": true,
+            "view_count": 27,
+            "accepted_answer_id": 49999849,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1524621189,
+            "creation_date": 1524566337,
+            "last_edit_date": 1524621175,
+            "question_id": 49999610,
+            "body_markdown": "*By writing this question I found a solution but maybe this will help someone else.*\r\n\r\nI have 2 simple DataFrames I need to merge. Both have one column in common and I want to use this column as index *(this is where is figured out the solution)*.\r\n \r\n\r\n    &gt;&gt;&gt; df1\r\n       A  B\r\n       a  b\r\n    0  0  3\r\n    1  1  4\r\n    2  2  5\r\n    &gt;&gt;&gt; df2\r\n       A  C\r\n       a  c\r\n    0  2  6\r\n    1  1  7\r\n    2  0  8\r\n\r\nAnd I want something like\r\n\r\n    &gt;&gt;&gt; df\r\n       A  B  C\r\n       a  b  c\r\n    0  0  3  8\r\n    1  1  4  7\r\n    2  2  5  6\r\n\r\nThis does not work\r\n\r\n    df1.merge(df2, left_on=((&#39;A&#39;,&#39;a&#39;)), right_on=((&#39;A&#39;,&#39;a&#39;)))\r\n\r\nedit: My solution is in answers\r\n",
+            "link": "https://stackoverflow.com/questions/49999610/merge-dataframe-by-mutliindex-column-solved",
+            "title": "Merge DataFrame by Mutliindex column (Solved)",
+            "body": "<p><em>By writing this question I found a solution but maybe this will help someone else.</em></p>\n\n<p>I have 2 simple DataFrames I need to merge. Both have one column in common and I want to use this column as index <em>(this is where is figured out the solution)</em>.</p>\n\n<pre><code>&gt;&gt;&gt; df1\n   A  B\n   a  b\n0  0  3\n1  1  4\n2  2  5\n&gt;&gt;&gt; df2\n   A  C\n   a  c\n0  2  6\n1  1  7\n2  0  8\n</code></pre>\n\n<p>And I want something like</p>\n\n<pre><code>&gt;&gt;&gt; df\n   A  B  C\n   a  b  c\n0  0  3  8\n1  1  4  7\n2  2  5  6\n</code></pre>\n\n<p>This does not work</p>\n\n<pre><code>df1.merge(df2, left_on=(('A','a')), right_on=(('A','a')))\n</code></pre>\n\n<p>edit: My solution is in answers</p>\n"
+        },
+        {
+            "tags": [
+                "reactjs",
+                "facebook-login"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9327486,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/6252d2e86e490e985a136673cd1f0a45?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Rohit Sharma",
+                "link": "https://stackoverflow.com/users/9327486/rohit-sharma"
+            },
+            "is_answered": false,
+            "view_count": 27,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524621186,
+            "creation_date": 1524621186,
+            "question_id": 50012937,
+            "body_markdown": "I am using js sdk in react to login through fb. Earlier it was working fine but suddenly it started showing &#39;url blocked&#39; error. The funny part is sometime it works and most of the time it doesn&#39;t. I tried with all the possible combination of http, https, www and mydomain but no luck in any case. Could anyone please help me out through this. I am using react-facebook-login react library.",
+            "link": "https://stackoverflow.com/questions/50012937/valid-oauth-redirect-uris-for-facebook-login",
+            "title": "&#39;Valid OAuth redirect URIs&#39; for facebook login",
+            "body": "<p>I am using js sdk in react to login through fb. Earlier it was working fine but suddenly it started showing 'url blocked' error. The funny part is sometime it works and most of the time it doesn't. I tried with all the possible combination of http, https, www and mydomain but no luck in any case. Could anyone please help me out through this. I am using react-facebook-login react library.</p>\n"
+        },
+        {
+            "tags": [
+                "amazon-web-services",
+                "devops",
+                "continuous-deployment",
+                "aws-codepipeline"
+            ],
+            "owner": {
+                "reputation": 23,
+                "user_id": 6242398,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/f62c155cfec2b119ab13b71a74a2dcba?s=128&d=identicon&r=PG&f=1",
+                "display_name": "S. Govindankutty",
+                "link": "https://stackoverflow.com/users/6242398/s-govindankutty"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524621175,
+            "creation_date": 1524068997,
+            "question_id": 49904711,
+            "body_markdown": "What is the best mechanism to implement to rollback a deployment that is orchestrated using CodePipeline? The source comes from a S3 bucket and we are looking to see if there is a one-lick rollback mechanism without manual intervention.",
+            "link": "https://stackoverflow.com/questions/49904711/rollback-a-build-using-aws-codepipeline",
+            "title": "Rollback a build using AWS CodePipeline",
+            "body": "<p>What is the best mechanism to implement to rollback a deployment that is orchestrated using CodePipeline? The source comes from a S3 bucket and we are looking to see if there is a one-lick rollback mechanism without manual intervention.</p>\n"
+        },
+        {
+            "tags": [
+                "assembly",
+                "mips"
+            ],
+            "owner": {
+                "reputation": 21,
+                "user_id": 6366559,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/06dc7c54e77d7265ef22b1daad68c2e1?s=128&d=identicon&r=PG&f=1",
+                "display_name": "bubuStar",
+                "link": "https://stackoverflow.com/users/6366559/bubustar"
+            },
+            "is_answered": true,
+            "view_count": 26,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524621169,
+            "creation_date": 1524610893,
+            "question_id": 50011838,
+            "body_markdown": "I am studying computer architecture (MIPS architecture) and read the following statements:\r\n\r\n1.Branch instructions have a 16 bit signed word offset field that allows a branch to an address + or -128kBytes (+0x1FFFC TO -0X20000) from the current location.\r\n\r\n2.A jump instruction specifies an address within the current 256MByte(0x0FFFFFFC) region specified by Program counter most significant 4 bits.\r\n\r\nI understand the concept of jump range described above but how are the three numbers 0x0FFFFFFC, 0x1FFFC and 0X20000 calculated using &quot;the range of 256Mbyte&quot; and &quot;the range of +-128 kbytes&quot;?\r\n\r\nThanks!",
+            "link": "https://stackoverflow.com/questions/50011838/how-are-the-maximum-single-jump-range-of-mips-branch-instructions-calculated",
+            "title": "How are the maximum single jump range of MIPS branch instructions calculated?",
+            "body": "<p>I am studying computer architecture (MIPS architecture) and read the following statements:</p>\n\n<p>1.Branch instructions have a 16 bit signed word offset field that allows a branch to an address + or -128kBytes (+0x1FFFC TO -0X20000) from the current location.</p>\n\n<p>2.A jump instruction specifies an address within the current 256MByte(0x0FFFFFFC) region specified by Program counter most significant 4 bits.</p>\n\n<p>I understand the concept of jump range described above but how are the three numbers 0x0FFFFFFC, 0x1FFFC and 0X20000 calculated using \"the range of 256Mbyte\" and \"the range of +-128 kbytes\"?</p>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "mysql",
+                "sql",
+                "sqlfiddle",
+                "fiddle"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 9682228,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "warhammer",
+                "link": "https://stackoverflow.com/users/9682228/warhammer"
+            },
+            "is_answered": true,
+            "view_count": 31,
+            "accepted_answer_id": 50009617,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524621164,
+            "creation_date": 1524598450,
+            "last_edit_date": 1524621164,
+            "question_id": 50009551,
+            "body_markdown": "I am having issues with building the schema for my salesorderslineitem table. Even when I try to build the schema by itself in fiddle. I get an error msg  cannot add foreign key constraint... Here my tables together trying to get the new salesorderslineitem table working. Thanks everyone!\r\n\r\n    CREATE TABLE salesorders\r\n    ( donut_order_id             INT(10) NOT NULL AUTO_INCREMENT,\r\n      customer_id                INT,\r\n      date                       DATETIME,\r\n      special_handling_note      TEXT,\r\n      PRIMARY KEY (donut_order_id),\r\n      FOREIGN KEY (customer_id) REFERENCES customers(customer_id)\r\n    );\r\n \r\n    INSERT INTO salesorders\r\n     (donut_order_id,date,special_handling_note)\r\n \r\n    VALUES( 0000001,&quot;2018-04-22&quot;,&quot;Please include plates and napkins&quot;);\r\n\r\n    CREATE TABLE salesorderslineitem\r\n    (\r\n      donut_order_id     INT(10) NOT NULL, \r\n      donut_id           INT(10) NOT NULL,\r\n      qty                INT(10) NOT NULL,\r\n      PRIMARY KEY (donut_order_id, donut_id),\r\n      FOREIGN KEY (donut_order_id) REFERENCES salesorders(donut_order_id),\r\n      FOREIGN KEY (donut_id) REFERENCES donuts(donut_id)\r\n     );\r\n\r\n    INSERT INTO salesorderslineitem\r\n     (qty)\r\n \r\n    VALUES (10);\r\n\r\n    CREATE TABLE donuts\r\n     (donut_id     INT(10) NOT NULL AUTO_INCREMENT,\r\n      name         VARCHAR(30),\r\n      description  VARCHAR(50),\r\n      unit_price   DECIMAL(8,3),\r\n      PRIMARY KEY (donut_id)\r\n     );\r\n \r\n    INSERT INTO donuts\r\n     (name,description,unit_price)",
+            "link": "https://stackoverflow.com/questions/50009551/sql-fiddle-cannot-add-foreign-key-constraint",
+            "title": "SQL Fiddle - cannot add foreign key constraint",
+            "body": "<p>I am having issues with building the schema for my salesorderslineitem table. Even when I try to build the schema by itself in fiddle. I get an error msg  cannot add foreign key constraint... Here my tables together trying to get the new salesorderslineitem table working. Thanks everyone!</p>\n\n<pre><code>CREATE TABLE salesorders\n( donut_order_id             INT(10) NOT NULL AUTO_INCREMENT,\n  customer_id                INT,\n  date                       DATETIME,\n  special_handling_note      TEXT,\n  PRIMARY KEY (donut_order_id),\n  FOREIGN KEY (customer_id) REFERENCES customers(customer_id)\n);\n\nINSERT INTO salesorders\n (donut_order_id,date,special_handling_note)\n\nVALUES( 0000001,\"2018-04-22\",\"Please include plates and napkins\");\n\nCREATE TABLE salesorderslineitem\n(\n  donut_order_id     INT(10) NOT NULL, \n  donut_id           INT(10) NOT NULL,\n  qty                INT(10) NOT NULL,\n  PRIMARY KEY (donut_order_id, donut_id),\n  FOREIGN KEY (donut_order_id) REFERENCES salesorders(donut_order_id),\n  FOREIGN KEY (donut_id) REFERENCES donuts(donut_id)\n );\n\nINSERT INTO salesorderslineitem\n (qty)\n\nVALUES (10);\n\nCREATE TABLE donuts\n (donut_id     INT(10) NOT NULL AUTO_INCREMENT,\n  name         VARCHAR(30),\n  description  VARCHAR(50),\n  unit_price   DECIMAL(8,3),\n  PRIMARY KEY (donut_id)\n );\n\nINSERT INTO donuts\n (name,description,unit_price)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "string"
+            ],
+            "owner": {
+                "reputation": 1231,
+                "user_id": 2669716,
+                "user_type": "registered",
+                "accept_rate": 97,
+                "profile_image": "https://i.stack.imgur.com/nCRgK.jpg?s=128&g=1",
+                "display_name": "Anirudh",
+                "link": "https://stackoverflow.com/users/2669716/anirudh"
+            },
+            "is_answered": true,
+            "view_count": 2195,
+            "accepted_answer_id": 20301467,
+            "answer_count": 16,
+            "score": 0,
+            "last_activity_date": 1524621151,
+            "creation_date": 1385817161,
+            "last_edit_date": 1385818470,
+            "question_id": 20300671,
+            "body_markdown": "I was trying to get around the below problem in codingBat for Java:\r\nhttp://codingbat.com/prob/p121193\r\n\r\n*Given a string, return the sum of the numbers appearing in the string, ignoring all other characters. A number is a series of 1 or more digit chars in a row. (Note: Character.isDigit(char) tests if a char is one of the chars &#39;0&#39;, &#39;1&#39;, .. &#39;9&#39;. Integer.parseInt(string) converts a string to an int.)\r\nsumNumbers(&quot;abc123xyz&quot;) → 123\r\nsumNumbers(&quot;aa11b33&quot;) → 44\r\nsumNumbers(&quot;7 11&quot;) → 18*\r\n\r\n\r\n\r\n\r\nBelow is my solution\r\n\r\n    public int sumNumbers(String str) {\r\n      final int len=str.length();\r\n      \r\n      int[] numbers=new int[len];\r\n      int count=0;\r\n      String temp=&quot;&quot;;\r\n      int sum=0;\r\n      \r\n      for(int i=0;i&lt;len;i++)\r\n      {\r\n         if(Character.isDigit(str.charAt(i)))\r\n         {\r\n            temp=temp+str.substring(i, i+1);\r\n             \r\n            if(i==len-1)\r\n            {\r\n              numbers[count]=Integer.parseInt(temp);\r\n              break;\r\n             }\r\n            if(Character.isDigit(str.charAt(i+1)))\r\n            {\r\n               continue;\r\n            }\r\n            else\r\n            {\r\n              numbers[count]=Integer.parseInt(temp);\r\n              count++;\r\n              temp=&quot;&quot;;\r\n            } \r\n         }   \r\n         \r\n       }\r\n       for(int j=0;j&lt;numbers.length;j++)\r\n       {\r\n          sum=sum+numbers[j];\r\n        }\r\n        return sum;  \r\n          \r\n    }\r\n\r\n\r\nIt&#39;s a simple problem please provide any alternative efficient answers using regex or anyway other PLEASE DO NOT USE ANYTHING FROM COLLECTIONS FRAMEWORK. \r\n",
+            "link": "https://stackoverflow.com/questions/20300671/alternate-codingbat-sumnumbers-exercise-solution",
+            "title": "Alternate CodingBat sumNumbers exercise solution",
+            "body": "<p>I was trying to get around the below problem in codingBat for Java:\n<a href=\"http://codingbat.com/prob/p121193\" rel=\"nofollow\">http://codingbat.com/prob/p121193</a></p>\n\n<p><em>Given a string, return the sum of the numbers appearing in the string, ignoring all other characters. A number is a series of 1 or more digit chars in a row. (Note: Character.isDigit(char) tests if a char is one of the chars '0', '1', .. '9'. Integer.parseInt(string) converts a string to an int.)\nsumNumbers(\"abc123xyz\") → 123\nsumNumbers(\"aa11b33\") → 44\nsumNumbers(\"7 11\") → 18</em></p>\n\n<p>Below is my solution</p>\n\n<pre><code>public int sumNumbers(String str) {\n  final int len=str.length();\n\n  int[] numbers=new int[len];\n  int count=0;\n  String temp=\"\";\n  int sum=0;\n\n  for(int i=0;i&lt;len;i++)\n  {\n     if(Character.isDigit(str.charAt(i)))\n     {\n        temp=temp+str.substring(i, i+1);\n\n        if(i==len-1)\n        {\n          numbers[count]=Integer.parseInt(temp);\n          break;\n         }\n        if(Character.isDigit(str.charAt(i+1)))\n        {\n           continue;\n        }\n        else\n        {\n          numbers[count]=Integer.parseInt(temp);\n          count++;\n          temp=\"\";\n        } \n     }   \n\n   }\n   for(int j=0;j&lt;numbers.length;j++)\n   {\n      sum=sum+numbers[j];\n    }\n    return sum;  \n\n}\n</code></pre>\n\n<p>It's a simple problem please provide any alternative efficient answers using regex or anyway other PLEASE DO NOT USE ANYTHING FROM COLLECTIONS FRAMEWORK. </p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "shader",
+                "metal",
+                "alphablending",
+                "metalkit"
+            ],
+            "owner": {
+                "reputation": 572,
+                "user_id": 3537411,
+                "user_type": "registered",
+                "accept_rate": 76,
+                "profile_image": "https://www.gravatar.com/avatar/38f850eb4c9af8131c5e3e3a99c425d0?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3537411",
+                "link": "https://stackoverflow.com/users/3537411/user3537411"
+            },
+            "is_answered": false,
+            "view_count": 55,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524621130,
+            "creation_date": 1524621130,
+            "question_id": 50012930,
+            "body_markdown": "I can&#39;t achieve correct color representation in my very basic Metal-project if its CAMetalLayer `pixelFormat` is setted to `rgba8Unorm_srgb`. By correct I mean that my UIColor&#39;s and UIImage&#39;s should appear the same in Metal like in UIKit. I have find out that it&#39;s exactly that if my CAMetalLayer pixelFormat is `rgba8Unorm`. But I really need to use `rgba8Unorm_srgb`.\r\n\r\nI&#39;ve attached two screenshot of this project. It has a squared CAMetalLayer. It&#39;s gray background color is its `MTLRenderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0.5, 0.5, 0.5, 1)`. It also have white and black quads and one another quad with red gradient above them, which actually uses standard alpha blending:\r\n\r\n    colorAttachments[0].rgbBlendOperation = .add\r\n    colorAttachments[0].alphaBlendOperation = .add\r\n                \r\n    colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha\r\n    colorAttachments[0].sourceAlphaBlendFactor = .sourceAlpha\r\n                \r\n    colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha\r\n    colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha\r\n\r\nThe only difference between the two screenshots is their CAMetalLayer pixelFormat. But as you can see even the clear color is already different. (They actually different exactly by the gamma-correction). White and black are the same, but all the other colors are different too. Alpha blending does&#39;t work correctly too on `rgba8Unorm_srgb`: you can see, that its half on the white destination is desaturated, and it half on the black destination is oversaturated.\r\n\r\nFrom my understanding I don&#39;t need to worry about gamma-correction, don&#39;t need to modify my shaders or colors. Metal should do all the math in linear space regardless of pixelFormat. So why is that happening?\r\n\r\n[![rgba8Unorm][2]][2]\r\n[![rgba8Unorm_srgb][1]][1]\r\n\r\n  [1]: https://i.stack.imgur.com/5QylV.png\r\n  [2]: https://i.stack.imgur.com/gdQWB.png\r\n",
+            "link": "https://stackoverflow.com/questions/50012930/metal-color-representation-issues-with-srgb-pixel-format",
+            "title": "Metal color representation issues (with sRGB pixel format)",
+            "body": "<p>I can't achieve correct color representation in my very basic Metal-project if its CAMetalLayer <code>pixelFormat</code> is setted to <code>rgba8Unorm_srgb</code>. By correct I mean that my UIColor's and UIImage's should appear the same in Metal like in UIKit. I have find out that it's exactly that if my CAMetalLayer pixelFormat is <code>rgba8Unorm</code>. But I really need to use <code>rgba8Unorm_srgb</code>.</p>\n\n<p>I've attached two screenshot of this project. It has a squared CAMetalLayer. It's gray background color is its <code>MTLRenderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0.5, 0.5, 0.5, 1)</code>. It also have white and black quads and one another quad with red gradient above them, which actually uses standard alpha blending:</p>\n\n<pre><code>colorAttachments[0].rgbBlendOperation = .add\ncolorAttachments[0].alphaBlendOperation = .add\n\ncolorAttachments[0].sourceRGBBlendFactor = .sourceAlpha\ncolorAttachments[0].sourceAlphaBlendFactor = .sourceAlpha\n\ncolorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha\ncolorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha\n</code></pre>\n\n<p>The only difference between the two screenshots is their CAMetalLayer pixelFormat. But as you can see even the clear color is already different. (They actually different exactly by the gamma-correction). White and black are the same, but all the other colors are different too. Alpha blending does't work correctly too on <code>rgba8Unorm_srgb</code>: you can see, that its half on the white destination is desaturated, and it half on the black destination is oversaturated.</p>\n\n<p>From my understanding I don't need to worry about gamma-correction, don't need to modify my shaders or colors. Metal should do all the math in linear space regardless of pixelFormat. So why is that happening?</p>\n\n<p><a href=\"https://i.stack.imgur.com/gdQWB.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/gdQWB.png\" alt=\"rgba8Unorm\"></a>\n<a href=\"https://i.stack.imgur.com/5QylV.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/5QylV.png\" alt=\"rgba8Unorm_srgb\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "scala",
+                "apache-spark",
+                "spark-dataframe",
+                "user-defined-functions"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 9673162,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Shiva",
+                "link": "https://stackoverflow.com/users/9673162/shiva"
+            },
+            "is_answered": true,
+            "view_count": 49,
+            "accepted_answer_id": 50008840,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1524621125,
+            "creation_date": 1524593788,
+            "last_edit_date": 1524595456,
+            "question_id": 50008394,
+            "body_markdown": "I am trying to break a string (technically strings passed from a column in a dataframe) and return these broken strings as list to dataframe.  Scala version 2.11.  I would prefer scala or pyspark solutions with udf&#39;s - because there is a lot happening inside the udf.  \r\n\r\nLet us say that I have a dataframe:\r\n \r\n\r\n    val df = List((&quot;123&quot;, &quot;a*b*c*d*e*f*x*y*z&quot;), (&quot;124&quot;, &quot;g*h*i*j*k*l*m*n*o&quot;)).toDF(&quot;A&quot;, &quot;B&quot;)\r\n\r\nThe result I want (in a udf, because there is a lot happening in there; Scala version 2.11) --\r\n\r\n     A       B\r\n    123    ((a, b, c),\r\n            (d, e, f),\r\n            (x, y, z))\r\n    124    ((g, h, i),\r\n            (j, k, l), \r\n            (m, n, o))\r\n\r\nWrite a udf to break this and return lists - but, I do not know how to define or pass schema to get the results back into the dataframe as three columns.  \r\n\r\n    def testUdf =  udf( (s: String) =&gt; { \r\n      val a = s.split(&quot;\\\\*&quot;).take(3).toList\r\n      val b = s.split(&quot;\\\\*&quot;).drop(3).take(3).toList\r\n      val c = s.split(&quot;\\\\*&quot;).drop(6).take(3).toList\r\n      val abc = (a, b, c).zipped.toList.asInstanceOf[List[String]]\r\n      // println (abc) // This does not work\r\n    } )\r\n    val df2 = df.select($&quot;A&quot;, testUdf($&quot;B&quot;).as(&quot;B&quot;)) // does not work because of type mismatch. \r\n\r\nI tried doing this - but, I do not know how to pass schema to the Udf above:\r\n    \r\n       val schema = StructType(List(\r\n         StructField(&quot;C1&quot;, StringType),\r\n         StructField(&quot;C2&quot;, StringType),\r\n         StructField(&quot;C3&quot;, StringType)\r\n       ))\r\n\r\nAlso, following this, I hope to follow the procedure outlined on https://stackoverflow.com/questions/45386214/explode-multiple-columns-in-spark-sql-table?utm_medium=organic&amp;utm_source=google_rich_qa&amp;utm_campaign=google_rich_qa  to explode the dataframe.  \r\n\r\nHelp would be greatly appreciated. ",
+            "link": "https://stackoverflow.com/questions/50008394/scala-return-multiple-columns-in-an-udf-after-breaking-a-string",
+            "title": "Scala return multiple columns in an UDF after breaking a string",
+            "body": "<p>I am trying to break a string (technically strings passed from a column in a dataframe) and return these broken strings as list to dataframe.  Scala version 2.11.  I would prefer scala or pyspark solutions with udf's - because there is a lot happening inside the udf.  </p>\n\n<p>Let us say that I have a dataframe:</p>\n\n<pre><code>val df = List((\"123\", \"a*b*c*d*e*f*x*y*z\"), (\"124\", \"g*h*i*j*k*l*m*n*o\")).toDF(\"A\", \"B\")\n</code></pre>\n\n<p>The result I want (in a udf, because there is a lot happening in there; Scala version 2.11) --</p>\n\n<pre><code> A       B\n123    ((a, b, c),\n        (d, e, f),\n        (x, y, z))\n124    ((g, h, i),\n        (j, k, l), \n        (m, n, o))\n</code></pre>\n\n<p>Write a udf to break this and return lists - but, I do not know how to define or pass schema to get the results back into the dataframe as three columns.  </p>\n\n<pre><code>def testUdf =  udf( (s: String) =&gt; { \n  val a = s.split(\"\\\\*\").take(3).toList\n  val b = s.split(\"\\\\*\").drop(3).take(3).toList\n  val c = s.split(\"\\\\*\").drop(6).take(3).toList\n  val abc = (a, b, c).zipped.toList.asInstanceOf[List[String]]\n  // println (abc) // This does not work\n} )\nval df2 = df.select($\"A\", testUdf($\"B\").as(\"B\")) // does not work because of type mismatch. \n</code></pre>\n\n<p>I tried doing this - but, I do not know how to pass schema to the Udf above:</p>\n\n<pre><code>   val schema = StructType(List(\n     StructField(\"C1\", StringType),\n     StructField(\"C2\", StringType),\n     StructField(\"C3\", StringType)\n   ))\n</code></pre>\n\n<p>Also, following this, I hope to follow the procedure outlined on <a href=\"https://stackoverflow.com/questions/45386214/explode-multiple-columns-in-spark-sql-table?utm_medium=organic&amp;utm_source=google_rich_qa&amp;utm_campaign=google_rich_qa\">Explode multiple columns in Spark SQL table</a>  to explode the dataframe.  </p>\n\n<p>Help would be greatly appreciated. </p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift",
+                "swift-package-manager"
+            ],
+            "owner": {
+                "reputation": 573,
+                "user_id": 6421759,
+                "user_type": "registered",
+                "accept_rate": 57,
+                "profile_image": "https://i.stack.imgur.com/xD84x.jpg?s=128&g=1",
+                "display_name": "Faustino Gagneten",
+                "link": "https://stackoverflow.com/users/6421759/faustino-gagneten"
+            },
+            "is_answered": true,
+            "view_count": 103,
+            "closed_date": 1521495363,
+            "accepted_answer_id": 49367937,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1524621117,
+            "creation_date": 1521476406,
+            "last_edit_date": 1521505760,
+            "question_id": 49367699,
+            "body_markdown": "Well, I&#39;m building an iOS mobile app with Swift 4 and Xcode 9.\r\n\r\nWhat I&#39;m trying to decide which package manager is better to use: **Carthage**, **CocoaPods** or **Swift Package Manager (SPM)**.\r\n\r\nI would rather prefer Carthage than CocoaPods. However, I&#39;m starting looking at SPM. Everybody says that will replace CocoaPods.\r\n\r\nSo I said: Why don&#39;t we start using SPM instead of CocoaPods?\r\n\r\n**But** the documentation explains:\r\n\r\n&gt; Note that at this time the Package Manager has no support for iOS,\r\n&gt; watchOS, or tvOS platforms.\r\n\r\nThat quote made me wonder a question:\r\n\r\n Does it means that I won&#39;t be able to use it in my mobile iOS project? \r\n\r\nI think there is not much information about SPM. \r\n\r\nThanks!",
+            "link": "https://stackoverflow.com/questions/49367699/what-does-it-means-that-swift-package-manager-has-no-support-for-ios",
+            "closed_reason": "too broad",
+            "title": "What does it means that Swift Package Manager has no support for iOS?",
+            "body": "<p>Well, I'm building an iOS mobile app with Swift 4 and Xcode 9.</p>\n\n<p>What I'm trying to decide which package manager is better to use: <strong>Carthage</strong>, <strong>CocoaPods</strong> or <strong>Swift Package Manager (SPM)</strong>.</p>\n\n<p>I would rather prefer Carthage than CocoaPods. However, I'm starting looking at SPM. Everybody says that will replace CocoaPods.</p>\n\n<p>So I said: Why don't we start using SPM instead of CocoaPods?</p>\n\n<p><strong>But</strong> the documentation explains:</p>\n\n<blockquote>\n  <p>Note that at this time the Package Manager has no support for iOS,\n  watchOS, or tvOS platforms.</p>\n</blockquote>\n\n<p>That quote made me wonder a question:</p>\n\n<p>Does it means that I won't be able to use it in my mobile iOS project? </p>\n\n<p>I think there is not much information about SPM. </p>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "reactjs",
+                "redux",
+                "react-redux"
+            ],
+            "owner": {
+                "reputation": 651,
+                "user_id": 3989939,
+                "user_type": "registered",
+                "accept_rate": 84,
+                "profile_image": "https://www.gravatar.com/avatar/530734853101ecc62e278406ed5b9065?s=128&d=identicon&r=PG&f=1",
+                "display_name": "JavascriptLoser",
+                "link": "https://stackoverflow.com/users/3989939/javascriptloser"
+            },
+            "is_answered": true,
+            "view_count": 26,
+            "accepted_answer_id": 49142464,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524621104,
+            "creation_date": 1520384036,
+            "last_edit_date": 1524621104,
+            "question_id": 49142437,
+            "body_markdown": "I&#39;m having a really strange issue in react in which my reducers seem to be modifying parts of the state that they shouldn&#39;t, I&#39;m sure this is due to some oversight in my implementation, but I can&#39;t track it down.\r\n\r\nI currently have one store, two actions/action creators, two reducers, and one root reducer. Here is my code, (left out some unimportant details):\r\n\r\n    //actionTypes.ts\r\n\r\n    export const SUBMIT_SEARCH = &quot;SUBMIT_SEARCH&quot;;\r\n    export const CHANGE_SEARCH_PAGE = &quot;CHANGE_SEARCH_PAGE&quot;;\r\n\r\n-\r\n\r\n    //actionCreators.ts\r\n\r\n    import { SUBMIT_SEARCH, CHANGE_SEARCH_PAGE } from &quot;./actionTypes&quot;\r\n\r\n    export const submitSearch = (submitSearch) =&gt; ({\r\n        type: SUBMIT_SEARCH,\r\n        submitSearch\r\n    });\r\n\r\n    export const changeSearchPage = (changeSearchPage) =&gt; ({\r\n        type: CHANGE_SEARCH_PAGE,\r\n        changeSearchPage\r\n    });\r\n\r\n-\r\n\r\n    //submitSearchReducer.ts\r\n\r\n    import { SUBMIT_SEARCH } from &quot;../actions/actionTypes&quot;;\r\n\r\n    const submitSearch = (state = {}, action) =&gt; {\r\n        switch (action.type) {\r\n        case SUBMIT_SEARCH:\r\n            return {\r\n                ...state,\r\n                submitSearch: action.submitSearch\r\n            }\r\n        default:\r\n            return state;\r\n        };\r\n    };\r\n\r\n    export default submitSearch;\r\n\r\n-\r\n\r\n    //changeSearchPageReducer.ts\r\n\r\n    import { CHANGE_SEARCH_PAGE } from &quot;../actions/actionTypes&quot;;\r\n\r\n    const changeSearchPage = (state = {}, action) =&gt; {\r\n        switch (action.type) {\r\n            case CHANGE_SEARCH_PAGE:\r\n                return {\r\n                    ...state,\r\n                    changeSearchPage: action.changeSearchPage\r\n                }\r\n            default:\r\n                return state;\r\n        };\r\n    };\r\n\r\n    export default changeSearchPage;\r\n\r\n-\r\n\r\n    //rootReducer.ts\r\n\r\n    import { combineReducers } from &#39;redux&#39;;\r\n    import submitSearch from &quot;../reducers/submitSearchReducer&quot;\r\n    import changeSearchPage from &quot;../reducers/submitSearchReducer&quot;;\r\n\r\n    const rootReducer = combineReducers({\r\n        submitSearch: submitSearch,\r\n        changeSearchPage: changeSearchPage\r\n    });\r\n\r\n    export default rootReducer;\r\n\r\n-\r\n\r\nI create the store like this:\r\n\r\n    const logger = createLogger();\r\n    const store: Store&lt;any&gt; = createStore(rootReducer, {/*Initial state empty*/}, applyMiddleware(logger));\r\n\r\n-\r\n\r\nThe general flow is like this:\r\n\r\n - User enters a search string on the page which triggers a `store.dispatch(submitSearch(string))` call\r\n - User enters a number on the page which triggers a `store.dispatch(changeSearchPage(newPage))`\r\n\r\nHere&#39;s the output from my logger:\r\n\r\n[![Search call][1]][1]\r\n[![change page call][2]][2]\r\n\r\nYou can see here that the state is clearly getting mixed up, and the wrong data is going to the changeSearchPage key.\r\n\r\nWhat is causing this mix up?",
+            "link": "https://stackoverflow.com/questions/49142437/redux-seems-to-be-getting-state-reducers-mixed-up",
+            "title": "Redux seems to be getting state/reducers mixed up",
+            "body": "<p>I'm having a really strange issue in react in which my reducers seem to be modifying parts of the state that they shouldn't, I'm sure this is due to some oversight in my implementation, but I can't track it down.</p>\n\n<p>I currently have one store, two actions/action creators, two reducers, and one root reducer. Here is my code, (left out some unimportant details):</p>\n\n<pre><code>//actionTypes.ts\n\nexport const SUBMIT_SEARCH = \"SUBMIT_SEARCH\";\nexport const CHANGE_SEARCH_PAGE = \"CHANGE_SEARCH_PAGE\";\n</code></pre>\n\n<p>-</p>\n\n<pre><code>//actionCreators.ts\n\nimport { SUBMIT_SEARCH, CHANGE_SEARCH_PAGE } from \"./actionTypes\"\n\nexport const submitSearch = (submitSearch) =&gt; ({\n    type: SUBMIT_SEARCH,\n    submitSearch\n});\n\nexport const changeSearchPage = (changeSearchPage) =&gt; ({\n    type: CHANGE_SEARCH_PAGE,\n    changeSearchPage\n});\n</code></pre>\n\n<p>-</p>\n\n<pre><code>//submitSearchReducer.ts\n\nimport { SUBMIT_SEARCH } from \"../actions/actionTypes\";\n\nconst submitSearch = (state = {}, action) =&gt; {\n    switch (action.type) {\n    case SUBMIT_SEARCH:\n        return {\n            ...state,\n            submitSearch: action.submitSearch\n        }\n    default:\n        return state;\n    };\n};\n\nexport default submitSearch;\n</code></pre>\n\n<p>-</p>\n\n<pre><code>//changeSearchPageReducer.ts\n\nimport { CHANGE_SEARCH_PAGE } from \"../actions/actionTypes\";\n\nconst changeSearchPage = (state = {}, action) =&gt; {\n    switch (action.type) {\n        case CHANGE_SEARCH_PAGE:\n            return {\n                ...state,\n                changeSearchPage: action.changeSearchPage\n            }\n        default:\n            return state;\n    };\n};\n\nexport default changeSearchPage;\n</code></pre>\n\n<p>-</p>\n\n<pre><code>//rootReducer.ts\n\nimport { combineReducers } from 'redux';\nimport submitSearch from \"../reducers/submitSearchReducer\"\nimport changeSearchPage from \"../reducers/submitSearchReducer\";\n\nconst rootReducer = combineReducers({\n    submitSearch: submitSearch,\n    changeSearchPage: changeSearchPage\n});\n\nexport default rootReducer;\n</code></pre>\n\n<p>-</p>\n\n<p>I create the store like this:</p>\n\n<pre><code>const logger = createLogger();\nconst store: Store&lt;any&gt; = createStore(rootReducer, {/*Initial state empty*/}, applyMiddleware(logger));\n</code></pre>\n\n<p>-</p>\n\n<p>The general flow is like this:</p>\n\n<ul>\n<li>User enters a search string on the page which triggers a <code>store.dispatch(submitSearch(string))</code> call</li>\n<li>User enters a number on the page which triggers a <code>store.dispatch(changeSearchPage(newPage))</code></li>\n</ul>\n\n<p>Here's the output from my logger:</p>\n\n<p>[![Search call][1]][1]\n[![change page call][2]][2]</p>\n\n<p>You can see here that the state is clearly getting mixed up, and the wrong data is going to the changeSearchPage key.</p>\n\n<p>What is causing this mix up?</p>\n"
+        },
+        {
+            "tags": [
+                "rust"
+            ],
+            "owner": {
+                "reputation": 1423,
+                "user_id": 1244932,
+                "user_type": "registered",
+                "accept_rate": 70,
+                "profile_image": "https://www.gravatar.com/avatar/d2c608e688b798896e8b516855fc1ab1?s=128&d=identicon&r=PG",
+                "display_name": "user1244932",
+                "link": "https://stackoverflow.com/users/1244932/user1244932"
+            },
+            "is_answered": false,
+            "view_count": 58,
+            "answer_count": 0,
+            "score": 3,
+            "last_activity_date": 1524621098,
+            "creation_date": 1524619321,
+            "last_edit_date": 1524621098,
+            "question_id": 50012745,
+            "body_markdown": "Here is toy code that demonstrates the problem:\r\n\r\n    trait Foo {}\r\n    \r\n    trait Boo&lt;T&gt; {\r\n        fn f() -&gt; T;\r\n    }\r\n    \r\n    impl&lt;T&gt; Boo&lt;T&gt; for i32\r\n    where\r\n        T: Foo,\r\n    {\r\n        fn f() -&gt; T {\r\n            unimplemented!();\r\n        }\r\n    }\r\n    \r\n    impl&lt;&#39;a, T&gt; Boo&lt;&amp;&#39;a T&gt; for i32\r\n    where\r\n        T: Foo,\r\n    {\r\n        fn f() -&gt; T {\r\n            unimplemented!();\r\n        }\r\n    }\r\n\r\nI want to have two generic implementations of `trait Boo`, but it doesn&#39;t compile:\r\n\r\n&lt;!-- language: none --&gt;\r\n\r\n    error[E0119]: conflicting implementations of trait `Boo&lt;&amp;_&gt;` for type `i32`:\r\n      --&gt; src/main.rs:16:1\r\n       |\r\n    7  | / impl&lt;T&gt; Boo&lt;T&gt; for i32\r\n    8  | | where\r\n    9  | |     T: Foo,\r\n    10 | | {\r\n    ...  |\r\n    13 | |     }\r\n    14 | | }\r\n       | |_- first implementation here\r\n    15 | \r\n    16 | / impl&lt;&#39;a, T&gt; Boo&lt;&amp;&#39;a T&gt; for i32\r\n    17 | | where\r\n    18 | |     T: Foo,\r\n    19 | | {\r\n    ...  |\r\n    22 | |     }\r\n    23 | | }\r\n       | |_^ conflicting implementation for `i32`\r\n       |\r\n       = note: downstream crates may implement trait `Foo` for type `&amp;_`\r\n\r\nI do not plan to make this part of functionality to other crates. I tried: \r\n\r\n- moving this code to binary crate that obviously can not be used from other crates\r\n- moving this to a private `mod`\r\n- marking the trait as `pub(crate)` \r\n\r\nall with no success.\r\n\r\nIs there anyway to give the compiler a hint that it should not care that anybody will implement `Foo` for any reference?\r\n\r\nMaybe my toy example is not the best, so here is the real code.\r\nIt&#39;s used for integration with the C part of my program, so it&#39;s a little\r\ncomplicated.\r\n\r\n    impl&lt;T: MyTrait&gt; MyFrom&lt;Option&lt;T&gt;&gt; for *mut c_void {\r\n        fn my_from(x: Option&lt;T&gt;) -&gt; Self {\r\n            match x {\r\n                Some(x) =&gt; &lt;T&gt;::alloc_heap_for(x),\r\n                None =&gt; ptr::null_mut(),\r\n            }\r\n        }\r\n    }\r\n    \r\n    impl&lt;&#39;a, T: MyTrait&gt; MyFrom&lt;Option&lt;&amp;&#39;a T&gt;&gt; for *mut c_void {\r\n        fn my_from(x: Option&lt;&amp;&#39;a T&gt;) -&gt; Self {\r\n            match x {\r\n                Some(x) =&gt; x as *const T as *mut c_void,\r\n                None =&gt; ptr::null_mut(),\r\n            }\r\n        }\r\n    }\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50012745/is-there-a-way-to-tell-the-compiler-that-nobody-will-implement-a-trait-for-a-ref",
+            "title": "Is there a way to tell the compiler that nobody will implement a trait for a reference to a generic type?",
+            "body": "<p>Here is toy code that demonstrates the problem:</p>\n\n<pre><code>trait Foo {}\n\ntrait Boo&lt;T&gt; {\n    fn f() -&gt; T;\n}\n\nimpl&lt;T&gt; Boo&lt;T&gt; for i32\nwhere\n    T: Foo,\n{\n    fn f() -&gt; T {\n        unimplemented!();\n    }\n}\n\nimpl&lt;'a, T&gt; Boo&lt;&amp;'a T&gt; for i32\nwhere\n    T: Foo,\n{\n    fn f() -&gt; T {\n        unimplemented!();\n    }\n}\n</code></pre>\n\n<p>I want to have two generic implementations of <code>trait Boo</code>, but it doesn't compile:</p>\n\n<pre class=\"lang-none prettyprint-override\"><code>error[E0119]: conflicting implementations of trait `Boo&lt;&amp;_&gt;` for type `i32`:\n  --&gt; src/main.rs:16:1\n   |\n7  | / impl&lt;T&gt; Boo&lt;T&gt; for i32\n8  | | where\n9  | |     T: Foo,\n10 | | {\n...  |\n13 | |     }\n14 | | }\n   | |_- first implementation here\n15 | \n16 | / impl&lt;'a, T&gt; Boo&lt;&amp;'a T&gt; for i32\n17 | | where\n18 | |     T: Foo,\n19 | | {\n...  |\n22 | |     }\n23 | | }\n   | |_^ conflicting implementation for `i32`\n   |\n   = note: downstream crates may implement trait `Foo` for type `&amp;_`\n</code></pre>\n\n<p>I do not plan to make this part of functionality to other crates. I tried: </p>\n\n<ul>\n<li>moving this code to binary crate that obviously can not be used from other crates</li>\n<li>moving this to a private <code>mod</code></li>\n<li>marking the trait as <code>pub(crate)</code> </li>\n</ul>\n\n<p>all with no success.</p>\n\n<p>Is there anyway to give the compiler a hint that it should not care that anybody will implement <code>Foo</code> for any reference?</p>\n\n<p>Maybe my toy example is not the best, so here is the real code.\nIt's used for integration with the C part of my program, so it's a little\ncomplicated.</p>\n\n<pre><code>impl&lt;T: MyTrait&gt; MyFrom&lt;Option&lt;T&gt;&gt; for *mut c_void {\n    fn my_from(x: Option&lt;T&gt;) -&gt; Self {\n        match x {\n            Some(x) =&gt; &lt;T&gt;::alloc_heap_for(x),\n            None =&gt; ptr::null_mut(),\n        }\n    }\n}\n\nimpl&lt;'a, T: MyTrait&gt; MyFrom&lt;Option&lt;&amp;'a T&gt;&gt; for *mut c_void {\n    fn my_from(x: Option&lt;&amp;'a T&gt;) -&gt; Self {\n        match x {\n            Some(x) =&gt; x as *const T as *mut c_void,\n            None =&gt; ptr::null_mut(),\n        }\n    }\n}\n</code></pre>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 299
+}

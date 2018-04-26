@@ -1,0 +1,814 @@
+{
+    "items": [
+        {
+            "tags": [
+                "node.js",
+                "variables",
+                "global-variables",
+                "slack",
+                "scoping"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9693812,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "lStoffyl",
+                "link": "https://stackoverflow.com/users/9693812/lstoffyl"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524608322,
+            "creation_date": 1524608322,
+            "question_id": 50011480,
+            "body_markdown": "I have written the below to react to a Slack message whenever someone posts a link into my channel, by presenting them with three buttons and reacting with an emoji to that original message based on the button clicked. The below works the first time I test out, but when I run a subsequent test, it returns the error &quot;already reacted.&quot; In the logs I can see that the variable I have at the top of the code is returning the right message timestamp each time, but in the second run, the part that adds the reaction emoji is referencing a timestamp from the first run. I&#39;ve tried many ways to try and clear out the variable value but am really stuck here. As a disclaimer, I&#39;m very new to this so please be gentle! Any help is appreciated! Below is the code I am working with.\r\n\r\n \r\n\r\n    &quot;use strict&quot;;\r\n\r\n    require(&#39;dotenv&#39;).config();\r\n\r\n    /*\r\n    * Configuration\r\n    */ \r\n\r\n    // NPM packages to get everything working\r\n    const axios = require(&#39;axios&#39;);\r\n    const bodyParser = require(&#39;body-parser&#39;);\r\n    const express = require(&#39;express&#39;);\r\n    const qs = require(&#39;querystring&#39;);\r\n\r\n    const dialogTemplate = require(&#39;./dialog&#39;);\r\n\r\n    // grab the environment variables\r\n    const SLACK_VERIFICATION_TOKEN = process.env.SLACK_VERIFICATION_TOKEN;\r\n    const SLACK_OAUTH_TOKEN = process.env.SLACK_OAUTH_TOKEN;\r\n    const SLACK_CHANNEL = process.env.SLACK_CHANNEL;\r\n    //const SLACK_POST_TO_CHANNEL = process.env.SLACK_POST_TO_CHANNEL;\r\n\r\n    // set up the Express app\r\n    const app = express();\r\n\r\n    app.set(&#39;port&#39;, process.env.PORT || 3000);\r\n    app.use(bodyParser.urlencoded({ extended: true }));\r\n    app.use(bodyParser.json());\r\n\r\n    // set up Axios\r\n    axios.defaults.baseURL = &#39;https://slack.com&#39;;\r\n    axios.defaults.headers.common[&#39;Authorization&#39;] = `Bearer ${SLACK_OAUTH_TOKEN}`;\r\n    axios.defaults.headers.post[&#39;Content-Type&#39;] = &#39;application/json&#39;;\r\n\r\n    /*\r\n     * Default endpoint\r\n     */\r\n    app.get(&#39;/&#39;, (req, res) =&gt; {\r\n      res.send(&#39;&lt;h2&gt;The app is running&lt;/h2&gt; &lt;p&gt;Follow the&#39; +\r\n      &#39; instructions in the README to configure the Slack App and your \r\n    environment variables.&lt;/p&gt;&#39;);\r\n    });\r\n\r\n\r\n    /*\r\n     * Endpoint to receive events to which your app is subscribed\r\n     * https://api.slack.com/events-api\r\n     */\r\n\r\n    //store the message ts for later use\r\n    app.post(&#39;/slack/events&#39;, (req, res) =&gt; {\r\n        switch (req.body.type) {\r\n          case &#39;url_verification&#39;: {\r\n        // When setting up your app, Slack sends a verification challenge to the URL you specify\r\n        // and expects you to echo it back immediately.\r\n        // https://api.slack.com/events-api#request_url_configuration__amp__verification\r\n        res.send({ challenge: req.body.challenge });\r\n        break;\r\n      }      \r\n      case &#39;event_callback&#39;: {\r\n        if (req.body.token === SLACK_VERIFICATION_TOKEN) {\r\n          const event = req.body.event;\r\n          if(event.channel === SLACK_CHANNEL) {\r\n          if(event.type === &#39;link_shared&#39;){\r\n            res.status(200).end();\r\n            var eventts //variable to store the timestamp of the link message for later use.\r\n          eventts = req.body.event.message_ts;\r\n          console.log(eventts);\r\n         \r\n            // Checking for channel where link was posted\r\n            if(event.channel === SLACK_CHANNEL){\r\n              // The chat.postEphemeral method posts a message that only a specific user can see\r\n              //attachments are the buttons produced\r\n              // https://api.slack.com/methods/chat.postEphemeral\r\n              axios.post(&#39;/api/chat.postEphemeral&#39;, {\r\n                channel: event.channel,\r\n                user: event.user,\r\n                text:\r\n                  &#39;It looks like you have posted a SalesForce link. Please indicate urgency.&#39;,\r\n                attachments: [\r\n                  {\r\n                    text: &#39;&#39;,\r\n                    fallback:\r\n                      &#39;Please indicate urgency.&#39;,\r\n                    callback_id: &#39;urg_flag&#39;,\r\n                    color: &#39;#3AA3E3&#39;,\r\n                    attachment_type: &#39;default&#39;,\r\n                    actions: [\r\n                      {\r\n                        name: &#39;chooser&#39;,\r\n                        text: &#39;Low&#39;,\r\n                        type: &#39;button&#39;,\r\n                        value: &#39;Low&#39;\r\n                      },\r\n                      {\r\n                        name: &#39;chooser&#39;,\r\n                        text: &#39;Medium&#39;,\r\n                        type: &#39;button&#39;,\r\n                        value: &#39;Medium&#39;\r\n                      },\r\n                       {\r\n                        name: &#39;chooser&#39;,\r\n                        text: &#39;High&#39;,\r\n                        type: &#39;button&#39;,\r\n                        value: &#39;High&#39;\r\n                      }\r\n                    ]\r\n                  }\r\n                ]\r\n              })\r\n              .then(function(res){\r\n                console.log(res); //log out response message\r\n              })\r\n              .catch(function (error) {\r\n                console.log(error);\r\n              });\r\n            }\r\n\r\n     /*\r\n     * Endpoint to receive interactive components like message buttons, menus or \r\n    dialogs from Slack.\r\n     * https://api.slack.com/interactive-messages\r\n     */\r\n    app.post(&#39;/slack/components&#39;, (req, res) =&gt; {\r\n      const payload = JSON.parse(req.body.payload);\r\n      console.log(payload); //log the payload\r\n\r\n      //verify the request is coming from Slack by validating the token\r\n      if (payload.token === SLACK_VERIFICATION_TOKEN) {\r\n        //respond immediately \r\n        res.status(200).end();   \r\n    \r\n    switch (payload.type){\r\n      case &#39;interactive_message&#39;: {\r\n        // More info on what interactive message submissions looke like here:\r\n        // https://api.slack.com/docs/interactive-message-field-guide#action_payload\r\n        var action = payload.actions[0];\r\n        // the user has clicked the button to indicate urgency\r\n        if(action[&#39;value&#39;] === &#39;High&#39;){\r\n          axios.post(&#39;https://slack.com/api/reactions.add&#39;, {\r\n            name:&#39;red_circle&#39;,\r\n            channel: payload.channel.id,\r\n            timestamp: eventts,\r\n          } \r\n                    ).then(function(res){\r\n            console.log(res);\r\n          })\r\n          .catch(function (error) {\r\n            console.log(error);\r\n          });\r\n        } \r\n        }\r\n        case &#39;interactive_message&#39;: {\r\n        // More info on what interactive message submissions looke like here:\r\n        // https://api.slack.com/docs/interactive-message-field-guide#action_payload\r\n        const action = payload.actions[0];\r\n        // the user has clicked the button to indicate urgency\r\n        if(action[&#39;value&#39;] === &#39;Medium&#39;){\r\n          axios.post(&#39;https://slack.com/api/reactions.add&#39;, {\r\n            name:&#39;yellow_heart&#39;,\r\n            channel: payload.channel.id,\r\n            timestamp: eventts,\r\n          }\r\n                    ).then(function(res){\r\n            console.log(res);\r\n          })\r\n          .catch(function (error) {\r\n            console.log(error);\r\n          });\r\n        }\r\n        }\r\n        case &#39;interactive_message&#39;: {\r\n        // More info on what interactive message submissions looke like here:\r\n        // https://api.slack.com/docs/interactive-message-field-guide#action_payload\r\n        const action = payload.actions[0];\r\n        // the user has clicked the button to indicate urgency\r\n        if(action[&#39;value&#39;] === &#39;Low&#39;){\r\n          axios.post(&#39;https://slack.com/api/reactions.add&#39;, {\r\n            name:&#39;green_apple&#39;,\r\n            channel: payload.channel.id,\r\n            timestamp: eventts,\r\n          }\r\n                    ).then(function(res){\r\n            console.log(res);\r\n          })\r\n          .catch(function (error) {\r\n            console.log(error);\r\n          });\r\n        }\r\n        }\r\n      } \r\n      } else { res.sendStatus(500); }\r\n    });\r\n          }break; //end of overall scope for variable\r\n         } \r\n        }\r\n       }\r\n      }\r\n    });\r\n\r\n\r\n\r\n\r\n\r\n\r\n    /*\r\n     * Start the express server\r\n     */\r\n    app.listen(app.get(&#39;port&#39;), () =&gt; {\r\n      console.log(`App listening on port ${app.get(&#39;port&#39;)}!`);\r\n    });\r\n\r\n\r\nThanks!",
+            "link": "https://stackoverflow.com/questions/50011480/variable-caching-values-when-referencing-multiple-times",
+            "title": "Variable Caching Values When Referencing Multiple Times",
+            "body": "<p>I have written the below to react to a Slack message whenever someone posts a link into my channel, by presenting them with three buttons and reacting with an emoji to that original message based on the button clicked. The below works the first time I test out, but when I run a subsequent test, it returns the error \"already reacted.\" In the logs I can see that the variable I have at the top of the code is returning the right message timestamp each time, but in the second run, the part that adds the reaction emoji is referencing a timestamp from the first run. I've tried many ways to try and clear out the variable value but am really stuck here. As a disclaimer, I'm very new to this so please be gentle! Any help is appreciated! Below is the code I am working with.</p>\n\n<pre><code>\"use strict\";\n\nrequire('dotenv').config();\n\n/*\n* Configuration\n*/ \n\n// NPM packages to get everything working\nconst axios = require('axios');\nconst bodyParser = require('body-parser');\nconst express = require('express');\nconst qs = require('querystring');\n\nconst dialogTemplate = require('./dialog');\n\n// grab the environment variables\nconst SLACK_VERIFICATION_TOKEN = process.env.SLACK_VERIFICATION_TOKEN;\nconst SLACK_OAUTH_TOKEN = process.env.SLACK_OAUTH_TOKEN;\nconst SLACK_CHANNEL = process.env.SLACK_CHANNEL;\n//const SLACK_POST_TO_CHANNEL = process.env.SLACK_POST_TO_CHANNEL;\n\n// set up the Express app\nconst app = express();\n\napp.set('port', process.env.PORT || 3000);\napp.use(bodyParser.urlencoded({ extended: true }));\napp.use(bodyParser.json());\n\n// set up Axios\naxios.defaults.baseURL = 'https://slack.com';\naxios.defaults.headers.common['Authorization'] = `Bearer ${SLACK_OAUTH_TOKEN}`;\naxios.defaults.headers.post['Content-Type'] = 'application/json';\n\n/*\n * Default endpoint\n */\napp.get('/', (req, res) =&gt; {\n  res.send('&lt;h2&gt;The app is running&lt;/h2&gt; &lt;p&gt;Follow the' +\n  ' instructions in the README to configure the Slack App and your \nenvironment variables.&lt;/p&gt;');\n});\n\n\n/*\n * Endpoint to receive events to which your app is subscribed\n * https://api.slack.com/events-api\n */\n\n//store the message ts for later use\napp.post('/slack/events', (req, res) =&gt; {\n    switch (req.body.type) {\n      case 'url_verification': {\n    // When setting up your app, Slack sends a verification challenge to the URL you specify\n    // and expects you to echo it back immediately.\n    // https://api.slack.com/events-api#request_url_configuration__amp__verification\n    res.send({ challenge: req.body.challenge });\n    break;\n  }      \n  case 'event_callback': {\n    if (req.body.token === SLACK_VERIFICATION_TOKEN) {\n      const event = req.body.event;\n      if(event.channel === SLACK_CHANNEL) {\n      if(event.type === 'link_shared'){\n        res.status(200).end();\n        var eventts //variable to store the timestamp of the link message for later use.\n      eventts = req.body.event.message_ts;\n      console.log(eventts);\n\n        // Checking for channel where link was posted\n        if(event.channel === SLACK_CHANNEL){\n          // The chat.postEphemeral method posts a message that only a specific user can see\n          //attachments are the buttons produced\n          // https://api.slack.com/methods/chat.postEphemeral\n          axios.post('/api/chat.postEphemeral', {\n            channel: event.channel,\n            user: event.user,\n            text:\n              'It looks like you have posted a SalesForce link. Please indicate urgency.',\n            attachments: [\n              {\n                text: '',\n                fallback:\n                  'Please indicate urgency.',\n                callback_id: 'urg_flag',\n                color: '#3AA3E3',\n                attachment_type: 'default',\n                actions: [\n                  {\n                    name: 'chooser',\n                    text: 'Low',\n                    type: 'button',\n                    value: 'Low'\n                  },\n                  {\n                    name: 'chooser',\n                    text: 'Medium',\n                    type: 'button',\n                    value: 'Medium'\n                  },\n                   {\n                    name: 'chooser',\n                    text: 'High',\n                    type: 'button',\n                    value: 'High'\n                  }\n                ]\n              }\n            ]\n          })\n          .then(function(res){\n            console.log(res); //log out response message\n          })\n          .catch(function (error) {\n            console.log(error);\n          });\n        }\n\n /*\n * Endpoint to receive interactive components like message buttons, menus or \ndialogs from Slack.\n * https://api.slack.com/interactive-messages\n */\napp.post('/slack/components', (req, res) =&gt; {\n  const payload = JSON.parse(req.body.payload);\n  console.log(payload); //log the payload\n\n  //verify the request is coming from Slack by validating the token\n  if (payload.token === SLACK_VERIFICATION_TOKEN) {\n    //respond immediately \n    res.status(200).end();   \n\nswitch (payload.type){\n  case 'interactive_message': {\n    // More info on what interactive message submissions looke like here:\n    // https://api.slack.com/docs/interactive-message-field-guide#action_payload\n    var action = payload.actions[0];\n    // the user has clicked the button to indicate urgency\n    if(action['value'] === 'High'){\n      axios.post('https://slack.com/api/reactions.add', {\n        name:'red_circle',\n        channel: payload.channel.id,\n        timestamp: eventts,\n      } \n                ).then(function(res){\n        console.log(res);\n      })\n      .catch(function (error) {\n        console.log(error);\n      });\n    } \n    }\n    case 'interactive_message': {\n    // More info on what interactive message submissions looke like here:\n    // https://api.slack.com/docs/interactive-message-field-guide#action_payload\n    const action = payload.actions[0];\n    // the user has clicked the button to indicate urgency\n    if(action['value'] === 'Medium'){\n      axios.post('https://slack.com/api/reactions.add', {\n        name:'yellow_heart',\n        channel: payload.channel.id,\n        timestamp: eventts,\n      }\n                ).then(function(res){\n        console.log(res);\n      })\n      .catch(function (error) {\n        console.log(error);\n      });\n    }\n    }\n    case 'interactive_message': {\n    // More info on what interactive message submissions looke like here:\n    // https://api.slack.com/docs/interactive-message-field-guide#action_payload\n    const action = payload.actions[0];\n    // the user has clicked the button to indicate urgency\n    if(action['value'] === 'Low'){\n      axios.post('https://slack.com/api/reactions.add', {\n        name:'green_apple',\n        channel: payload.channel.id,\n        timestamp: eventts,\n      }\n                ).then(function(res){\n        console.log(res);\n      })\n      .catch(function (error) {\n        console.log(error);\n      });\n    }\n    }\n  } \n  } else { res.sendStatus(500); }\n});\n      }break; //end of overall scope for variable\n     } \n    }\n   }\n  }\n});\n\n\n\n\n\n\n/*\n * Start the express server\n */\napp.listen(app.get('port'), () =&gt; {\n  console.log(`App listening on port ${app.get('port')}!`);\n});\n</code></pre>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift",
+                "ionic-framework",
+                "sqlite3"
+            ],
+            "owner": {
+                "reputation": 41,
+                "user_id": 3430658,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://i.stack.imgur.com/DdZSU.jpg?s=128&g=1",
+                "display_name": "LagMaster",
+                "link": "https://stackoverflow.com/users/3430658/lagmaster"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524608310,
+            "creation_date": 1524604585,
+            "question_id": 50010822,
+            "body_markdown": "I&#39;m trying to reach the sqlite database from an app made with ionic.\r\nwhen making the app with ionic, the database is stored in this directory:\r\n&gt; /Users/sistemas/Library/Developer/CoreSimulator/Devices/{alfanumeric}/data/Containers/Data/Application/{alfanumeric}/Library/LocalDatabase/test.db\r\n\r\n\r\nBut when i run the app made in xcode (8.2), the file is generated in another directory:\r\n&gt; /Users/sistemas/Library/Developer/CoreSimulator/Devices/{alfanumeric}/data/Containers/Data/Application/{alfanumeric}/Documents/test.db\r\n\r\nI have both database files in the xcode-made app and don&#39;t know how to reach the first test.db. Has anybody the solution to it?\r\n",
+            "link": "https://stackoverflow.com/questions/50010822/sqlite-file-location-between-ionic-app-and-native-app",
+            "title": "Sqlite File Location between ionic app and native app",
+            "body": "<p>I'm trying to reach the sqlite database from an app made with ionic.\nwhen making the app with ionic, the database is stored in this directory:</p>\n\n<blockquote>\n  <p>/Users/sistemas/Library/Developer/CoreSimulator/Devices/{alfanumeric}/data/Containers/Data/Application/{alfanumeric}/Library/LocalDatabase/test.db</p>\n</blockquote>\n\n<p>But when i run the app made in xcode (8.2), the file is generated in another directory:</p>\n\n<blockquote>\n  <p>/Users/sistemas/Library/Developer/CoreSimulator/Devices/{alfanumeric}/data/Containers/Data/Application/{alfanumeric}/Documents/test.db</p>\n</blockquote>\n\n<p>I have both database files in the xcode-made app and don't know how to reach the first test.db. Has anybody the solution to it?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "angularjs"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8173173,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2505d5b63d3128173a0604ec8d4c5960?s=128&d=identicon&r=PG&f=1",
+                "display_name": "parthi",
+                "link": "https://stackoverflow.com/users/8173173/parthi"
+            },
+            "is_answered": false,
+            "view_count": 43,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524608306,
+            "creation_date": 1524605149,
+            "last_edit_date": 1524607617,
+            "question_id": 50010930,
+            "body_markdown": "Having a scenario where the text field can accept the following,\r\n`10,+10,-10,+10.00,-10.00,+10.00%,-10.00%`.\r\n\r\nI can check the pattern using the RegEx `pattern=&quot;[-+]?[0-9]+(\\.[0-9]{0,4})?%?&quot;`.\r\n\r\nBut the requirement is to restrict User from typing wrong characters in the field itself rather than throwing the error.\r\n\r\nAngular version - 1.6",
+            "link": "https://stackoverflow.com/questions/50010930/text-field-to-restrict-other-than-0-9",
+            "title": "Text field to restrict other than (+-0-9%)",
+            "body": "<p>Having a scenario where the text field can accept the following,\n<code>10,+10,-10,+10.00,-10.00,+10.00%,-10.00%</code>.</p>\n\n<p>I can check the pattern using the RegEx <code>pattern=\"[-+]?[0-9]+(\\.[0-9]{0,4})?%?\"</code>.</p>\n\n<p>But the requirement is to restrict User from typing wrong characters in the field itself rather than throwing the error.</p>\n\n<p>Angular version - 1.6</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "touch",
+                "adb"
+            ],
+            "owner": {
+                "reputation": 135,
+                "user_id": 2807213,
+                "user_type": "registered",
+                "accept_rate": 17,
+                "profile_image": "https://www.gravatar.com/avatar/3b6f31105192e1238c7c977b4920c66c?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Naresh Kumar",
+                "link": "https://stackoverflow.com/users/2807213/naresh-kumar"
+            },
+            "is_answered": true,
+            "view_count": 4840,
+            "answer_count": 3,
+            "score": 1,
+            "last_activity_date": 1524608297,
+            "creation_date": 1401977631,
+            "question_id": 24062545,
+            "body_markdown": "I am trying to get the (x, y) coordinate of the touch through the pointer location option in Developer Options and I use these coordinates to tap on the screen using sendevent. Here is my script that does the sendevent.\r\n\r\ntap.sh\r\n`\r\nsendevent /dev/input/event0 3 57 2421\r\nsendevent /dev/input/event0 3 58 232\r\nsendevent /dev/input/event0 3 53 $1\r\nsendevent /dev/input/event0 3 54 $2\r\nsendevent /dev/input/event0 0 0 0\r\nsendevent /dev/input/event0 3 57 4294967295\r\nsendevent /dev/input/event0 0 0 0\r\n`\r\n\r\nI call the script from adb shell `sh tap.sh &lt;x&gt; &lt;y&gt;` but it is not tapping on the right coordinate. Instead it is tapping at a different location. \r\n\r\nAlso when I tap on the screen and check the result in getevent `adb shell getevent`. I find that the coordinates that is shown on the pointer location and the getevent are different.\r\n\r\nWhy are they different and how do I solve this issue?\r\n\r\nPS: The devices I tried are Nexus 7, Nexus 10.\r\n",
+            "link": "https://stackoverflow.com/questions/24062545/getevent-and-pointer-location",
+            "title": "Getevent and pointer location",
+            "body": "<p>I am trying to get the (x, y) coordinate of the touch through the pointer location option in Developer Options and I use these coordinates to tap on the screen using sendevent. Here is my script that does the sendevent.</p>\n\n<p>tap.sh\n<code>\nsendevent /dev/input/event0 3 57 2421\nsendevent /dev/input/event0 3 58 232\nsendevent /dev/input/event0 3 53 $1\nsendevent /dev/input/event0 3 54 $2\nsendevent /dev/input/event0 0 0 0\nsendevent /dev/input/event0 3 57 4294967295\nsendevent /dev/input/event0 0 0 0\n</code></p>\n\n<p>I call the script from adb shell <code>sh tap.sh &lt;x&gt; &lt;y&gt;</code> but it is not tapping on the right coordinate. Instead it is tapping at a different location. </p>\n\n<p>Also when I tap on the screen and check the result in getevent <code>adb shell getevent</code>. I find that the coordinates that is shown on the pointer location and the getevent are different.</p>\n\n<p>Why are they different and how do I solve this issue?</p>\n\n<p>PS: The devices I tried are Nexus 7, Nexus 10.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "excel",
+                "win32com"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9646227,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/f97bc11a18876c3ebf84c2803cebd42b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "superx",
+                "link": "https://stackoverflow.com/users/9646227/superx"
+            },
+            "is_answered": false,
+            "view_count": 30,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524608296,
+            "creation_date": 1524608296,
+            "question_id": 50011476,
+            "body_markdown": "How can you open an xlsx file in a separate excel application then a second xls file, so that during a condition, I just want to close one of them and not both.  The current code below, opens both files in the same excel application even though I am opening specifying two separate excel objects.  And when call the close() function on one of the files, it closes both. My requirement is that I have to do his with dispatch from win32com.  Thanks.\r\n\r\n    import time, os.path, os\r\n    from win32com.client import Dispatch\r\n\r\n    path1 = &#39;C:\\\\Todolist.xlsx&#39;\r\n    path2 = &#39;C:\\\\Todolist2.xlsx&#39;\r\n\r\n    xla = Dispatch(&quot;Excel.Application&quot;)\r\n    xla.DisplayAlerts = False\r\n    xla.Visible = True\r\n\r\n    xl = Dispatch(&quot;Excel.Application&quot;)\r\n    xl.DisplayAlerts = False\r\n    xl.Visible = True\r\n\r\n    wb1=xla.Workbooks.Open(Filename=path1)\r\n    wb2= xl.Workbooks.Open(Filename=path2)\r\n\r\n    time.sleep(3)\r\n\r\n    wbCloseA = xla.Workbooks.Close()",
+            "link": "https://stackoverflow.com/questions/50011476/python-how-to-open-two-excel-files-with-each-in-its-own-excel-application",
+            "title": "Python- How to open two excel files with each in its own excel application",
+            "body": "<p>How can you open an xlsx file in a separate excel application then a second xls file, so that during a condition, I just want to close one of them and not both.  The current code below, opens both files in the same excel application even though I am opening specifying two separate excel objects.  And when call the close() function on one of the files, it closes both. My requirement is that I have to do his with dispatch from win32com.  Thanks.</p>\n\n<pre><code>import time, os.path, os\nfrom win32com.client import Dispatch\n\npath1 = 'C:\\\\Todolist.xlsx'\npath2 = 'C:\\\\Todolist2.xlsx'\n\nxla = Dispatch(\"Excel.Application\")\nxla.DisplayAlerts = False\nxla.Visible = True\n\nxl = Dispatch(\"Excel.Application\")\nxl.DisplayAlerts = False\nxl.Visible = True\n\nwb1=xla.Workbooks.Open(Filename=path1)\nwb2= xl.Workbooks.Open(Filename=path2)\n\ntime.sleep(3)\n\nwbCloseA = xla.Workbooks.Close()\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "express",
+                "heroku"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9382350,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9820114b410b17ad5aefe96b944a33d3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Giles German",
+                "link": "https://stackoverflow.com/users/9382350/giles-german"
+            },
+            "is_answered": false,
+            "view_count": 27,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524608274,
+            "creation_date": 1524545756,
+            "last_edit_date": 1524608274,
+            "question_id": 49993713,
+            "body_markdown": "Dear All I hope you can help.  I have been trying to launch some code from the following website so I can take stripe payments on my website.  \r\n\r\nhttps://www.robinwieruch.de/react-express-stripe-payment/ \r\n\r\nI can launch this code perfectly in a heroku server but when it comes to launching it for real it failed.  I have run the heroku logs --tail command and it identifies en error on the following piece of code in here (CORS_WHITELIST.indexOf(origin) !== -1). This error states that CORS_WHITELIST is not a function.\r\n\r\nDoes anyone know what is wrong with it please?\r\n\r\nCode on GitHub as follows: -\r\n\r\nhttps://github.com/gilesgerman/stokpixexpress\r\n   \r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    const cors = require(&#39;cors&#39;);\r\n    const bodyParser = require(&#39;body-parser&#39;);\r\n\r\n    const CORS_WHITELIST = require(&#39;./constants/frontend&#39;);\r\n\r\n    const corsOptions = {\r\n      origin: (origin, callback) =&gt;\r\n        (CORS_WHITELIST.indexOf(origin) !== -1)\r\n          ? callback(null, true)\r\n          : callback(new Error(&#39;Not allowed by CORS&#39;))\r\n    };\r\n\r\n    const configureServer = app =&gt; {\r\n      app.use(cors(corsOptions));\r\n\r\n      app.use(bodyParser.json());\r\n    };\r\n\r\n    module.exports = configureServer;\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\nApologies for not including this the error message is as follows: - \r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    MacBook-Pro:backend gilesgerman$ heroku logs --tail\r\n    2018-04-24T22:13:39.925437+00:00 heroku[web.1]: Starting process with command `npm start`\r\n    2018-04-24T22:13:42.270699+00:00 app[web.1]: \r\n    2018-04-24T22:13:42.270718+00:00 app[web.1]: &gt; backend@1.0.0 start /app\r\n    2018-04-24T22:13:42.270720+00:00 app[web.1]: &gt; node index.js\r\n    2018-04-24T22:13:42.270722+00:00 app[web.1]: \r\n    2018-04-24T22:13:42.557274+00:00 app[web.1]: Server running on port: 38179\r\n    2018-04-24T22:13:43.524801+00:00 heroku[web.1]: State changed from starting to up\r\n    2018-04-24T22:13:51.699607+00:00 heroku[router]: at=info method=GET path=&quot;/&quot; host=infinite-shelf-79441.herokuapp.com request_id=b84196c4-0532-4071-b3d5-35f250bf564f fwd=&quot;89.206.243.24&quot; dyno=web.1 connect=1ms service=20ms status=500 bytes=404 protocol=https\r\n    2018-04-24T22:13:51.703709+00:00 app[web.1]: Error: Not allowed by CORS\r\n    2018-04-24T22:13:51.703720+00:00 app[web.1]:     at origin (/app/server.js:11:18)\r\n    2018-04-24T22:13:51.703723+00:00 app[web.1]:     at /app/node_modules/cors/lib/index.js:219:13\r\n    2018-04-24T22:13:51.703726+00:00 app[web.1]:     at optionsCallback (/app/node_modules/cors/lib/index.js:199:9)\r\n    2018-04-24T22:13:51.703728+00:00 app[web.1]:     at corsMiddleware (/app/node_modules/cors/lib/index.js:204:7)\r\n    2018-04-24T22:13:51.703729+00:00 app[web.1]:     at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)\r\n    2018-04-24T22:13:51.703731+00:00 app[web.1]:     at trim_prefix (/app/node_modules/express/lib/router/index.js:317:13)\r\n    2018-04-24T22:13:51.703732+00:00 app[web.1]:     at /app/node_modules/express/lib/router/index.js:284:7\r\n    2018-04-24T22:13:51.703734+00:00 app[web.1]:     at Function.process_params (/app/node_modules/express/lib/router/index.js:335:12)\r\n    2018-04-24T22:13:51.703735+00:00 app[web.1]:     at next (/app/node_modules/express/lib/router/index.js:275:10)\r\n    2018-04-24T22:13:51.703737+00:00 app[web.1]:     at expressInit (/app/node_modules/express/lib/middleware/init.js:40:5)\r\n    2018-04-24T22:13:52.052621+00:00 heroku[router]: at=info method=GET path=&quot;/favicon.ico&quot; host=infinite-shelf-79441.herokuapp.com request_id=d05bd243-9059-4e3b-8e5c-9571d66af3c5 fwd=&quot;89.206.243.24&quot; dyno=web.1 connect=1ms service=4ms status=500 bytes=404 protocol=https\r\n    2018-04-24T22:13:52.055055+00:00 app[web.1]: Error: Not allowed by CORS\r\n    2018-04-24T22:13:52.055073+00:00 app[web.1]:     at origin (/app/server.js:11:18)\r\n    2018-04-24T22:13:52.055075+00:00 app[web.1]:     at /app/node_modules/cors/lib/index.js:219:13\r\n    2018-04-24T22:13:52.055077+00:00 app[web.1]:     at optionsCallback (/app/node_modules/cors/lib/index.js:199:9)\r\n    2018-04-24T22:13:52.055079+00:00 app[web.1]:     at corsMiddleware (/app/node_modules/cors/lib/index.js:204:7)\r\n    2018-04-24T22:13:52.055081+00:00 app[web.1]:     at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)\r\n    2018-04-24T22:13:52.055083+00:00 app[web.1]:     at trim_prefix (/app/node_modules/express/lib/router/index.js:317:13)\r\n    2018-04-24T22:13:52.055084+00:00 app[web.1]:     at /app/node_modules/express/lib/router/index.js:284:7\r\n    2018-04-24T22:13:52.055086+00:00 app[web.1]:     at Function.process_params (/app/node_modules/express/lib/router/index.js:335:12)\r\n    2018-04-24T22:13:52.055087+00:00 app[web.1]:     at next (/app/node_modules/express/lib/router/index.js:275:10)\r\n    2018-04-24T22:13:52.055089+00:00 app[web.1]:     at expressInit (/app/node_modules/express/lib/middleware/init.js:40:5)\r\n    2018-04-24T22:13:55.615705+00:00 heroku[router]: at=info method=GET path=&quot;/&quot; host=infinite-shelf-79441.herokuapp.com request_id=04daf749-6049-421d-883d-060e6f52b4ef fwd=&quot;89.206.243.24&quot; dyno=web.1 connect=1ms service=3ms status=500 bytes=404 protocol=https\r\n    2018-04-24T22:13:55.618191+00:00 app[web.1]: Error: Not allowed by CORS\r\n    2018-04-24T22:13:55.618209+00:00 app[web.1]:     at origin (/app/server.js:11:18)\r\n    2018-04-24T22:13:55.618225+00:00 app[web.1]:     at /app/node_modules/cors/lib/index.js:219:13\r\n    2018-04-24T22:13:55.618227+00:00 app[web.1]:     at optionsCallback (/app/node_modules/cors/lib/index.js:199:9)\r\n    2018-04-24T22:13:55.618229+00:00 app[web.1]:     at corsMiddleware (/app/node_modules/cors/lib/index.js:204:7)\r\n    2018-04-24T22:13:55.618231+00:00 app[web.1]:     at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)\r\n    2018-04-24T22:13:55.618232+00:00 app[web.1]:     at trim_prefix (/app/node_modules/express/lib/router/index.js:317:13)\r\n    2018-04-24T22:13:55.618234+00:00 app[web.1]:     at /app/node_modules/express/lib/router/index.js:284:7\r\n    2018-04-24T22:13:55.618236+00:00 app[web.1]:     at Function.process_params (/app/node_modules/express/lib/router/index.js:335:12)\r\n    2018-04-24T22:13:55.618237+00:00 app[web.1]:     at next (/app/node_modules/express/lib/router/index.js:275:10)\r\n    2018-04-24T22:13:55.777561+00:00 app[web.1]: Error: Not allowed by CORS\r\n    2018-04-24T22:13:55.618239+00:00 app[web.1]:     at expressInit (/app/node_modules/express/lib/middleware/init.js:40:5)\r\n    2018-04-24T22:13:55.777565+00:00 app[web.1]:     at origin (/app/server.js:11:18)\r\n    2018-04-24T22:13:55.777567+00:00 app[web.1]:     at /app/node_modules/cors/lib/index.js:219:13\r\n    2018-04-24T22:13:55.777569+00:00 app[web.1]:     at optionsCallback (/app/node_modules/cors/lib/index.js:199:9)\r\n    2018-04-24T22:13:55.777571+00:00 app[web.1]:     at corsMiddleware (/app/node_modules/cors/lib/index.js:204:7)\r\n    2018-04-24T22:13:55.777573+00:00 app[web.1]:     at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)\r\n    2018-04-24T22:13:55.777575+00:00 app[web.1]:     at trim_prefix (/app/node_modules/express/lib/router/index.js:317:13)\r\n    2018-04-24T22:13:55.777576+00:00 app[web.1]:     at /app/node_modules/express/lib/router/index.js:284:7\r\n    2018-04-24T22:13:55.777579+00:00 app[web.1]:     at Function.process_params (/app/node_modules/express/lib/router/index.js:335:12)\r\n    2018-04-24T22:13:55.777580+00:00 app[web.1]:     at next (/app/node_modules/express/lib/router/index.js:275:10)\r\n    2018-04-24T22:13:55.777582+00:00 app[web.1]:     at expressInit (/app/node_modules/express/lib/middleware/init.js:40:5)\r\n    2018-04-24T22:13:55.775109+00:00 heroku[router]: at=info method=GET path=&quot;/favicon.ico&quot; host=infinite-shelf-79441.herokuapp.com request_id=43f22947-6225-4a89-b3b4-f4a2e18ccd59 fwd=&quot;89.206.243.24&quot; dyno=web.1 connect=1ms service=2ms status=500 bytes=404 protocol=https\r\n\r\n\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49993713/express-server-launches-in-heroku-development-not-on-actual-heroku-server",
+            "title": "Express server launches in heroku development not on actual heroku server",
+            "body": "<p>Dear All I hope you can help.  I have been trying to launch some code from the following website so I can take stripe payments on my website.  </p>\n\n<p><a href=\"https://www.robinwieruch.de/react-express-stripe-payment/\" rel=\"nofollow noreferrer\">https://www.robinwieruch.de/react-express-stripe-payment/</a> </p>\n\n<p>I can launch this code perfectly in a heroku server but when it comes to launching it for real it failed.  I have run the heroku logs --tail command and it identifies en error on the following piece of code in here (CORS_WHITELIST.indexOf(origin) !== -1). This error states that CORS_WHITELIST is not a function.</p>\n\n<p>Does anyone know what is wrong with it please?</p>\n\n<p>Code on GitHub as follows: -</p>\n\n<p><a href=\"https://github.com/gilesgerman/stokpixexpress\" rel=\"nofollow noreferrer\">https://github.com/gilesgerman/stokpixexpress</a></p>\n\n<pre class=\"lang-js prettyprint-override\"><code>const cors = require('cors');\nconst bodyParser = require('body-parser');\n\nconst CORS_WHITELIST = require('./constants/frontend');\n\nconst corsOptions = {\n  origin: (origin, callback) =&gt;\n    (CORS_WHITELIST.indexOf(origin) !== -1)\n      ? callback(null, true)\n      : callback(new Error('Not allowed by CORS'))\n};\n\nconst configureServer = app =&gt; {\n  app.use(cors(corsOptions));\n\n  app.use(bodyParser.json());\n};\n\nmodule.exports = configureServer;\n</code></pre>\n\n\n\n<p>Apologies for not including this the error message is as follows: - </p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-js lang-js prettyprint-override\"><code>MacBook-Pro:backend gilesgerman$ heroku logs --tail\r\n2018-04-24T22:13:39.925437+00:00 heroku[web.1]: Starting process with command `npm start`\r\n2018-04-24T22:13:42.270699+00:00 app[web.1]: \r\n2018-04-24T22:13:42.270718+00:00 app[web.1]: &gt; backend@1.0.0 start /app\r\n2018-04-24T22:13:42.270720+00:00 app[web.1]: &gt; node index.js\r\n2018-04-24T22:13:42.270722+00:00 app[web.1]: \r\n2018-04-24T22:13:42.557274+00:00 app[web.1]: Server running on port: 38179\r\n2018-04-24T22:13:43.524801+00:00 heroku[web.1]: State changed from starting to up\r\n2018-04-24T22:13:51.699607+00:00 heroku[router]: at=info method=GET path=\"/\" host=infinite-shelf-79441.herokuapp.com request_id=b84196c4-0532-4071-b3d5-35f250bf564f fwd=\"89.206.243.24\" dyno=web.1 connect=1ms service=20ms status=500 bytes=404 protocol=https\r\n2018-04-24T22:13:51.703709+00:00 app[web.1]: Error: Not allowed by CORS\r\n2018-04-24T22:13:51.703720+00:00 app[web.1]:     at origin (/app/server.js:11:18)\r\n2018-04-24T22:13:51.703723+00:00 app[web.1]:     at /app/node_modules/cors/lib/index.js:219:13\r\n2018-04-24T22:13:51.703726+00:00 app[web.1]:     at optionsCallback (/app/node_modules/cors/lib/index.js:199:9)\r\n2018-04-24T22:13:51.703728+00:00 app[web.1]:     at corsMiddleware (/app/node_modules/cors/lib/index.js:204:7)\r\n2018-04-24T22:13:51.703729+00:00 app[web.1]:     at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)\r\n2018-04-24T22:13:51.703731+00:00 app[web.1]:     at trim_prefix (/app/node_modules/express/lib/router/index.js:317:13)\r\n2018-04-24T22:13:51.703732+00:00 app[web.1]:     at /app/node_modules/express/lib/router/index.js:284:7\r\n2018-04-24T22:13:51.703734+00:00 app[web.1]:     at Function.process_params (/app/node_modules/express/lib/router/index.js:335:12)\r\n2018-04-24T22:13:51.703735+00:00 app[web.1]:     at next (/app/node_modules/express/lib/router/index.js:275:10)\r\n2018-04-24T22:13:51.703737+00:00 app[web.1]:     at expressInit (/app/node_modules/express/lib/middleware/init.js:40:5)\r\n2018-04-24T22:13:52.052621+00:00 heroku[router]: at=info method=GET path=\"/favicon.ico\" host=infinite-shelf-79441.herokuapp.com request_id=d05bd243-9059-4e3b-8e5c-9571d66af3c5 fwd=\"89.206.243.24\" dyno=web.1 connect=1ms service=4ms status=500 bytes=404 protocol=https\r\n2018-04-24T22:13:52.055055+00:00 app[web.1]: Error: Not allowed by CORS\r\n2018-04-24T22:13:52.055073+00:00 app[web.1]:     at origin (/app/server.js:11:18)\r\n2018-04-24T22:13:52.055075+00:00 app[web.1]:     at /app/node_modules/cors/lib/index.js:219:13\r\n2018-04-24T22:13:52.055077+00:00 app[web.1]:     at optionsCallback (/app/node_modules/cors/lib/index.js:199:9)\r\n2018-04-24T22:13:52.055079+00:00 app[web.1]:     at corsMiddleware (/app/node_modules/cors/lib/index.js:204:7)\r\n2018-04-24T22:13:52.055081+00:00 app[web.1]:     at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)\r\n2018-04-24T22:13:52.055083+00:00 app[web.1]:     at trim_prefix (/app/node_modules/express/lib/router/index.js:317:13)\r\n2018-04-24T22:13:52.055084+00:00 app[web.1]:     at /app/node_modules/express/lib/router/index.js:284:7\r\n2018-04-24T22:13:52.055086+00:00 app[web.1]:     at Function.process_params (/app/node_modules/express/lib/router/index.js:335:12)\r\n2018-04-24T22:13:52.055087+00:00 app[web.1]:     at next (/app/node_modules/express/lib/router/index.js:275:10)\r\n2018-04-24T22:13:52.055089+00:00 app[web.1]:     at expressInit (/app/node_modules/express/lib/middleware/init.js:40:5)\r\n2018-04-24T22:13:55.615705+00:00 heroku[router]: at=info method=GET path=\"/\" host=infinite-shelf-79441.herokuapp.com request_id=04daf749-6049-421d-883d-060e6f52b4ef fwd=\"89.206.243.24\" dyno=web.1 connect=1ms service=3ms status=500 bytes=404 protocol=https\r\n2018-04-24T22:13:55.618191+00:00 app[web.1]: Error: Not allowed by CORS\r\n2018-04-24T22:13:55.618209+00:00 app[web.1]:     at origin (/app/server.js:11:18)\r\n2018-04-24T22:13:55.618225+00:00 app[web.1]:     at /app/node_modules/cors/lib/index.js:219:13\r\n2018-04-24T22:13:55.618227+00:00 app[web.1]:     at optionsCallback (/app/node_modules/cors/lib/index.js:199:9)\r\n2018-04-24T22:13:55.618229+00:00 app[web.1]:     at corsMiddleware (/app/node_modules/cors/lib/index.js:204:7)\r\n2018-04-24T22:13:55.618231+00:00 app[web.1]:     at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)\r\n2018-04-24T22:13:55.618232+00:00 app[web.1]:     at trim_prefix (/app/node_modules/express/lib/router/index.js:317:13)\r\n2018-04-24T22:13:55.618234+00:00 app[web.1]:     at /app/node_modules/express/lib/router/index.js:284:7\r\n2018-04-24T22:13:55.618236+00:00 app[web.1]:     at Function.process_params (/app/node_modules/express/lib/router/index.js:335:12)\r\n2018-04-24T22:13:55.618237+00:00 app[web.1]:     at next (/app/node_modules/express/lib/router/index.js:275:10)\r\n2018-04-24T22:13:55.777561+00:00 app[web.1]: Error: Not allowed by CORS\r\n2018-04-24T22:13:55.618239+00:00 app[web.1]:     at expressInit (/app/node_modules/express/lib/middleware/init.js:40:5)\r\n2018-04-24T22:13:55.777565+00:00 app[web.1]:     at origin (/app/server.js:11:18)\r\n2018-04-24T22:13:55.777567+00:00 app[web.1]:     at /app/node_modules/cors/lib/index.js:219:13\r\n2018-04-24T22:13:55.777569+00:00 app[web.1]:     at optionsCallback (/app/node_modules/cors/lib/index.js:199:9)\r\n2018-04-24T22:13:55.777571+00:00 app[web.1]:     at corsMiddleware (/app/node_modules/cors/lib/index.js:204:7)\r\n2018-04-24T22:13:55.777573+00:00 app[web.1]:     at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)\r\n2018-04-24T22:13:55.777575+00:00 app[web.1]:     at trim_prefix (/app/node_modules/express/lib/router/index.js:317:13)\r\n2018-04-24T22:13:55.777576+00:00 app[web.1]:     at /app/node_modules/express/lib/router/index.js:284:7\r\n2018-04-24T22:13:55.777579+00:00 app[web.1]:     at Function.process_params (/app/node_modules/express/lib/router/index.js:335:12)\r\n2018-04-24T22:13:55.777580+00:00 app[web.1]:     at next (/app/node_modules/express/lib/router/index.js:275:10)\r\n2018-04-24T22:13:55.777582+00:00 app[web.1]:     at expressInit (/app/node_modules/express/lib/middleware/init.js:40:5)\r\n2018-04-24T22:13:55.775109+00:00 heroku[router]: at=info method=GET path=\"/favicon.ico\" host=infinite-shelf-79441.herokuapp.com request_id=43f22947-6225-4a89-b3b4-f4a2e18ccd59 fwd=\"89.206.243.24\" dyno=web.1 connect=1ms service=2ms status=500 bytes=404 protocol=https</code></pre>\r\n</div>\r\n</div>\r\n</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "symfony",
+                "caching"
+            ],
+            "owner": {
+                "reputation": 97,
+                "user_id": 6103967,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/957762334258948/picture?type=large",
+                "display_name": "Piotrek Zatorski",
+                "link": "https://stackoverflow.com/users/6103967/piotrek-zatorski"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524608256,
+            "creation_date": 1524608256,
+            "question_id": 50011465,
+            "body_markdown": "I&#39;ve tested code form [Symfony Docs][1] in Symfony 3.2 and it was everything good, but cache doesn&#39;t work in 3.4.8.\r\n\r\nOf courese I want to use Symfony Reverse Proxy.\r\n\r\nMy `app_dev.php`\r\n\r\n    $kernel = new AppKernel(&#39;dev&#39;, true);\r\n    if (PHP_VERSION_ID &lt; 70000) {\r\n        $kernel-&gt;loadClassCache();\r\n    }\r\n    $kernel = new AppCache($kernel);\r\n\r\nMy action look&#39;s like this:\r\n\r\n   \r\n    public function indexAction(Request $request)\r\n    {\r\n        // [...]\r\n        $response = $this-&gt;render(&#39;base.html.twig&#39;);\r\n\r\n        $response-&gt;setSharedMaxAge(3600);\r\n\r\n            return $response;\r\n    }\r\n\r\nAm I missing something, that isn&#39;t nessesery in Symfony 3.2?\r\n\r\n  [1]: https://symfony.com/doc/3.4/http_cache.html",
+            "link": "https://stackoverflow.com/questions/50011465/symfony-http-cache-doesnt-work-in-3-4",
+            "title": "Symfony HTTP Cache doesn&#39;t work in 3.4",
+            "body": "<p>I've tested code form <a href=\"https://symfony.com/doc/3.4/http_cache.html\" rel=\"nofollow noreferrer\">Symfony Docs</a> in Symfony 3.2 and it was everything good, but cache doesn't work in 3.4.8.</p>\n\n<p>Of courese I want to use Symfony Reverse Proxy.</p>\n\n<p>My <code>app_dev.php</code></p>\n\n<pre><code>$kernel = new AppKernel('dev', true);\nif (PHP_VERSION_ID &lt; 70000) {\n    $kernel-&gt;loadClassCache();\n}\n$kernel = new AppCache($kernel);\n</code></pre>\n\n<p>My action look's like this:</p>\n\n<pre><code>public function indexAction(Request $request)\n{\n    // [...]\n    $response = $this-&gt;render('base.html.twig');\n\n    $response-&gt;setSharedMaxAge(3600);\n\n        return $response;\n}\n</code></pre>\n\n<p>Am I missing something, that isn't nessesery in Symfony 3.2?</p>\n"
+        },
+        {
+            "tags": [
+                "wso2is"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 2039282,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/8b9c941db577eca3a81b088771dd7e03?s=128&d=identicon&r=PG",
+                "display_name": "franck31",
+                "link": "https://stackoverflow.com/users/2039282/franck31"
+            },
+            "is_answered": false,
+            "view_count": 40,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524608238,
+            "creation_date": 1510582273,
+            "question_id": 47266291,
+            "body_markdown": "I&#39;m using WSO2 identity server 5.3.0.\r\n\r\nIs it possible to configure information returned by the introspect endpoint\r\n(see [documentation][1])\r\n\r\nBy default, this endpoint returns a json response like :\r\n```\r\n{&quot;exp&quot;:1464161608,&quot;username&quot;:&quot;admin@carbon.super&quot;,&quot;active&quot;:true,&quot;token_type&quot;:&quot;Bearer&quot;,&quot;client_id&quot;:&quot;rgfKVdnMQnJSSr_pKFTxj3apiwYa&quot;,&quot;iat&quot;:1464158008}\r\n```\r\n\r\nHow to add for example, the user&#39;s roles ?\r\n\r\nThanks for your answer.\r\n\r\n  [1]: https://docs.wso2.com/display/IS530/Invoke+the+OAuth+Introspection+Endpoint\r\n",
+            "link": "https://stackoverflow.com/questions/47266291/wso2-introspect-endpoint-information-configuration",
+            "title": "wso2 introspect endpoint information configuration",
+            "body": "<p>I'm using WSO2 identity server 5.3.0.</p>\n\n<p>Is it possible to configure information returned by the introspect endpoint\n(see <a href=\"https://docs.wso2.com/display/IS530/Invoke+the+OAuth+Introspection+Endpoint\" rel=\"nofollow noreferrer\">documentation</a>)</p>\n\n<p>By default, this endpoint returns a json response like :\n<code>\n{\"exp\":1464161608,\"username\":\"admin@carbon.super\",\"active\":true,\"token_type\":\"Bearer\",\"client_id\":\"rgfKVdnMQnJSSr_pKFTxj3apiwYa\",\"iat\":1464158008}\n</code></p>\n\n<p>How to add for example, the user's roles ?</p>\n\n<p>Thanks for your answer.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "bootstrap-modal"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 8865785,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/d48a3f17db9f64c9adce4c5a91a8fcc4?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Phenix Tang",
+                "link": "https://stackoverflow.com/users/8865785/phenix-tang"
+            },
+            "is_answered": false,
+            "view_count": 35,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524608204,
+            "creation_date": 1524599824,
+            "question_id": 50009855,
+            "body_markdown": "I am making a simulation game. There are five variables, month, money, stress, job, and happiness. I created a selection option. I want to change the variables according to the different options. This is what I have so far for the selection option. I want the different variables to change as I select the different options and click next. For example, if selected high, relax at home, and part-time, the stress progress bar will increase and happiness will decrease. How do I do that? Also the month would increase by 1 everytime I click next. \r\n\r\n    &lt;div id=&quot;monthlyworkplan&quot; class=&quot;hidden p-4&quot;&gt;\r\n                &lt;h4 align=&quot;center&quot;&gt;Create This Month&#39;s Work Plan&lt;/h4&gt;\r\n                &lt;form class=&quot;select&quot;&gt;\r\n                    &lt;div style=&quot;padding-top: 10px;&quot;&gt;Select work effort:&lt;/div&gt; \r\n                    &lt;select class=&quot;selectpicker&quot; style=&quot;width: 100px&quot; id=&quot;workeffort&quot; title=&quot;Select&quot;&gt;\r\n                      &lt;option&gt;Select&lt;/option&gt;\r\n                      &lt;option value=&quot;high&quot;&gt;High&lt;/option&gt;\r\n                      &lt;option value=&quot;medium&quot;&gt;Medium&lt;/option&gt;\r\n                      &lt;option value=&quot;low&quot;&gt;Low&lt;/option&gt;\r\n                    &lt;/select&gt;\r\n                    &lt;div style=&quot;padding-top: 10px;&quot;&gt;Select after work activity:&lt;/div&gt;\r\n                    &lt;select class=&quot;selectpicker&quot; style=&quot;width: 100px&quot; id=&quot;afterworkactivity&quot; title=&quot;Select&quot;&gt;\r\n                      &lt;option&gt;Select&lt;/option&gt;\r\n                      &lt;option value=&quot;high&quot;&gt;Connect with potential client&lt;/option&gt;\r\n                      &lt;option value=&quot;medium&quot;&gt;Relax at home&lt;/option&gt;\r\n                      &lt;option value=&quot;low&quot;&gt;Hang out with friends&lt;/option&gt;\r\n                    &lt;/select&gt;\r\n                    &lt;div style=&quot;padding-top: 10px;&quot;&gt;Select weekend activity:&lt;/div&gt;\r\n                    &lt;select class=&quot;selectpicker&quot; style=&quot;width: 100px&quot; id=&quot;weekend activity&quot; title=&quot;Select&quot;&gt;\r\n                      &lt;option&gt;Select&lt;/option&gt;\r\n                      &lt;option value=&quot;high&quot;&gt;Part-time job&lt;/option&gt;\r\n                      &lt;option value=&quot;medium&quot;&gt;Pass out flyers&lt;/option&gt;\r\n                      &lt;option value=&quot;low&quot;&gt;Relax at home&lt;/option&gt;\r\n                    &lt;/select&gt;\r\n                    &lt;div id=&quot;workefforteffect&quot; style=&quot;font-size:11px position:absolute; right:-131px; top:171px;&quot; class=&quot;hidden p-4&quot;&gt;stress&lt;/div&gt;\r\n                &lt;/form&gt;\r\n                    &lt;button class=&quot;btn&quot; id=&quot;next&quot;&gt;NEXT&lt;/button&gt;",
+            "link": "https://stackoverflow.com/questions/50009855/how-to-change-progress-bar-when-selected-different-options",
+            "title": "How to change progress bar when selected different options",
+            "body": "<p>I am making a simulation game. There are five variables, month, money, stress, job, and happiness. I created a selection option. I want to change the variables according to the different options. This is what I have so far for the selection option. I want the different variables to change as I select the different options and click next. For example, if selected high, relax at home, and part-time, the stress progress bar will increase and happiness will decrease. How do I do that? Also the month would increase by 1 everytime I click next. </p>\n\n<pre><code>&lt;div id=\"monthlyworkplan\" class=\"hidden p-4\"&gt;\n            &lt;h4 align=\"center\"&gt;Create This Month's Work Plan&lt;/h4&gt;\n            &lt;form class=\"select\"&gt;\n                &lt;div style=\"padding-top: 10px;\"&gt;Select work effort:&lt;/div&gt; \n                &lt;select class=\"selectpicker\" style=\"width: 100px\" id=\"workeffort\" title=\"Select\"&gt;\n                  &lt;option&gt;Select&lt;/option&gt;\n                  &lt;option value=\"high\"&gt;High&lt;/option&gt;\n                  &lt;option value=\"medium\"&gt;Medium&lt;/option&gt;\n                  &lt;option value=\"low\"&gt;Low&lt;/option&gt;\n                &lt;/select&gt;\n                &lt;div style=\"padding-top: 10px;\"&gt;Select after work activity:&lt;/div&gt;\n                &lt;select class=\"selectpicker\" style=\"width: 100px\" id=\"afterworkactivity\" title=\"Select\"&gt;\n                  &lt;option&gt;Select&lt;/option&gt;\n                  &lt;option value=\"high\"&gt;Connect with potential client&lt;/option&gt;\n                  &lt;option value=\"medium\"&gt;Relax at home&lt;/option&gt;\n                  &lt;option value=\"low\"&gt;Hang out with friends&lt;/option&gt;\n                &lt;/select&gt;\n                &lt;div style=\"padding-top: 10px;\"&gt;Select weekend activity:&lt;/div&gt;\n                &lt;select class=\"selectpicker\" style=\"width: 100px\" id=\"weekend activity\" title=\"Select\"&gt;\n                  &lt;option&gt;Select&lt;/option&gt;\n                  &lt;option value=\"high\"&gt;Part-time job&lt;/option&gt;\n                  &lt;option value=\"medium\"&gt;Pass out flyers&lt;/option&gt;\n                  &lt;option value=\"low\"&gt;Relax at home&lt;/option&gt;\n                &lt;/select&gt;\n                &lt;div id=\"workefforteffect\" style=\"font-size:11px position:absolute; right:-131px; top:171px;\" class=\"hidden p-4\"&gt;stress&lt;/div&gt;\n            &lt;/form&gt;\n                &lt;button class=\"btn\" id=\"next\"&gt;NEXT&lt;/button&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "node.js"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 5156091,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/d98183d14ba901aeb34e9304b6af5bbb?s=128&d=identicon&r=PG&f=1",
+                "display_name": "daun jeruk",
+                "link": "https://stackoverflow.com/users/5156091/daun-jeruk"
+            },
+            "is_answered": false,
+            "view_count": 23,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524608190,
+            "creation_date": 1524607254,
+            "last_edit_date": 1524608190,
+            "question_id": 50011293,
+            "body_markdown": "I just want check my notes.j that return a notes.logNote(note) when I call: `node app.js add --title=&quot; &quot;`\r\n, if the `--title=&quot; &quot;` was declared so it wouldn&#39;t written over in notes-data.json.\r\n\r\nthis is my app.js\r\n\r\n    const fs = require(&#39;fs&#39;);\r\n    const os = require(&#39;os&#39;);\r\n    const _ = require(&#39;lodash&#39;);\r\n    const yargs = require(&#39;yargs&#39;);\r\n    const notes = require(&#39;./notes.js&#39;)\r\n    const argv = yargs.argv;\r\n    \r\n    var command = argv._[0];\r\n    console.log(&#39; Your Command: &#39;, command);\r\n    console.log(&#39; Your processes is: &#39;,process.argv);\r\n    console.log(&#39; Your Yargs is: &#39;, argv);\r\n    \r\n    if (command === &#39;add&#39;) {\r\n        var note = notes.addNote(argv.title, argv.body);\r\n        if (note) {\r\n            console.log(&quot; You write the new object in notes&quot;);\r\n            notes.logNote(note);\r\n        } else {\r\n            console.log(&quot; You write an exist objects in node&quot;);\r\n            console.log(&#39; -- which is&#39;);\r\n            notes.logNote(note);\r\n            // here I can&#39;t call note.title = undifiend same with note.body = undifined\r\n            // I want to log the title if was exists\r\n             // console.log(` Title: ${note.title}`);\r\n             // console.log(` body: ${note.body}`);\r\n        } else {\r\n          console.log(&#39; Your command not in my list command that i made&#39;);\r\n    };\r\n\r\nand I called some few function from notes.js\r\n\r\n    const fs = require(&#39;fs&#39;);\r\n    var fetchNotes = () =&gt; {\r\n      try {\r\n          var noteString = fs.readFileSync(&#39;notes-data.json&#39;);\r\n          return JSON.parse(noteString);\r\n      } catch (e) {\r\n          return [];\r\n      }\r\n    };    \r\n\r\n    var saveNotes = (notes) =&gt; {\r\n        fs.writeFileSync(&#39;notes-data.json&#39;, JSON.stringify(notes));\r\n    }; \r\n   \r\n    var logNote = (note) =&gt; {\r\n    console.log(&#39; -- which is&#39;);\r\n    console.log(` Title: ${note.title}`);\r\n    console.log(` body: ${note.body}`);\r\n    };        \r\n\r\n    var addNote = (title, body) =&gt; {\r\n      var notes = fetchNotes();\r\n      var note = {\r\n          title,\r\n          body\r\n      };       \r\n      var duplicatesNotes = notes.filter((note) =&gt; note.title === title);\r\n      console.log( &quot;If you get message your input object was duplicated&quot;);\r\n      if(duplicatesNotes.length === 0) {\r\n          notes.push(note);\r\n          saveNotes(notes);\r\n          return note;\r\n        }\r\n    };\r\n\r\n    module.exports = {\r\n        addNote,\r\n        logNote\r\n    };\r\n\r\nSo I called twice `node   app.js --title=&quot;drunk&quot; --body=&quot;weed&quot;` and result get error `title` from `${note.title}` was undefined.\r\n\r\nNeed some advise though, thanks for reading\r\n",
+            "link": "https://stackoverflow.com/questions/50011293/nodejs-object-undefined-when-call-a-function-to-console-lognote-title",
+            "title": "NodeJS object undefined when call a function to console.log(`${note.title}`)",
+            "body": "<p>I just want check my notes.j that return a notes.logNote(note) when I call: <code>node app.js add --title=\" \"</code>\n, if the <code>--title=\" \"</code> was declared so it wouldn't written over in notes-data.json.</p>\n\n<p>this is my app.js</p>\n\n<pre><code>const fs = require('fs');\nconst os = require('os');\nconst _ = require('lodash');\nconst yargs = require('yargs');\nconst notes = require('./notes.js')\nconst argv = yargs.argv;\n\nvar command = argv._[0];\nconsole.log(' Your Command: ', command);\nconsole.log(' Your processes is: ',process.argv);\nconsole.log(' Your Yargs is: ', argv);\n\nif (command === 'add') {\n    var note = notes.addNote(argv.title, argv.body);\n    if (note) {\n        console.log(\" You write the new object in notes\");\n        notes.logNote(note);\n    } else {\n        console.log(\" You write an exist objects in node\");\n        console.log(' -- which is');\n        notes.logNote(note);\n        // here I can't call note.title = undifiend same with note.body = undifined\n        // I want to log the title if was exists\n         // console.log(` Title: ${note.title}`);\n         // console.log(` body: ${note.body}`);\n    } else {\n      console.log(' Your command not in my list command that i made');\n};\n</code></pre>\n\n<p>and I called some few function from notes.js</p>\n\n<pre><code>const fs = require('fs');\nvar fetchNotes = () =&gt; {\n  try {\n      var noteString = fs.readFileSync('notes-data.json');\n      return JSON.parse(noteString);\n  } catch (e) {\n      return [];\n  }\n};    \n\nvar saveNotes = (notes) =&gt; {\n    fs.writeFileSync('notes-data.json', JSON.stringify(notes));\n}; \n\nvar logNote = (note) =&gt; {\nconsole.log(' -- which is');\nconsole.log(` Title: ${note.title}`);\nconsole.log(` body: ${note.body}`);\n};        \n\nvar addNote = (title, body) =&gt; {\n  var notes = fetchNotes();\n  var note = {\n      title,\n      body\n  };       \n  var duplicatesNotes = notes.filter((note) =&gt; note.title === title);\n  console.log( \"If you get message your input object was duplicated\");\n  if(duplicatesNotes.length === 0) {\n      notes.push(note);\n      saveNotes(notes);\n      return note;\n    }\n};\n\nmodule.exports = {\n    addNote,\n    logNote\n};\n</code></pre>\n\n<p>So I called twice <code>node   app.js --title=\"drunk\" --body=\"weed\"</code> and result get error <code>title</code> from <code>${note.title}</code> was undefined.</p>\n\n<p>Need some advise though, thanks for reading</p>\n"
+        },
+        {
+            "tags": [
+                "shell",
+                "ide",
+                "interpreter"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 7834761,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/019c7896e3460864c064d1ddf823754e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "J. Partridge",
+                "link": "https://stackoverflow.com/users/7834761/j-partridge"
+            },
+            "is_answered": false,
+            "view_count": 9,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524608179,
+            "creation_date": 1524412755,
+            "last_edit_date": 1524608179,
+            "question_id": 49967913,
+            "body_markdown": "I&#39;m studying/learning Euphoria language because it seems the most adequate for a new project.\r\nI&#39;m used to test commands on the shell when writing Python and Scheme.\r\nI have been trying to find a shell on OpenEuphoria without success.\r\nThe default interpreter, eui, always ask for a file to run.\r\nI also tried WEE and RedyCode and didn&#39;t find any sign of a shell.\r\nThe question is the one in the title: Does Euphoria language has a shell?\r\n\r\nP.S.: It also does not seem to be an [Euphoria language][1] group here, on Stack Overflow... I cannot even tag it. I suppose that I might not get an answer, but I&#39;ll try anyway. Thank you.\r\n\r\n\r\n  [1]: http://openeuphoria.org/index.wc",
+            "link": "https://stackoverflow.com/questions/49967913/does-euphoria-language-have-a-shell",
+            "title": "Does Euphoria language have a shell?",
+            "body": "<p>I'm studying/learning Euphoria language because it seems the most adequate for a new project.\nI'm used to test commands on the shell when writing Python and Scheme.\nI have been trying to find a shell on OpenEuphoria without success.\nThe default interpreter, eui, always ask for a file to run.\nI also tried WEE and RedyCode and didn't find any sign of a shell.\nThe question is the one in the title: Does Euphoria language has a shell?</p>\n\n<p>P.S.: It also does not seem to be an <a href=\"http://openeuphoria.org/index.wc\" rel=\"nofollow noreferrer\">Euphoria language</a> group here, on Stack Overflow... I cannot even tag it. I suppose that I might not get an answer, but I'll try anyway. Thank you.</p>\n"
+        },
+        {
+            "tags": [
+                "facebook",
+                "facebook-fql",
+                "facebook-graph-api"
+            ],
+            "owner": {
+                "reputation": 64119,
+                "user_id": 16940,
+                "user_type": "registered",
+                "accept_rate": 61,
+                "profile_image": "https://www.gravatar.com/avatar/7fc2db839382b30434539fbc967c498e?s=128&d=identicon&r=PG",
+                "display_name": "Simon_Weaver",
+                "link": "https://stackoverflow.com/users/16940/simon-weaver"
+            },
+            "is_answered": true,
+            "view_count": 407,
+            "accepted_answer_id": 2894536,
+            "answer_count": 1,
+            "score": 6,
+            "last_activity_date": 1524608171,
+            "creation_date": 1274670097,
+            "last_edit_date": 1274671866,
+            "question_id": 2894526,
+            "body_markdown": "I&#39;d like to get the Facebook profile ID of a Facebook user&#39;s father.\r\n\r\nBasically I want to display a picture of the user&#39;s father and say &#39;how about buying an X for Dad&#39;.\r\n\r\nIs this possible with the graph (or REST) API ?\r\n\r\n**Edit:** It looks like this needs to be an FQL query and can&#39;t be done directly with the other APIs. I&#39;m still trying to figure out how to do this, and looking for the correct JOIN format to get the information. I&#39;ll post it if I figure it out.\r\nThanks for the interest in the question everyone. Been fun reading everyones comments coming in. Would appreciate a little more constructive criticism though - as opposed to rampant downvoting. If you think people will be disenfranchised by this I&#39;d be interested to hear reasons why. As a friendly reminder of an upcoming event I see nothin wrong with this approach. I&#39;m respectfully considering different wording if a father cannot be found - in case they are deceased. If i was asking &#39;how do i write to someones stream that that X is buying Y a Z for father&#39;s day&#39; it would be one thing - but I thought this was a pretty trivial &#39;privacy&#39; issue. But then again maybe some of you disagree... Thanks for reading...",
+            "link": "https://stackoverflow.com/questions/2894526/fathers-day-coming-up-can-i-get-the-profile-of-a-facebook-users-father",
+            "title": "Father&#39;s day coming up! - Can I get the profile of a Facebook user&#39;s father?",
+            "body": "<p>I'd like to get the Facebook profile ID of a Facebook user's father.</p>\n\n<p>Basically I want to display a picture of the user's father and say 'how about buying an X for Dad'.</p>\n\n<p>Is this possible with the graph (or REST) API ?</p>\n\n<p><strong>Edit:</strong> It looks like this needs to be an FQL query and can't be done directly with the other APIs. I'm still trying to figure out how to do this, and looking for the correct JOIN format to get the information. I'll post it if I figure it out.\nThanks for the interest in the question everyone. Been fun reading everyones comments coming in. Would appreciate a little more constructive criticism though - as opposed to rampant downvoting. If you think people will be disenfranchised by this I'd be interested to hear reasons why. As a friendly reminder of an upcoming event I see nothin wrong with this approach. I'm respectfully considering different wording if a father cannot be found - in case they are deceased. If i was asking 'how do i write to someones stream that that X is buying Y a Z for father's day' it would be one thing - but I thought this was a pretty trivial 'privacy' issue. But then again maybe some of you disagree... Thanks for reading...</p>\n"
+        },
+        {
+            "tags": [
+                "xcode",
+                "swift",
+                "itunesconnect"
+            ],
+            "owner": {
+                "reputation": 79,
+                "user_id": 4585865,
+                "user_type": "registered",
+                "accept_rate": 42,
+                "profile_image": "https://www.gravatar.com/avatar/13e8a97ced7e544a1737a3b4fa90036c?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Dan A",
+                "link": "https://stackoverflow.com/users/4585865/dan-a"
+            },
+            "is_answered": true,
+            "view_count": 229,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524608167,
+            "creation_date": 1457500223,
+            "question_id": 35883381,
+            "body_markdown": "I submitted my game to the app store and it got rejected because it didn&#39;t comply to iPad sizing, were I specified on iPhone on Xcode.\r\n[![enter image description here][1]][1]\r\n\r\n\r\nYet apple thought otherwise.\r\n\r\n[![enter image description here][2]][2]\r\n\r\n\r\nAm I missing something? Where else do I specify only iPhone? iTunes Connect?\r\n\r\n\r\n  [1]: http://i.stack.imgur.com/AKmAv.png\r\n  [2]: http://i.stack.imgur.com/J1ZOs.png",
+            "link": "https://stackoverflow.com/questions/35883381/itunes-connect-rejection-iphone-only",
+            "title": "Itunes connect Rejection- iPhone only",
+            "body": "<p>I submitted my game to the app store and it got rejected because it didn't comply to iPad sizing, were I specified on iPhone on Xcode.\n<a href=\"https://i.stack.imgur.com/AKmAv.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/AKmAv.png\" alt=\"enter image description here\"></a></p>\n\n<p>Yet apple thought otherwise.</p>\n\n<p><a href=\"https://i.stack.imgur.com/J1ZOs.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/J1ZOs.png\" alt=\"enter image description here\"></a></p>\n\n<p>Am I missing something? Where else do I specify only iPhone? iTunes Connect?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "node.js",
+                "logging",
+                "exception-handling",
+                "winston"
+            ],
+            "owner": {
+                "reputation": 8723,
+                "user_id": 1650012,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://www.gravatar.com/avatar/a21bc05bb7df4e5c3cb4933e4f3072eb?s=128&d=identicon&r=PG",
+                "display_name": "kramer65",
+                "link": "https://stackoverflow.com/users/1650012/kramer65"
+            },
+            "is_answered": true,
+            "view_count": 17,
+            "accepted_answer_id": 49981372,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1524608157,
+            "creation_date": 1524482026,
+            "last_edit_date": 1524494640,
+            "question_id": 49979743,
+            "body_markdown": "I&#39;ve got a program written in Node in which I use Winstonjs for logging. I also have an exceptionHandler so that the node exceptions/errors also reach my logs. I now have a problem though. When I run the script from the command line using `node index.js` (instead of [pm2][1]) the script ends silently when it has an error.\r\n\r\nHave a look at my example code below. I added three `console.log()`s which try to log an undefined variable. When I run the script using `node index.js` it gives me a `ReferenceError` for the first wrong `console.log(undefinedVariable)` as expected. When I now remove that first and/or the second `console.log`, the script ends silently.\r\n\r\n    &quot;use strict&quot;;\r\n\r\n    let winston = require(&#39;winston&#39;);\r\n    const path = require(&#39;path&#39;);\r\n\r\n    const PRODUCTION = false;\r\n\r\n    // LOGGING\r\n    const myFormat = winston.format.printf(info =&gt; {\r\n        return `${info.timestamp} ${info.level}: ${info.message}`;\r\n    });\r\n\r\n    console.log(undefinedVariable);  // THIS GIVES A REFERENCE ERROR\r\n\r\n    const logger = winston.createLogger({\r\n        level: &#39;debug&#39;,\r\n        format: winston.format.combine(winston.format.timestamp(), myFormat),\r\n        transports: [\r\n            new winston.transports.File({filename: &#39;logs/error.log&#39;, level: &#39;error&#39;}),\r\n            new winston.transports.File({filename: &#39;logs/combined.log&#39;}),\r\n        ],\r\n        exceptionHandlers: [\r\n            new winston.transports.File({ filename: &#39;logs/exceptions.log&#39; }),\r\n            new winston.transports.File({ filename: &#39;logs/combined.log&#39; })\r\n        ]\r\n    });\r\n\r\n    console.log(undefinedVariable);  // THIS DOES NOT GIVE A REFERENCE ERROR, BUT ENDS THE SCRIPT SILENTLY\r\n\r\n    if (!PRODUCTION) {\r\n        // If we&#39;re not in production then also log to the `console`\r\n        logger.add(new winston.transports.Console(\r\n            {format: winston.format.combine(winston.format.timestamp(), myFormat), level: &#39;debug&#39;}\r\n        ));\r\n    }\r\n\r\n    console.log(undefinedVariable);  // THIS ALSO DOES NOT GIVE A REFERENCE ERROR, BUT ENDS THE SCRIPT SILENTLY\r\n\r\n    function log(message, level=&#39;debug&#39;){\r\n        // Levels: error, warn, info, verbose, debug, silly\r\n        const e = new Error();\r\n        const regex = /\\((.*):(\\d+):(\\d+)\\)$/\r\n        const match = regex.exec(e.stack.split(&quot;\\n&quot;)[2]);\r\n        let log_source = path.basename(match[1]) + &#39;:&#39; + match[2];  // eg: index.js:285\r\n\r\n        if (typeof message === &#39;object&#39;){\r\n            message = JSON.stringify(message);\r\n        }\r\n        logger[level](log_source + &#39; - &#39; + message);\r\n    }\r\n\r\nI&#39;m running Winstonjs version `3.0.0-rc5`. I know it&#39;s not the final 3.0 release yet, but I guess I&#39;m simply making a mistake here.\r\n\r\nDoes anybody know what I&#39;m doing wrong here? All tips are welcome!\r\n\r\n\r\n  [1]: http://pm2.keymetrics.io/",
+            "link": "https://stackoverflow.com/questions/49979743/why-does-winstonjs-exceptionhandler-silence-my-node-errors",
+            "title": "Why does Winstonjs ExceptionHandler silence my node errors?",
+            "body": "<p>I've got a program written in Node in which I use Winstonjs for logging. I also have an exceptionHandler so that the node exceptions/errors also reach my logs. I now have a problem though. When I run the script from the command line using <code>node index.js</code> (instead of <a href=\"http://pm2.keymetrics.io/\" rel=\"nofollow noreferrer\">pm2</a>) the script ends silently when it has an error.</p>\n\n<p>Have a look at my example code below. I added three <code>console.log()</code>s which try to log an undefined variable. When I run the script using <code>node index.js</code> it gives me a <code>ReferenceError</code> for the first wrong <code>console.log(undefinedVariable)</code> as expected. When I now remove that first and/or the second <code>console.log</code>, the script ends silently.</p>\n\n<pre><code>\"use strict\";\n\nlet winston = require('winston');\nconst path = require('path');\n\nconst PRODUCTION = false;\n\n// LOGGING\nconst myFormat = winston.format.printf(info =&gt; {\n    return `${info.timestamp} ${info.level}: ${info.message}`;\n});\n\nconsole.log(undefinedVariable);  // THIS GIVES A REFERENCE ERROR\n\nconst logger = winston.createLogger({\n    level: 'debug',\n    format: winston.format.combine(winston.format.timestamp(), myFormat),\n    transports: [\n        new winston.transports.File({filename: 'logs/error.log', level: 'error'}),\n        new winston.transports.File({filename: 'logs/combined.log'}),\n    ],\n    exceptionHandlers: [\n        new winston.transports.File({ filename: 'logs/exceptions.log' }),\n        new winston.transports.File({ filename: 'logs/combined.log' })\n    ]\n});\n\nconsole.log(undefinedVariable);  // THIS DOES NOT GIVE A REFERENCE ERROR, BUT ENDS THE SCRIPT SILENTLY\n\nif (!PRODUCTION) {\n    // If we're not in production then also log to the `console`\n    logger.add(new winston.transports.Console(\n        {format: winston.format.combine(winston.format.timestamp(), myFormat), level: 'debug'}\n    ));\n}\n\nconsole.log(undefinedVariable);  // THIS ALSO DOES NOT GIVE A REFERENCE ERROR, BUT ENDS THE SCRIPT SILENTLY\n\nfunction log(message, level='debug'){\n    // Levels: error, warn, info, verbose, debug, silly\n    const e = new Error();\n    const regex = /\\((.*):(\\d+):(\\d+)\\)$/\n    const match = regex.exec(e.stack.split(\"\\n\")[2]);\n    let log_source = path.basename(match[1]) + ':' + match[2];  // eg: index.js:285\n\n    if (typeof message === 'object'){\n        message = JSON.stringify(message);\n    }\n    logger[level](log_source + ' - ' + message);\n}\n</code></pre>\n\n<p>I'm running Winstonjs version <code>3.0.0-rc5</code>. I know it's not the final 3.0 release yet, but I guess I'm simply making a mistake here.</p>\n\n<p>Does anybody know what I'm doing wrong here? All tips are welcome!</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pandas",
+                "anaconda"
+            ],
+            "owner": {
+                "reputation": 245,
+                "user_id": 5275540,
+                "user_type": "registered",
+                "accept_rate": 33,
+                "profile_image": "https://lh3.googleusercontent.com/-o4LeE5m8BNI/AAAAAAAAAAI/AAAAAAAAAAA/5XwoiWLybKk/photo.jpg?sz=128",
+                "display_name": "Kanika Singhal",
+                "link": "https://stackoverflow.com/users/5275540/kanika-singhal"
+            },
+            "is_answered": true,
+            "view_count": 62063,
+            "accepted_answer_id": 32583988,
+            "answer_count": 7,
+            "score": 13,
+            "last_activity_date": 1524608155,
+            "creation_date": 1442235062,
+            "question_id": 32565302,
+            "body_markdown": "I have installed anaconda. Now when i am trying to run \r\n\r\n    import pandas as pd\r\n\r\nI am getting the following error\r\n\r\n\r\n    Traceback (most recent call last):\r\n    File &quot;&lt;pyshell#0&gt;&quot;, line 1, in &lt;module&gt;\r\n    import pandasFile\r\n    ImportError: No module named pandasFile\r\n\r\nIt is my first day to python. I cannot figure out how to fix it. I am hoping that I have to change some path somewhere. I know it can be a silly question to post here. \r\n",
+            "link": "https://stackoverflow.com/questions/32565302/python-after-installing-anaconda-how-to-import-pandas",
+            "title": "python: after installing anaconda, how to import pandas",
+            "body": "<p>I have installed anaconda. Now when i am trying to run </p>\n\n<pre><code>import pandas as pd\n</code></pre>\n\n<p>I am getting the following error</p>\n\n<pre><code>Traceback (most recent call last):\nFile \"&lt;pyshell#0&gt;\", line 1, in &lt;module&gt;\nimport pandasFile\nImportError: No module named pandasFile\n</code></pre>\n\n<p>It is my first day to python. I cannot figure out how to fix it. I am hoping that I have to change some path somewhere. I know it can be a silly question to post here. </p>\n"
+        },
+        {
+            "tags": [
+                "python-2.7",
+                "tkinter",
+                "listbox"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9580699,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/2034639379898433/picture?type=large",
+                "display_name": "Kalib Kumeroa",
+                "link": "https://stackoverflow.com/users/9580699/kalib-kumeroa"
+            },
+            "is_answered": true,
+            "view_count": 50,
+            "accepted_answer_id": 49659615,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524608149,
+            "creation_date": 1522553569,
+            "question_id": 49594544,
+            "body_markdown": "The problem im getting is if type something in my entry box it first fills index 1 and 2 of the listbox before finally typing into the 3rd index.\r\n\r\n    def country_get(event):\r\n            listbox.delete(3)\r\n            listbox.insert(3, country_label.cget(&#39;text&#39;) + event.widget.get() + &#39;\\n&#39;)\r\n\r\n    \r\n\r\n\r\n    title_text=StringVar()\r\n    entry_country=Entry(master, bg=&quot;wheat3&quot;, fg=&quot;dark slate gray&quot;, textvariable=title_text)\r\n    entry_country.bind(&#39;&lt;KeyRelease&gt;&#39;, country_get)\r\n    entry_country.grid(row=4, column=1)\r\n\r\nI want to be able to type at any index of the listbox whether it be the 3rd or 5th, without having anything at the previous index&#39;s.",
+            "link": "https://stackoverflow.com/questions/49594544/tkinter-adding-a-entry-at-index-3-without-there-being-one-at-index-1-or-2",
+            "title": "Tkinter: Adding a entry at index 3 without there being one at index 1 or 2",
+            "body": "<p>The problem im getting is if type something in my entry box it first fills index 1 and 2 of the listbox before finally typing into the 3rd index.</p>\n\n<pre><code>def country_get(event):\n        listbox.delete(3)\n        listbox.insert(3, country_label.cget('text') + event.widget.get() + '\\n')\n\n\n\n\ntitle_text=StringVar()\nentry_country=Entry(master, bg=\"wheat3\", fg=\"dark slate gray\", textvariable=title_text)\nentry_country.bind('&lt;KeyRelease&gt;', country_get)\nentry_country.grid(row=4, column=1)\n</code></pre>\n\n<p>I want to be able to type at any index of the listbox whether it be the 3rd or 5th, without having anything at the previous index's.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "reactjs",
+                "meteor"
+            ],
+            "owner": {
+                "reputation": 154,
+                "user_id": 1778412,
+                "user_type": "registered",
+                "accept_rate": 70,
+                "profile_image": "https://www.gravatar.com/avatar/76a9945c1af9c59cdf137b18240c2a40?s=128&d=identicon&r=PG",
+                "display_name": "Fullhdpixel",
+                "link": "https://stackoverflow.com/users/1778412/fullhdpixel"
+            },
+            "is_answered": true,
+            "view_count": 27,
+            "accepted_answer_id": 50011380,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524608145,
+            "creation_date": 1524604523,
+            "question_id": 50010811,
+            "body_markdown": "On the profile page I want to disallow non-logged in users to access the page. However, the Meteor.user() object is undefined at initial page load. How should one wait till the Meteor.user() object is defined. When is it certain that the user is not logged in and the Meteor.user() is loaded?\r\n\r\nHere is part of my Profile render method accompanied by the WithTracker method. As you can see there is a Redirect object being rendered when the Meteor.user() is unavailable.\r\n\r\n    render() {\r\n      const {user} = this.props\r\n    \r\n      console.log(user) //First undefined, later defined. But already renders redirect, so it&#39;s not useful\r\n    \r\n      return (\r\n        &lt;Container fluid className=&#39;p-3 mb-5&#39;&gt;\r\n          {/* Not logged in */}\r\n          {!user &amp;&amp; &lt;Redirect\r\n            to={{\r\n            pathname: &#39;/SignUp&#39;,\r\n            state: {\r\n              location: &#39;/Profile&#39;\r\n            }\r\n          }}/&gt;}\r\n          {/* Logged in */}\r\n          ...\r\n        &lt;/Container&gt;\r\n      )\r\n    }\r\n    \r\n    \r\n    export default withTracker(() =&gt; {\r\n      return {\r\n        user: Meteor.user()\r\n      }\r\n    })(Profile)",
+            "link": "https://stackoverflow.com/questions/50010811/meteor-react-user-object-undefined-at-initial-page-load",
+            "title": "Meteor React: User Object undefined at initial page load",
+            "body": "<p>On the profile page I want to disallow non-logged in users to access the page. However, the Meteor.user() object is undefined at initial page load. How should one wait till the Meteor.user() object is defined. When is it certain that the user is not logged in and the Meteor.user() is loaded?</p>\n\n<p>Here is part of my Profile render method accompanied by the WithTracker method. As you can see there is a Redirect object being rendered when the Meteor.user() is unavailable.</p>\n\n<pre><code>render() {\n  const {user} = this.props\n\n  console.log(user) //First undefined, later defined. But already renders redirect, so it's not useful\n\n  return (\n    &lt;Container fluid className='p-3 mb-5'&gt;\n      {/* Not logged in */}\n      {!user &amp;&amp; &lt;Redirect\n        to={{\n        pathname: '/SignUp',\n        state: {\n          location: '/Profile'\n        }\n      }}/&gt;}\n      {/* Logged in */}\n      ...\n    &lt;/Container&gt;\n  )\n}\n\n\nexport default withTracker(() =&gt; {\n  return {\n    user: Meteor.user()\n  }\n})(Profile)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "cryptoapi"
+            ],
+            "owner": {
+                "reputation": 269,
+                "user_id": 1236079,
+                "user_type": "registered",
+                "accept_rate": 10,
+                "profile_image": "https://www.gravatar.com/avatar/43be4883982160a5eada19e2220c86aa?s=128&d=identicon&r=PG",
+                "display_name": "Alex I",
+                "link": "https://stackoverflow.com/users/1236079/alex-i"
+            },
+            "is_answered": false,
+            "view_count": 3,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524608145,
+            "creation_date": 1524608145,
+            "question_id": 50011444,
+            "body_markdown": "I am trying to use [SignerTimeStampEx2][1] to timestamp a blob. I have no problem using it to timestamp a signed file, but cannot figure out a way to timestamp a blob. The problem is that documentation does not specify the format of the blob.\r\n\r\n\r\n  [1]: https://msdn.microsoft.com/en-us/library/windows/desktop/dd418879.aspx",
+            "link": "https://stackoverflow.com/questions/50011444/signertimestampex2-to-timestamp-a-blob",
+            "title": "SignerTimeStampEx2 to timestamp a blob",
+            "body": "<p>I am trying to use <a href=\"https://msdn.microsoft.com/en-us/library/windows/desktop/dd418879.aspx\" rel=\"nofollow noreferrer\">SignerTimeStampEx2</a> to timestamp a blob. I have no problem using it to timestamp a signed file, but cannot figure out a way to timestamp a blob. The problem is that documentation does not specify the format of the blob.</p>\n"
+        },
+        {
+            "tags": [
+                "tslint"
+            ],
+            "owner": {
+                "reputation": 199,
+                "user_id": 3281336,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://www.gravatar.com/avatar/4bf1456ba6980dccf175fed247f839af?s=128&d=identicon&r=PG&f=1",
+                "display_name": "PatS",
+                "link": "https://stackoverflow.com/users/3281336/pats"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524608137,
+            "creation_date": 1524608137,
+            "question_id": 50011443,
+            "body_markdown": "I&#39;m using tslint, and got the error.  \r\n\r\n    &#39;myVariable&#39; is declared but its value is never read.\r\n\r\nI went to the website that documents the rules [https://palantir.github.io/tslint/rules/][1] and searched for the string ```is declared but its value is never read``` but didn&#39;t find that text.  While I can and did look for settings that might be tied to this error, it shouldn&#39;t be a guessing game.\r\n\r\n**What is the configuration change needed to suppress/stop this error?**\r\n\r\nJust as importantly, **when I get an error in tslint that says &quot;this happened&quot; how can I find what setting is used to configure or change the tslint behavior on how to handle that error?**\r\n\r\nI also did a search on the website (google search I used was)\r\n\r\n    site:palantir.github.io  is declared but its value is never read \r\n\r\nbut a direct hit did not appear, so the answer might be on the palantir.github.io website but I just didn&#39;t (yet) find it.\r\n\r\n**How do others find the tslint variable/configuration settings that change to suppress a particular error?**\r\n\r\nPlease refrain from suggesting I comment out the code that is causing the problem.  I&#39;m looking for an answer to my more general question as well as to the specific question.  Thank you.\r\n\r\n  [1]: https://palantir.github.io/tslint/rules/",
+            "link": "https://stackoverflow.com/questions/50011443/tslint-how-to-disable-error-somevariable-is-declared-but-its-value-is-never-rea",
+            "title": "tslint how to disable error &quot;someVariable is declared but its value is never read &quot;",
+            "body": "<p>I'm using tslint, and got the error.  </p>\n\n<pre><code>'myVariable' is declared but its value is never read.\n</code></pre>\n\n<p>I went to the website that documents the rules <a href=\"https://palantir.github.io/tslint/rules/\" rel=\"nofollow noreferrer\">https://palantir.github.io/tslint/rules/</a> and searched for the string <code>is declared but its value is never read</code> but didn't find that text.  While I can and did look for settings that might be tied to this error, it shouldn't be a guessing game.</p>\n\n<p><strong>What is the configuration change needed to suppress/stop this error?</strong></p>\n\n<p>Just as importantly, <strong>when I get an error in tslint that says \"this happened\" how can I find what setting is used to configure or change the tslint behavior on how to handle that error?</strong></p>\n\n<p>I also did a search on the website (google search I used was)</p>\n\n<pre><code>site:palantir.github.io  is declared but its value is never read \n</code></pre>\n\n<p>but a direct hit did not appear, so the answer might be on the palantir.github.io website but I just didn't (yet) find it.</p>\n\n<p><strong>How do others find the tslint variable/configuration settings that change to suppress a particular error?</strong></p>\n\n<p>Please refrain from suggesting I comment out the code that is causing the problem.  I'm looking for an answer to my more general question as well as to the specific question.  Thank you.</p>\n"
+        },
+        {
+            "tags": [
+                "python-3.x",
+                "pandas"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 5392576,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/cf824da140196122a08abf76319b0a27?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Dhruv Bhardwaj",
+                "link": "https://stackoverflow.com/users/5392576/dhruv-bhardwaj"
+            },
+            "is_answered": false,
+            "view_count": 23,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524608132,
+            "creation_date": 1524583849,
+            "question_id": 50005578,
+            "body_markdown": "vsample_data = credit_card.sample(n=100, replace=&#39;False&#39;)\r\n\r\nprint(vsample_data)\r\n\r\nHere, I was trying to sample 100 data points from a data set but not able to get correct sample data such that it preserves the original distribution of the credit card fraud data-set i.e Class-0( Non- Fraud) and Class-1(Fraud).",
+            "link": "https://stackoverflow.com/questions/50005578/sampling-data-such-that-distribution-is-preserved",
+            "title": "Sampling data such that distribution is preserved",
+            "body": "<p>vsample_data = credit_card.sample(n=100, replace='False')</p>\n\n<p>print(vsample_data)</p>\n\n<p>Here, I was trying to sample 100 data points from a data set but not able to get correct sample data such that it preserves the original distribution of the credit card fraud data-set i.e Class-0( Non- Fraud) and Class-1(Fraud).</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "android-studio",
+                "keystore",
+                "telegram"
+            ],
+            "owner": {
+                "reputation": 20,
+                "user_id": 5081163,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/aa7ed056d1ee78eba52d047a6719a6d4?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Milad Nasri",
+                "link": "https://stackoverflow.com/users/5081163/milad-nasri"
+            },
+            "is_answered": true,
+            "view_count": 1822,
+            "accepted_answer_id": 34635096,
+            "answer_count": 3,
+            "score": 1,
+            "last_activity_date": 1524608122,
+            "creation_date": 1452072846,
+            "last_edit_date": 1495542827,
+            "question_id": 34629723,
+            "body_markdown": "I downloaded a project from GitHub and opened it by Android Studio. All required build tools and Android support repositories were automatically downloaded through Android Studio.\r\n\r\nhttps://github.com/DrKLO/Telegram\r\n\r\n\r\nNow that I try **to run the project**, I get an error in Massages.\r\n\r\n\r\n    Error:A problem was found with the configuration of task &#39;:TMessagesProj:packageDebug&#39;.\r\n    &gt; File &#39;G:\\AndroidDev\\AndroidStudioProjects\\Telegram-master\\TMessagesProj\\config\\release.keystore&#39; specified for property &#39;signingConfig.storeFile&#39; does not exist.\r\n\r\nI found some other threads on Stack Exchange:\r\n\r\nhttps://stackoverflow.com/questions/21780847\r\n\r\nhttps://stackoverflow.com/questions/25211444\r\n\r\nand I created the keystores as they suggested, but I&#39;m still getting that error when I click the run button. They seem to be different from mine.\r\n\r\nI also generated the signed APK and when I tried to install it on a device, the program crashed and stopped and I guess it might be caused by the mentioned problem.\r\n\r\nI&#39;m sure it should work correctly because it&#39;s the official source of Telegram messenger. https://github.com/DrKLO/Telegram\r\n\r\nIn case you need the file build.gradle:\r\n\r\n    apply plugin: &#39;com.android.application&#39;\r\n    \r\n    repositories {\r\n        mavenCentral()\r\n    }\r\n    \r\n    dependencies {\r\n        compile &#39;com.android.support:support-v4:23.1.+&#39;\r\n        compile &#39;com.google.android.gms:play-services:3.2.+&#39;\r\n        compile &#39;net.hockeyapp.android:HockeySDK:3.6.+&#39;\r\n        compile &#39;com.googlecode.mp4parser:isoparser:1.0.+&#39;\r\n    }\r\n    \r\n    android {\r\n        compileSdkVersion 23\r\n        buildToolsVersion &#39;23.0.2&#39;\r\n    \r\n        useLibrary &#39;org.apache.http.legacy&#39;\r\n    \r\n        compileOptions {\r\n            sourceCompatibility JavaVersion.VERSION_1_7\r\n            targetCompatibility JavaVersion.VERSION_1_7\r\n        }\r\n    \r\n        signingConfigs {\r\n            debug {\r\n                storeFile file(&quot;config/release.keystore&quot;)\r\n                storePassword RELEASE_STORE_PASSWORD\r\n                keyAlias RELEASE_KEY_ALIAS\r\n                keyPassword RELEASE_KEY_PASSWORD\r\n            }\r\n    \r\n            release {\r\n                storeFile file(&quot;config/release.keystore&quot;)\r\n                storePassword RELEASE_STORE_PASSWORD\r\n                keyAlias RELEASE_KEY_ALIAS\r\n                keyPassword RELEASE_KEY_PASSWORD\r\n            }\r\n        }\r\n    \r\n        buildTypes {\r\n            debug {\r\n                debuggable true\r\n                jniDebuggable true\r\n                signingConfig signingConfigs.debug\r\n                applicationIdSuffix &quot;.beta&quot;\r\n            }\r\n    \r\n            release {\r\n                debuggable false\r\n                jniDebuggable false\r\n                signingConfig signingConfigs.release\r\n            }\r\n    \r\n            foss {\r\n                debuggable false\r\n                jniDebuggable false\r\n                signingConfig signingConfigs.release\r\n            }\r\n        }\r\n    \r\n        sourceSets.main {\r\n            jniLibs.srcDir &#39;libs&#39;\r\n            jni.srcDirs = [] //disable automatic ndk-build call\r\n        }\r\n    \r\n        sourceSets.debug {\r\n            manifest.srcFile &#39;config/debug/AndroidManifest.xml&#39;\r\n        }\r\n    \r\n        sourceSets.release {\r\n            manifest.srcFile &#39;config/release/AndroidManifest.xml&#39;\r\n        }\r\n    \r\n        sourceSets.foss {\r\n            manifest.srcFile &#39;config/foss/AndroidManifest.xml&#39;\r\n        }\r\n    \r\n        defaultConfig {\r\n            minSdkVersion 8\r\n            targetSdkVersion 23\r\n            versionCode 695\r\n            versionName &quot;3.3.2&quot;\r\n        }\r\n    }\r\n",
+            "link": "https://stackoverflow.com/questions/34629723/signingconfig-storefile-does-not-exist-when-i-try-to-run-the-project",
+            "title": "signingConfig.storeFile does not exist when I try to run the project",
+            "body": "<p>I downloaded a project from GitHub and opened it by Android Studio. All required build tools and Android support repositories were automatically downloaded through Android Studio.</p>\n\n<p><a href=\"https://github.com/DrKLO/Telegram\" rel=\"nofollow noreferrer\">https://github.com/DrKLO/Telegram</a></p>\n\n<p>Now that I try <strong>to run the project</strong>, I get an error in Massages.</p>\n\n<pre><code>Error:A problem was found with the configuration of task ':TMessagesProj:packageDebug'.\n&gt; File 'G:\\AndroidDev\\AndroidStudioProjects\\Telegram-master\\TMessagesProj\\config\\release.keystore' specified for property 'signingConfig.storeFile' does not exist.\n</code></pre>\n\n<p>I found some other threads on Stack Exchange:</p>\n\n<p><a href=\"https://stackoverflow.com/questions/21780847\">Gradle signing app with packageRelease “specified for property &#39;signingConfig.storeFile&#39; does not exist”</a></p>\n\n<p><a href=\"https://stackoverflow.com/questions/25211444\">Android specified for property &#39;signingConfig.storeFile&#39; does not exist</a></p>\n\n<p>and I created the keystores as they suggested, but I'm still getting that error when I click the run button. They seem to be different from mine.</p>\n\n<p>I also generated the signed APK and when I tried to install it on a device, the program crashed and stopped and I guess it might be caused by the mentioned problem.</p>\n\n<p>I'm sure it should work correctly because it's the official source of Telegram messenger. <a href=\"https://github.com/DrKLO/Telegram\" rel=\"nofollow noreferrer\">https://github.com/DrKLO/Telegram</a></p>\n\n<p>In case you need the file build.gradle:</p>\n\n<pre><code>apply plugin: 'com.android.application'\n\nrepositories {\n    mavenCentral()\n}\n\ndependencies {\n    compile 'com.android.support:support-v4:23.1.+'\n    compile 'com.google.android.gms:play-services:3.2.+'\n    compile 'net.hockeyapp.android:HockeySDK:3.6.+'\n    compile 'com.googlecode.mp4parser:isoparser:1.0.+'\n}\n\nandroid {\n    compileSdkVersion 23\n    buildToolsVersion '23.0.2'\n\n    useLibrary 'org.apache.http.legacy'\n\n    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_1_7\n        targetCompatibility JavaVersion.VERSION_1_7\n    }\n\n    signingConfigs {\n        debug {\n            storeFile file(\"config/release.keystore\")\n            storePassword RELEASE_STORE_PASSWORD\n            keyAlias RELEASE_KEY_ALIAS\n            keyPassword RELEASE_KEY_PASSWORD\n        }\n\n        release {\n            storeFile file(\"config/release.keystore\")\n            storePassword RELEASE_STORE_PASSWORD\n            keyAlias RELEASE_KEY_ALIAS\n            keyPassword RELEASE_KEY_PASSWORD\n        }\n    }\n\n    buildTypes {\n        debug {\n            debuggable true\n            jniDebuggable true\n            signingConfig signingConfigs.debug\n            applicationIdSuffix \".beta\"\n        }\n\n        release {\n            debuggable false\n            jniDebuggable false\n            signingConfig signingConfigs.release\n        }\n\n        foss {\n            debuggable false\n            jniDebuggable false\n            signingConfig signingConfigs.release\n        }\n    }\n\n    sourceSets.main {\n        jniLibs.srcDir 'libs'\n        jni.srcDirs = [] //disable automatic ndk-build call\n    }\n\n    sourceSets.debug {\n        manifest.srcFile 'config/debug/AndroidManifest.xml'\n    }\n\n    sourceSets.release {\n        manifest.srcFile 'config/release/AndroidManifest.xml'\n    }\n\n    sourceSets.foss {\n        manifest.srcFile 'config/foss/AndroidManifest.xml'\n    }\n\n    defaultConfig {\n        minSdkVersion 8\n        targetSdkVersion 23\n        versionCode 695\n        versionName \"3.3.2\"\n    }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "bluetooth-lowenergy"
+            ],
+            "owner": {
+                "reputation": 71,
+                "user_id": 6284141,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9bb7e3a0d3771c3e27db57ed34c97d63?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Shubham Raitka",
+                "link": "https://stackoverflow.com/users/6284141/shubham-raitka"
+            },
+            "is_answered": true,
+            "view_count": 406,
+            "accepted_answer_id": 38849610,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524608110,
+            "creation_date": 1470717962,
+            "last_edit_date": 1524608110,
+            "question_id": 38842268,
+            "body_markdown": "I want to fetch the steps count from fitness wearable through BLE. But I am unable to figure out what is the UUID for its service and characteristic. Can anyone help?\r\n\r\nSo do we need device specific SDKs to do such work?",
+            "link": "https://stackoverflow.com/questions/38842268/what-is-the-uuid-of-the-service-and-characteristic-for-step-count-ble",
+            "title": "What is the UUID of the service and characteristic for step count BLE?",
+            "body": "<p>I want to fetch the steps count from fitness wearable through BLE. But I am unable to figure out what is the UUID for its service and characteristic. Can anyone help?</p>\n\n<p>So do we need device specific SDKs to do such work?</p>\n"
+        },
+        {
+            "tags": [
+                "postgresql",
+                "amazon-rds"
+            ],
+            "owner": {
+                "reputation": 124,
+                "user_id": 1225367,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/4573015d12bee8990282ff17f4695684?s=128&d=identicon&r=PG",
+                "display_name": "gillien",
+                "link": "https://stackoverflow.com/users/1225367/gillien"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524608107,
+            "creation_date": 1524501921,
+            "last_edit_date": 1524607981,
+            "question_id": 49986098,
+            "body_markdown": "After upgrading from postgresql 9.6 to 10.1-R1, the user do not have access to tables.\r\n\r\nafter investigation, I found the exact same issue on that [post][1]\r\n\r\nWhen I look at my access privileges, it is empty:\r\n\r\n    \\dn+\r\n                            List of schemas\r\n      Name  |  Owner   | Access privileges |      Description\r\n    --------+----------+-------------------+------------------------\r\n     public | rdsadmin |                   | standard public schema\r\n\r\nWhen it should be `postgres=UC/postgres=UC/postgres`\r\n\r\nIt was correctly set before migration\r\n\r\nthe recommendation was to run the command `grant all on schema public to &lt;my user&gt;;` but I don&#39;t have enough permission with RDS. Any recomendation to handle this with RDS?\r\n\r\n\r\n  [1]: http://:%20https://stackoverflow.com/questions/7758533/postgresql-database-owner-cant-access-database-no-relations-found/7758860#7758860\r\n",
+            "link": "https://stackoverflow.com/questions/49986098/amazon-rds-postgresql-database-owner-cant-access-database-after-db-engine-upg",
+            "title": "Amazon RDS - Postgresql database owner can&#39;t access database after DB engine upgrade",
+            "body": "<p>After upgrading from postgresql 9.6 to 10.1-R1, the user do not have access to tables.</p>\n\n<p>after investigation, I found the exact same issue on that <a href=\"http://:%20https://stackoverflow.com/questions/7758533/postgresql-database-owner-cant-access-database-no-relations-found/7758860#7758860\" rel=\"nofollow noreferrer\">post</a></p>\n\n<p>When I look at my access privileges, it is empty:</p>\n\n<pre><code>\\dn+\n                        List of schemas\n  Name  |  Owner   | Access privileges |      Description\n--------+----------+-------------------+------------------------\n public | rdsadmin |                   | standard public schema\n</code></pre>\n\n<p>When it should be <code>postgres=UC/postgres=UC/postgres</code></p>\n\n<p>It was correctly set before migration</p>\n\n<p>the recommendation was to run the command <code>grant all on schema public to &lt;my user&gt;;</code> but I don't have enough permission with RDS. Any recomendation to handle this with RDS?</p>\n"
+        },
+        {
+            "tags": [
+                "swift",
+                "firebase",
+                "google-cloud-firestore"
+            ],
+            "owner": {
+                "reputation": 30,
+                "user_id": 3116871,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/f4aec9e761a55b87cdbd224f8ed06d10?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3116871",
+                "link": "https://stackoverflow.com/users/3116871/user3116871"
+            },
+            "is_answered": true,
+            "view_count": 32,
+            "accepted_answer_id": 50011183,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524608094,
+            "creation_date": 1524604235,
+            "question_id": 50010771,
+            "body_markdown": "I have been trying to figure out a way to query a list of documents where I have a range filter on one field and order by another field which of course  isn&#39;t possible, see my other question: https://stackoverflow.com/questions/49825470/order-by-timestamp-with-range-filter-on-different-field-swift-firestore/49828778?noredirect=1#comment86673304_49828778\r\n\r\nBut is it possible to save documents with the timestamp as id and then it would sort by default? Or maybe hardcode an ID, then retrieve the last created document id and increase id by one for the next post to be uploaded? \r\n\r\nThis shows how the documents is ordered in the collection\r\n\r\n[![This shows how the documents is ordered in the collection][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/kE8WL.png\r\n\r\nAny ideas how to store documents so they are ordered by created at in the collection? ",
+            "link": "https://stackoverflow.com/questions/50010771/order-by-document-id-firestore",
+            "title": "Order by document id firestore?",
+            "body": "<p>I have been trying to figure out a way to query a list of documents where I have a range filter on one field and order by another field which of course  isn't possible, see my other question: <a href=\"https://stackoverflow.com/questions/49825470/order-by-timestamp-with-range-filter-on-different-field-swift-firestore/49828778?noredirect=1#comment86673304_49828778\">Order by timestamp with range filter on different field Swift Firestore</a></p>\n\n<p>But is it possible to save documents with the timestamp as id and then it would sort by default? Or maybe hardcode an ID, then retrieve the last created document id and increase id by one for the next post to be uploaded? </p>\n\n<p>This shows how the documents is ordered in the collection</p>\n\n<p><a href=\"https://i.stack.imgur.com/kE8WL.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/kE8WL.png\" alt=\"This shows how the documents is ordered in the collection\"></a></p>\n\n<p>Any ideas how to store documents so they are ordered by created at in the collection? </p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "django",
+                "rest",
+                "authentication",
+                "vue.js"
+            ],
+            "owner": {
+                "reputation": 27,
+                "user_id": 3870083,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/FHXbF.jpg?s=128&g=1",
+                "display_name": "Ohid",
+                "link": "https://stackoverflow.com/users/3870083/ohid"
+            },
+            "is_answered": true,
+            "view_count": 92,
+            "accepted_answer_id": 49488547,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1524608079,
+            "creation_date": 1513226774,
+            "question_id": 47806068,
+            "body_markdown": "I am making a website where I am using Vuejs for front end. For registration, I am using rest_auth.registration. \r\n\r\nIn Vuejs code, I am making the registration post request through axios. \r\n\r\n      axios.post(this.registrationUrl,{\r\n        username,\r\n        email,\r\n        password1,\r\n        password2,\r\n      }).then(res =&gt; {\r\n        console.log(&#39;Registration Successful!&#39;)\r\n      }).catch(err =&gt; {\r\n        // console.log(&#39;There is error!&#39;)\r\n        let errData = err.response.data\r\n        this.errors.push(errData)\r\n         for (let errorType in errData) {\r\n          for (let error of errData[errorType]) {\r\n            this.errors.push(error)\r\n          }\r\n        } \r\n      })  \r\n\r\nThe problem is that while registering a user, the promise in the code returns an error even if the registration is successful and a new user can be seen in the django admin panel. \r\n\r\nThe returning error: \r\n\r\n    OSError at /rest-auth/registration/ [Errno 99] Cannot assign requested address Request Method: POST Request URL: http://localhost:8000/rest-auth/registration/ Django Version: 1.11.8 ",
+            "link": "https://stackoverflow.com/questions/47806068/django-rest-auth-registration-is-sending-back-error-even-in-successful-registrat",
+            "title": "Django rest_auth.registration is sending back error even in successful registration",
+            "body": "<p>I am making a website where I am using Vuejs for front end. For registration, I am using rest_auth.registration. </p>\n\n<p>In Vuejs code, I am making the registration post request through axios. </p>\n\n<pre><code>  axios.post(this.registrationUrl,{\n    username,\n    email,\n    password1,\n    password2,\n  }).then(res =&gt; {\n    console.log('Registration Successful!')\n  }).catch(err =&gt; {\n    // console.log('There is error!')\n    let errData = err.response.data\n    this.errors.push(errData)\n     for (let errorType in errData) {\n      for (let error of errData[errorType]) {\n        this.errors.push(error)\n      }\n    } \n  })  \n</code></pre>\n\n<p>The problem is that while registering a user, the promise in the code returns an error even if the registration is successful and a new user can be seen in the django admin panel. </p>\n\n<p>The returning error: </p>\n\n<pre><code>OSError at /rest-auth/registration/ [Errno 99] Cannot assign requested address Request Method: POST Request URL: http://localhost:8000/rest-auth/registration/ Django Version: 1.11.8 \n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "spring-boot",
+                "jhipster"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 9571215,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/dfc7cf3fa2efc512440efc4bb3dbe59f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Allain",
+                "link": "https://stackoverflow.com/users/9571215/allain"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524608072,
+            "creation_date": 1524608072,
+            "question_id": 50011432,
+            "body_markdown": "I&#39;m developing a jhipster application, I am wondering where should I put the logic of my code that interacts with database. to be more concrete, in the XXXresource I get the request, should I interact with repositories and implement the logic under the methods of resource ? or somewhere else ? This question is the get an insight of good practices.",
+            "link": "https://stackoverflow.com/questions/50011432/functional-logic-under-hipster",
+            "title": "functional logic under hipster",
+            "body": "<p>I'm developing a jhipster application, I am wondering where should I put the logic of my code that interacts with database. to be more concrete, in the XXXresource I get the request, should I interact with repositories and implement the logic under the methods of resource ? or somewhere else ? This question is the get an insight of good practices.</p>\n"
+        },
+        {
+            "tags": [
+                "c",
+                "shell",
+                "stdout",
+                "putchar"
+            ],
+            "owner": {
+                "reputation": 367,
+                "user_id": 6028477,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://i.stack.imgur.com/XahlP.jpg?s=128&g=1",
+                "display_name": "KerDam",
+                "link": "https://stackoverflow.com/users/6028477/kerdam"
+            },
+            "is_answered": false,
+            "view_count": 54,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524608067,
+            "creation_date": 1524605540,
+            "last_edit_date": 1524608067,
+            "question_id": 50011001,
+            "body_markdown": "I am trying to implement shell redirection, using this I redirect stdout to fd1\r\n\r\n\r\n    int redirectOut(int fd1)\r\n    {\r\n        fflush(stdout);\r\n        int fd2 = dup(STDOUT_FILENO);\r\n        dup2(fd1, STDOUT_FILENO);\r\n        close(fd1);\r\n        return fd2;\r\n    }\r\n\r\nI then fork and call an executable, it works except in the case where the executable uses putchar.\r\n\r\nOn the putchar man page it is written that it uses stdout. \r\n\r\n&gt; putchar(c); is equivalent to putc(c,stdout). \r\n\r\nWhy doesn&#39;t putchar write anywhere neither in the standard output nor the file I redirected the stream to ? \r\n\r\nI tried changing *putchar* to *putc* but it didn&#39;t help, it might have something to do with the fact that **stdout** if a ***FILE** and **STDOUT_FILENO** an **int** \r\n\r\nHow can I make my code work and why does it work with printf which uses ([code for printf][1])\r\n\r\n    done = vfprintf (stdout, format, arg);\r\n \r\n\r\n\r\n  [1]: https://stackoverflow.com/questions/4867229/code-for-printf-function-in-c &quot;code for printf&quot;\r\n\r\n**EDIT MORE CODE**\r\n\r\n\r\n\r\n    int executeBlocs(execBloc *bloc,int fileIn,int fileOut){\r\n    \tif(bloc-&gt;first != NULL){\r\n    \t  if (strcmp(bloc-&gt;ope, &quot;&gt;&quot;) == 0){\r\n             int out = open(bloc-&gt;command[0], O_WRONLY | O_CREAT | O_TRUNC , 0644);\r\n    \t     int returnCode = executeBlocs(bloc-&gt;first, STDIN_FILENO, out);\r\n             redirectOut(fileOut);\r\n             redirectIn(fileIn);\r\n             return returnCode;\r\n    \t  }\r\n        }\r\n    \telse{\r\n            redirectIn(fileIn);\r\n            redirectOut(fileOut);\r\n    \t\treturn call(bloc-&gt;nbWords, bloc-&gt;command);\r\n    \t}\r\n    }\r\n\r\nexecBloc is a struct that contains a command to execute (or a file name) an operator (&gt;&gt; , | , &gt; ...) and a reference to the another bloc that contains the rest of the command. \r\n\r\nIf the user enter **cat /tmp/testCat &gt; /tmp/testCatRedirection** \r\n\r\nthen a first structure will be created containing the operator *&gt;* and the command */tmp/testCatRedirection* and first which is a reference to the second structure containing the command *cat /tmp/testCat* \r\n\r\n    int call(int argc, char const *argv[]) {\r\n      if (argc &gt; 0){\r\n          if (executeProgram(argv) == 1) return 1;\r\n    \r\n          if (executeStandardLibrary(argc, argv) == 1) return 1;\r\n    \r\n          if (executeDynamicLibrary(argc, argv) == 1) return 1;\r\n      }\r\n      return -1;\r\n    }\r\n\r\n\r\n    int executeProgram(char const *argv[]){\r\n        //Creation de la chaine de caract&#232;re /home/kerdam/cbin/nonExecutable\r\n        char *path = strdup(binFolder);\r\n        strcat(path, argv[0]);\r\n    \r\n    \r\n        //Test si le fichier existe et est executable\r\n        if (access(path, F_OK|X_OK) != -1){\r\n        //Le fichier existe et on peut l&#39;&#233;xecuter\r\n        int pid = fork();\r\n    \r\n        // Error\r\n        if (pid == -1){\r\n          return -1;\r\n        }\r\n        //Fils\r\n        else if (pid == 0) {\r\n            // Executer la commande\r\n            execv(path, argv);\r\n            return 1;\r\n        }\r\n    \r\n        // Parent process\r\n        else {\r\n            // Wait for child process to finish\r\n            int childStatus;\r\n            waitpid(pid, &amp;childStatus, 0);\r\n            return 1;\r\n        }\r\n      }\r\n      else return -1;\r\n    }\r\n\r\nFinally the code of the program I am trying to execute \r\n\r\n    #include&lt;stdio.h&gt;\r\n    #include&lt;string.h&gt;\r\n    #define MAX_FILE_NAME_CHARS 255\r\n    int main(int argc, char *argv[])\r\n    {\r\n        FILE *fp;\r\n        char file_name[MAX_FILE_NAME_CHARS], ch;\r\n        int i;\r\n    \r\n         /*\r\n          * after creating a.out, rename it as mycat for our own cat command\r\n          * and it usage is same as standard cat command\r\n          */\r\n        if(argc&lt;=1){\r\n            printf(&quot;Utiliser cat avec aumoin un argument (un fichier) &lt;nomfichier&gt; \\n&quot;);\r\n            return 0;\r\n        }\r\n    \r\n         /*\r\n          * This is for multiple file in argument\r\n          */\r\n        for(i=1; i&lt;=argc;i++){\r\n            strncpy(file_name, argv[i], MAX_FILE_NAME_CHARS);\r\n    \r\n            fp=fopen(file_name, &quot;r&quot;);\r\n            if(fp == NULL) {\r\n               printf(&quot;%s: No such file or directory\\n&quot;, file_name);\r\n               return 0;\r\n            }\r\n    \r\n            /*\r\n             * read file and feed contents to STDIO\r\n             */\r\n            while((ch=fgetc(fp)) != EOF || ch == &#39;}&#39;){\r\n                putchar(ch);\r\n            }\r\n            fclose(fp);\r\n        }\r\n        return 0;\r\n    }\r\n\r\n\r\n**Remark**\r\n\r\nI should not change the code of the executable I am trying to execute as the users of my shell should be able to execute their programs without restriction on what function they can use. \r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50011001/c-putchar-doesnt-work-after-stdout-is-redirected",
+            "title": "C putchar doesn&#39;t work after stdout is redirected",
+            "body": "<p>I am trying to implement shell redirection, using this I redirect stdout to fd1</p>\n\n<pre><code>int redirectOut(int fd1)\n{\n    fflush(stdout);\n    int fd2 = dup(STDOUT_FILENO);\n    dup2(fd1, STDOUT_FILENO);\n    close(fd1);\n    return fd2;\n}\n</code></pre>\n\n<p>I then fork and call an executable, it works except in the case where the executable uses putchar.</p>\n\n<p>On the putchar man page it is written that it uses stdout. </p>\n\n<blockquote>\n  <p>putchar(c); is equivalent to putc(c,stdout). </p>\n</blockquote>\n\n<p>Why doesn't putchar write anywhere neither in the standard output nor the file I redirected the stream to ? </p>\n\n<p>I tried changing <em>putchar</em> to <em>putc</em> but it didn't help, it might have something to do with the fact that <strong>stdout</strong> if a <strong>*FILE</strong> and <strong>STDOUT_FILENO</strong> an <strong>int</strong> </p>\n\n<p>How can I make my code work and why does it work with printf which uses (<a href=\"https://stackoverflow.com/questions/4867229/code-for-printf-function-in-c\" title=\"code for printf\">code for printf</a>)</p>\n\n<pre><code>done = vfprintf (stdout, format, arg);\n</code></pre>\n\n<p><strong>EDIT MORE CODE</strong></p>\n\n<pre><code>int executeBlocs(execBloc *bloc,int fileIn,int fileOut){\n    if(bloc-&gt;first != NULL){\n      if (strcmp(bloc-&gt;ope, \"&gt;\") == 0){\n         int out = open(bloc-&gt;command[0], O_WRONLY | O_CREAT | O_TRUNC , 0644);\n         int returnCode = executeBlocs(bloc-&gt;first, STDIN_FILENO, out);\n         redirectOut(fileOut);\n         redirectIn(fileIn);\n         return returnCode;\n      }\n    }\n    else{\n        redirectIn(fileIn);\n        redirectOut(fileOut);\n        return call(bloc-&gt;nbWords, bloc-&gt;command);\n    }\n}\n</code></pre>\n\n<p>execBloc is a struct that contains a command to execute (or a file name) an operator (>> , | , > ...) and a reference to the another bloc that contains the rest of the command. </p>\n\n<p>If the user enter <strong>cat /tmp/testCat > /tmp/testCatRedirection</strong> </p>\n\n<p>then a first structure will be created containing the operator <em>></em> and the command <em>/tmp/testCatRedirection</em> and first which is a reference to the second structure containing the command <em>cat /tmp/testCat</em> </p>\n\n<pre><code>int call(int argc, char const *argv[]) {\n  if (argc &gt; 0){\n      if (executeProgram(argv) == 1) return 1;\n\n      if (executeStandardLibrary(argc, argv) == 1) return 1;\n\n      if (executeDynamicLibrary(argc, argv) == 1) return 1;\n  }\n  return -1;\n}\n\n\nint executeProgram(char const *argv[]){\n    //Creation de la chaine de caractère /home/kerdam/cbin/nonExecutable\n    char *path = strdup(binFolder);\n    strcat(path, argv[0]);\n\n\n    //Test si le fichier existe et est executable\n    if (access(path, F_OK|X_OK) != -1){\n    //Le fichier existe et on peut l'éxecuter\n    int pid = fork();\n\n    // Error\n    if (pid == -1){\n      return -1;\n    }\n    //Fils\n    else if (pid == 0) {\n        // Executer la commande\n        execv(path, argv);\n        return 1;\n    }\n\n    // Parent process\n    else {\n        // Wait for child process to finish\n        int childStatus;\n        waitpid(pid, &amp;childStatus, 0);\n        return 1;\n    }\n  }\n  else return -1;\n}\n</code></pre>\n\n<p>Finally the code of the program I am trying to execute </p>\n\n<pre><code>#include&lt;stdio.h&gt;\n#include&lt;string.h&gt;\n#define MAX_FILE_NAME_CHARS 255\nint main(int argc, char *argv[])\n{\n    FILE *fp;\n    char file_name[MAX_FILE_NAME_CHARS], ch;\n    int i;\n\n     /*\n      * after creating a.out, rename it as mycat for our own cat command\n      * and it usage is same as standard cat command\n      */\n    if(argc&lt;=1){\n        printf(\"Utiliser cat avec aumoin un argument (un fichier) &lt;nomfichier&gt; \\n\");\n        return 0;\n    }\n\n     /*\n      * This is for multiple file in argument\n      */\n    for(i=1; i&lt;=argc;i++){\n        strncpy(file_name, argv[i], MAX_FILE_NAME_CHARS);\n\n        fp=fopen(file_name, \"r\");\n        if(fp == NULL) {\n           printf(\"%s: No such file or directory\\n\", file_name);\n           return 0;\n        }\n\n        /*\n         * read file and feed contents to STDIO\n         */\n        while((ch=fgetc(fp)) != EOF || ch == '}'){\n            putchar(ch);\n        }\n        fclose(fp);\n    }\n    return 0;\n}\n</code></pre>\n\n<p><strong>Remark</strong></p>\n\n<p>I should not change the code of the executable I am trying to execute as the users of my shell should be able to execute their programs without restriction on what function they can use. </p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "numpy",
+                "pixel"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 9609259,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-3xo_3kr5Knk/AAAAAAAAAAI/AAAAAAAAAUc/bMwMFfxgt5A/photo.jpg?sz=128",
+                "display_name": "IRS",
+                "link": "https://stackoverflow.com/users/9609259/irs"
+            },
+            "is_answered": true,
+            "view_count": 23,
+            "accepted_answer_id": 50011427,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1524608051,
+            "creation_date": 1524607314,
+            "question_id": 50011304,
+            "body_markdown": "I am working with a 2-d numpy array which looks like this:\r\n\r\n    array([[[0, 0, 0, 0],\r\n        [0, 0, 0, 0],\r\n        [0, 0, 0, 0],\r\n        ..., \r\n        [0, 0, 0, 0],\r\n        [0, 0, 0, 0],\r\n        [0, 0, 0, 0]],\r\n\r\n       [[0, 0, 0, 0],\r\n        [0, 0, 0, 0],\r\n        [0, 0, 0, 0],\r\n        ..., \r\n        [0, 0, 0, 0],\r\n        [0, 0, 0, 0],\r\n        [0, 0, 0, 0]],\r\n\r\n       [[0, 0, 0, 0],\r\n        [0, 0, 0, 0],\r\n        [0, 0, 0, 0],\r\n        ..., \r\n        [0, 0, 0, 0],\r\n        [0, 0, 0, 0],\r\n        [0, 0, 0, 0]]])\r\n\r\n\r\nSo I have numpy inside numpy which has a list of four values (pixels in RGBA to be specific). I want to set all values to 0. What is the most pythonic way to do it?\r\nThanks in advance! ",
+            "link": "https://stackoverflow.com/questions/50011304/how-to-set-values-in-a-2d-numpy-array",
+            "title": "How to set values in a 2d numpy array?",
+            "body": "<p>I am working with a 2-d numpy array which looks like this:</p>\n\n<pre><code>array([[[0, 0, 0, 0],\n    [0, 0, 0, 0],\n    [0, 0, 0, 0],\n    ..., \n    [0, 0, 0, 0],\n    [0, 0, 0, 0],\n    [0, 0, 0, 0]],\n\n   [[0, 0, 0, 0],\n    [0, 0, 0, 0],\n    [0, 0, 0, 0],\n    ..., \n    [0, 0, 0, 0],\n    [0, 0, 0, 0],\n    [0, 0, 0, 0]],\n\n   [[0, 0, 0, 0],\n    [0, 0, 0, 0],\n    [0, 0, 0, 0],\n    ..., \n    [0, 0, 0, 0],\n    [0, 0, 0, 0],\n    [0, 0, 0, 0]]])\n</code></pre>\n\n<p>So I have numpy inside numpy which has a list of four values (pixels in RGBA to be specific). I want to set all values to 0. What is the most pythonic way to do it?\nThanks in advance! </p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "jquery"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9693837,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-wLanZhVmVf0/AAAAAAAAAAI/AAAAAAAAAL4/WuTdlZ5kMIQ/photo.jpg?sz=128",
+                "display_name": "Tom Spink",
+                "link": "https://stackoverflow.com/users/9693837/tom-spink"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1524608050,
+            "creation_date": 1524608050,
+            "question_id": 50011426,
+            "body_markdown": "The gallery images on load do not show but when arrows have been clicked they load in. Anyone know what could be causing this?\r\n\r\nWebsite:https://tomspink.co.uk/portfolio-briar",
+            "link": "https://stackoverflow.com/questions/50011426/image-not-loading-in-owl-gallery",
+            "title": "image not loading in owl gallery",
+            "body": "<p>The gallery images on load do not show but when arrows have been clicked they load in. Anyone know what could be causing this?</p>\n\n<p>Website:<a href=\"https://tomspink.co.uk/portfolio-briar\" rel=\"nofollow noreferrer\">https://tomspink.co.uk/portfolio-briar</a></p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "reactjs",
+                "react-redux",
+                "antd"
+            ],
+            "owner": {
+                "reputation": 21,
+                "user_id": 9225893,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1518374634927125/picture?type=large",
+                "display_name": "Michael Fernandes",
+                "link": "https://stackoverflow.com/users/9225893/michael-fernandes"
+            },
+            "is_answered": false,
+            "view_count": 32,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1524608031,
+            "creation_date": 1524599033,
+            "question_id": 50009672,
+            "body_markdown": "I&#39;m struggle with my Ant design modal component. The component visibility is set on local state. On this modal i have to choose the payment method using the follow code:\r\n\r\n    setPayment(object){\r\n    \r\n            let totalPrice = this.props.activeSell.fields.total_price.value.toFixed(2)\r\n    \r\n            let tempState = {\r\n                fields:{\r\n                    totalValue:{\r\n                        value: totalPrice\r\n                    },\r\n                    receiveValue:{\r\n                        value: (object.id == 2 || object.id == 3) ? totalPrice : &#39;&#39; \r\n                    },\r\n                    change:{\r\n                        value: &#39;0.00&#39;\r\n                    },\r\n                },\r\n                isreceiveValue: (object.id == 2 || object.id == 3) ? true : false,\r\n                visible: true,\r\n                payment: object\r\n            }\r\n    \r\n            this.setState({ state: Object.assign(this.state,tempState)});\r\n    ...\r\n\r\nBut instead of setting the payment method on the current modal, another modal takes place in front. When i finish and close my modal, i have to close another (The first). \r\n\r\nI want just set state and keep one openi modal. Any suggestions? \r\n\r\nThanks! ",
+            "link": "https://stackoverflow.com/questions/50009672/set-state-causes-another-modal-to-open",
+            "title": "Set state causes another modal to open",
+            "body": "<p>I'm struggle with my Ant design modal component. The component visibility is set on local state. On this modal i have to choose the payment method using the follow code:</p>\n\n<pre><code>setPayment(object){\n\n        let totalPrice = this.props.activeSell.fields.total_price.value.toFixed(2)\n\n        let tempState = {\n            fields:{\n                totalValue:{\n                    value: totalPrice\n                },\n                receiveValue:{\n                    value: (object.id == 2 || object.id == 3) ? totalPrice : '' \n                },\n                change:{\n                    value: '0.00'\n                },\n            },\n            isreceiveValue: (object.id == 2 || object.id == 3) ? true : false,\n            visible: true,\n            payment: object\n        }\n\n        this.setState({ state: Object.assign(this.state,tempState)});\n...\n</code></pre>\n\n<p>But instead of setting the payment method on the current modal, another modal takes place in front. When i finish and close my modal, i have to close another (The first). </p>\n\n<p>I want just set state and keep one openi modal. Any suggestions? </p>\n\n<p>Thanks! </p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 299
+}

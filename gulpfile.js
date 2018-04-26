@@ -67,13 +67,15 @@ function watch() {
         
     gulp.watch(paths.src + '**/*.ts',   build)
     gulp.watch(paths.src + '**/*.html', html)
+
+    gulp.watch(paths.res + '**/html/*', html)
 }
 
 exports.html = html
 exports.tsc = tsc
 exports.web = web
-exports.watch = watch
-exports.default = watch
+exports.watch = gulp.series(build, watch)
+exports.default = exports.watch
 
 // ---------------------------------------------------------------------------------------------
 /*
