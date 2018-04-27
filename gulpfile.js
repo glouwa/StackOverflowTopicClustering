@@ -6,8 +6,7 @@ var ts          = require('gulp-typescript')
 var plumber     = require('gulp-plumber')
 var debug       = require('gulp-debug')
 var merge       = require('merge2')
-//var del         = require('del');
-//var wp          = require('webpack')
+//var del         = require('del')
 var webpack     = require('webpack-stream')
 var browserSync = require('browser-sync').create()
 
@@ -83,3 +82,40 @@ var argv        = require('yargs').argv
 var through2    = require('through2')
 var fs          = require('fs')
 */
+
+import * as stackexchange from './dist/js/model/stackexchange'
+
+function download()
+{
+    // download+10
+    download('stackoverflow')
+    
+}
+
+function convert()
+{
+    convert('stackoverflow')
+}
+
+function termize()
+{
+    // sentencize
+    // tockenize
+    // filter specialcahr, alphanum ->
+    // stem ->
+    // lem ->    
+}
+
+function ngramize() 
+{
+    // ngram ->
+}
+
+function tfidf()
+{
+    // sentencize
+    // tockenize
+    // filter specialcahr, alphanum ->
+    // stem ->
+    // lem ->
+}

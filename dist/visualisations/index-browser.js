@@ -10224,7 +10224,7 @@ document.body.onload = function init() {
         name: 'Lemmed Body',
         data: {}
     });
-    d3.json("tasks/bag-of-sentences/merge-meta.json")
+    d3.json("data/bag-of-texts/merge-meta.json")
         .then((mergemeta) => {
         document.querySelector("#downloadheader").innerText = `Stackoverflow: ${mergemeta.files} Files, ${mergemeta.rawquestions} Raw-Questions, ${mergemeta.dupquestions} duplicate, ${mergemeta.errquestions} invalid`;
         document.querySelector("#mergeheader").innerText = `Merged: ${(mergemeta.size / 1024 / 1024).toFixed(0)}MB, ${mergemeta.questions} Valid-Questions, ${mergemeta.tagcount} Tags`;
@@ -10254,7 +10254,7 @@ document.body.onload = function init() {
             data: mergemeta.tagdist,
         });
     });
-    d3.json("tasks/bag-of-sentences/htmlcleaned-meta.json")
+    d3.json("data/bag-of-texts/htmlcleaned-meta.json")
         .then((htmlcleanedmeta) => {
         plaintitle.update({
             name: 'Plain Title',
@@ -10265,7 +10265,7 @@ document.body.onload = function init() {
             data: htmlcleanedmeta.termdist
         });
     });
-    d3.json("tasks/bag-of-words/stemmed-meta.json")
+    d3.json("data/bag-of-words/stemmed-meta.json")
         .then((stemmeta) => {
         stemmedtitle.update({
             name: 'Stemmed Title',
@@ -10276,7 +10276,7 @@ document.body.onload = function init() {
             data: stemmeta.body_terms
         });
     });
-    d3.json("tasks/bag-of-words/lemmatized-meta.json")
+    d3.json("data/bag-of-words/lemmatized-meta.json")
         .then((lemmmeta) => {
         lemmedtitle.update({
             name: 'Lemmed Title',
