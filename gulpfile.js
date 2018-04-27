@@ -83,39 +83,11 @@ var through2    = require('through2')
 var fs          = require('fs')
 */
 
-import * as stackexchange from './dist/js/model/stackexchange'
+const stackexchange = require('./dist/js/model/stackexchange')
 
-function download()
-{
-    // download+10
-    download('stackoverflow')
-    
-}
+exports.download = stackexchange.download('stackoverflow', 10)
+exports.convert = stackexchange.convert('stackoverflow')
+//exports.termize = termize
+//exports.ngramize = ngramize
+//exports.tfidf = tfidf
 
-function convert()
-{
-    convert('stackoverflow')
-}
-
-function termize()
-{
-    // sentencize
-    // tockenize
-    // filter specialcahr, alphanum ->
-    // stem ->
-    // lem ->    
-}
-
-function ngramize() 
-{
-    // ngram ->
-}
-
-function tfidf()
-{
-    // sentencize
-    // tockenize
-    // filter specialcahr, alphanum ->
-    // stem ->
-    // lem ->
-}
