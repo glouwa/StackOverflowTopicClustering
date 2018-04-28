@@ -67,7 +67,8 @@ function watch() {
     gulp.watch(paths.src + '**/*.ts',   build)
     gulp.watch(paths.src + '**/*.html', html)
 
-    gulp.watch(paths.res + '**/html/*', html)
+    gulp.watch(paths.res + 'stackoverflow/meta.json', exports.convert)
+    gulp.watch(paths.dist + 'data/**/*', bs)
 }
 
 exports.html = html

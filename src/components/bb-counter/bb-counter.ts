@@ -16,6 +16,14 @@ export class BillboardCounter
         var labels = this.args.data.map(e=> e[0])
         //console.log('update bb', args, numbers, labels)
         bb.generate({
+            bindto: this.args.parent,
+            padding: {    
+                left: 70,
+                right: 70, 
+            },  
+            legend: {
+                show: false
+            },             
             size: {
                 height: this.args.height||200,                    
             },
@@ -26,7 +34,7 @@ export class BillboardCounter
             bar: { width: { ratio: 1 }},
             axis: {
                 x: {
-                    type: "category",
+                    type: "category", 
                     categories: labels,                       
                     tick: {
                         count: this.args.tickcount,
@@ -38,23 +46,8 @@ export class BillboardCounter
                 y: {
                     //center: 0,
                     tick: { count:2, format:x=> x.toFixed(0) },                            
-                },
-                y2: {
-                    label: {
-                        text: this.args.title, 
-                        position: "outer-middle"
-                    } 
                 }
-            },
-            padding: {    
-                left: 70,
-                right: 70, 
-            },  
-            legend: {
-                show: false
-            }, 
-            //zoom: { enabled: true },
-            bindto: this.args.parent
+            }            
         })  
     }
 }

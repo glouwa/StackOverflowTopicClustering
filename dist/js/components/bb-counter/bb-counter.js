@@ -11,6 +11,14 @@ class BillboardCounter {
         var labels = this.args.data.map(e => e[0]);
         //console.log('update bb', args, numbers, labels)
         billboard_js_1.bb.generate({
+            bindto: this.args.parent,
+            padding: {
+                left: 70,
+                right: 70,
+            },
+            legend: {
+                show: false
+            },
             size: {
                 height: this.args.height || 200,
             },
@@ -33,23 +41,8 @@ class BillboardCounter {
                 y: {
                     //center: 0,
                     tick: { count: 2, format: x => x.toFixed(0) },
-                },
-                y2: {
-                    label: {
-                        text: this.args.title,
-                        position: "outer-middle"
-                    }
                 }
-            },
-            padding: {
-                left: 70,
-                right: 70,
-            },
-            legend: {
-                show: false
-            },
-            //zoom: { enabled: true },
-            bindto: this.args.parent
+            }
         });
     }
 }

@@ -2,8 +2,10 @@ import * as fs from 'fs'
 import * as request from 'request'
 import { JSDOM } from 'jsdom'
 import * as extract from '../tools/ttf-extract'
+import { PostId } from './bag-of-words/base'
 import { StackOverflowPost } from './bag-of-words/base'
 import { StackOverflowMeta } from './bag-of-words/base'
+import * as m from './meta'
 
 export function download(source, amount) 
 {    
@@ -73,14 +75,15 @@ export function convert(source:string)
 
         const report = JSON.parse(fs.readFileSync(resmetapath, 'utf8'))
         const datasourcemeta = {
-            filecount: report.filecount,
             size: 0,
+            hash: '',
+            filecount: report.filecount,
             rawquestions: 0,
             errquestions: 0,
             dupquestions: 0    
         }
 
-        const merge : {[key:string]:StackOverflowPost} = {}
+        const merge : { [key:string]:StackOverflowPost } = {}
         for (var i = 1; i < datasourcemeta.filecount; i++) {    
             const dlstr = fs.readFileSync(respath(i), 'utf8')
             const dlobj = JSON.parse(dlstr)        
@@ -94,7 +97,7 @@ export function convert(source:string)
                             const parsed = parse(q.body)
                             merge[q.question_id] = {
                                 id: q.question_id,
-                                created: new Date(1523544518),
+                                created: new Date(q.creation_date*1000),
                                 size: dlstr.length,
                                 isAnswered: q.is_answered,
                                 answerCount: q.answer_count,
@@ -120,30 +123,44 @@ export function convert(source:string)
         }
         const json = JSON.stringify(merge, null, 4)
         fs.writeFileSync(datapath, json)
+        console.log("merged and converted")
 
+        function rounddate(din) {
+            var d = new Date(din);
+            d.setHours(0);
+            d.setMinutes(0);
+            d.setSeconds(0);
+            d.setMilliseconds(0);
+            return d
+        }
         const meta : StackOverflowMeta =  {
-            datafile: datapath,
-            datafileHash: '',
-            datafileSize: json.length,
+            data:{
+                file: datapath,
+                hash: '',
+                size: json.length,
+            },
             datasource: datasourcemeta,
-            postcount: Object.keys(merge).length,
-            idindex: null,
-            timeindex: null,
-            sizeindex: null,
+            //size: '??',
+            //postcount: Object.keys(merge).length,
+            index: {
+                id:      m.index<PostId, PostId>(merge, e=> e.id),
+                created: m.index<number, PostId>(merge, e=> rounddate(e.created).getTime()),
+                size:    m.index<number, PostId>(merge, e=> e.size), 
+            },
             distributions: {
-                size:null,
-                isAnswered:null,
-                answerCount:null,
-                score:null,
+                size:        m.distribution(merge, e=> e.size, null),
+                isAnswered:  m.distribution(merge, e=> e.isAnswered, null),
+                answerCount: m.distribution(merge, e=> e.answerCount, null),
+                score:       m.distribution(merge, e=> e.score, null),
                 terms:{ 
-                    tags: null 
+                    tags:    m.distribution(merge, e=> e.size, null) 
                 },
                 sentences: {},
                 texts:{ 
-                    title:null,
-                    body:null,
-                    inlinecode:null,
-                    code:null
+                    title: null,
+                    body: null,
+                    inlinecode: null,
+                    code: null
                 }
             }
         }

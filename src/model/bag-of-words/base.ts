@@ -48,16 +48,22 @@ export interface StackOverflowPost extends Post {
 export type Dataset = { [key:string]:Post }
 
 export interface Meta {
-    datafile: Ref
-    datafileHash: Hash    
-    datafileSize: number
-    datasource: {}
-    size: number
-    postcount: number
-    idindex: { PostId:PostId } 
-    timeindex: { Date:PostId }
-    sizeindex: { number:PostId }
-    
+    data: {
+        file: Ref
+        hash: Hash    
+        size: number
+    }    
+    datasource: {
+        hash: Hash    
+        size: number
+    }
+    //size: number
+    //postcount: number
+    index: {
+        id:      { id:PostId, values:PostId[] }[] 
+        created: { date:Date, values:PostId[] }[]
+        size:    { size:number, values:PostId[] }[]
+    }    
     distributions: {
         terms:{ [key:string]: TermDistributions }
         sentences:{ [key:string]: TextDistributions }
@@ -65,9 +71,10 @@ export interface Meta {
     }
 }
 export interface StackOverflowMeta extends Meta {
-    datasource: {   
-        filecount: number
+    datasource: {
+        hash: Hash,
         size: number
+        filecount: number
         rawquestions: number
         errquestions: number
         dupquestions: number
