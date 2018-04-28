@@ -1,8 +1,9 @@
 import { bb } from 'billboard.js'
 
-export class BillboardCounter
+export class BillboardBar
 {
     private args
+    private chart
 
     constructor(args)
     {        
@@ -12,10 +13,10 @@ export class BillboardCounter
     public update(args) {
         this.args = args
         
-        var numbers = this.args.data.map(e=> e[1])
-        var labels = this.args.data.map(e=> e[0])
-        //console.log('update bb', args, numbers, labels)
-        bb.generate({
+        var numbers = this.args.numbers
+        var labels = this.args.labels
+        console.log('update bb', args, numbers, labels)
+        this.chart = bb.generate({
             bindto: this.args.parent,
             padding: {    
                 left: 70,
@@ -28,24 +29,34 @@ export class BillboardCounter
                 height: this.args.height||200,                    
             },
             data: {
-                columns: [[this.args.title].concat(numbers)],
-                type: "bar"
+                columns: [
+                    ['data1'].concat(numbers),
+                    ['data2'].concat(numbers)
+                ],             
+                type: "bar",
+                groups: [
+                    [ "data1", "data2" ]
+                ]
             },
-            bar: { width: { ratio: 1 }},
+            bar: { width: { ratio: .8 }},
             axis: {
                 x: {
                     type: "category", 
                     categories: labels,                       
                     tick: {
                         count: this.args.tickcount,
-                        //fit: true,                     
-                        rotate: 90, 
+                        fit: true,                     
+                        //rotate: 90, 
                         multiline: false,
+                        format: x=> x.toFixed(0)+'KB' 
                     }, 
                 },
                 y: {
                     //center: 0,
-                    tick: { count:2, format:x=> x.toFixed(0) },                            
+                    tick: { 
+                        count: 2, 
+                        format: x=> x.toFixed(0)+'#' 
+                    }
                 }
             }            
         })  

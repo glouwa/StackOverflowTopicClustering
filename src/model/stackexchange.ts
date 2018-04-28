@@ -145,7 +145,13 @@ export function convert(source:string)
             index: {
                 id:      m.index<PostId, PostId>(merge, e=> e.id),
                 created: m.index<number, PostId>(merge, e=> rounddate(e.created).getTime()),
-                size:    m.index<number, PostId>(merge, e=> e.size), 
+                sizes: {
+                    post:       m.index<number, PostId>(merge, e=> (e.size/1000).toFixed()), 
+                    title:      m.index<number, PostId>(merge, e=> (e.text.itle.length).toFixed()), 
+                    body:       m.index<number, PostId>(merge, e=> (e.text.body.length/1000).toFixed()), 
+                    inlinecode: m.index<number, PostId>(merge, e=> (e.text.inlinecode.length/1000).toFixed()), 
+                    code:       m.index<number, PostId>(merge, e=> (e.text.code/1000).toFixed()), 
+                }
             },
             distributions: {
                 size:        m.distribution(merge, e=> e.size, null),
@@ -153,7 +159,7 @@ export function convert(source:string)
                 answerCount: m.distribution(merge, e=> e.answerCount, null),
                 score:       m.distribution(merge, e=> e.score, null),
                 terms:{ 
-                    tags:    m.distribution(merge, e=> e.size, null) 
+                    tags:    tag_tf(merge)
                 },
                 sentences: {},
                 texts:{ 
@@ -171,6 +177,15 @@ export function convert(source:string)
     })
 }
 
+export function tag_tf(merge) {
+    let result = {}
+    for (var qid in merge)             
+        merge[qid].terms.tags
+            .filter(t=> t !== 'constructor')
+            .forEach(tag=> result[tag] = result[tag]+1 || 1)
+    return result
+}
+/*
 function splitsentences(text) {
     return text
         .replace('e.g.', '')
@@ -179,7 +194,7 @@ function splitsentences(text) {
         .map(e=> e.trim())
         .filter(s=> s.length > 0)
         .map(e=> e.toLowerCase())    
-} 
+} */
 
 const dom = new JSDOM('')    
 function parse(html)
@@ -189,9 +204,9 @@ function parse(html)
     dom.window.document.body.querySelectorAll('pre').forEach(e=> e.innerHTML = '')
     dom.window.document.body.querySelectorAll('a').forEach(e=> e.innerHTML = '')    
     return {
-        body: splitsentences(dom.window.document.body.textContent),
-        code: [],
-        inlinecode: []
+        body: dom.window.document.body.textContent,
+        code: '',
+        inlinecode: ''
     }
 }
 

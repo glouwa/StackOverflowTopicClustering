@@ -9,10 +9,12 @@ export type BagOfWords = string[]
 
 export type Distribution<E> = { [key:string]:number }
 //type Distribution<E> = Map<E, number>
-export interface TextDistributions {
+export interface TextDistributions {    
     sizeDistribution: Distribution<number>
-    sentencesizeDistribution: Distribution<number>
     letterDistribution: Distribution<Char>
+    sentencesCountDistribution: Distribution<number>
+    sentencesSizeDistribution: Distribution<number>
+    
 }
 export interface TermDistributions extends TextDistributions {
     distribution: Distribution<string>    
@@ -62,7 +64,13 @@ export interface Meta {
     index: {
         id:      { id:PostId, values:PostId[] }[] 
         created: { date:Date, values:PostId[] }[]
-        size:    { size:number, values:PostId[] }[]
+        sizes: {
+            post:       { size:number, values:PostId[] }[]
+            title:      { size:number, values:PostId[] }[]
+            body:       { size:number, values:PostId[] }[]
+            inlinecode: { size:number, values:PostId[] }[]            
+            code:       { size:number, values:PostId[] }[]
+        }        
     }    
     distributions: {
         terms:{ [key:string]: TermDistributions }

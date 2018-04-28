@@ -1,12 +1,11 @@
 import * as d3 from 'd3'
-import { BillboardCounter } from '../components/bb-counter/bb-counter'
-import { TagDistribution } from '../components/tagdistribution/tagdistribution'
 import { StackOverflowMeta } from '../model/bag-of-words/base'
-import { StackoverflowDataset } from '../components/stackexchange/stackexchange-view'
+import { TagDistribution } from '../components/tagdistribution/tagdistribution'
+import { StackoverflowDatasetView } from '../components/stackexchange/stackexchange-view'
 
 document.body.onload = function init()
 {
-    const dataset = new StackoverflowDataset({
+    const dataset = new StackoverflowDatasetView({
         parent: document.body
     })
     d3.json("data/bag-of-texts/stackoverflow-meta.json")

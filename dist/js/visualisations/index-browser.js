@@ -4,7 +4,7 @@ const d3 = require("d3");
 const tagdistribution_1 = require("../components/tagdistribution/tagdistribution");
 const stackexchange_view_1 = require("../components/stackexchange/stackexchange-view");
 document.body.onload = function init() {
-    const dataset = new stackexchange_view_1.StackoverflowDataset({
+    const dataset = new stackexchange_view_1.StackoverflowDatasetView({
         parent: document.body
     });
     d3.json("data/bag-of-texts/stackoverflow-meta.json")

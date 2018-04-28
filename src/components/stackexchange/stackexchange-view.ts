@@ -1,6 +1,7 @@
 import { TagCloud } from '../cloud/cloud'
-import { BillboardCounter } from '../bb-counter/bb-counter'
-import { BillboardTimeline } from '../bb-counter/bb-timeline'
+import { BillboardCounter } from '../billboardjs/bb-counter'
+import { BillboardBar } from '../billboardjs/bb-bar'
+import { BillboardTimeline } from '../billboardjs/bb-timeline'
 import { HTML } from '../../tools/html'
 import { Stats } from '../../model/vecstats'
 import { StackOverflowMeta } from '../../model/bag-of-words/base'
@@ -8,18 +9,19 @@ import { TagDistribution } from '../tagdistribution/tagdistribution'
 
 const html = `
     <div>
-        <div id="downloadheader" class="header"></div>     
-        <div id="mergeheader" class="header"></div>    
+        <div id="downloadheader" class="header">Stackoverflow</div>     
+        <div id="mergeheader" class="header">Merged</div>    
         <br>        
         <div id="TimeChart"></div>
+        <br>                
+        <div id="SCOChart" style="width:44%;float:left;"></div>
+        <div id="ANCChart" style="width:44%;float:left;"></div>    
+        <div id="ISAChart" style="width:12%;float:left;"></div>
         <br>        
-        <div id="SizeChart"></div>
-        <div id="SCOChart" style="width:42%;float:left;"></div>
-        <div id="ANCChart" style="width:42%;float:left;"></div>    
-        <div id="ISAChart" style="width:16%;float:left;"></div>    
+        <div id="SizeChart"></div>        
     </div>`
 
-export class StackoverflowDataset
+export class StackoverflowDatasetView
 {
     private args    
     private view : HTMLElement
@@ -38,14 +40,14 @@ export class StackoverflowDataset
      
         this.timeline = new BillboardTimeline({
             parent: document.querySelector("#TimeChart"),         
-            height: 200,
+            height: 150,
+        })
+        this.datasize = new BillboardBar({
+            parent: document.querySelector("#SizeChart"),   
+            title: 'Post Size',      
+            height: 120,
             labels: [],
             numbers: []
-        })
-        this.datasize = new BillboardCounter({
-            parent: document.querySelector("#SizeChart"),         
-            height: 80,
-            data: [],
         })
 
         this.scores = new BillboardCounter({
@@ -81,18 +83,19 @@ export class StackoverflowDataset
             `Merged: ${(datasetmeta.data.size/1024/1024).toFixed(0)}MB, ${datasetmeta.index.id.length} Valid-Questions,` // ${mergemeta.tagcount} Tags`        
 
         this.timeline.update({
-            parent: document.querySelector("#TimeChart"),         
-            height: 200,
-            tickcount: 20,
             labels: datasetmeta.index.created
                 .map(e=> e.key),
             numbers: datasetmeta.index.created
-                .map(e=> Math.log10(e.values.length)), // count of 
+                .map(e=> Math.log10(e.values.length)), // count of posts
         })
         this.datasize.update({
             parent: document.querySelector("#SizeChart"),         
-            height: 80,
-            data: [],
+            height: 120,
+            tickcount: 10,
+            labels: datasetmeta.index.sizes.post
+                .map(e=> e.key),
+            numbers: datasetmeta.index.sizes.post
+                .map(e=> e.values.length), // count of posts
         })
 
         this.scores.update({

@@ -3,16 +3,12 @@ import { bb } from 'billboard.js'
 export class BillboardTimeline
 {
     private args
+    private chart
 
     constructor(args)
-    {        
-        this.update(args)
-    }
-
-    public update(args) {
-        this.args = args 
-        console.log(args.labels.map(e=> new Date(Number(e))), args.numbers)
-        bb.generate({
+    {   
+        this.args = args         
+        this.chart = bb.generate({
             bindto: this.args.parent,
             size: {
                 height: this.args.height,                    
@@ -27,8 +23,8 @@ export class BillboardTimeline
             data: {
                 x:"x",
                 columns: [
-                    ["x"]    .concat(args.labels), //.map(e=> new Date(e))),
-                    ["Posts per day"].concat(args.numbers)
+                    ["x"],            
+                    ["Posts per day"]
                 ]     
             },            
             axis: {
@@ -41,10 +37,19 @@ export class BillboardTimeline
                 y: {                    
                     tick: { 
                         count: 5, 
-                        format:x=> Math.pow(10, x).toFixed(0)
+                        format:x=> Math.pow(10, x).toFixed(0)+'#'
                     },
                 }                
             }
-        })  
+        })        
+    }
+
+    public update(args) {
+        this.chart.load({
+            columns: [
+                ["x"]            .concat(args.labels), //.map(e=> new Date(e))),
+                ["Posts per Day"].concat(args.numbers)
+            ] 
+        })      
     }
 }
