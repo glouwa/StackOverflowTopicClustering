@@ -23,10 +23,11 @@ export class BillboardBar
             data: {         
                 order: "asc",       
                 columns: [],
-                groups: [[ "Body size", "Title size", "Inline code size", "Code size" ]]  
+                groups: this.args.groups, 
+                //bar: { width: { ratio: .5 }}, 
+                color: this.args.color               
             },
-            //bar: { width: { ratio: .5 }},
-            //bar: { padding:.01 },
+            bar: { width: { ratio: .65 }},
             axis: {
                 x: {                    
                     label: {

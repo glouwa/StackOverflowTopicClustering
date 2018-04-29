@@ -22,24 +22,23 @@ export class BillboardTimeline
             }, 
             data: {
                 x:"x",
-                //type: "bar",
+                type: "bar",
+                //point: false,
                 columns: [
                     ["x"],            
                     ["Posts per day"]
                 ]     
             },            
-            axis: {
-                labels: {
-                    x:'123123',
-                    y:'234sdf'
-                },
+            axis: {                
                 x: {                    
+                    label: 'Time',
                     tick: {
                         count: 10,
                         format:x=> new Date(x)
                     }
                 },
-                y: {                    
+                y: {              
+                    label: '#Posts',      
                     tick: { 
                         count: 5, 
                         format:x=> Math.pow(10, x).toFixed(0)+'#'

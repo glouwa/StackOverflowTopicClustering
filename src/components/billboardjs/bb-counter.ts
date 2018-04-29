@@ -1,4 +1,5 @@
 import { bb } from 'billboard.js'
+import * as d3 from 'd3'
 
 export class BillboardCounter
 {
@@ -15,7 +16,7 @@ export class BillboardCounter
         
         var numbers = this.args.data.map(e=> e[1])
         var labels = this.args.data.map(e=> e[0])
-        //console.log('update bb', args, numbers, labels)
+        console.log('update bb', args, numbers, labels)
         this.chart = bb.generate({
             bindto: this.args.parent,
             padding: {    
@@ -29,12 +30,19 @@ export class BillboardCounter
                 height: this.args.height||200,                    
             },
             data: {
+                type: "bar",
+                bar: { width: { ratio: .1 }},
+                //bar: { padding:.01 },
                 columns: [
                     [this.args.title].concat(numbers)
-                ],
-                type: "bar"
+                ],                
+                color: function (color, d) {                    
+                    return (d.x == '0' || d.x == '0') 
+                        ? d3.schemeCategory10[3] 
+                        : d3.schemeCategory10[2]
+                }
             },
-            bar: { width: { ratio: 1 }},
+            bar: { width: { ratio: .8 }},
             axis: {
                 x: {
                     type: "category", 

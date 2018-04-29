@@ -1,3 +1,4 @@
+import * as d3 from 'd3'
 import { TagCloud } from '../cloud/cloud'
 import { BillboardCounter } from '../billboardjs/bb-counter'
 import { BillboardBar } from '../billboardjs/bb-bar'
@@ -14,9 +15,9 @@ const html = `
         <br>        
         <div id="TimeChart"></div>
         <br><br>                
-        <div id="SCOChart" style="width:44%;float:left;"></div>
-        <div id="ANCChart" style="width:44%;float:left;"></div>    
-        <div id="ISAChart" style="width:12%;float:left;"></div>
+        <div id="SCOChart" style="width:42%;float:left;"></div>
+        <div id="ANCChart" style="width:42%;float:left;"></div>    
+        <div id="ISAChart" style="width:16%;float:left;"></div>
         <br><br>        
         <div id="SizeChart"></div>        
     </div>`
@@ -47,17 +48,18 @@ export class StackoverflowDatasetView
             title: 'Post Size',      
             tickcount: 20,
             height: 140,
-            labels: [],
-            numbers: [],
-            labels1: [],
-            numbers1: []
+            groups: [[ "Body size", "Title size", "Inline code size", "Code size" ]],
         })
 
-        this.scores = new BillboardCounter({
+        this.scores = new BillboardBar({
             parent: document.querySelector("#SCOChart"),         
-            height: 120,
-            //tickcount: 20,
-            data: [],
+            height: 120,  
+            tickcount: 10,   
+            color: function (color, d) {                
+                if (d.x < 0) return  d3.schemeCategory10[3] 
+                if (d.x > 0) return  d3.schemeCategory10[2] 
+                return color
+            }       
         })
     
         this.ansercount = new BillboardCounter({
@@ -107,22 +109,37 @@ export class StackoverflowDatasetView
                 ['x2']              .concat(s.body.map(e=> e.key)),                
                 ['x3']              .concat(s.inlinecode.map(e=> e.key)),                
                 ['x4']              .concat(s.code.map(e=> e.key)),
-                ['Title size']      .concat(s.title.map(e=> e.values.length)),
-                ['Body size']       .concat(s.body.map(e=> e.values.length)),
                 ['Inline code size'].concat(s.inlinecode.map(e=> e.values.length)),
+                ['Title size']      .concat(s.title.map(e=> e.values.length)),
+                ['Body size']       .concat(s.body.map(e=> e.values.length)),                
                 ['Code size']       .concat(s.code.map(e=> e.values.length)),
-            ],
-            //groups: [[ "Titlesize", "Bodysize" ]]            
+            ],            
         })
 
-        this.scores.update({
-            parent: document.querySelector("#SCOChart"),         
-            height: 120,
-            tickcount: 20,
+        this.scores.update({           
+            type: "bar",
+            xs: {                
+                '#Posts':       'x1',                
+            },
+            columns: [
+                ['x1']              .concat(Object.entries(datasetmeta.distributions.score)
+                    .sort((a:any, b:any)=> a[0] - b[0])
+                    .slice(0, 35)
+                    .map(e=> e[0])),                
+                
+                ['#Posts'].concat(Object.entries(datasetmeta.distributions.score)
+                    .sort((a:any, b:any)=> a[0] - b[0])
+                    .slice(0, 35)
+                    .map(e=> e[1])),
+            ],
+            
+        })
+
+        /*this.scores.update({            
             data: Object.entries(datasetmeta.distributions.score)
                 .sort((a:any, b:any)=> a[0] - b[0])
                 .slice(0, 35),        
-        })
+        })*/
         this.ansercount.update({
             parent: document.querySelector("#ANCChart"),         
             height: 120,
