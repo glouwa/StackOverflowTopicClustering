@@ -36940,7 +36940,7 @@ const html = `
         <div id="SCOChart" style="width:42%;float:left;"></div>
         <div id="ANCChart" style="width:42%;float:left;"></div>    
         <div id="ISAChart" style="width:16%;float:left;"></div>
-        <br><br>        
+        <br style="clear:both;"><br>
         <div id="SizeChart"></div>        
     </div>`;
 class StackoverflowDatasetView {
@@ -36957,6 +36957,7 @@ class StackoverflowDatasetView {
             title: 'Post Size',
             tickcount: 20,
             height: 140,
+            legend: true,
             groups: [["Body size", "Title size", "Inline code size", "Code size"]],
             colors: {
                 "Body size": d3.schemeCategory10[5],
@@ -36967,7 +36968,7 @@ class StackoverflowDatasetView {
         });
         this.scores = new bb_bar_1.BillboardBar({
             parent: document.querySelector("#SCOChart"),
-            height: 120,
+            height: 100,
             tickcount: 10,
             color: function (color, d) {
                 if (d.x < 0)
@@ -36979,12 +36980,14 @@ class StackoverflowDatasetView {
         });
         this.ansercount = new bb_counter_1.BillboardCounter({
             parent: document.querySelector("#ANCChart"),
-            height: 120,
+            height: 100,
+            rotate: 0,
             data: [],
         });
         this.isanswered = new bb_counter_1.BillboardCounter({
             parent: document.querySelector("#ISAChart"),
-            height: 120,
+            height: 100,
+            rotate: 0,
             data: [],
         });
         this.tags = new tagdistribution_1.TagDistribution({
@@ -37047,13 +37050,13 @@ class StackoverflowDatasetView {
         })*/
         this.ansercount.update({
             parent: document.querySelector("#ANCChart"),
-            height: 120,
+            height: 100,
             data: Object.entries(datasetmeta.distributions.answerCount)
                 .sort((a, b) => a[0] - b[0]),
         });
         this.isanswered.update({
             parent: document.querySelector("#ISAChart"),
-            height: 120,
+            height: 100,
             data: Object.entries(datasetmeta.distributions.isAnswered)
                 .sort((a, b) => b[1] - a[1]),
         });
@@ -37118,7 +37121,7 @@ class BillboardCounter {
                     tick: {
                         count: this.args.tickcount,
                         //fit: true,                     
-                        rotate: 90,
+                        rotate: 0,
                         multiline: false,
                     },
                 },
@@ -37154,7 +37157,7 @@ class BillboardBar {
                 right: 70,
             },
             legend: {
-            //show: false
+                show: this.args.legend ? true : false
             },
             size: {
                 height: this.args.height || 200,
@@ -37177,7 +37180,7 @@ class BillboardBar {
                         count: this.args.tickcount,
                         //fit: true,                    
                         multiline: false,
-                        format: x => Math.pow(2, x.toFixed(0)) - 1 + 'Chars'
+                        format: x => Math.pow(2, x).toFixed(0) - 1 + 'Chars'
                     },
                 },
                 y: {

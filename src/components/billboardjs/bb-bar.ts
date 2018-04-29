@@ -15,7 +15,7 @@ export class BillboardBar
                 right: 70, 
             },  
             legend: {
-                //show: false
+                show: this.args.legend?true:false
             },             
             size: {
                 height: this.args.height||200,                    
@@ -39,7 +39,7 @@ export class BillboardBar
                         count: this.args.tickcount,
                         //fit: true,                    
                         multiline: false,
-                        format: x=> Math.pow(2, x.toFixed(0))-1+'Chars' 
+                        format: x=> Math.pow(2, x).toFixed(0)-1+'Chars' 
                     }, 
                 },
                 y: {

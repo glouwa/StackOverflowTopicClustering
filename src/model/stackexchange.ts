@@ -103,7 +103,7 @@ export function convert(source:string)
                                 answerCount: q.answer_count,
                                 score: q.score,
                                 terms: {
-                                    tags: q.tags
+                                    tags: [q.tags]
                                 },
                                 text:{
                                     title: q.title,
@@ -148,9 +148,9 @@ export function convert(source:string)
                 sizes: {
                     post:       m.index<number, PostId>(merge, e=> Math.log2(1+e.size).toFixed(1)), 
                     title:      m.index<number, PostId>(merge, e=> Math.log2(1+e.text.title.length).toFixed(1)), 
-                    inlinecode: m.index<number, PostId>(merge, e=> Math.log2(1+e.text.inlinecode.length).toFixed(1)), 
-                    body:       m.index<number, PostId>(merge, e=> Math.log2(1+e.text.body.length).toFixed(1)),                     
-                    code:       m.index<number, PostId>(merge, e=> Math.log2(1+e.text.code.length).toFixed(1)), 
+                    inlinecode: m.index<number, PostId>(merge, e=> Math.log2(1+e.text.inlinecode.reduce((a, s)=> s.length, 0)).toFixed(1)), 
+                    body:       m.index<number, PostId>(merge, e=> Math.log2(1+e.text.body.reduce((a, s)=> s.length, 0)).toFixed(1)),                     
+                    code:       m.index<number, PostId>(merge, e=> Math.log2(1+e.text.code.reduce((a, s)=> s.length, 0)).toFixed(1)), 
                 }
             },
             distributions: {
@@ -159,14 +159,14 @@ export function convert(source:string)
                 answerCount: m.distribution(merge, e=> e.answerCount, null),
                 score:       m.distribution(merge, e=> e.score, null),
                 terms:{ 
-                    tags: bla(merge)
+                    tags:       bla(merge)
                 },
                 sentences: {},
-                texts:{ 
-                    title: bla(merge),
-                    body: bla(merge),
+                texts:{
+                    title:      bla(merge),
+                    body:       bla(merge),
                     inlinecode: bla(merge),
-                    code: bla(merge)
+                    code:       bla(merge)
                 }
             }
         }
@@ -190,7 +190,9 @@ export function tag_tf(merge, t) {
     for (var qid in merge)             
         merge[qid].terms.tags
             .filter(t=> t !== 'constructor')
-            .forEach(tag=> result[t(tag)] = result[t(tag)]+1 || 1)
+            .forEach(s=> s
+                .filter(t=> t !== 'constructor')
+                .forEach(tag=> result[t(tag)] = result[t(tag)]+1 || 1))
     return result
 }
 
@@ -199,9 +201,11 @@ export function char_tf(merge) {
     for (var qid in merge)             
         merge[qid].terms.tags
             .filter(t=> t !== 'constructor')
-            .forEach(tag=> tag
-                .split('')
-                .forEach(c=> result[c] = result[c]+1 || 1))
+            .forEach(s=> s
+                .filter(t=> t !== 'constructor')
+                .forEach(tag=> tag
+                    .split('')
+                    .forEach(c=> result[c] = result[c]+1 || 1)))
     return result
 }
 
@@ -222,22 +226,22 @@ function parse(html)
     dom.window.document.body.innerHTML = html
 
     const result = {
-        body: '',
-        code: '',
-        inlinecode: ''
+        body: [],
+        code: [],
+        inlinecode: []
     }
     dom.window.document.body.querySelectorAll('pre').forEach(e=> {
-        result.code+=e.textContent; 
+        result.code.push(e.textContent) 
         e.innerHTML = ''
-   })
+    })
     dom.window.document.body.querySelectorAll('code').forEach(e=> {
-         result.inlinecode+=e.textContent; 
+         result.inlinecode.push(e.textContent) 
          e.innerHTML = ''
     })
     
     dom.window.document.body.querySelectorAll('a').forEach(e=> e.innerHTML = '')    
 
-    result.body = dom.window.document.body.textContent
+    result.body = [dom.window.document.body.textContent]
     return result
 }
 

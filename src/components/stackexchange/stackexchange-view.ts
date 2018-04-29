@@ -18,7 +18,7 @@ const html = `
         <div id="SCOChart" style="width:42%;float:left;"></div>
         <div id="ANCChart" style="width:42%;float:left;"></div>    
         <div id="ISAChart" style="width:16%;float:left;"></div>
-        <br><br>        
+        <br style="clear:both;"><br>
         <div id="SizeChart"></div>        
     </div>`
 
@@ -48,7 +48,8 @@ export class StackoverflowDatasetView
             title: 'Post Size',      
             tickcount: 20,
             height: 140,
-            groups: [[ "Body size", "Title size", "Inline code size", "Code size" ]],
+            legend: true,
+            groups: [[ "Body size", "Title size", "Inline code size", "Code size" ]],            
             colors: {
                 "Body size":d3.schemeCategory10[5], 
                 "Title size":d3.schemeCategory10[4], 
@@ -59,7 +60,7 @@ export class StackoverflowDatasetView
 
         this.scores = new BillboardBar({
             parent: document.querySelector("#SCOChart"),         
-            height: 120,  
+            height: 100,  
             tickcount: 10,   
             color: function (color, d) {                
                 if (d.x < 0) return  d3.schemeCategory10[3] 
@@ -70,13 +71,15 @@ export class StackoverflowDatasetView
     
         this.ansercount = new BillboardCounter({
             parent: document.querySelector("#ANCChart"),         
-            height: 120,
+            height: 100,
+            rotate: 0,
             data: [],
         })
     
         this.isanswered = new BillboardCounter({
             parent: document.querySelector("#ISAChart"),         
-            height: 120,
+            height: 100,
+            rotate: 0,
             data: [],
         })
     
@@ -146,13 +149,13 @@ export class StackoverflowDatasetView
         })*/
         this.ansercount.update({
             parent: document.querySelector("#ANCChart"),         
-            height: 120,
+            height: 100,
             data: Object.entries(datasetmeta.distributions.answerCount)
                 .sort((a:any, b:any)=> a[0] - b[0]),        
         })
         this.isanswered.update({
             parent: document.querySelector("#ISAChart"),         
-            height: 120,
+            height: 100,
             data: Object.entries(datasetmeta.distributions.isAnswered)
                 .sort((a:any, b:any)=> b[1] - a[1]),        
         })

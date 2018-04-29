@@ -27,7 +27,7 @@ export class BillboardCounter
                 show: false
             },             
             size: {
-                height: this.args.height||200,                    
+                height: this.args.height || 200,                    
             },
             data: {
                 type: "bar",
@@ -50,7 +50,7 @@ export class BillboardCounter
                     tick: {
                         count: this.args.tickcount,
                         //fit: true,                     
-                        rotate: 90, 
+                        rotate: 0, //this.args.rotate || 90, 
                         multiline: false,
                     }, 
                 },
