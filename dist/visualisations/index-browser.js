@@ -22118,10 +22118,12 @@ const html = `
             <span class="title"></span>
             <span class="desc"></span>
         </div>    
-        <br>
-        <div>          
-            <div class="tfcloud"><div id="XTTFChart"></div></div>
-            <div class="cloud" id="XTTFcloud"></div>
+        <br>                
+        <div class="cloud" id="XTTFcloud"></div>
+        <div class="right">                      
+            <div id="tagdist" class="alphadist"></div>
+            <div class="tfcloud"><div id="chardist"></div></div>                        
+            <div class="tfcloud"><div id="textsize"></div></div>            
         </div>
     </div>`;
 class TagDistribution {
@@ -22132,24 +22134,39 @@ class TagDistribution {
     }
     update(args) {
         this.args = args;
-        const keyvaluepairs = Object.entries(this.args.data)
-            .sort((a, b) => b[1] - a[1]);
-        const keyvector = keyvaluepairs.map(e => e[0]);
-        const valuevector = keyvaluepairs.map(e => e[1]);
-        this.stats = new vecstats_1.Stats(valuevector);
+        if (!this.args.data)
+            return;
+        const keyvaluepairs = this.convert(this.args.data.key);
+        this.stats = new vecstats_1.Stats(keyvaluepairs.map(e => e[1]));
         this.view.querySelector(".header > .title").innerText = args.name;
         this.view.querySelector(".header > .desc").innerText = this.stats;
         this.bb = new bb_counter_1.BillboardCounter({
-            parent: this.view.querySelector("#XTTFChart"),
-            data: keyvaluepairs.slice(0, 100),
+            parent: this.view.querySelector("#tagdist"),
+            data: keyvaluepairs.slice(0, 120),
             title: "Tag frequency"
+        });
+        this.bb = new bb_counter_1.BillboardCounter({
+            parent: this.view.querySelector("#textsize"),
+            data: Object.entries(this.args.data.size),
+            title: "Text length frequency",
+            height: 100,
+        });
+        this.bb = new bb_counter_1.BillboardCounter({
+            parent: this.view.querySelector("#chardist"),
+            data: this.convert(this.args.data.chars),
+            title: "Char frequency",
+            height: 100,
         });
         this.tc = new cloud_1.TagCloud({
             parent: this.view.querySelector('#XTTFcloud'),
             words: keyvaluepairs
-                .slice(0, 75)
+                .slice(0, 120)
                 .map((e) => ({ text: e[0], size: 9 + e[1] / this.stats.max * 23 }))
         });
+    }
+    convert(d) {
+        return Object.entries(d)
+            .sort((a, b) => b[1] - a[1]);
     }
 }
 exports.TagDistribution = TagDistribution;
@@ -22194,12 +22211,10 @@ document.body.onload = function init() {
     const plaintitle = new tagdistribution_1.TagDistribution({
         parent: document.body,
         name: 'Plain Title',
-        data: {}
     });
     const plainbody = new tagdistribution_1.TagDistribution({
         parent: document.body,
         name: 'Plain Body',
-        data: {}
     });
     d3.json("data/bag-of-words/htmlcleaned-meta.json")
         .then((htmlcleanedmeta) => {
@@ -22216,12 +22231,10 @@ document.body.onload = function init() {
     const stemmedtitle = new tagdistribution_1.TagDistribution({
         parent: document.body,
         name: 'Stemmed Title',
-        data: {}
     });
     const stemmedbody = new tagdistribution_1.TagDistribution({
         parent: document.body,
         name: 'Stemmed Body',
-        data: {}
     });
     d3.json("data/bag-of-words/stemmed-meta.json")
         .then((stemmeta) => {
@@ -22238,12 +22251,10 @@ document.body.onload = function init() {
     const lemmedtitle = new tagdistribution_1.TagDistribution({
         parent: document.body,
         name: 'Lemmed Title',
-        data: {}
     });
     const lemmedbody = new tagdistribution_1.TagDistribution({
         parent: document.body,
         name: 'Lemmed Body',
-        data: {}
     });
     d3.json("data/bag-of-words/lemmatized-meta.json")
         .then((lemmmeta) => {
@@ -36385,7 +36396,7 @@ class TagCloud {
         this.layout = null;
         this.args = args;
         this.layout = cloud()
-            .size([420, 180])
+            .size([420, 280])
             .words(this.args.words)
             .padding(3)
             //.rotate(()=> ~~(Math.random() * 2 ) * 90)
@@ -36947,6 +36958,12 @@ class StackoverflowDatasetView {
             tickcount: 20,
             height: 140,
             groups: [["Body size", "Title size", "Inline code size", "Code size"]],
+            colors: {
+                "Body size": d3.schemeCategory10[5],
+                "Title size": d3.schemeCategory10[4],
+                "Inline code size": d3.schemeCategory10[8],
+                "Code size": d3.schemeCategory10[8]
+            }
         });
         this.scores = new bb_bar_1.BillboardBar({
             parent: document.querySelector("#SCOChart"),
@@ -36973,7 +36990,6 @@ class StackoverflowDatasetView {
         this.tags = new tagdistribution_1.TagDistribution({
             parent: document.body,
             name: 'Tag',
-            data: {},
         });
     }
     update(datasetmeta) {
@@ -37083,7 +37099,7 @@ class BillboardCounter {
             },
             data: {
                 type: "bar",
-                bar: { width: { ratio: .1 } },
+                //bar: { width: { ratio: .1 }},
                 //bar: { padding:.01 },
                 columns: [
                     [this.args.title].concat(numbers)
@@ -37094,7 +37110,7 @@ class BillboardCounter {
                         : d3.schemeCategory10[2];
                 }
             },
-            bar: { width: { ratio: .8 } },
+            //bar: { width:.2 }, //{ width: { ratio: .5 }},
             axis: {
                 x: {
                     type: "category",
@@ -37148,7 +37164,8 @@ class BillboardBar {
                 columns: [],
                 groups: this.args.groups,
                 //bar: { width: { ratio: .5 }}, 
-                color: this.args.color
+                color: this.args.color,
+                colors: this.args.colors,
             },
             bar: { width: { ratio: .65 } },
             axis: {

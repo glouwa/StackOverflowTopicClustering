@@ -6,4 +6,5 @@ export declare class TagDistribution {
     private tc;
     constructor(args: any);
     update(args: any): void;
+    private convert(d);
 }

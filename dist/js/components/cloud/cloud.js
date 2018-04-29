@@ -8,7 +8,7 @@ class TagCloud {
         this.layout = null;
         this.args = args;
         this.layout = cloud()
-            .size([420, 180])
+            .size([420, 280])
             .words(this.args.words)
             .padding(3)
             //.rotate(()=> ~~(Math.random() * 2 ) * 90)

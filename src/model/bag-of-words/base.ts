@@ -9,14 +9,13 @@ export type BagOfWords = string[]
 
 export type Distribution<E> = { [key:string]:number }
 //type Distribution<E> = Map<E, number>
-export interface TextDistributions {    
-    sizeDistribution: Distribution<number>
-    letterDistribution: Distribution<Char>
-    sentencesCountDistribution: Distribution<number>
-    sentencesSizeDistribution: Distribution<number>    
+export interface TextDistributions {        
+    size: Distribution<Char>
+    chars: Distribution<number>
+    sentences: Distribution<number>    
 }
 export interface TermDistributions extends TextDistributions {
-    distribution: Distribution<string>    
+    key: Distribution<string>    
 }
 
 export interface Post {

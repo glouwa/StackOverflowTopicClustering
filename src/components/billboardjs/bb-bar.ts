@@ -25,7 +25,8 @@ export class BillboardBar
                 columns: [],
                 groups: this.args.groups, 
                 //bar: { width: { ratio: .5 }}, 
-                color: this.args.color               
+                color: this.args.color,
+                colors: this.args.colors,      
             },
             bar: { width: { ratio: .65 }},
             axis: {

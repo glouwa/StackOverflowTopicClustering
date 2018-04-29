@@ -49,6 +49,12 @@ export class StackoverflowDatasetView
             tickcount: 20,
             height: 140,
             groups: [[ "Body size", "Title size", "Inline code size", "Code size" ]],
+            colors: {
+                "Body size":d3.schemeCategory10[5], 
+                "Title size":d3.schemeCategory10[4], 
+                "Inline code size":d3.schemeCategory10[8], 
+                "Code size":d3.schemeCategory10[8] 
+            }
         })
 
         this.scores = new BillboardBar({
@@ -76,8 +82,7 @@ export class StackoverflowDatasetView
     
         this.tags = new TagDistribution({
             parent: document.body,
-            name: 'Tag',
-            data: {},
+            name: 'Tag',            
         })
     }
 
@@ -131,8 +136,7 @@ export class StackoverflowDatasetView
                     .sort((a:any, b:any)=> a[0] - b[0])
                     .slice(0, 35)
                     .map(e=> e[1])),
-            ],
-            
+            ],            
         })
 
         /*this.scores.update({            

@@ -159,14 +159,14 @@ export function convert(source:string)
                 answerCount: m.distribution(merge, e=> e.answerCount, null),
                 score:       m.distribution(merge, e=> e.score, null),
                 terms:{ 
-                    tags:    tag_tf(merge)
+                    tags: bla(merge)
                 },
                 sentences: {},
                 texts:{ 
-                    title: null,
-                    body: null,
-                    inlinecode: null,
-                    code: null
+                    title: bla(merge),
+                    body: bla(merge),
+                    inlinecode: bla(merge),
+                    code: bla(merge)
                 }
             }
         }
@@ -177,14 +177,34 @@ export function convert(source:string)
     })
 }
 
-export function tag_tf(merge) {
+function bla(merge) {
+    return {
+        key: tag_tf(merge, t=> t),
+        size: tag_tf(merge, t=> t.length),
+        chars: char_tf(merge)
+    }
+}
+
+export function tag_tf(merge, t) {
     let result = {}
     for (var qid in merge)             
         merge[qid].terms.tags
             .filter(t=> t !== 'constructor')
-            .forEach(tag=> result[tag] = result[tag]+1 || 1)
+            .forEach(tag=> result[t(tag)] = result[t(tag)]+1 || 1)
     return result
 }
+
+export function char_tf(merge) {
+    let result = {}
+    for (var qid in merge)             
+        merge[qid].terms.tags
+            .filter(t=> t !== 'constructor')
+            .forEach(tag=> tag
+                .split('')
+                .forEach(c=> result[c] = result[c]+1 || 1))
+    return result
+}
+
 /*
 function splitsentences(text) {
     return text

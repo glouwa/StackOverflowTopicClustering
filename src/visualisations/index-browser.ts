@@ -15,12 +15,10 @@ document.body.onload = function init()
     const plaintitle = new TagDistribution({
         parent: document.body,
         name: 'Plain Title',
-        data: {}
     })
     const plainbody = new TagDistribution({ 
         parent: document.body,
         name: 'Plain Body',
-        data: {}
     })
     d3.json("data/bag-of-words/htmlcleaned-meta.json")
         .then((htmlcleanedmeta:any)=> { 
@@ -38,12 +36,10 @@ document.body.onload = function init()
     const stemmedtitle = new TagDistribution({
         parent: document.body,
         name: 'Stemmed Title',
-        data: {}
     })
     const stemmedbody = new TagDistribution({
         parent: document.body,
         name: 'Stemmed Body',
-        data: {}
     })
     d3.json("data/bag-of-words/stemmed-meta.json")
         .then((stemmeta:any)=> { 
@@ -61,12 +57,10 @@ document.body.onload = function init()
     const lemmedtitle = new TagDistribution({
         parent: document.body,
         name: 'Lemmed Title',
-        data: {}
     })
     const lemmedbody = new TagDistribution({
         parent: document.body,
         name: 'Lemmed Body',
-        data: {}
     })
     d3.json("data/bag-of-words/lemmatized-meta.json")
         .then((lemmmeta:any)=> { 

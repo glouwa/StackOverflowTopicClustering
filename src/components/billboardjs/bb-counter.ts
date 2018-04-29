@@ -31,7 +31,7 @@ export class BillboardCounter
             },
             data: {
                 type: "bar",
-                bar: { width: { ratio: .1 }},
+                //bar: { width: { ratio: .1 }},
                 //bar: { padding:.01 },
                 columns: [
                     [this.args.title].concat(numbers)
@@ -42,7 +42,7 @@ export class BillboardCounter
                         : d3.schemeCategory10[2]
                 }
             },
-            bar: { width: { ratio: .8 }},
+            //bar: { width:.2 }, //{ width: { ratio: .5 }},
             axis: {
                 x: {
                     type: "category", 
