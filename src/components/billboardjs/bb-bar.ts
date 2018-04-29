@@ -6,16 +6,8 @@ export class BillboardBar
     private chart
 
     constructor(args)
-    {        
-        this.update(args)
-    }
-
-    public update(args) {
+    {
         this.args = args
-        
-        var numbers = this.args.numbers
-        var labels = this.args.labels
-        console.log('update bb', args, numbers, labels)
         this.chart = bb.generate({
             bindto: this.args.parent,
             padding: {    
@@ -23,36 +15,37 @@ export class BillboardBar
                 right: 70, 
             },  
             legend: {
-                show: false
+                //show: false
             },             
             size: {
                 height: this.args.height||200,                    
             },
-            data: {
-                columns: [
-                    ['data1'].concat(numbers),
-                    ['data2'].concat(numbers)
-                ],             
-                type: "bar",
-                groups: [
-                    [ "data1", "data2" ]
-                ]
+            data: {         
+                order: "asc",       
+                columns: [],
+                groups: [[ "Body size", "Title size", "Inline code size", "Code size" ]]  
             },
-            bar: { width: { ratio: .8 }},
+            //bar: { width: { ratio: .5 }},
+            //bar: { padding:.01 },
             axis: {
-                x: {
-                    type: "category", 
-                    categories: labels,                       
+                x: {                    
+                    label: {
+                        text: 'Post size',
+                        //position: "outer-center"
+                    },
                     tick: {
                         count: this.args.tickcount,
-                        fit: true,                     
-                        //rotate: 90, 
+                        //fit: true,                    
                         multiline: false,
-                        format: x=> x.toFixed(0)+'KB' 
+                        format: x=> Math.pow(2, x.toFixed(0))-1+'Chars' 
                     }, 
                 },
                 y: {
-                    //center: 0,
+                    max: 2100,
+                    label: {
+                         text: 'Posts',
+                         //position: "outer-middle"
+                    },                    
                     tick: { 
                         count: 2, 
                         format: x=> x.toFixed(0)+'#' 
@@ -60,5 +53,10 @@ export class BillboardBar
                 }
             }            
         })  
+    }
+
+    public update(data) {
+        console.log(data)
+        this.chart.load(data)        
     }
 }

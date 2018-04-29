@@ -13,11 +13,11 @@ const html = `
         <div id="mergeheader" class="header">Merged</div>    
         <br>        
         <div id="TimeChart"></div>
-        <br>                
+        <br><br>                
         <div id="SCOChart" style="width:44%;float:left;"></div>
         <div id="ANCChart" style="width:44%;float:left;"></div>    
         <div id="ISAChart" style="width:12%;float:left;"></div>
-        <br>        
+        <br><br>        
         <div id="SizeChart"></div>        
     </div>`
 
@@ -40,14 +40,17 @@ export class StackoverflowDatasetView
      
         this.timeline = new BillboardTimeline({
             parent: document.querySelector("#TimeChart"),         
-            height: 150,
+            height: 140,
         })
         this.datasize = new BillboardBar({
             parent: document.querySelector("#SizeChart"),   
             title: 'Post Size',      
-            height: 120,
+            tickcount: 20,
+            height: 140,
             labels: [],
-            numbers: []
+            numbers: [],
+            labels1: [],
+            numbers1: []
         })
 
         this.scores = new BillboardCounter({
@@ -88,14 +91,28 @@ export class StackoverflowDatasetView
             numbers: datasetmeta.index.created
                 .map(e=> Math.log10(e.values.length)), // count of posts
         })
-        this.datasize.update({
-            parent: document.querySelector("#SizeChart"),         
-            height: 120,
-            tickcount: 10,
-            labels: datasetmeta.index.sizes.post
-                .map(e=> e.key),
-            numbers: datasetmeta.index.sizes.post
-                .map(e=> e.values.length), // count of posts
+
+        const s = datasetmeta.index.sizes
+        this.datasize.update({           
+            type: "bar",
+            xs: {                
+                'Title size':       'x1',
+                'Body size':        'x2',
+                'Inline code size': 'x3', 
+                'Code size':        'x4',                
+            },
+            order: "asc",
+            columns: [
+                ['x1']              .concat(s.title.map(e=> e.key)),                
+                ['x2']              .concat(s.body.map(e=> e.key)),                
+                ['x3']              .concat(s.inlinecode.map(e=> e.key)),                
+                ['x4']              .concat(s.code.map(e=> e.key)),
+                ['Title size']      .concat(s.title.map(e=> e.values.length)),
+                ['Body size']       .concat(s.body.map(e=> e.values.length)),
+                ['Inline code size'].concat(s.inlinecode.map(e=> e.values.length)),
+                ['Code size']       .concat(s.code.map(e=> e.values.length)),
+            ],
+            //groups: [[ "Titlesize", "Bodysize" ]]            
         })
 
         this.scores.update({

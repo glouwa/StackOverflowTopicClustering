@@ -13,8 +13,7 @@ export interface TextDistributions {
     sizeDistribution: Distribution<number>
     letterDistribution: Distribution<Char>
     sentencesCountDistribution: Distribution<number>
-    sentencesSizeDistribution: Distribution<number>
-    
+    sentencesSizeDistribution: Distribution<number>    
 }
 export interface TermDistributions extends TextDistributions {
     distribution: Distribution<string>    

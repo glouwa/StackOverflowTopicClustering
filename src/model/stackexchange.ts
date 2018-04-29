@@ -146,11 +146,11 @@ export function convert(source:string)
                 id:      m.index<PostId, PostId>(merge, e=> e.id),
                 created: m.index<number, PostId>(merge, e=> rounddate(e.created).getTime()),
                 sizes: {
-                    post:       m.index<number, PostId>(merge, e=> (e.size/1000).toFixed()), 
-                    title:      m.index<number, PostId>(merge, e=> (e.text.itle.length).toFixed()), 
-                    body:       m.index<number, PostId>(merge, e=> (e.text.body.length/1000).toFixed()), 
-                    inlinecode: m.index<number, PostId>(merge, e=> (e.text.inlinecode.length/1000).toFixed()), 
-                    code:       m.index<number, PostId>(merge, e=> (e.text.code/1000).toFixed()), 
+                    post:       m.index<number, PostId>(merge, e=> Math.log2(1+e.size).toFixed(1)), 
+                    title:      m.index<number, PostId>(merge, e=> Math.log2(1+e.text.title.length).toFixed(1)), 
+                    inlinecode: m.index<number, PostId>(merge, e=> Math.log2(1+e.text.inlinecode.length).toFixed(1)), 
+                    body:       m.index<number, PostId>(merge, e=> Math.log2(1+e.text.body.length).toFixed(1)),                     
+                    code:       m.index<number, PostId>(merge, e=> Math.log2(1+e.text.code.length).toFixed(1)), 
                 }
             },
             distributions: {
@@ -200,14 +200,25 @@ const dom = new JSDOM('')
 function parse(html)
 {
     dom.window.document.body.innerHTML = html
-    dom.window.document.body.querySelectorAll('code').forEach(e=> e.innerHTML = '')
-    dom.window.document.body.querySelectorAll('pre').forEach(e=> e.innerHTML = '')
-    dom.window.document.body.querySelectorAll('a').forEach(e=> e.innerHTML = '')    
-    return {
-        body: dom.window.document.body.textContent,
+
+    const result = {
+        body: '',
         code: '',
         inlinecode: ''
     }
+    dom.window.document.body.querySelectorAll('pre').forEach(e=> {
+        result.code+=e.textContent; 
+        e.innerHTML = ''
+   })
+    dom.window.document.body.querySelectorAll('code').forEach(e=> {
+         result.inlinecode+=e.textContent; 
+         e.innerHTML = ''
+    })
+    
+    dom.window.document.body.querySelectorAll('a').forEach(e=> e.innerHTML = '')    
+
+    result.body = dom.window.document.body.textContent
+    return result
 }
 
 //console.log(`${meta.filecount} Files, 

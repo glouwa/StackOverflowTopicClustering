@@ -22,12 +22,17 @@ export class BillboardTimeline
             }, 
             data: {
                 x:"x",
+                //type: "bar",
                 columns: [
                     ["x"],            
                     ["Posts per day"]
                 ]     
             },            
             axis: {
+                labels: {
+                    x:'123123',
+                    y:'234sdf'
+                },
                 x: {                    
                     tick: {
                         count: 10,
