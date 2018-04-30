@@ -10,9 +10,10 @@ export type BagOfWords = string[]
 export type Distribution<E> = { [key:string]:number }
 //type Distribution<E> = Map<E, number>
 export interface TextDistributions {        
-    size: Distribution<Char>
+    //size: Distribution<Char>
     chars: Distribution<number>
-    sentences: Distribution<number>    
+    sentencecount: Distribution<number>    
+    sentencelength: Distribution<number>    
 }
 export interface TermDistributions extends TextDistributions {
     key: Distribution<string>    
@@ -60,20 +61,20 @@ export interface Meta {
     //size: number
     //postcount: number
     index: {
-        id:      { id:PostId, values:PostId[] }[] 
-        created: { date:Date, values:PostId[] }[]
+        id:      { key:PostId, values:PostId[] }[] 
+        created: { key:Date, values:PostId[] }[]
         sizes: {
-            post:       { size:number, values:PostId[] }[]
-            title:      { size:number, values:PostId[] }[]
-            body:       { size:number, values:PostId[] }[]
-            inlinecode: { size:number, values:PostId[] }[]            
-            code:       { size:number, values:PostId[] }[]
+            post:       { key:number, values:PostId[] }[]
+            title:      { key:number, values:PostId[] }[]
+            body:       { key:number, values:PostId[] }[]
+            inlinecode: { key:number, values:PostId[] }[]            
+            code:       { key:number, values:PostId[] }[]
         }        
     }    
     distributions: {
-        terms:{ [key:string]: TermDistributions }
-        sentences:{ [key:string]: TextDistributions }
-        texts:{ [key:string]: TextDistributions }
+        terms:      { [key:string]: TermDistributions }
+        sentences?: { [key:string]: TextDistributions }
+        texts:      { [key:string]: TextDistributions }
     }
 }
 export interface StackOverflowMeta extends Meta {
@@ -96,12 +97,14 @@ export interface StackOverflowMeta extends Meta {
             title: TermDistributions
             body: TermDistributions
             code: TermDistributions
+            inlinecode: TermDistributions
         }
-        sentences: {}
+        sentences?: {}
         texts: { 
             title: TextDistributions
             body: TextDistributions
             code: TextDistributions
+            inlinecode: TextDistributions
         }                
     }
 }

@@ -1,5 +1,5 @@
 import { TagCloud } from '../cloud/cloud'
-import { BillboardCounter } from '../bb-counter/bb-counter'
+import { BillboardCounter } from '../billboardjs/bb-counter'
 import { HTML } from '../../tools/html'
 import { Stats } from '../../model/vecstats'
 
@@ -14,7 +14,9 @@ const html = `
         <div class="right">                      
             <div id="tagdist" class="alphadist"></div>
             <div class="tfcloud"><div id="chardist"></div></div>                        
-            <div class="tfcloud"><div id="textsize"></div></div>            
+            <div class="tfcloud2"><div id="textsize"></div></div>            
+            <div class="tfcloud2"><div id="sentencecount"></div></div>            
+            <!--<div class="tfcloud"><div id="sentencesize"></div></div>-->
         </div>
     </div>`
 
@@ -51,17 +53,26 @@ export class TagDistribution
         })
 
         this.bb = new BillboardCounter({
-            parent: this.view.querySelector("#textsize"), 
-            data: Object.entries(this.args.data.size),
-            title: "Text length frequency",
+            parent: this.view.querySelector("#chardist"), 
+            data: this.convert(this.args.data.chars).slice(0, 60),
+            title: "Char frequency",
             height: 100,
         })
 
         this.bb = new BillboardCounter({
-            parent: this.view.querySelector("#chardist"), 
-            data: this.convert(this.args.data.chars),
-            title: "Char frequency",
+            parent: this.view.querySelector("#textsize"), 
+            data: Object.entries(this.args.data.sentencecount).slice(0, 100),
+            title: "Sentence count frequency",
             height: 100,
+            tickcount: 20,
+        })
+
+        this.bb = new BillboardCounter({
+            parent: this.view.querySelector("#sentencecount"), 
+            data: Object.entries(this.args.data.sentencelength).slice(0, 100),
+            title: "Sentence length frequency",
+            height: 100,
+            tickcount: 20,
         })
 
         this.tc = new TagCloud({ 

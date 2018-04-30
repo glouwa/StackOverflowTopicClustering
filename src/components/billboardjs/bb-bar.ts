@@ -39,7 +39,7 @@ export class BillboardBar
                         count: this.args.tickcount,
                         //fit: true,                    
                         multiline: false,
-                        format: x=> Math.pow(2, x).toFixed(0)-1+'Chars' 
+                        format: x=> Number(Math.pow(2, x).toFixed(0))-1+'Chars' 
                     }, 
                 },
                 y: {

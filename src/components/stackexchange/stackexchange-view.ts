@@ -113,14 +113,14 @@ export class StackoverflowDatasetView
             },
             order: "asc",
             columns: [
-                ['x1']              .concat(s.title.map(e=> e.key)),                
-                ['x2']              .concat(s.body.map(e=> e.key)),                
-                ['x3']              .concat(s.inlinecode.map(e=> e.key)),                
-                ['x4']              .concat(s.code.map(e=> e.key)),
-                ['Inline code size'].concat(s.inlinecode.map(e=> e.values.length)),
-                ['Title size']      .concat(s.title.map(e=> e.values.length)),
-                ['Body size']       .concat(s.body.map(e=> e.values.length)),                
-                ['Code size']       .concat(s.code.map(e=> e.values.length)),
+                ['x1']              .concat(<any>s.title.map(e=> e.key)),                
+                ['x2']              .concat(<any>s.body.map(e=> e.key)),                
+                ['x3']              .concat(<any>s.inlinecode.map(e=> e.key)),                
+                ['x4']              .concat(<any>s.code.map(e=> e.key)),
+                ['Inline code size'].concat(<any>s.inlinecode.map(e=> e.values.length)),
+                ['Title size']      .concat(<any>s.title.map(e=> e.values.length)),
+                ['Body size']       .concat(<any>s.body.map(e=> e.values.length)),                
+                ['Code size']       .concat(<any>s.code.map(e=> e.values.length)),
             ],            
         })
 
@@ -130,7 +130,7 @@ export class StackoverflowDatasetView
                 '#Posts':       'x1',                
             },
             columns: [
-                ['x1']              .concat(Object.entries(datasetmeta.distributions.score)
+                ['x1']    .concat(Object.entries(datasetmeta.distributions.score)
                     .sort((a:any, b:any)=> a[0] - b[0])
                     .slice(0, 35)
                     .map(e=> e[0])),                
@@ -138,7 +138,7 @@ export class StackoverflowDatasetView
                 ['#Posts'].concat(Object.entries(datasetmeta.distributions.score)
                     .sort((a:any, b:any)=> a[0] - b[0])
                     .slice(0, 35)
-                    .map(e=> e[1])),
+                    .map(e=> String(e[1])))
             ],            
         })
 
@@ -150,12 +150,17 @@ export class StackoverflowDatasetView
         this.ansercount.update({
             parent: document.querySelector("#ANCChart"),         
             height: 100,
+            rotate: 0,
+            color: (color, d)=> (d.x == '0' ? d3.schemeCategory10[3] : d3.schemeCategory10[2]),
             data: Object.entries(datasetmeta.distributions.answerCount)
-                .sort((a:any, b:any)=> a[0] - b[0]),        
+                .sort((a:any, b:any)=> a[0] - b[0]),   
+            
         })
         this.isanswered.update({
             parent: document.querySelector("#ISAChart"),         
             height: 100,
+            rotate: 0,
+            color: (color, d)=> (d.x == '0' ? d3.schemeCategory10[3] : d3.schemeCategory10[2]),
             data: Object.entries(datasetmeta.distributions.isAnswered)
                 .sort((a:any, b:any)=> b[1] - a[1]),        
         })

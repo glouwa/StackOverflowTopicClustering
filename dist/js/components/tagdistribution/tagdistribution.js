@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const cloud_1 = require("../cloud/cloud");
-const bb_counter_1 = require("../bb-counter/bb-counter");
+const bb_counter_1 = require("../billboardjs/bb-counter");
 const html_1 = require("../../tools/html");
 const vecstats_1 = require("../../model/vecstats");
 const html = `
@@ -15,7 +15,9 @@ const html = `
         <div class="right">                      
             <div id="tagdist" class="alphadist"></div>
             <div class="tfcloud"><div id="chardist"></div></div>                        
-            <div class="tfcloud"><div id="textsize"></div></div>            
+            <div class="tfcloud2"><div id="textsize"></div></div>            
+            <div class="tfcloud2"><div id="sentencecount"></div></div>            
+            <!--<div class="tfcloud"><div id="sentencesize"></div></div>-->
         </div>
     </div>`;
 class TagDistribution {
@@ -38,16 +40,24 @@ class TagDistribution {
             title: "Tag frequency"
         });
         this.bb = new bb_counter_1.BillboardCounter({
-            parent: this.view.querySelector("#textsize"),
-            data: Object.entries(this.args.data.size),
-            title: "Text length frequency",
+            parent: this.view.querySelector("#chardist"),
+            data: this.convert(this.args.data.chars).slice(0, 60),
+            title: "Char frequency",
             height: 100,
         });
         this.bb = new bb_counter_1.BillboardCounter({
-            parent: this.view.querySelector("#chardist"),
-            data: this.convert(this.args.data.chars),
-            title: "Char frequency",
+            parent: this.view.querySelector("#textsize"),
+            data: Object.entries(this.args.data.sentencecount).slice(0, 100),
+            title: "Sentence count frequency",
             height: 100,
+            tickcount: 20,
+        });
+        this.bb = new bb_counter_1.BillboardCounter({
+            parent: this.view.querySelector("#sentencecount"),
+            data: Object.entries(this.args.data.sentencelength).slice(0, 100),
+            title: "Sentence length frequency",
+            height: 100,
+            tickcount: 20,
         });
         this.tc = new cloud_1.TagCloud({
             parent: this.view.querySelector('#XTTFcloud'),

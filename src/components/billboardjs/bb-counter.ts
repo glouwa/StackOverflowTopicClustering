@@ -36,11 +36,7 @@ export class BillboardCounter
                 columns: [
                     [this.args.title].concat(numbers)
                 ],                
-                color: function (color, d) {                    
-                    return (d.x == '0' || d.x == '0') 
-                        ? d3.schemeCategory10[3] 
-                        : d3.schemeCategory10[2]
-                }
+                color: this.args.color
             },
             //bar: { width:.2 }, //{ width: { ratio: .5 }},
             axis: {
@@ -50,7 +46,7 @@ export class BillboardCounter
                     tick: {
                         count: this.args.tickcount,
                         //fit: true,                     
-                        rotate: 0, //this.args.rotate || 90, 
+                        rotate: this.args.rotate!==undefined ? this.args.rotate : 90, 
                         multiline: false,
                     }, 
                 },

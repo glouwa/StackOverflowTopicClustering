@@ -32,7 +32,7 @@ index: {
 export function index<K, V>(map, newkey) : { key:K, values:V[] }[]
 {
     return Object.entries(group(map, newkey))        
-        .map(v=> ({ key:<K>v[0], values:<V[]>v[1] }))    
+        .map(v=> ({ key:(<any>v[0]), values:<V[]>v[1] }))    
 }
 
 export function distribution<T>(countmap, idextract, bins) : Distribution<T>

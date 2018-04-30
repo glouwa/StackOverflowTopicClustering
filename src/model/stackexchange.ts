@@ -65,160 +65,189 @@ export function download(source, amount)
     })
 }
 
+function convert_(source:string)
+{
+    const respath = page=> `./res/stackoverflow/html/${page}.json`
+    const resmetapath =    `./res/${source}/meta.json`
+    const datapath =       `./dist/data/bag-of-texts/${source}.json`
+    const datametapath =   `./dist/data/bag-of-texts/${source}-meta.json` 
+
+    const report = JSON.parse(fs.readFileSync(resmetapath, 'utf8'))
+    const datasourcemeta = {
+        size: 0,
+        hash: '',
+        filecount: report.filecount,
+        rawquestions: 0,
+        errquestions: 0,
+        dupquestions: 0    
+    }
+
+    const merge : { [key:string]:StackOverflowPost } = {}
+    for (var i = 1; i < datasourcemeta.filecount; i++) {    
+        const dlstr = fs.readFileSync(respath(i), 'utf8')
+        const dlobj = JSON.parse(dlstr)        
+        datasourcemeta.size += dlstr.length
+
+        if (!dlobj.error_id)
+            dlobj.items.forEach(q=> {
+                datasourcemeta.rawquestions++   
+                if (!merge[q.question_id]) 
+                    if (q.body.length > 10) {
+                        const parsed = parse(q.body)
+                        merge[q.question_id] = {
+                            id: q.question_id,
+                            created: new Date(q.creation_date*1000),
+                            size: dlstr.length,
+                            isAnswered: q.is_answered,
+                            answerCount: q.answer_count,
+                            score: q.score,
+                            terms: {
+                                tags: [q.tags]
+                            },
+                            text:{
+                                title: parse(q.title).body,
+                                inlinecode: parsed.inlinecode,
+                                body: parsed.body,                            
+                                code: parsed.code,                            
+                            }
+                        }
+                    }
+                    else
+                        datasourcemeta.errquestions++
+                else
+                    datasourcemeta.dupquestions++
+            })
+        else
+            datasourcemeta.errquestions++
+    }
+    const json = JSON.stringify(merge, null, 4)
+    fs.writeFileSync(datapath, json)
+
+    const jsonmeta = JSON.stringify(datasourcemeta, null, 4)
+    fs.writeFileSync(datametapath, jsonmeta)
+
+    console.log("merged and converted")
+}
+
+function stats_(source:string)
+{   
+    const inputtextspath = `./dist/data/bag-of-texts/${source}.json`
+    const inputwordspath = `./dist/data/bag-of-words/${source}-raw.json`
+    const inputmetapath =  `./dist/data/bag-of-texts/${source}-meta.json`
+
+    const datapath =       `./dist/data/bag-of-words/${source}-raw.json`
+    const datametapath =   `./dist/data/bag-of-words/${source}-raw-meta.json` 
+
+    const datasourcemeta = JSON.parse(fs.readFileSync(inputmetapath, 'utf8'))
+    const merge = JSON.parse(fs.readFileSync(inputtextspath, 'utf8'))
+    const words = JSON.parse(fs.readFileSync(inputwordspath, 'utf8'))
+    
+    const meta : StackOverflowMeta =  {
+        data:{
+            file: datapath,
+            hash: '',
+            size: 12345,
+        },
+        datasource: datasourcemeta,
+        //size: '??',
+        //postcount: Object.keys(merge).length,
+        index: {
+            id:             m.index<PostId, PostId>(merge, e=> e.id),
+            created:        m.index<number, PostId>(merge, e=> rounddate(e.created).getTime()),
+            sizes: {
+                post:       m.index<number, PostId>(merge, e=> Math.log2(1+e.size).toFixed(1)), 
+                title:      m.index<number, PostId>(merge, e=> Math.log2(1+e.text.title.reduce((a, s)=> s.length, 0)).toFixed(1)), 
+                inlinecode: m.index<number, PostId>(merge, e=> Math.log2(1+e.text.inlinecode.reduce((a, s)=> s.length, 0)).toFixed(1)), 
+                body:       m.index<number, PostId>(merge, e=> Math.log2(1+e.text.body.reduce((a, s)=> s.length, 0)).toFixed(1)),                     
+                code:       m.index<number, PostId>(merge, e=> Math.log2(1+e.text.code.reduce((a, s)=> s.length, 0)).toFixed(1)), 
+            }
+        },
+        distributions: {
+            size:           m.distribution(merge, e=> e.size, null),
+            isAnswered:     m.distribution(merge, e=> e.isAnswered, null),
+            answerCount:    m.distribution(merge, e=> e.answerCount, null),
+            score:          m.distribution(merge, e=> e.score, null),
+            terms:{ 
+                tags:       bla(words, q=> q.terms.tags),
+                title:      bla(words, q=> q.terms.title),
+                body:       bla(words, q=> q.terms.body),
+                inlinecode: bla(words, q=> q.terms.inlinecode),
+                code:       bla(words, q=> q.terms.code),
+            },            
+            texts:{
+                title:      bla(merge, q=> q.text.title),
+                body:       bla(merge, q=> q.text.body),
+                inlinecode: bla(merge, q=> q.text.inlinecode),
+                code:       bla(merge, q=> q.text.code)
+            }
+        }
+    }
+
+    const metajson = JSON.stringify(meta, null, 4)
+    fs.writeFileSync(datametapath, metajson)
+}
+
 export function convert(source:string)
 {    
     return ((resolve, reject)=> {
-        const respath = page=> `./res/stackoverflow/html/${page}.json`
-        const resmetapath =    `./res/${source}/meta.json`
-        const datapath =       `./dist/data/bag-of-texts/${source}.json`
-        const datametapath =   `./dist/data/bag-of-texts/${source}-meta.json` 
-
-        const report = JSON.parse(fs.readFileSync(resmetapath, 'utf8'))
-        const datasourcemeta = {
-            size: 0,
-            hash: '',
-            filecount: report.filecount,
-            rawquestions: 0,
-            errquestions: 0,
-            dupquestions: 0    
-        }
-
-        const merge : { [key:string]:StackOverflowPost } = {}
-        for (var i = 1; i < datasourcemeta.filecount; i++) {    
-            const dlstr = fs.readFileSync(respath(i), 'utf8')
-            const dlobj = JSON.parse(dlstr)        
-            datasourcemeta.size += dlstr.length
-
-            if (!dlobj.error_id)
-                dlobj.items.forEach(q=> {
-                    datasourcemeta.rawquestions++   
-                    if (!merge[q.question_id]) 
-                        if (q.body.length > 10) {
-                            const parsed = parse(q.body)
-                            merge[q.question_id] = {
-                                id: q.question_id,
-                                created: new Date(q.creation_date*1000),
-                                size: dlstr.length,
-                                isAnswered: q.is_answered,
-                                answerCount: q.answer_count,
-                                score: q.score,
-                                terms: {
-                                    tags: [q.tags]
-                                },
-                                text:{
-                                    title: q.title,
-                                    inlinecode: parsed.inlinecode,
-                                    body: parsed.body,                            
-                                    code: parsed.code,                            
-                                }
-                            }
-                        }
-                        else
-                            datasourcemeta.errquestions++
-                    else
-                        datasourcemeta.dupquestions++
-                })
-            else
-                datasourcemeta.errquestions++
-        }
-        const json = JSON.stringify(merge, null, 4)
-        fs.writeFileSync(datapath, json)
-        console.log("merged and converted")
-
-        function rounddate(din) {
-            var d = new Date(din);
-            d.setHours(0);
-            d.setMinutes(0);
-            d.setSeconds(0);
-            d.setMilliseconds(0);
-            return d
-        }
-        const meta : StackOverflowMeta =  {
-            data:{
-                file: datapath,
-                hash: '',
-                size: json.length,
-            },
-            datasource: datasourcemeta,
-            //size: '??',
-            //postcount: Object.keys(merge).length,
-            index: {
-                id:      m.index<PostId, PostId>(merge, e=> e.id),
-                created: m.index<number, PostId>(merge, e=> rounddate(e.created).getTime()),
-                sizes: {
-                    post:       m.index<number, PostId>(merge, e=> Math.log2(1+e.size).toFixed(1)), 
-                    title:      m.index<number, PostId>(merge, e=> Math.log2(1+e.text.title.length).toFixed(1)), 
-                    inlinecode: m.index<number, PostId>(merge, e=> Math.log2(1+e.text.inlinecode.reduce((a, s)=> s.length, 0)).toFixed(1)), 
-                    body:       m.index<number, PostId>(merge, e=> Math.log2(1+e.text.body.reduce((a, s)=> s.length, 0)).toFixed(1)),                     
-                    code:       m.index<number, PostId>(merge, e=> Math.log2(1+e.text.code.reduce((a, s)=> s.length, 0)).toFixed(1)), 
-                }
-            },
-            distributions: {
-                size:        m.distribution(merge, e=> e.size, null),
-                isAnswered:  m.distribution(merge, e=> e.isAnswered, null),
-                answerCount: m.distribution(merge, e=> e.answerCount, null),
-                score:       m.distribution(merge, e=> e.score, null),
-                terms:{ 
-                    tags:       bla(merge)
-                },
-                sentences: {},
-                texts:{
-                    title:      bla(merge),
-                    body:       bla(merge),
-                    inlinecode: bla(merge),
-                    code:       bla(merge)
-                }
-            }
-        }
-
-        const metajson = JSON.stringify(meta, null, 4)
-        fs.writeFileSync(datametapath, metajson)
+        convert_(source)
+        stats_(source)        
         resolve()
     })
 }
 
-function bla(merge) {
+function bla(merge, who) {
     return {
-        key: tag_tf(merge, t=> t),
-        size: tag_tf(merge, t=> t.length),
-        chars: char_tf(merge)
+        key: tag_tf(merge, who, term=> term),
+        //size: tag_tf(merge, who, t=> t.length),
+        chars: char_tf(merge, who),
+        sentencecount: sent_tf(merge, who, sent=> sent.length),
+        sentencelength: sent_tf(merge, who, sent=> sent.reduce((a, s)=> a+=s.length, 0)),
     }
 }
 
-export function tag_tf(merge, t) {
+export function sent_tf(merge, who, t) {
     let result = {}
     for (var qid in merge)             
-        merge[qid].terms.tags
-            .filter(t=> t !== 'constructor')
-            .forEach(s=> s
-                .filter(t=> t !== 'constructor')
-                .forEach(tag=> result[t(tag)] = result[t(tag)]+1 || 1))
+        who(merge[qid])
+            .filter(sent=> sent !== 'constructor')
+            .forEach(sent=> result[t(sent)] = result[t(sent)]+1 || 1)                
     return result
 }
 
-export function char_tf(merge) {
+export function tag_tf(merge, who, t) {
     let result = {}
     for (var qid in merge)             
-        merge[qid].terms.tags
-            .filter(t=> t !== 'constructor')
-            .forEach(s=> s
-                .filter(t=> t !== 'constructor')
-                .forEach(tag=> tag
+        who(merge[qid])
+            .filter(sent=> sent !== 'constructor')
+            .forEach(sent=> sent
+                .filter(term=> term !== 'constructor')
+                .forEach(term=> result[t(term)] = result[t(term)]+1 || 1))
+    return result
+}
+
+export function char_tf(merge, who) {
+    let result = {}
+    for (var qid in merge)             
+        who(merge[qid])
+            .filter(sent=> sent !== 'constructor')
+            .forEach(sent=> sent
+                .filter(term=> term !== 'constructor')
+                .forEach(term=> term
                     .split('')
-                    .forEach(c=> result[c] = result[c]+1 || 1)))
+                    .forEach(char=> result[char] = result[char]+1 || 1)))
     return result
 }
 
-/*
-function splitsentences(text) {
-    return text
-        .replace('e.g.', '')
-        .replace(/(\r\n\t|\n|\r\t)/gm, "")
-        .split(/\.|\?|\!/)
-        .map(e=> e.trim())
-        .filter(s=> s.length > 0)
-        .map(e=> e.toLowerCase())    
-} */
+function rounddate(din) {
+    var d = new Date(din);
+    //d.setDate(1)
+    d.setHours(0)
+    d.setMinutes(0)
+    d.setSeconds(0)
+    d.setMilliseconds(0)
+    return d
+}
 
 const dom = new JSDOM('')    
 function parse(html)
@@ -244,42 +273,3 @@ function parse(html)
     result.body = [dom.window.document.body.textContent]
     return result
 }
-
-//console.log(`${meta.filecount} Files, 
-//${metaerr_count} Invalid, ${raw_count}, ${meta}`)
-/*
-    "files": 540,
-    "size": 69490361,
-    "questions": 15967,
-    "tagcount": 8091,
-
-
-
-    "files": 540,
-    "size": 69490361,
-    "rawquestions": 16170,
-    "errquestions": 0,
-    "questions": 15967,
-    "tagcount": 8091,
-
-
-    "files": 540,
-    "size": 69467085,
-    "rawquestions": 16170,
-    "errquestions": 0,
-    "dupquestions": 203,
-    "questions": 15967,
-    "tagcount": 8091,
-
-    "files": 640,
-    "size": 69511211,
-    "rawquestions": 18570,
-    "errquestions": 20,
-    "dupquestions": 2595,
-    "questions": 15975,
-    "tagcount": 8093,
-
-
-    Downloaded: 900 Files, 26460 Raw-Questions, 8319 duplicate, 17 invalid
-    Merged: 75MB, 18141 Valid-Questions, 8655 Tags
-*/

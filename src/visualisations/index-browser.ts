@@ -8,18 +8,50 @@ document.body.onload = function init()
     const dataset = new StackoverflowDatasetView({
         parent: document.body
     })
-    d3.json("data/bag-of-texts/stackoverflow-meta.json")
-      .then((datasetmeta:StackOverflowMeta)=> dataset.update(datasetmeta))
-
-    // Plain
     const plaintitle = new TagDistribution({
         parent: document.body,
         name: 'Plain Title',
     })
+    const plainbody = new TagDistribution({
+        parent: document.body,
+        name: 'Plain Body',
+    })
+    const plaininlinecode = new TagDistribution({
+        parent: document.body,
+        name: 'Plain inline Code',
+    })
+    const plaincode = new TagDistribution({
+        parent: document.body,
+        name: 'Plain Code',
+    })
+    d3.json("data/bag-of-words/stackoverflow-raw-meta.json")
+      .then((datasetmeta:StackOverflowMeta)=> { 
+            dataset.update(datasetmeta)
+            plaintitle.update({             
+                name: 'Plain Title',
+                data:datasetmeta.distributions.terms.title 
+            })
+            plainbody.update({             
+                name: 'Plain Body',
+                data:datasetmeta.distributions.terms.body 
+            })
+            plaininlinecode.update({             
+                name: 'Plain inline Code',
+                data:datasetmeta.distributions.terms.inlinecode
+            })
+            plaincode.update({             
+                name: 'Plain Code',
+                data:datasetmeta.distributions.terms.code
+            })
+        })
+
+    // Plain    
+    /* 
     const plainbody = new TagDistribution({ 
         parent: document.body,
         name: 'Plain Body',
     })
+    
     d3.json("data/bag-of-words/htmlcleaned-meta.json")
         .then((htmlcleanedmeta:any)=> { 
             plaintitle.update({
@@ -73,4 +105,5 @@ document.body.onload = function init()
                 data: lemmmeta.body_terms
             })
         })
+        */
 }
