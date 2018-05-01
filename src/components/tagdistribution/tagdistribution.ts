@@ -66,7 +66,7 @@ export class TagDistribution
             height: 100,
             tickcount: 20,
         })
-
+        
         this.bb = new BillboardCounter({
             parent: this.view.querySelector("#sentencecount"), 
             data: Object.entries(this.args.data.sentencelength).slice(0, 100),
@@ -75,11 +75,12 @@ export class TagDistribution
             tickcount: 20,
         })
 
+        const tagclouddata = keyvaluepairs.slice(0, 150)
+        const min = <number>tagclouddata[tagclouddata.length-1][1]
         this.tc = new TagCloud({ 
             parent: this.view.querySelector('#XTTFcloud'),
-            words: keyvaluepairs
-                .slice(0, 120)
-                .map((e:any)=> ({ text:e[0], size:9+e[1]/this.stats.max*23 }))
+            words: tagclouddata
+                .map((e:any)=> ({ text:e[0], size:9 + (e[1]-min)/(this.stats.max-min)*23 }))
         })
     }
 

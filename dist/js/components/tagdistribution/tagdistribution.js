@@ -59,11 +59,12 @@ class TagDistribution {
             height: 100,
             tickcount: 20,
         });
+        const tagclouddata = keyvaluepairs.slice(0, 150);
+        const min = tagclouddata[tagclouddata.length - 1][1];
         this.tc = new cloud_1.TagCloud({
             parent: this.view.querySelector('#XTTFcloud'),
-            words: keyvaluepairs
-                .slice(0, 120)
-                .map((e) => ({ text: e[0], size: 9 + e[1] / this.stats.max * 23 }))
+            words: tagclouddata
+                .map((e) => ({ text: e[0], size: 9 + (e[1] - min) / (this.stats.max - min) * 23 }))
         });
     }
     convert(d) {

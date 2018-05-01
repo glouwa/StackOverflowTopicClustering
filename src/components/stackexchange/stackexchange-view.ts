@@ -2,6 +2,7 @@ import * as d3 from 'd3'
 import { TagCloud } from '../cloud/cloud'
 import { BillboardCounter } from '../billboardjs/bb-counter'
 import { BillboardBar } from '../billboardjs/bb-bar'
+import { BillboardDonut } from '../billboardjs/bb-donut'
 import { BillboardTimeline } from '../billboardjs/bb-timeline'
 import { HTML } from '../../tools/html'
 import { Stats } from '../../model/vecstats'
@@ -76,11 +77,10 @@ export class StackoverflowDatasetView
             data: [],
         })
     
-        this.isanswered = new BillboardCounter({
-            parent: document.querySelector("#ISAChart"),         
-            height: 100,
-            rotate: 0,
-            data: [],
+        this.isanswered = new BillboardDonut({
+            parent: document.querySelector("#ISAChart"),
+            height: 100,            
+            //colors: { 'Answered':d3.schemeCategory10[2], 'Not answered':d3.schemeCategory10[3] },
         })
     
         this.tags = new TagDistribution({
@@ -142,11 +142,6 @@ export class StackoverflowDatasetView
             ],            
         })
 
-        /*this.scores.update({            
-            data: Object.entries(datasetmeta.distributions.score)
-                .sort((a:any, b:any)=> a[0] - b[0])
-                .slice(0, 35),        
-        })*/
         this.ansercount.update({
             parent: document.querySelector("#ANCChart"),         
             height: 100,
@@ -156,14 +151,19 @@ export class StackoverflowDatasetView
                 .sort((a:any, b:any)=> a[0] - b[0]),   
             
         })
+        
         this.isanswered.update({
-            parent: document.querySelector("#ISAChart"),         
-            height: 100,
-            rotate: 0,
-            color: (color, d)=> (d.x == '0' ? d3.schemeCategory10[3] : d3.schemeCategory10[2]),
-            data: Object.entries(datasetmeta.distributions.isAnswered)
-                .sort((a:any, b:any)=> b[1] - a[1]),        
+            columns: [
+                ["Answered", datasetmeta.distributions.isAnswered.true],
+                ["Not answered", datasetmeta.distributions.isAnswered.false]
+            ],
+            type: "donut",
+            colors: {
+                'Answered':d3.schemeCategory10[2], 
+                'Not answered':d3.schemeCategory10[3] 
+            },
         })
+
         this.tags.update({
             parent: document.body,
             name: 'Tag',
