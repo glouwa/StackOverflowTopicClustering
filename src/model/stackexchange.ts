@@ -129,14 +129,12 @@ function convert_(source:string)
     console.log("merged and converted")
 }
 
-function stats_(source:string)
+function stats_(source:string, tokenformat:string)
 {   
     const inputtextspath = `./dist/data/bag-of-texts/${source}.json`
-    const inputwordspath = `./dist/data/bag-of-words/${source}-raw.json`
-    const inputmetapath =  `./dist/data/bag-of-texts/${source}-meta.json`
-
-    const datapath =       `./dist/data/bag-of-words/${source}-raw.json`
-    const datametapath =   `./dist/data/bag-of-words/${source}-raw-meta.json` 
+    const inputmetapath =  `./dist/data/bag-of-texts/${source}-meta.json`    
+    const inputwordspath = `./dist/data/bag-of-words/${source}-${tokenformat}.json`    
+    const datametapath =   `./dist/data/bag-of-words/${source}-${tokenformat}-meta.json` 
 
     const datasourcemeta = JSON.parse(fs.readFileSync(inputmetapath, 'utf8'))
     const merge = JSON.parse(fs.readFileSync(inputtextspath, 'utf8'))
@@ -144,7 +142,7 @@ function stats_(source:string)
     
     const meta : StackOverflowMeta =  {
         data:{
-            file: datapath,
+            file: inputwordspath,
             hash: '',
             size: 12345,
         },
@@ -175,10 +173,10 @@ function stats_(source:string)
                 code:       bla(words, q=> q.terms.code),
             },            
             texts:{
-                title:      bla(merge, q=> q.text.title),
-                body:       bla(merge, q=> q.text.body),
-                inlinecode: bla(merge, q=> q.text.inlinecode),
-                code:       bla(merge, q=> q.text.code)
+                title:      null,
+                body:       null,
+                inlinecode: null,
+                code:       null
             }
         }
     }
@@ -191,7 +189,9 @@ export function convert(source:string)
 {    
     return ((resolve, reject)=> {
         convert_(source)
-        stats_(source)        
+        stats_(source, 'raw')
+        stats_(source, 'stem')
+        stats_(source, 'lemma')
         resolve()
     })
 }

@@ -62,7 +62,7 @@ export interface Meta {
     //postcount: number
     index: {
         id:      { key:PostId, values:PostId[] }[] 
-        created: { key:Date, values:PostId[] }[]
+        created: { key:number, values:PostId[] }[]
         sizes: {
             post:       { key:number, values:PostId[] }[]
             title:      { key:number, values:PostId[] }[]

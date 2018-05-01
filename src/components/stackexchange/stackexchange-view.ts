@@ -51,10 +51,10 @@ export class StackoverflowDatasetView
             legend: true,
             groups: [[ "Body size", "Title size", "Inline code size", "Code size" ]],            
             colors: {
-                "Body size":d3.schemeCategory10[5], 
-                "Title size":d3.schemeCategory10[4], 
-                "Inline code size":d3.schemeCategory10[8], 
-                "Code size":d3.schemeCategory10[8] 
+                "Body size": d3.schemeCategory10[5], 
+                "Title size": d3.schemeCategory10[4], 
+                "Inline code size": d3.schemeCategory10[8], 
+                "Code size": d3.schemeCategory10[8] 
             }
         })
 
@@ -62,7 +62,7 @@ export class StackoverflowDatasetView
             parent: document.querySelector("#SCOChart"),         
             height: 100,  
             tickcount: 10,   
-            color: function (color, d) {                
+            color: (color, d)=> {                
                 if (d.x < 0) return  d3.schemeCategory10[3] 
                 if (d.x > 0) return  d3.schemeCategory10[2] 
                 return color

@@ -1,5 +1,3 @@
-import * as fs from 'fs'
-
 const minwordlen = 2
 
 export function tag_tf(merge) {

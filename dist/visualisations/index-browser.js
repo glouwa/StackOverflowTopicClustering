@@ -22275,107 +22275,65 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const d3 = __webpack_require__(33);
 const tagdistribution_1 = __webpack_require__(176);
 const stackexchange_view_1 = __webpack_require__(511);
+class TermformatView {
+    constructor(args) {
+        this.args = args;
+        this.plaintitle = new tagdistribution_1.TagDistribution({
+            parent: document.body,
+            name: `${this.args.format} Title`,
+        });
+        this.plainbody = new tagdistribution_1.TagDistribution({
+            parent: document.body,
+            name: `${this.args.format} Body`,
+        });
+    }
+    update(data) {
+        this.plaintitle.update({
+            name: `${this.args.format} Title`,
+            data: data.title
+        });
+        this.plainbody.update({
+            name: `${this.args.format} Body`,
+            data: data.body
+        });
+    }
+}
 document.body.onload = function init() {
     const dataset = new stackexchange_view_1.StackoverflowDatasetView({
         parent: document.body
     });
-    const plaintitle = new tagdistribution_1.TagDistribution({
-        parent: document.body,
-        name: 'Plain Title',
-    });
-    const plainbody = new tagdistribution_1.TagDistribution({
-        parent: document.body,
-        name: 'Plain Body',
-    });
     const plaininlinecode = new tagdistribution_1.TagDistribution({
         parent: document.body,
-        name: 'Plain inline Code',
+        name: `Inline Code`,
     });
     const plaincode = new tagdistribution_1.TagDistribution({
         parent: document.body,
-        name: 'Plain Code',
+        name: `Code`,
     });
+    const termsraw = new TermformatView({ format: 'Plain' });
+    const termsstem = new TermformatView({ format: 'Stem' });
+    const termslem = new TermformatView({ format: 'Lemma' });
     d3.json("data/bag-of-words/stackoverflow-raw-meta.json")
         .then((datasetmeta) => {
         dataset.update(datasetmeta);
-        plaintitle.update({
-            name: 'Plain Title',
-            data: datasetmeta.distributions.terms.title
-        });
-        plainbody.update({
-            name: 'Plain Body',
-            data: datasetmeta.distributions.terms.body
-        });
+        termsraw.update(datasetmeta.distributions.terms);
         plaininlinecode.update({
-            name: 'Plain inline Code',
+            name: `Inline Code`,
             data: datasetmeta.distributions.terms.inlinecode
         });
         plaincode.update({
-            name: 'Plain Code',
+            name: `Code`,
             data: datasetmeta.distributions.terms.code
         });
     });
-    // Plain    
-    /*
-    const plainbody = new TagDistribution({
-        parent: document.body,
-        name: 'Plain Body',
-    })
-    
-    d3.json("data/bag-of-words/htmlcleaned-meta.json")
-        .then((htmlcleanedmeta:any)=> {
-            plaintitle.update({
-                name: 'Plain Title',
-                data: htmlcleanedmeta.titletermdist,
-            })
-            plainbody.update({
-                name: 'Plain Body',
-                data: htmlcleanedmeta.termdist
-            })
-        })
-        
-    // Stemmed
-    const stemmedtitle = new TagDistribution({
-        parent: document.body,
-        name: 'Stemmed Title',
-    })
-    const stemmedbody = new TagDistribution({
-        parent: document.body,
-        name: 'Stemmed Body',
-    })
-    d3.json("data/bag-of-words/stemmed-meta.json")
-        .then((stemmeta:any)=> {
-            stemmedtitle.update({
-                name: 'Stemmed Title',
-                data: stemmeta.title_terms,
-            })
-            stemmedbody.update({
-                name: 'Stemmed Body',
-                data: stemmeta.body_terms
-            })
-        })
-
-    // Lemmed
-    const lemmedtitle = new TagDistribution({
-        parent: document.body,
-        name: 'Lemmed Title',
-    })
-    const lemmedbody = new TagDistribution({
-        parent: document.body,
-        name: 'Lemmed Body',
-    })
-    d3.json("data/bag-of-words/lemmatized-meta.json")
-        .then((lemmmeta:any)=> {
-            lemmedtitle.update({
-                name: 'Lemmed Title',
-                data: lemmmeta.title_terms,
-            })
-            lemmedbody.update({
-                name: 'Lemmed Body',
-                data: lemmmeta.body_terms
-            })
-        })
-        */
+    d3.json("data/bag-of-words/stackoverflow-stem-meta.json")
+        .then((datasetmeta) => {
+        termsstem.update(datasetmeta.distributions.terms);
+    });
+    d3.json("data/bag-of-words/stackoverflow-lemma-meta.json")
+        .then((datasetmeta) => {
+        termslem.update(datasetmeta.distributions.terms);
+    });
 };
 
 
@@ -37023,7 +36981,7 @@ class StackoverflowDatasetView {
             parent: document.querySelector("#SCOChart"),
             height: 100,
             tickcount: 10,
-            color: function (color, d) {
+            color: (color, d) => {
                 if (d.x < 0)
                     return d3.schemeCategory10[3];
                 if (d.x > 0)
