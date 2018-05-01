@@ -41,6 +41,8 @@ document.body.onload = function init() {
     const termsraw = new TermformatView({ format: 'Plain' });
     const termsstem = new TermformatView({ format: 'Stem' });
     const termslem = new TermformatView({ format: 'Lemma' });
+    const ngram2 = new TermformatView({ format: '2Grams' });
+    const ngram3 = new TermformatView({ format: '3Grams' });
     d3.json("data/bag-of-words/stackoverflow-raw-meta.json")
         .then((datasetmeta) => {
         dataset.update(datasetmeta);
@@ -61,5 +63,13 @@ document.body.onload = function init() {
     d3.json("data/bag-of-words/stackoverflow-lemma-meta.json")
         .then((datasetmeta) => {
         termslem.update(datasetmeta.distributions.terms);
+    });
+    d3.json("data/ngrams/stackoverflow-2gram-stem-meta.json")
+        .then((datasetmeta) => {
+        ngram2.update(datasetmeta.distributions.terms);
+    });
+    d3.json("data/ngrams/stackoverflow-3gram-stem-meta.json")
+        .then((datasetmeta) => {
+        ngram3.update(datasetmeta.distributions.terms);
     });
 };

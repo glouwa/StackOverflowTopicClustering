@@ -29,7 +29,7 @@ def splitone(result, qkey, tkey, sentence):
         for pair in nltk.pos_tag(terms, tagset='universal'):
             if not pair[0].lower() in stop_words and len(pair[0]) > 2:
                 postag = convert_tagset3(pair[1])
-                lemterm = lemmatizer.lemmatize(pair[0].lower(), postag)            
+                lemterm = lemmatizer.lemmatize(pair[0], postag).lower()
                 fterms.append(lemterm)
     else:
         fterms = terms

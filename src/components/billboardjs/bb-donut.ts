@@ -22,9 +22,9 @@ export class BillboardDonut
             },
             data: {         
                 columns: [],
-                type: "donut",                
+                type: "donut",
             },
-        })  
+        })
     }
 
     public update(data) {

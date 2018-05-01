@@ -129,12 +129,12 @@ function convert_(source:string)
     console.log("merged and converted")
 }
 
-function stats_(source:string, tokenformat:string)
+function stats_(source:string, folder:string, tokenformat:string)
 {   
     const inputtextspath = `./dist/data/bag-of-texts/${source}.json`
     const inputmetapath =  `./dist/data/bag-of-texts/${source}-meta.json`    
-    const inputwordspath = `./dist/data/bag-of-words/${source}-${tokenformat}.json`    
-    const datametapath =   `./dist/data/bag-of-words/${source}-${tokenformat}-meta.json` 
+    const inputwordspath = `./dist/data/${folder}/${source}-${tokenformat}.json`    
+    const datametapath =   `./dist/data/${folder}/${source}-${tokenformat}-meta.json` 
 
     const datasourcemeta = JSON.parse(fs.readFileSync(inputmetapath, 'utf8'))
     const merge = JSON.parse(fs.readFileSync(inputtextspath, 'utf8'))
@@ -189,9 +189,11 @@ export function convert(source:string)
 {    
     return ((resolve, reject)=> {
         convert_(source)
-        stats_(source, 'raw')
-        stats_(source, 'stem')
-        stats_(source, 'lemma')
+        stats_(source, 'bag-of-words', 'raw')
+        stats_(source, 'bag-of-words', 'stem')
+        stats_(source, 'bag-of-words', 'lemma')
+        stats_(source, 'ngrams', '2gram-stem')
+        stats_(source, 'ngrams', '3gram-stem')
         resolve()
     })
 }
