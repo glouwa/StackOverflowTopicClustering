@@ -15,7 +15,7 @@ export class BillboardCounter
         this.args = args
         
         var numbers = this.args.data.map(e=> e[1])
-        var labels = this.args.data.map(e=> e[0])
+        var labels = this.args.data.map(e=> e[0].slice(0, 20))
         console.log('update bb', args, numbers, labels)
         this.chart = bb.generate({
             bindto: this.args.parent,

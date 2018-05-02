@@ -1,3 +1,4 @@
+/*
 const minwordlen = 2
 
 export function tag_tf(merge) {
@@ -61,6 +62,7 @@ export function bodyterm_dist(merge) {
     
     return result
 }
+
 
 export const stopwords = `
 project
@@ -209,3 +211,6 @@ just
 don
 should
 now`.split('\n')
+
+
+*/

@@ -18,11 +18,12 @@ outputfeature = 'terms'
 
 def splitone(result, qkey, tkey, sentence):
     terms = word_tokenize(sentence)           
-    if tkey != 'code' and tkey != 'inlinecode':
-        fterms = [w.lower() for w in terms if not w.lower() in stop_words and len(w) > 2]
-    else:
-        fterms = terms
-    result[qkey][outputfeature][tkey].append(fterms)
+    if len(terms) > 0:
+        if tkey != 'code' and tkey != 'inlinecode':
+            fterms = [w.lower() for w in terms if not w.lower() in stop_words and len(w) > 2]
+        else:
+            fterms = terms
+        result[qkey][outputfeature][tkey].append(fterms)
 
 def splitterms():
     result = json.load(open(inputfile))

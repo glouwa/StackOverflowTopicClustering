@@ -9,7 +9,9 @@ outputfeature = 'sentences'
 
 def splitone(result, qkey, tkey, block):
     if tkey != 'code' and tkey != 'inlinecode':
-        result[qkey][outputfeature][tkey].extend(sent_tokenize(block))
+        tockens = sent_tokenize(block)
+        if len(tockens) > 0:
+            result[qkey][outputfeature][tkey].extend(tockens)
     else: 
         result[qkey][outputfeature][tkey].append(block)
 
