@@ -1,4 +1,4 @@
-import { Distribution } from './bag-of-words/base'
+import { Distribution } from '../model/model'
 
 export function count(map, newkey) : {}
 {

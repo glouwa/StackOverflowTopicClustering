@@ -17,8 +17,10 @@ stop_words = """
 nltk_words = list(stopwords.words('english')) 
 stop_words.extend(nltk_words)
 
+n = 2
+
 inputfile = './dist/data/bag-of-sentences/stackoverflow.json'
-outputfile = './dist/data/ngrams/stackoverflow-3gram-stem.json'
+outputfile = './dist/data/ngrams/stackoverflow-'+str(n)+'gram-stem.json'
 inputfeature = 'sentences'
 outputfeature = 'terms'
 
@@ -29,7 +31,7 @@ def splitone(result, qkey, tkey, sentence):
             fterms = [snow_stemmer.stem(w).lower() for w in terms if not w.lower() in stop_words and len(w) > 2]
         else:
             fterms = terms
-        fterms = ngrams(fterms, 3)
+        fterms = ngrams(fterms, n)
         #if not fterms[0] == fterms[1] == fterms[2]:
         fterms = [' '.join(str(i) for i in tupl) for tupl in fterms]        
         result[qkey][outputfeature][tkey].append(fterms)

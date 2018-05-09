@@ -4,9 +4,9 @@ import { BillboardCounter } from '../billboardjs/bb-counter'
 import { BillboardBar } from '../billboardjs/bb-bar'
 import { BillboardDonut } from '../billboardjs/bb-donut'
 import { BillboardTimeline } from '../billboardjs/bb-timeline'
-import { HTML } from '../../tools/html'
-import { Stats } from '../../model/vecstats'
-import { StackOverflowMeta } from '../../model/bag-of-words/base'
+import { HTML } from '../../visualisations/tools'
+import { Stats } from '../../model/stats-vector'
+import { StackOverflowMeta } from '../../model/model'
 import { TagDistribution } from '../tagdistribution/tagdistribution'
 
 const html = `

@@ -1,5 +1,5 @@
 import * as d3 from 'd3'
-import { StackOverflowMeta } from '../model/bag-of-words/base'
+import { StackOverflowMeta } from '../model/model'
 import { TagDistribution } from '../components/tagdistribution/tagdistribution'
 import { StackoverflowDatasetView } from '../components/stackexchange/stackexchange-view'
 

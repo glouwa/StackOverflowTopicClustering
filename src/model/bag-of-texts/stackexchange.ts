@@ -1,11 +1,10 @@
 import * as fs from 'fs'
 import * as request from 'request'
 import { JSDOM } from 'jsdom'
-import * as extract from '../tools/ttf-extract'
-import { PostId } from './bag-of-words/base'
-import { StackOverflowPost } from './bag-of-words/base'
-import { StackOverflowMeta } from './bag-of-words/base'
-import * as m from './meta'
+import { PostId } from '../model'
+import { StackOverflowPost } from '../model'
+import { StackOverflowMeta } from '../model'
+import { bla } from '../stats-frequency'
 
 export function download(source, amount) 
 {    
@@ -85,7 +84,7 @@ function convert_(source:string)
     const merge : { [key:string]:StackOverflowPost } = {}
     for (var i = 1; i < datasourcemeta.filecount; i++) {    
         const dlstr = fs.readFileSync(respath(i), 'utf8')
-        const dlobj = JSON.parse(dlstr)        
+        const dlobj = JSON.parse(dlstr)    
         datasourcemeta.size += dlstr.length
 
         if (!dlobj.error_id)
@@ -129,126 +128,13 @@ function convert_(source:string)
     console.log("merged and converted")
 }
 
-function stats_(source:string, folder:string, tokenformat:string)
-{   
-    const inputtextspath = `./dist/data/bag-of-texts/${source}.json`
-    const inputmetapath =  `./dist/data/bag-of-texts/${source}-meta.json`    
-    const inputwordspath = `./dist/data/${folder}/${source}-${tokenformat}.json`    
-    const datametapath =   `./dist/data/${folder}/${source}-${tokenformat}-meta.json` 
 
-    const datasourcemeta = JSON.parse(fs.readFileSync(inputmetapath, 'utf8'))
-    const merge = JSON.parse(fs.readFileSync(inputtextspath, 'utf8'))
-    const words = JSON.parse(fs.readFileSync(inputwordspath, 'utf8'))
-    
-    const meta : StackOverflowMeta =  {
-        data:{
-            file: inputwordspath,
-            hash: '',
-            size: 12345,
-        },
-        datasource: datasourcemeta,
-        //size: '??',
-        //postcount: Object.keys(merge).length,
-        index: {
-            id:             m.index<PostId, PostId>(merge, e=> e.id),
-            created:        m.index<number, PostId>(merge, e=> rounddate(e.created).getTime()),
-            sizes: {
-                post:       m.index<number, PostId>(merge, e=> Math.log2(1+e.size).toFixed(1)), 
-                title:      m.index<number, PostId>(merge, e=> Math.log2(1+e.text.title.reduce((a, s)=> s.length, 0)).toFixed(1)), 
-                inlinecode: m.index<number, PostId>(merge, e=> Math.log2(1+e.text.inlinecode.reduce((a, s)=> s.length, 0)).toFixed(1)), 
-                body:       m.index<number, PostId>(merge, e=> Math.log2(1+e.text.body.reduce((a, s)=> s.length, 0)).toFixed(1)),                     
-                code:       m.index<number, PostId>(merge, e=> Math.log2(1+e.text.code.reduce((a, s)=> s.length, 0)).toFixed(1)), 
-            }
-        },
-        distributions: {
-            size:           m.distribution(merge, e=> e.size, null),
-            isAnswered:     m.distribution(merge, e=> e.isAnswered, null),
-            answerCount:    m.distribution(merge, e=> e.answerCount, null),
-            score:          m.distribution(merge, e=> e.score, null),
-            terms:{ 
-                tags:       bla(words, q=> q.terms.tags),
-                title:      bla(words, q=> q.terms.title),
-                body:       bla(words, q=> q.terms.body),
-                inlinecode: bla(words, q=> q.terms.inlinecode),
-                code:       bla(words, q=> q.terms.code),
-            },            
-            texts:{
-                title:      null,
-                body:       null,
-                inlinecode: null,
-                code:       null
-            }
-        }
-    }
-
-    const metajson = JSON.stringify(meta, null, 4)
-    fs.writeFileSync(datametapath, metajson)
-}
-
-export function convert(source:string)
+export function parseAndMerge(source:string)
 {    
     return ((resolve, reject)=> {
-        convert_(source)
-        stats_(source, 'bag-of-words', 'raw')
-        stats_(source, 'bag-of-words', 'stem')
-        stats_(source, 'bag-of-words', 'lemma')
-        stats_(source, 'ngrams', '2gram-stem')
-        stats_(source, 'ngrams', '3gram-stem')
+        convert_(source)       
         resolve()
     })
-}
-
-function bla(merge, who) {
-    return {
-        key: tag_tf(merge, who, term=> term),
-        //size: tag_tf(merge, who, t=> t.length),
-        chars: char_tf(merge, who),
-        sentencecount: sent_tf(merge, who, sent=> sent.length),
-        sentencelength: sent_tf(merge, who, sent=> sent.reduce((a, s)=> a+=s.length, 0)),
-    }
-}
-
-export function sent_tf(merge, who, t) {
-    let result = {}
-    for (var qid in merge)             
-        who(merge[qid])
-            .filter(sent=> sent !== 'constructor')
-            .forEach(sent=> result[t(sent)] = result[t(sent)]+1 || 1)                
-    return result
-}
-
-export function tag_tf(merge, who, t) {
-    let result = {}
-    for (var qid in merge)             
-        who(merge[qid])
-            .filter(sent=> sent !== 'constructor')
-            .forEach(sent=> sent
-                .filter(term=> term !== 'constructor')
-                .forEach(term=> result[t(term)] = result[t(term)]+1 || 1))
-    return result
-}
-
-export function char_tf(merge, who) {
-    let result = {}
-    for (var qid in merge)             
-        who(merge[qid])
-            .filter(sent=> sent !== 'constructor')
-            .forEach(sent=> sent
-                .filter(term=> term !== 'constructor')
-                .forEach(term=> term
-                    .split('')
-                    .forEach(char=> result[char] = result[char]+1 || 1)))
-    return result
-}
-
-function rounddate(din) {
-    var d = new Date(din);
-    //d.setDate(1)
-    d.setHours(0)
-    d.setMinutes(0)
-    d.setSeconds(0)
-    d.setMilliseconds(0)
-    return d
 }
 
 const dom = new JSDOM('')    

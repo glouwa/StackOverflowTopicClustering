@@ -84,10 +84,15 @@ var through2    = require('through2')
 var fs          = require('fs')
 */
 
-const stackexchange = require('./dist/js/model/stackexchange')
+
+const stackexchange = require('./dist/js/model/bag-of-texts/stackexchange')
+const stats = require('./dist/js/model/stats-frequency')
 
 exports.download = stackexchange.download('stackoverflow', 10)
-exports.convert = stackexchange.convert('stackoverflow')
+exports.merge = stackexchange.parseAndMerge('stackoverflow')
+exports.stats = stats.calc('stackoverflow')
+
+//exports.sentencize = termize
 //exports.termize = termize
 //exports.ngramize = ngramize
 //exports.tfidf = tfidf

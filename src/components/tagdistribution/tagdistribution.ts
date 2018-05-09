@@ -1,7 +1,7 @@
 import { TagCloud } from '../cloud/cloud'
 import { BillboardCounter } from '../billboardjs/bb-counter'
-import { HTML } from '../../tools/html'
-import { Stats } from '../../model/vecstats'
+import { HTML } from '../../visualisations/tools'
+import { Stats } from '../../model/stats-vector'
 
 const html = `
     <div>

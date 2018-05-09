@@ -115,3 +115,15 @@ remove stopword, change stemming tokenizer
 clean tokenizer(remove all single special characters)
 reaserch: was is a besserer lemma input: mit oder ohne stopwords
 what to do for evaluation? (precision, recall, accuracy)
+
+
+gulp download
+gulp convert
+python3 src/sentences.py
+python3 src/terms.py
+python3 src/stemming.py
+python3 src/lemming.py
+python3 src/ngram.py 
+// change n
+python3 src/ngram.py
+gulp convert
