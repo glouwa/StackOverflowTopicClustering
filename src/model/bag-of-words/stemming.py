@@ -1,18 +1,12 @@
 import nltk
 import json
 from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 
+from wordfilter import filterstem
+from wordfilter import featurefilter 
+
 snow_stemmer = SnowballStemmer("english", ignore_stopwords=True)
-
-stop_words = """
-    project create something getting running like
-    trying problem understand please want working 
-    how using question thanks however following""".split()
-
-nltk_words = list(stopwords.words('english')) 
-stop_words.extend(nltk_words)
 
 inputfile = './dist/data/bag-of-sentences/stackoverflow.json'
 outputfile = './dist/data/bag-of-words/stackoverflow-stem.json'
@@ -22,8 +16,9 @@ outputfeature = 'terms'
 def splitone(result, qkey, tkey, sentence):    
     terms = word_tokenize(sentence)           
     if len(terms) > 0:
-        if tkey != 'code' and tkey != 'inlinecode':        
-            fterms = [snow_stemmer.stem(w).lower() for w in terms if not w.lower() in stop_words and len(w) > 2]
+        if featurefilter(tkey):   
+            fterms = [snow_stemmer.stem(w).lower() for w in terms if filterstem(w)]
+            fterms = [w for w in fterms if filterstem(w)]
         else:
             fterms = terms
         result[qkey][outputfeature][tkey].append(fterms)

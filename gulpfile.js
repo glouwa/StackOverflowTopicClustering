@@ -68,7 +68,7 @@ function watch() {
     gulp.watch(paths.src + '**/*.html', html)
 
     gulp.watch(paths.res + 'stackoverflow/meta.json', exports.convert)
-    gulp.watch(paths.dist + 'data/**/*', bs)
+    gulp.watch(paths.dist + 'data/ngrams/*', bs)
 }
 
 exports.html = html
@@ -87,13 +87,48 @@ var fs          = require('fs')
 
 const stackexchange = require('./dist/js/model/bag-of-texts/stackexchange')
 const stats = require('./dist/js/model/stats-frequency')
+var exec = require('child_process').exec
 
-exports.download = stackexchange.download('stackoverflow', 10)
-exports.merge = stackexchange.parseAndMerge('stackoverflow')
-exports.stats = stats.calc('stackoverflow')
+function run(cmd) {
+    return function run_(cb) {
+        exec(cmd, function (err, stdout, stderr) {
+            console.log(stdout)
+            console.log(stderr)
+            cb(err)
+        })
+    }
+}
 
-//exports.sentencize = termize
-//exports.termize = termize
-//exports.ngramize = ngramize
-//exports.tfidf = tfidf
+exports.stackoverflow = stackexchange.download('stackoverflow', 10)
+exports.text =          gulp.series(
+                            stackexchange.parseAndMerge('stackoverflow'),
+                            stats.calc('stackoverflow'),
+                        )
+exports.sentence =      gulp.series(
+                            run('python3 src/model/bag-of-sentences/sentences.py'),
+                            stats.calc('stackoverflow'),
+                        )
+exports.word =          gulp.series(
+                            run('python3 src/model/bag-of-sentences/sentences.py'),
+                            gulp.parallel(
+                                run('python3 src/model/bag-of-words/stemming.py'),
+                                run('python3 src/model/bag-of-words/lemming.py'),
+                                run('python3 src/model/bag-of-words/terms.py')
+                            ),
+                            stats.calc('stackoverflow')
+                        )
+exports.ngram =         gulp.series(
+                            gulp.parallel(
+                                run('python3 src/model/bag-of-words/stemming.py'),
+                                run('python3 src/model/bag-of-words/lemming.py'),
+                                run('python3 src/model/bag-of-words/terms.py')
+                            ),
+                            gulp.parallel(
+                                run('python3 src/model/ngrams/ngram.py 2'),
+                                run('python3 src/model/ngrams/ngram.py 3')
+                            ),
+                            stats.calc('stackoverflow')
+                        )
+exports.stats =         stats.calc('stackoverflow')
+
 

@@ -1,15 +1,9 @@
 import nltk
 import json
 from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
 
-stop_words = """
-    project create something getting running like
-    trying problem understand please want working 
-    how using question thanks however following""".split()
-
-nltk_words = list(stopwords.words('english')) 
-stop_words.extend(nltk_words)
+from wordfilter import filterraw
+from wordfilter import featurefilter 
 
 inputfile = './dist/data/bag-of-sentences/stackoverflow.json'
 outputfile = './dist/data/bag-of-words/stackoverflow-raw.json'
@@ -19,8 +13,8 @@ outputfeature = 'terms'
 def splitone(result, qkey, tkey, sentence):
     terms = word_tokenize(sentence)           
     if len(terms) > 0:
-        if tkey != 'code' and tkey != 'inlinecode':
-            fterms = [w.lower() for w in terms if not w.lower() in stop_words and len(w) > 2]
+        if featurefilter(tkey):
+            fterms = [w.lower() for w in terms if filterraw(w)]
         else:
             fterms = terms
         result[qkey][outputfeature][tkey].append(fterms)

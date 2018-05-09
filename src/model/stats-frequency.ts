@@ -94,6 +94,8 @@ export function bla(merge, who) {
     }
 }
 
+const minoccurrences = 3
+
 export function sent_tf(merge, who, t) {
     let result = {}
     for (var qid in merge)             
@@ -101,7 +103,7 @@ export function sent_tf(merge, who, t) {
             .filter(sent=> sent !== 'constructor')
             .forEach(sent=> result[t(sent)] = result[t(sent)]+1 || 1)                
     for (var key in result) 
-            if (result[key] < 2) delete result[key]
+            if (result[key] < minoccurrences) delete result[key]
     return result
 }
 
@@ -114,7 +116,7 @@ export function tag_tf(merge, who, t) {
                 .filter(term=> term !== 'constructor')
                 .forEach(term=> result[t(term)] = result[t(term)]+1 || 1))
     for (var key in result) 
-        if (result[key] < 2) delete result[key]
+        if (result[key] < minoccurrences) delete result[key]
     return result
 }
 
@@ -129,6 +131,6 @@ export function char_tf(merge, who) {
                     .split('')
                     .forEach(char=> result[char] = result[char]+1 || 1)))
     for (var key in result) 
-        if (result[key] < 2) delete result[key]
+        if (result[key] < minoccurrences) delete result[key]
     return result
 }
