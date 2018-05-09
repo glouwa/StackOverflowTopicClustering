@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const cloud_1 = require("../cloud/cloud");
 const bb_counter_1 = require("../billboardjs/bb-counter");
-const html_1 = require("../../tools/html");
-const vecstats_1 = require("../../model/vecstats");
+const tools_1 = require("../../visualisations/tools");
+const stats_vector_1 = require("../../model/stats-vector");
 const html = `
     <div>
         <div class="header">
@@ -22,7 +22,7 @@ const html = `
     </div>`;
 class TagDistribution {
     constructor(args) {
-        this.view = html_1.HTML.parse(html)();
+        this.view = tools_1.HTML.parse(html)();
         args.parent.appendChild(this.view);
         this.update(args);
     }
@@ -31,7 +31,7 @@ class TagDistribution {
         if (!this.args.data)
             return;
         const keyvaluepairs = this.convert(this.args.data.key);
-        this.stats = new vecstats_1.Stats(keyvaluepairs.map(e => e[1]));
+        this.stats = new stats_vector_1.Stats(keyvaluepairs.map(e => e[1]));
         this.view.querySelector(".header > .title").innerText = args.name;
         this.view.querySelector(".header > .desc").innerText = this.stats;
         this.bb = new bb_counter_1.BillboardCounter({

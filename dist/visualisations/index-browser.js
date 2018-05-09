@@ -22110,8 +22110,8 @@ function transform(node) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const cloud_1 = __webpack_require__(508);
 const bb_counter_1 = __webpack_require__(177);
-const html_1 = __webpack_require__(178);
-const vecstats_1 = __webpack_require__(510);
+const tools_1 = __webpack_require__(178);
+const stats_vector_1 = __webpack_require__(510);
 const html = `
     <div>
         <div class="header">
@@ -22130,7 +22130,7 @@ const html = `
     </div>`;
 class TagDistribution {
     constructor(args) {
-        this.view = html_1.HTML.parse(html)();
+        this.view = tools_1.HTML.parse(html)();
         args.parent.appendChild(this.view);
         this.update(args);
     }
@@ -22139,7 +22139,7 @@ class TagDistribution {
         if (!this.args.data)
             return;
         const keyvaluepairs = this.convert(this.args.data.key);
-        this.stats = new vecstats_1.Stats(keyvaluepairs.map(e => e[1]));
+        this.stats = new stats_vector_1.Stats(keyvaluepairs.map(e => e[1]));
         this.view.querySelector(".header > .title").innerText = args.name;
         this.view.querySelector(".header > .desc").innerText = this.stats;
         this.bb = new bb_counter_1.BillboardCounter({
@@ -36951,7 +36951,7 @@ const bb_counter_1 = __webpack_require__(177);
 const bb_bar_1 = __webpack_require__(512);
 const bb_donut_1 = __webpack_require__(513);
 const bb_timeline_1 = __webpack_require__(514);
-const html_1 = __webpack_require__(178);
+const tools_1 = __webpack_require__(178);
 const tagdistribution_1 = __webpack_require__(176);
 const html = `
     <div>
@@ -36968,7 +36968,7 @@ const html = `
     </div>`;
 class StackoverflowDatasetView {
     constructor(args) {
-        this.view = html_1.HTML.parse(html)();
+        this.view = tools_1.HTML.parse(html)();
         args.parent.appendChild(this.view);
         this.args = args;
         this.timeline = new bb_timeline_1.BillboardTimeline({
