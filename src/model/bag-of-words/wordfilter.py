@@ -4,7 +4,7 @@ minwordlen = 3
 nltk_stop_words = list(stopwords.words('english')) 
 
 raw_stop_words = """
-    project create something getting running like
+    project create something getting running like code function list table via
     trying problem understand please want working 
     how using question thanks however following
     could n't get would great appreci help everyth work
@@ -18,7 +18,7 @@ raw_stop_words = """
 raw_stop_words.extend(nltk_stop_words)
 
 stem_stop_words = """
-    project create something getting running like
+    project create something getting running like code function list table via
     trying problem understand please want working 
     how using question thanks however following
     could n't get would great appreci help everyth work
@@ -33,7 +33,7 @@ stem_stop_words = """
 stem_stop_words.extend(nltk_stop_words)
 
 lem_stop_words = """
-    project create something getting running like
+    project create something getting running like code function list table via
     trying problem understand please want working 
     how using question thanks however following
     could n't get would great appreci help everyth work
