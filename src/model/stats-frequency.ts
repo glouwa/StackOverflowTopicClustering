@@ -53,11 +53,11 @@ function stats_(source:string, folder:string, tokenformat:string)
             answerCount:    m.distribution(merge, e=> e.answerCount, null),
             score:          m.distribution(merge, e=> e.score, null),
             terms:{ 
-                tags:       bla(words, q=> q.terms.tags),
-                title:      bla(words, q=> q.terms.title),
-                body:       bla(words, q=> q.terms.body),
-                inlinecode: bla(words, q=> q.terms.inlinecode),
-                code:       bla(words, q=> q.terms.code),
+                tags:       counts(words, q=> q.terms.tags),
+                title:      counts(words, q=> q.terms.title),
+                body:       counts(words, q=> q.terms.body),
+                inlinecode: counts(words, q=> q.terms.inlinecode),
+                code:       counts(words, q=> q.terms.code),
             },            
             texts:{
                 title:      null,
@@ -73,7 +73,6 @@ function stats_(source:string, folder:string, tokenformat:string)
     console.log(`${folder} ${tokenformat} done`)
 }
 
-
 function rounddate(din) {
     var d = new Date(din);
     //d.setDate(1)
@@ -84,7 +83,7 @@ function rounddate(din) {
     return d
 }
 
-export function bla(merge, who) {
+export function counts(merge, who) {
     return {
         key: tag_tf(merge, who, term=> term),
         //size: tag_tf(merge, who, t=> t.length),

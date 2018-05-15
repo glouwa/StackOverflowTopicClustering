@@ -102,33 +102,35 @@ function run(cmd) {
 exports.stackoverflow = stackexchange.download('stackoverflow', 10)
 exports.text =          gulp.series(
                             stackexchange.parseAndMerge('stackoverflow'),
-                            stats.calc('stackoverflow'),
+                            //stats.calc('stackoverflow'),
                         )
 exports.sentence =      gulp.series(
                             run('python3 src/model/bag-of-sentences/sentences.py'),
-                            stats.calc('stackoverflow'),
+                            //stats.calc('stackoverflow'),
                         )
 exports.word =          gulp.series(
-                            run('python3 src/model/bag-of-sentences/sentences.py'),
+                            //run('python3 src/model/bag-of-sentences/sentences.py'),
                             gulp.parallel(
                                 run('python3 src/model/bag-of-words/stemming.py'),
                                 run('python3 src/model/bag-of-words/lemming.py'),
                                 run('python3 src/model/bag-of-words/terms.py')
                             ),
-                            stats.calc('stackoverflow')
+                            //stats.calc('stackoverflow')
                         )
 exports.ngram =         gulp.series(
-                            gulp.parallel(
+                            /*gulp.parallel(
                                 run('python3 src/model/bag-of-words/stemming.py'),
                                 run('python3 src/model/bag-of-words/lemming.py'),
                                 run('python3 src/model/bag-of-words/terms.py')
-                            ),
+                            ),*/
                             gulp.parallel(
                                 run('python3 src/model/ngrams/ngram.py 2'),
                                 run('python3 src/model/ngrams/ngram.py 3')
                             ),
-                            stats.calc('stackoverflow')
+                            //stats.calc('stackoverflow')
                         )
 exports.stats =         stats.calc('stackoverflow')
+
+exports.all =           gulp.series(exports.text, exports.sentence, exports.word, exports.ngram, exports.stats)
 
 

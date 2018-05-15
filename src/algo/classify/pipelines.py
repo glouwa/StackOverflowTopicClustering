@@ -31,6 +31,7 @@ _slow_or_bad_pipelines = {
     ]),
 }
 
+internaldim = 20
 classify_pipelines = {
     'SGDClassifier': Pipeline([                
         #('nmf', decomposition.NMF(n_components=20, random_state=1, alpha=.1, l1_ratio=.5)),
@@ -41,11 +42,11 @@ classify_pipelines = {
         ('clf', MLPClassifier(alpha=1))        
     ]),
     'Linear SVM': Pipeline([        
-        ('nmf', decomposition.NMF(n_components=20, random_state=1, alpha=.1, l1_ratio=.5)),
+        ('nmf', decomposition.NMF(n_components=internaldim, random_state=1, alpha=.1, l1_ratio=.5)),
         ('clf', svm.LinearSVC(C=1))
     ]),    
     'LinearDiscriminantAnalysis': Pipeline([        
-        ('nmf', decomposition.NMF(n_components=20, random_state=1, alpha=.1, l1_ratio=.5)),
+        ('nmf', decomposition.NMF(n_components=internaldim, random_state=1, alpha=.1, l1_ratio=.5)),
         #('scale', preprocessing.Normalizer()),
         ('clf', LinearDiscriminantAnalysis())
     ]),
@@ -58,7 +59,7 @@ classify_pipelines = {
         ('clf', ensemble.RandomForestClassifier())
     ]),
     'AdaBoostClassifier': Pipeline([        
-        ('nmf', decomposition.NMF(n_components=20, random_state=1, alpha=.1, l1_ratio=.5)),
+        ('nmf', decomposition.NMF(n_components=internaldim, random_state=1, alpha=.1, l1_ratio=.5)),
         ('clf', ensemble.AdaBoostClassifier())        
     ]),               
 }

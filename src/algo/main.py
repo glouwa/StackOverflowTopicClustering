@@ -13,15 +13,11 @@ from classify.pipelines import classify_pipelines
 from cluster.pipelines import clustervis_pipelines, cluster_pipelines
 
 """ load data """
-theoneandonlyclass = 'javascript'
 wordtype = 'raw'
 topfeature = 'title'
 tfidfcfg= [1, 1] # 11 wolkig aber gelb, 32 beste klassifikations aber nix gelb, 00 separiert gut sonst bullshit
 corpus = StackoverflowCorpus('bag-of-words/stackoverflow-' + wordtype, topfeature, tfidfcfg[0], tfidfcfg[1])
-Y = corpus.labels(theoneandonlyclass)
 print("Corpus", len(corpus.documents), len(corpus.termssorted))
-print("Classifying {} or not, in {} {}".format(theoneandonlyclass, topfeature, wordtype))
-print("Y01", np.count_nonzero(Y), len(Y)-np.count_nonzero(Y))
 
 def classify(ax, X_train, X_test, Y_train, Y_test):
     for label, pipeline in classify_pipelines.items():    
@@ -36,7 +32,7 @@ def classify(ax, X_train, X_test, Y_train, Y_test):
             Z = Y_pred
         plots.precisionRecallPlot(ax, label, Y_test, Y_pred, Z)
  
-def clustervis(fig, X, F, T):
+def clustervis(fig, X, Y, F, T):
     p=1
     for label, pipeline in clustervis_pipelines.items():
         print("visualising", label)
@@ -59,19 +55,20 @@ def cluster(fig, X, T, F):
         p+=1
         plots.clustervis(ax, label, T['pipeline'], T['projected'], T['features'], Y_pred)  
 
-def classifyVisualizeCluster(X, F, label, classifySubplot):
+def classifyVisualizeCluster(X, Y, F, label, classifySubplot):
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=.3, random_state=0)
     print(X_train.shape, len(Y_train))
-    ax = f1.add_subplot(classifySubplot)
+    print(classifySubplot)
+    ax = f1.add_subplot(classifySubplot[0], classifySubplot[1], classifySubplot[2])
     ax.set_title(label)
     classify(ax, X_train, X_test, Y_train, Y_test)
-    ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)    
+    #ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)    
     plt.tight_layout()
 
     fig = plt.figure()
     fig.suptitle(label)
     T = {}
-    clustervis(fig, X, F, T)
+    clustervis(fig, X, Y, F, T)
     plt.tight_layout()
 
     fig = plt.figure()
@@ -79,12 +76,10 @@ def classifyVisualizeCluster(X, F, label, classifySubplot):
     cluster(fig, X, T['PCA'], F)
     plt.tight_layout()
 
-f1 = plt.figure()
 """ we are better than sklearn """
 X = np.matrix(corpus.w.T)
 F = corpus.termssorted
 print("nltk reduced", X.shape)
-classifyVisualizeCluster(X, F, 'nltk preprocessing {}{}'.format(tfidfcfg[0], tfidfcfg[1]), 211)
 
 """ sklearn is also cool """
 pipeline = Pipeline([
@@ -95,6 +90,17 @@ pipeline = Pipeline([
 X2 = pipeline.fit_transform(corpus.documentsstr)
 F2 = pipeline.named_steps['vect'].get_feature_names()
 print("sklearn reduced", X2.shape, len(F2))
-classifyVisualizeCluster(X2, F2, 'sklearn preprocessing', 212)
+
+def analyseOneTag(tag, idx):
+    Y = corpus.labels(tag)    
+    print("{} Classifying '{}' or not, in {} {}".format(idx, tag, topfeature, wordtype))
+    print("Y01", np.count_nonzero(Y), len(Y)-np.count_nonzero(Y))
+    classifyVisualizeCluster(X, Y, F, '{} nltk preprocessing {}{}'.format(tag, tfidfcfg[0], tfidfcfg[1]), [4, 3, idx+1])
+    classifyVisualizeCluster(X2, Y, F2, '{} sklearn preprocessing'.format(tag), [4, 3, idx+1+6])
+
+f1 = plt.figure()
+plt.tight_layout()
+for idx, tag in enumerate(['python', 'android', 'c#', 'php', 'html', 'sql']): #, 
+    analyseOneTag(tag, idx)
 
 plt.show()
