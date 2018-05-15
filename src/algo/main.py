@@ -16,83 +16,92 @@ from sklearn import feature_selection
 from sklearn import svm
 
 from classify.pipelines import classify_pipelines
-from cluster.pipelines import cluster_pipelines
+from cluster.pipelines import clustervis_pipelines, cluster_pipelines
 
 """ load data """
 theoneandonlyclass = 'python'
-wordtype = 'lemma'
+wordtype = 'raw'
 topfeature = 'title'
-tfidfcfg= [0, 0]
+tfidfcfg= [1, 1] # 11 wolkig aber gelb, 32 beste klassifikations aber nix gelb, 00 separiert gut sonst bullshit
 corpus = StackoverflowCorpus('bag-of-words/stackoverflow-' + wordtype, topfeature, tfidfcfg[0], tfidfcfg[1])
 Y = corpus.labels(theoneandonlyclass)
 print("Corpus", len(corpus.documents), len(corpus.termssorted))
 print("Classifying {} or not, in {} {}".format(theoneandonlyclass, topfeature, wordtype))
 print("Y01", np.count_nonzero(Y), len(Y)-np.count_nonzero(Y))
 
-""" nltk or sklearn """
-X = np.matrix(corpus.w.T)
-print("nltk reduced", X.shape)
+def classify(ax, X_train, X_test, Y_train, Y_test):
+    for label, pipeline in classify_pipelines.items():    
+        print("classifying", label)
+        pipeline.fit(X_train, Y_train)
+        Y_pred = pipeline.predict(X_test)
+        if hasattr(pipeline, 'decision_function'):
+            Z = pipeline.decision_function(X_test)            
+        elif hasattr(pipeline, 'predict_proba'):
+            Z = pipeline.predict_proba(X_test)[:, 1]
+        else:
+            Z = Y_pred
+        plots.precisionRecallPlot(ax, label, Y_test, Y_pred, Z)
+ 
+def clustervis(fig, X, F, T):
+    p=1
+    for label, pipeline in clustervis_pipelines.items():
+        print("visualising", label)
+        T[label] = {}
+        T[label]['projected'] = pipeline.fit_transform(X)    
+        T[label]['pipeline'] = pipeline
+        T[label]['features'] = F
+        ax = fig.add_subplot(2, 3, p, projection='3d')        
+        #ax = fig.add_subplot(2, 3, p)
+        p+=1
+        plots.clustervis(ax, label, pipeline, T[label]['projected'], F, Y)        
 
+def cluster(fig, X, T, F):
+    p=1
+    for label, pipeline in cluster_pipelines.items():        
+        print("clustering", label)
+        pipeline.fit(X)
+        Y_pred = pipeline.predict(X)
+        ax = fig.add_subplot(2, 3, p, projection='3d')        
+        #ax = fig.add_subplot(2, 3, p)
+        p+=1
+        plots.clustervis(ax, label, T['pipeline'], T['projected'], T['features'], Y_pred)  
+
+def classifyVisualizeCluster(X, F, label, classifySubplot):
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=.3, random_state=0)
+    print(X_train.shape, len(Y_train))
+    ax = f1.add_subplot(classifySubplot)
+    ax.set_title(label)
+    classify(ax, X_train, X_test, Y_train, Y_test)
+    ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)    
+    plt.tight_layout()
+
+    fig = plt.figure()
+    fig.suptitle(label)
+    T = {}
+    clustervis(fig, X, F, T)
+    plt.tight_layout()
+
+    fig = plt.figure()
+    fig.suptitle('clusterd ({})'.format(label))
+    cluster(fig, X, T['PCA'], F)
+    plt.tight_layout()
+
+f1 = plt.figure()
+""" we are better than sklearn """
+X = np.matrix(corpus.w.T)
+F = corpus.termssorted
+print("nltk reduced", X.shape)
+classifyVisualizeCluster(X, F, 'nltk preprocessing {}{}'.format(tfidfcfg[0], tfidfcfg[1]), 211)
+
+""" sklearn is also cool """
 pipeline = Pipeline([
-    ('vect', text.CountVectorizer(stop_words='english', min_df=10, max_df=1.0, binary=False)),
-    ('tfidf', text.TfidfTransformer()),
+    ('vect', text.CountVectorizer(stop_words='english', min_df=5, max_df=1.0, binary=False)),
+    ('tfidf', text.TfidfTransformer(sublinear_tf=True)),
     ('dense', DenseTransformer()),
 ])
 X2 = pipeline.fit_transform(corpus.documentsstr)
-print("sklearn reduced", X2.shape)
+F2 = pipeline.named_steps['vect'].get_feature_names()
+print("sklearn reduced", X2.shape, len(F2))
+classifyVisualizeCluster(X2, F2, 'sklearn preprocessing', 212)
 
-""" do some stuff """
-f1 = plt.figure()
-def classify():
-    for label, pipeline in classify_pipelines.items():    
-        print("time for", label)
-        pipeline.fit(X_train, Y_train)
-        Y_pred = pipeline.predict(X_test)
-        Z = Y_pred
-        plots.precisionRecallPlot(ax, label, Y_test, Y_pred, Z)
-    
-X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=.25, random_state=0)
-print(X_train.shape, len(Y_train))
-ax = f1.add_subplot(211)    
-ax.set_title('nltk preprocessing {}{}'.format(tfidfcfg[0], tfidfcfg[1]))
-classify()
-ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)    
-
-X_train, X_test, Y_train, Y_test = train_test_split(X2, Y, test_size=.25, random_state=0)
-print(X_train.shape, len(Y_train))
-ax = plt.subplot(212)
-ax.set_title('sklearn preprocessing')
-classify()
-ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)    
-plt.tight_layout()
-
-""" vis reduced """
-from mpl_toolkits.mplot3d import Axes3D
-
-fig = plt.figure()
-fig.suptitle('nltk preprocessing {}{}'.format(tfidfcfg[0], tfidfcfg[1]))
-p=1
-for label, pipeline in cluster_pipelines.items():
-    print("time for", label)
-    projected = pipeline.fit_transform(X)    
-    ax = fig.add_subplot(2, 4, p, projection='3d')
-    ax.set_title(label)
-    p+=1
-    #ax.scatter(projected[:, 0], projected[:, 1], projected[:, 2], alpha=.5, c=kmeans.labels_.astype(float))
-    ax.scatter(projected[:, 0], projected[:, 1], projected[:, 2], alpha=.2, c=Y)
-plt.tight_layout()
-
-
-fig = plt.figure()
-fig.suptitle('sklearn preprocessing')
-p=1
-for label, pipeline in cluster_pipelines.items():
-    print("time for", label)
-    projected = pipeline.fit_transform(X2)
-    ax = fig.add_subplot(2, 4, p, projection='3d')
-    ax.set_title(label)
-    p+=1
-    #ax.scatter(projected[:, 0], projected[:, 1], projected[:, 2], alpha=.5, c=kmeans.labels_.astype(float))
-    ax.scatter(projected[:, 0], projected[:, 1], projected[:, 2], alpha=.2, c=Y)
-plt.tight_layout()
 plt.show()

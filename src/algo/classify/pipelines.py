@@ -33,9 +33,11 @@ _slow_or_bad_pipelines = {
 
 classify_pipelines = {
     'SGDClassifier': Pipeline([                
+        #('nmf', decomposition.NMF(n_components=20, random_state=1, alpha=.1, l1_ratio=.5)),
         ('clf', SGDClassifier(loss='hinge', penalty='l2', alpha=1e-3, random_state=42, max_iter=5, tol=None))    
     ]),
     'MLPClassifier': Pipeline([  
+        #('nmf', decomposition.NMF(n_components=20, random_state=1, alpha=.1, l1_ratio=.5)),
         ('clf', MLPClassifier(alpha=1))        
     ]),
     'Linear SVM': Pipeline([        
@@ -48,12 +50,17 @@ classify_pipelines = {
         ('clf', LinearDiscriminantAnalysis())
     ]),
     'DecisionTreeClassifier': Pipeline([                
+        #('nmf', decomposition.NMF(n_components=20, random_state=1, alpha=.1, l1_ratio=.5)),
         ('clf', DecisionTreeClassifier())        
     ]),    
     'RandomForestClassifier': Pipeline([        
+        #('nmf', decomposition.NMF(n_components=20, random_state=1, alpha=.1, l1_ratio=.5)),
         ('clf', ensemble.RandomForestClassifier())
     ]),
     'AdaBoostClassifier': Pipeline([        
+        ('nmf', decomposition.NMF(n_components=20, random_state=1, alpha=.1, l1_ratio=.5)),
         ('clf', ensemble.AdaBoostClassifier())        
     ]),               
 }
+
+
