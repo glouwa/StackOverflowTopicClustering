@@ -7,19 +7,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction import text
 from sparse2dense import DenseTransformer
-from pprint import pprint
 from numpy.random import RandomState
-
-from sklearn import decomposition
-from sklearn import preprocessing
-from sklearn import feature_selection
-from sklearn import svm
 
 from classify.pipelines import classify_pipelines
 from cluster.pipelines import clustervis_pipelines, cluster_pipelines
 
 """ load data """
-theoneandonlyclass = 'python'
+theoneandonlyclass = 'javascript'
 wordtype = 'raw'
 topfeature = 'title'
 tfidfcfg= [1, 1] # 11 wolkig aber gelb, 32 beste klassifikations aber nix gelb, 00 separiert gut sonst bullshit
@@ -58,9 +52,8 @@ def clustervis(fig, X, F, T):
 def cluster(fig, X, T, F):
     p=1
     for label, pipeline in cluster_pipelines.items():        
-        print("clustering", label)
-        pipeline.fit(X)
-        Y_pred = pipeline.predict(X)
+        print("clustering", label)        
+        Y_pred = pipeline.fit(X).predict(X)
         ax = fig.add_subplot(2, 3, p, projection='3d')        
         #ax = fig.add_subplot(2, 3, p)
         p+=1
