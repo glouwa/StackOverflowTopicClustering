@@ -133,4 +133,9 @@ exports.stats =         stats.calc('stackoverflow')
 
 exports.all =           gulp.series(exports.text, exports.sentence, exports.word, exports.ngram, exports.stats)
 
+exports.classify =      gulp.series(
+                            run('python3 src/algo/main.py'),
+                            //stats.calc('stackoverflow'),
+                        )
+
 
