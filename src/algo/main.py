@@ -48,8 +48,11 @@ def clustervis(fig, X, Y, F, T):
 def cluster(fig, X, T, F):
     p=1
     for label, pipeline in cluster_pipelines.items():        
-        print("clustering", label)        
-        Y_pred = pipeline.fit(X).predict(X)
+        print("clustering", label)      
+        if hasattr(pipeline, 'predict'):
+            Y_pred = pipeline.fit(X).predict(X)
+        else:
+            Y_pred = pipeline.fit_predict(X)
         ax = fig.add_subplot(2, 3, p, projection='3d')        
         #ax = fig.add_subplot(2, 3, p)
         p+=1
@@ -62,7 +65,7 @@ def classifyVisualizeCluster(X, Y, F, label, classifySubplot):
     ax = f1.add_subplot(classifySubplot[0], classifySubplot[1], classifySubplot[2])
     ax.set_title(label)
     classify(ax, X_train, X_test, Y_train, Y_test)
-    #ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)    
+    ax.legend(fontsize='xx-small', loc=3) #, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)    
     plt.tight_layout()
 
     fig = plt.figure()
@@ -95,12 +98,12 @@ def analyseOneTag(tag, idx):
     Y = corpus.labels(tag)    
     print("{} Classifying '{}' or not, in {} {}".format(idx, tag, topfeature, wordtype))
     print("Y01", np.count_nonzero(Y), len(Y)-np.count_nonzero(Y))
-    classifyVisualizeCluster(X, Y, F, '{} nltk preprocessing {}{}'.format(tag, tfidfcfg[0], tfidfcfg[1]), [4, 3, idx+1])
-    classifyVisualizeCluster(X2, Y, F2, '{} sklearn preprocessing'.format(tag), [4, 3, idx+1+6])
+    classifyVisualizeCluster(X, Y, F, '{} nltk preprocessing {}{}'.format(tag, tfidfcfg[0], tfidfcfg[1]), [4, 3, idx+1]) #43
+    #classifyVisualizeCluster(X2, Y, F2, '{} sklearn preprocessing'.format(tag), [4, 3, idx+1+6]) #6
 
 f1 = plt.figure()
 plt.tight_layout()
-for idx, tag in enumerate(['python', 'android', 'c#', 'php', 'html', 'sql']): #, 
+for idx, tag in enumerate(['python']): #, 'android', 'c#', 'php', 'html', 'sql']): #, 
     analyseOneTag(tag, idx)
 
 plt.show()

@@ -138,4 +138,15 @@ exports.classify =      gulp.series(
                             //stats.calc('stackoverflow'),
                         )
 
-
+exports.pip =           gulp.series(
+                            run('pip3 install sklearn'),
+                            run('pip3 install nltk'),
+                            run(`python3 >>> "import nltk
+nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('universal_tagset')
+nltk.download('wordnet')"`),
+                            run('pip3 install --upgrade mathplotlib'),
+                            //stats.calc('stackoverflow'),
+                        )

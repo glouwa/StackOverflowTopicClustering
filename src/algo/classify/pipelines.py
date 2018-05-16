@@ -31,7 +31,7 @@ _slow_or_bad_pipelines = {
     ]),
 }
 
-internaldim = 20
+internaldim = 30
 classify_pipelines = {
     'SGDClassifier': Pipeline([                
         #('nmf', decomposition.NMF(n_components=20, random_state=1, alpha=.1, l1_ratio=.5)),
@@ -64,4 +64,15 @@ classify_pipelines = {
     ]),               
 }
 
+classify_pipelines = {    
+    'Linear SVM': Pipeline([        
+        ('nmf', decomposition.NMF(n_components=internaldim, random_state=1, alpha=.1, l1_ratio=.5)),
+        ('clf', svm.LinearSVC(C=1))
+    ])
+}
 
+"""
+vote = list(classify_pipelines.items())
+weights = [2, 2, 1, 1, 1, 1, 1]
+classify_pipelines['Vote'] = ensemble.VotingClassifier(estimators=vote, voting='soft', weights=weights, flatten_transform=True)
+"""
