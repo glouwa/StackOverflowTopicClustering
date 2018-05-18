@@ -3,6 +3,7 @@ from nltk.corpus import stopwords
 minwordlen = 3
 nltk_stop_words = list(stopwords.words('english')) 
 
+#anything part thing everything answer lot error step reason nothing idea side position result
 
 raw_stop_words = """
     user make run app application page new server page set method find add files image used line created 
@@ -30,11 +31,16 @@ stem_stop_words.extend(raw_stop_words)
 lem_stop_words = """    
     give unable add fail character return 
     """.split()
-stem_stop_words.extend(raw_stop_words)
+lem_stop_words.extend(raw_stop_words)
 
-whitelist = """
+whitelist = frozenset("""
     c c++ c# r 
-    """.split()
+    """.split())
+
+whitelist = frozenset(whitelist)
+raw_stop_words = frozenset(raw_stop_words)
+lem_stop_words = frozenset(lem_stop_words)
+stem_stop_words = frozenset(stem_stop_words)
 
 def filterintern(word, stopwordlist):
     lword = word.lower()

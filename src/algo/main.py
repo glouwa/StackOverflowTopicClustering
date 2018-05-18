@@ -10,7 +10,6 @@ from numpy.random import RandomState
 
 from sklearn import feature_selection
 
-
 from classify.pipelines import classify_pre_pipeline
 from classify.pipelines import classify_pipelines
 from cluster.pipelines import clustervis_pipelines, cluster_pipelines
@@ -125,7 +124,7 @@ def analyseOneTag(tag, idx):
 
 f1 = plt.figure(figsize=figuresize)
 plt.tight_layout()
-for idx, tag in enumerate(['python']): #,, , 'php', 'html', 'android', 'c#', 'sql'
+for idx, tag in enumerate(['python', 'php', 'html', 'android', 'javascript', 'sql']): #,, , 
     analyseOneTag(tag, idx)
 
 plt.show()
