@@ -99,7 +99,7 @@ function run(cmd) {
     }
 }
 
-exports.stackoverflow = stackexchange.download('stackoverflow', 10)
+exports.stackoverflow = stackexchange.download('stackoverflow', 300)
 exports.text =          gulp.series(
                             stackexchange.parseAndMerge('stackoverflow'),
                             //stats.calc('stackoverflow'),

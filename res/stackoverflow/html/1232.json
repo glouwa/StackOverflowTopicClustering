@@ -1,0 +1,824 @@
+{
+    "items": [
+        {
+            "tags": [
+                "c#",
+                "unity3d"
+            ],
+            "owner": {
+                "reputation": 24,
+                "user_id": 6831912,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://i.stack.imgur.com/ibv29.jpg?s=128&g=1",
+                "display_name": "ESuth",
+                "link": "https://stackoverflow.com/users/6831912/esuth"
+            },
+            "is_answered": false,
+            "view_count": 41,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526459903,
+            "creation_date": 1526443139,
+            "last_edit_date": 1526459903,
+            "question_id": 50362267,
+            "body_markdown": "I am having a problem with my RTS game where my enemy units will not attack any base buildings I create after the level starts. They go to attack every other building that was there when the level starts, but none of the built ones.\r\n\r\nThere is a list being set up of the closest targets to units and they will go to attack their closest target, but any newly instantiated buildings or units, don&#39;t get attacked for some reason.\r\n\r\nThe function DecideWhatToDo() is called on all units in the WorldObject script when they are not doing anything. It then calls FindNearbyObjects() from the WorkManager script.\r\n\r\nEverything works up until new units and buildings are created, has anyone experienced this kind of problem before?\r\n\r\n    using System.Collections;\r\n    using System.Collections.Generic;\r\n    using UnityEngine;\r\n    using UnityEngine.AI;\r\n    using RTS;\r\n    \r\n    public class WorldObject : MonoBehaviour {\r\n    \r\n        BoxCollider boxCollider;\r\n        bool isDead;\r\n        bool isSinking;\r\n    \r\n        public string objectName;\r\n        public Texture2D buildImage;\r\n        public int cost, sellValue, maxHitPoints;\r\n        public float hitPoints;\r\n        public virtual bool IsActive { get { return true; } }\r\n        public float weaponRange = 10.0f;\r\n        public float weaponRechargeTime = 1.0f;\r\n        public float weaponAimSpeed = 1.0f;\r\n        public AudioClip attackSound, selectSound, useWeaponSound;\r\n        public float attackVolume = 1.0f, selectVolume = 1.0f, useWeaponVolume = 1.0f;\r\n        public int ObjectId { get; set; }\r\n        public float detectionRange = 20.0f;\r\n        public GameObject explosionPrefab, splat;\r\n    \r\n        protected NavMeshAgent agent;\r\n        protected AudioElement audioElement;\r\n        protected Animator anim;\r\n        protected List&lt;WorldObject&gt; nearbyObjects;\r\n        protected Rect playingArea = new Rect(0.0f, 0.0f, 0.0f, 0.0f);\r\n        protected Player player;\r\n        protected string[] actions = { };\r\n        protected bool currentlySelected = false;\r\n        protected Bounds selectionBounds;\r\n        protected GUIStyle healthStyle = new GUIStyle();\r\n        protected float healthPercentage = 1.0f;\r\n        protected WorldObject target = null;\r\n        protected bool attacking = false;\r\n        protected bool movingIntoPosition = false;\r\n        protected bool aiming = false;\r\n    \r\n        private List&lt;Material&gt; oldMaterials = new List&lt;Material&gt;();\r\n        private float currentWeaponChargeTime;\r\n        //we want to restrict how many decisions are made to help with game performance\r\n        //the default time at the moment is a tenth of a second\r\n        private float timeSinceLastDecision = 0.0f, timeBetweenDecisions = 0.1f;\r\n    \r\n        protected virtual void Awake()\r\n        {\r\n            anim = GetComponent&lt;Animator&gt;();\r\n            boxCollider = GetComponent&lt;BoxCollider&gt;();\r\n            selectionBounds = ResourceManager.InvalidBounds;\r\n            CalculateBounds();\r\n        }\r\n    \r\n        protected virtual void Start()\r\n        {\r\n            agent = GetComponent&lt;NavMeshAgent&gt;();\r\n            SetPlayer();\r\n            if (player) SetTeamColor();\r\n            InitialiseAudio();\r\n        }\r\n    \r\n        protected virtual void Update()\r\n        {\r\n            if (isSinking)\r\n            {\r\n                this.transform.Translate(-Vector3.up * 2.5f * Time.deltaTime);\r\n            }\r\n            if (ShouldMakeDecision()) DecideWhatToDo();\r\n            currentWeaponChargeTime += Time.deltaTime;\r\n            if (attacking &amp;&amp; !movingIntoPosition &amp;&amp; !aiming)\r\n            {\r\n                \r\n                PerformAttack();\r\n            }\r\n        }\r\n    \r\n        /**\r\n     * A child class should only determine other conditions under which a decision should\r\n     * not be made. This could be &#39;harvesting&#39; for a harvester, for example. Alternatively,\r\n     * an object that never has to make decisions could just return false.\r\n     */\r\n        protected virtual bool ShouldMakeDecision()\r\n        {\r\n            if (!attacking &amp;&amp; !movingIntoPosition &amp;&amp; !aiming)\r\n            {\r\n                //we are not doing anything at the moment\r\n                if (timeSinceLastDecision &gt; timeBetweenDecisions)\r\n                {\r\n                    timeSinceLastDecision = 0.0f;\r\n                    Debug.Log(&quot;&quot;);\r\n                    return true;\r\n                }\r\n                timeSinceLastDecision += Time.deltaTime;\r\n            }\r\n    \r\n    \r\n            return false;\r\n        }\r\n    \r\n        protected virtual void DecideWhatToDo()\r\n        {\r\n            //determine what should be done by the world object at the current point in time\r\n            Vector3 currentPosition = transform.position;\r\n            nearbyObjects = WorkManager.FindNearbyObjects(currentPosition, detectionRange);\r\n    \r\n            if (CanAttack())\r\n            {\r\n                List&lt;WorldObject&gt; enemyObjects = new List&lt;WorldObject&gt;();\r\n                foreach (WorldObject nearbyObject in nearbyObjects)\r\n                {\r\n                    Resource resource = nearbyObject.GetComponent&lt;Resource&gt;();\r\n                    if (resource) continue;\r\n                    if (nearbyObject.GetPlayer() != player) enemyObjects.Add(nearbyObject);\r\n                }\r\n                WorldObject closestObject = WorkManager.FindNearestWorldObjectInListToPosition(enemyObjects, currentPosition);\r\n                if (closestObject)\r\n                {\r\n    \t\t\t\tattacking = true;\r\n                    //agent.isStopped = true;\r\n                    BeginAttack(closestObject);\r\n                }\r\n            }\r\n        }\r\n    \r\n        public Player GetPlayer()\r\n        {\r\n            return player;\r\n        }\r\n    \r\n        protected virtual void OnGUI()\r\n        {\r\n            if (currentlySelected &amp;&amp; !ResourceManager.MenuOpen) DrawSelection();\r\n        }\r\n    \r\n        protected virtual void InitialiseAudio()\r\n        {\r\n            List&lt;AudioClip&gt; sounds = new List&lt;AudioClip&gt;();\r\n            List&lt;float&gt; volumes = new List&lt;float&gt;();\r\n            if (attackVolume &lt; 0.0f) attackVolume = 0.0f;\r\n            if (attackVolume &gt; 1.0f) attackVolume = 1.0f;\r\n            sounds.Add(attackSound);\r\n            volumes.Add(attackVolume);\r\n            if (selectVolume &lt; 0.0f) selectVolume = 0.0f;\r\n            if (selectVolume &gt; 1.0f) selectVolume = 1.0f;\r\n            sounds.Add(selectSound);\r\n            volumes.Add(selectVolume);\r\n            if (useWeaponVolume &lt; 0.0f) useWeaponVolume = 0.0f;\r\n            if (useWeaponVolume &gt; 1.0f) useWeaponVolume = 1.0f;\r\n            sounds.Add(useWeaponSound);\r\n            volumes.Add(useWeaponVolume);\r\n            audioElement = new AudioElement(sounds, volumes, objectName + ObjectId, this.transform);\r\n        }\r\n    \r\n        public void SetPlayer()\r\n        {\r\n            player = transform.root.GetComponentInChildren&lt;Player&gt;();\r\n        }\r\n    \r\n        public bool IsOwnedBy(Player owner)\r\n        {\r\n            if (player &amp;&amp; player.Equals(owner))\r\n            {\r\n                return true;\r\n            }\r\n            else\r\n            {\r\n                return false;\r\n            }\r\n        }\r\n    \r\n        public void CalculateBounds()\r\n        {\r\n            selectionBounds = new Bounds(transform.position, Vector3.zero);\r\n            foreach (Renderer r in GetComponentsInChildren&lt;Renderer&gt;())\r\n            {\r\n                selectionBounds.Encapsulate(r.bounds);\r\n            }\r\n        }\r\n    \r\n        //!!!!!MULTI SELECTION!!!!!\r\n    \r\n        public virtual void SetSelection(bool selected, Rect playingArea)\r\n        {\r\n            currentlySelected = selected;\r\n            if (selected)\r\n            {\r\n                if (audioElement != null) audioElement.Play(selectSound);\r\n                this.playingArea = playingArea;\r\n            }\r\n            CalculateBounds();\r\n        }\r\n    \r\n        //!!!!!MULTI SELECTION!!!!!\r\n    \r\n        public Bounds GetSelectionBounds()\r\n        {\r\n            return selectionBounds;\r\n        }\r\n    \r\n        public string[] GetActions()\r\n        {\r\n            return actions;\r\n        }\r\n    \r\n        public void SetColliders(bool enabled)\r\n        {\r\n            Collider[] colliders = GetComponentsInChildren&lt;Collider&gt;();\r\n            foreach (Collider collider in colliders) collider.enabled = enabled;\r\n        }\r\n    \r\n        public void SetTransparentMaterial(Material material, bool storeExistingMaterial)\r\n        {\r\n            if (storeExistingMaterial) oldMaterials.Clear();\r\n            Renderer[] renderers = GetComponentsInChildren&lt;Renderer&gt;();\r\n            foreach (Renderer renderer in renderers)\r\n            {\r\n                if (storeExistingMaterial) oldMaterials.Add(renderer.material);\r\n                renderer.material = material;\r\n            }\r\n        }\r\n    \r\n        public void RestoreMaterials()\r\n        {\r\n            Renderer[] renderers = GetComponentsInChildren&lt;Renderer&gt;();\r\n            if (oldMaterials.Count == renderers.Length)\r\n            {\r\n                for (int i = 0; i &lt; renderers.Length; i++)\r\n                {\r\n                    renderers[i].material = oldMaterials[i];\r\n                }\r\n            }\r\n        }\r\n    \r\n        public void SetPlayingArea(Rect playingArea)\r\n        {\r\n            this.playingArea = playingArea;\r\n        }\r\n    \r\n        public virtual void SetHoverState(GameObject hoverObject)\r\n        {\r\n            //only handle input if owned by a human player and currently selected\r\n            if (player &amp;&amp; player.human &amp;&amp; currentlySelected)\r\n            {\r\n                //something other than the ground is being hovered over\r\n                if (hoverObject.name != &quot;Ground&quot;)\r\n                {\r\n                    Player owner = hoverObject.transform.root.GetComponent&lt;Player&gt;();\r\n                    Unit unit = hoverObject.transform.parent.GetComponent&lt;Unit&gt;();\r\n                    Building building = hoverObject.transform.parent.GetComponent&lt;Building&gt;();\r\n                    if (owner)\r\n                    { //the object is owned by a player\r\n                        if (owner.username == player.username) player.hud.SetCursorState(CursorState.Select);\r\n                        else if (CanAttack()) player.hud.SetCursorState(CursorState.Attack);\r\n                        else player.hud.SetCursorState(CursorState.Select);\r\n                    }\r\n                    else if (unit || building &amp;&amp; CanAttack()) player.hud.SetCursorState(CursorState.Attack);\r\n                    else player.hud.SetCursorState(CursorState.Select);\r\n                }\r\n            }\r\n        }\r\n    \r\n        public virtual bool CanAttack()\r\n        {\r\n            //default behaviour needs to be overidden by children\r\n            return false;\r\n        }\r\n    \r\n        public virtual void PerformAction(string actionToPerform)\r\n        {\r\n            //it is up to children with specific actions to determine what to do with each of those actions\r\n        }\r\n    \r\n        public virtual void MouseClick(GameObject hitObject, Vector3 hitPoint, Player controller)\r\n        {\r\n    \r\n            //only handle input if currently selected\r\n            if (currentlySelected &amp;&amp; hitObject &amp;&amp; hitObject.name != &quot;Ground&quot;)\r\n            {\r\n                WorldObject worldObject = hitObject.transform.parent.GetComponent&lt;WorldObject&gt;();\r\n                //clicked on another selectable object\r\n                if (worldObject)\r\n                {\r\n                    Resource resource = hitObject.transform.parent.GetComponent&lt;Resource&gt;();\r\n                    if (resource &amp;&amp; resource.isEmpty()) return;\r\n                    Player owner = hitObject.transform.root.GetComponent&lt;Player&gt;();\r\n                    if (owner)\r\n                    { //the object is controlled by a player\r\n                        if (player &amp;&amp; player.human)\r\n                        { //this object is controlled by a human player\r\n                          //start attack if object is not owned by the same player and this object can attack, else select\r\n                            if (player.username != owner.username &amp;&amp; CanAttack())\r\n                            {\r\n                                BeginAttack(worldObject);\r\n                            }\r\n                            else ChangeSelection(worldObject, controller);\r\n                        }\r\n                        else ChangeSelection(worldObject, controller);\r\n                    }\r\n                    else ChangeSelection(worldObject, controller);\r\n                }\r\n            }\r\n        }\r\n    \r\n        protected virtual void BeginAttack(WorldObject target)\r\n        {\r\n            //if (audioElement != null) audioElement.Play(attackSound);\r\n            this.target = target;\r\n            if (TargetInRange())\r\n            {\r\n                anim.SetBool(&quot;Attacking&quot;, true);\r\n                attacking = true;\r\n                PerformAttack();\r\n            }\r\n            else AdjustPosition();\r\n        }\r\n    \r\n        protected void SetTeamColor()\r\n        {\r\n            TeamColor[] teamColors = GetComponentsInChildren&lt;TeamColor&gt;();\r\n            foreach (TeamColor teamColor in teamColors) teamColor.GetComponent&lt;Renderer&gt;().material.color = player.teamColor;\r\n        }\r\n    \r\n        protected virtual void DrawSelectionBox(Rect selectBox)\r\n        {\r\n            GUI.Box(selectBox, &quot;&quot;);\r\n            CalculateCurrentHealth(0.35f, 0.65f);\r\n            DrawHealthBar(selectBox, &quot;&quot;);\r\n        }\r\n    \r\n        protected virtual void CalculateCurrentHealth(float lowSplit, float highSplit)\r\n        {\r\n            healthPercentage = (float)hitPoints / (float)maxHitPoints;\r\n            if (healthPercentage &gt; highSplit) healthStyle.normal.background = ResourceManager.HealthyTexture;\r\n            else if (healthPercentage &gt; lowSplit) healthStyle.normal.background = ResourceManager.DamagedTexture;\r\n            else healthStyle.normal.background = ResourceManager.CriticalTexture;\r\n        }\r\n    \r\n        protected void DrawHealthBar(Rect selectBox, string label)\r\n        {\r\n            healthStyle.padding.top = -20;\r\n            healthStyle.fontStyle = FontStyle.Bold;\r\n            GUI.Label(new Rect(selectBox.x, selectBox.y - 7, selectBox.width * healthPercentage, 5), label, healthStyle);\r\n        }\r\n    \r\n        protected virtual void AimAtTarget()\r\n        {\r\n            aiming = true;\r\n            \r\n            //this behaviour needs to be specified by a specific object\r\n        }\r\n    \r\n        private void ChangeSelection(WorldObject worldObject, Player controller)\r\n        {\r\n            //this should be called by the following line, but there is an outside chance it will not\r\n            SetSelection(false, playingArea);\r\n            if (controller.SelectedObject) controller.SelectedObject.SetSelection(false, playingArea);\r\n            controller.SelectedObject = worldObject;\r\n            worldObject.SetSelection(true, controller.hud.GetPlayingArea());\r\n        }\r\n    \r\n        private void DrawSelection()\r\n        {\r\n            GUI.skin = ResourceManager.SelectBoxSkin;\r\n            Rect selectBox = WorkManager.CalculateSelectionBox(selectionBounds, playingArea);\r\n            //Draw the selection box around the currently selected object, within the bounds of the playing area\r\n            GUI.BeginGroup(playingArea);\r\n            DrawSelectionBox(selectBox);\r\n            GUI.EndGroup();\r\n        }\r\n    \r\n        private bool TargetInRange()\r\n        {\r\n            Vector3 targetLocation = target.transform.position;\r\n            Vector3 direction = targetLocation - transform.position;\r\n            if (direction.sqrMagnitude &lt; weaponRange * weaponRange)\r\n            {\r\n                return true;\r\n            }\r\n            return false;\r\n        }\r\n    \r\n        private void AdjustPosition()\r\n        {\r\n    \r\n            Unit self = this as Unit;\r\n            if (self)\r\n            {\r\n                movingIntoPosition = true;\r\n                Vector3 attackPosition = FindNearestAttackPosition();\r\n                self.StartMove(attackPosition);\r\n                attacking = true;\r\n            }\r\n            else\r\n            {\r\n                \r\n                attacking = false;\r\n            }\r\n        }\r\n    \r\n        private Vector3 FindNearestAttackPosition()\r\n        {\r\n            Vector3 targetLocation = target.transform.position;\r\n            Vector3 direction = targetLocation - transform.position;\r\n            float targetDistance = direction.magnitude;\r\n            float distanceToTravel = targetDistance - (0.9f * weaponRange);\r\n            return Vector3.Lerp(transform.position, targetLocation, distanceToTravel / targetDistance);\r\n        }\r\n    \r\n        private void PerformAttack()\r\n        {\r\n            if (!target)\r\n            {\r\n                attacking = false;\r\n                anim.SetBool(&quot;Attacking&quot;, false);\r\n                anim.SetBool(&quot;IsRunning&quot;, false);\r\n                return;\r\n            }\r\n            if (!TargetInRange())\r\n            {\r\n                AdjustPosition();\r\n            }\r\n            else if (!TargetInFrontOfWeapon())\r\n            {\r\n                AimAtTarget();\r\n            }\r\n            else if (ReadyToFire())\r\n            {\r\n                //attacking = true;\r\n                UseWeapon();\r\n            }\r\n            //if (TargetInRange() &amp;&amp; (attacking = true))\r\n            //{\r\n            //    AdjustPosition();\r\n            //}\r\n        }\r\n    \r\n        private bool TargetInFrontOfWeapon()\r\n        {\r\n            Vector3 targetLocation = target.transform.position;\r\n            Vector3 direction = targetLocation - transform.position;\r\n            if (direction.normalized == transform.forward.normalized) return true;\r\n            else return false;\r\n        }\r\n    \r\n        private bool ReadyToFire()\r\n        {\r\n            if (currentWeaponChargeTime &gt;= weaponRechargeTime)\r\n            {\r\n                \r\n                return true;\r\n            }\r\n            return false;\r\n        }\r\n    \r\n        protected virtual void UseWeapon()\r\n        {\r\n            \r\n            if (audioElement != null &amp;&amp; Time.timeScale &gt; 0) audioElement.Play(useWeaponSound);\r\n            currentWeaponChargeTime = 0.0f;\r\n            //this behaviour needs to be specified by a specific object\r\n        }\r\n    \r\n        public void TakeDamage(float damage)\r\n        {\r\n            //GameObject.Instantiate(impactVisual, target.transform.position, Quaternion.identity);\r\n            hitPoints -= damage;\r\n            if (hitPoints &lt;= 0)\r\n            {\r\n                Instantiate(explosionPrefab, transform.position + new Vector3(0, 5, 0), Quaternion.identity);\r\n    \r\n                Instantiate(splat, transform.position, Quaternion.identity);\r\n    \r\n                Destroy(gameObject);\r\n            }\r\n        }\r\n    }\r\n\r\n\r\n ****\r\n\r\n    using UnityEngine;\r\n    using System.Collections.Generic;\r\n    \r\n    namespace RTS\r\n    {\r\n        public static class WorkManager\r\n        {\r\n            \r\n    \r\n            public static Rect CalculateSelectionBox(Bounds selectionBounds, Rect playingArea)\r\n            {\r\n                //shorthand for the coordinates of the centre of the selection bounds\r\n                float cx = selectionBounds.center.x;\r\n                float cy = selectionBounds.center.y;\r\n                float cz = selectionBounds.center.z;\r\n                //shorthand for the coordinates of the extents of the selection bounds\r\n                float ex = selectionBounds.extents.x;\r\n                float ey = selectionBounds.extents.y;\r\n                float ez = selectionBounds.extents.z;\r\n    \r\n                //Determine the screen coordinates for the corners of the selection bounds\r\n                List&lt;Vector3&gt; corners = new List&lt;Vector3&gt;();\r\n                corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx + ex, cy + ey, cz + ez)));\r\n                corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx + ex, cy + ey, cz - ez)));\r\n                corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx + ex, cy - ey, cz + ez)));\r\n                corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx - ex, cy + ey, cz + ez)));\r\n                corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx + ex, cy - ey, cz - ez)));\r\n                corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx - ex, cy - ey, cz + ez)));\r\n                corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx - ex, cy + ey, cz - ez)));\r\n                corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx - ex, cy - ey, cz - ez)));\r\n    \r\n                //Determine the bounds on screen for the selection bounds\r\n                Bounds screenBounds = new Bounds(corners[0], Vector3.zero);\r\n                for (int i = 1; i &lt; corners.Count; i++)\r\n                {\r\n                    screenBounds.Encapsulate(corners[i]);\r\n                }\r\n    \r\n                //Screen coordinates start in the bottom left corner, rather than the top left corner\r\n                //this correction is needed to make sure the selection box is drawn in the correct place\r\n                float selectBoxTop = playingArea.height - (screenBounds.center.y + screenBounds.extents.y);\r\n                float selectBoxLeft = screenBounds.center.x - screenBounds.extents.x;\r\n                float selectBoxWidth = 2 * screenBounds.extents.x;\r\n                float selectBoxHeight = 2 * screenBounds.extents.y;\r\n    \r\n                return new Rect(selectBoxLeft, selectBoxTop, selectBoxWidth, selectBoxHeight);\r\n            }\r\n    \r\n            public static GameObject FindHitObject(Vector3 origin)\r\n            {\r\n                Ray ray = Camera.main.ScreenPointToRay(origin);\r\n                RaycastHit hit;\r\n                if (Physics.Raycast(ray, out hit, ResourceManager.RayCastLimit)) return hit.collider.gameObject;\r\n                return null;\r\n            }\r\n    \r\n            public static Vector3 FindHitPoint(Vector3 origin)\r\n            {\r\n                Ray ray = Camera.main.ScreenPointToRay(origin);\r\n                RaycastHit hit;\r\n                Debug.DrawRay(ray.origin, ray.direction * ResourceManager.RayCastLimit, Color.yellow);\r\n                if (Physics.Raycast(ray, out hit, ResourceManager.RayCastLimit)) return hit.point;\r\n                return ResourceManager.InvalidPosition;\r\n            }\r\n    \r\n            public static List&lt;WorldObject&gt; FindNearbyObjects(Vector3 position, float range)\r\n            {\r\n                Collider[] hitColliders = Physics.OverlapSphere(position, range);\r\n                HashSet&lt;int&gt; nearbyObjectIds = new HashSet&lt;int&gt;();\r\n                List&lt;WorldObject&gt; nearbyObjects = new List&lt;WorldObject&gt;();\r\n                for (int i = 0; i &lt; hitColliders.Length; i++)\r\n                {\r\n                    Transform parent = hitColliders[i].transform.parent;\r\n                    if (parent)\r\n                    {\r\n                        WorldObject parentObject = parent.GetComponent&lt;WorldObject&gt;();\r\n                        if (parentObject &amp;&amp; !nearbyObjectIds.Contains(parentObject.ObjectId))\r\n                        {\r\n    \r\n    \t\t\t\t\t\t\tnearbyObjectIds.Add (parentObject.ObjectId);\r\n    \t\t\t\t\t\t\tnearbyObjects.Add (parentObject);\r\n    \r\n                        }\r\n                    }\r\n                }\r\n                return nearbyObjects;\r\n            }\r\n    \r\n            public static WorldObject FindNearestWorldObjectInListToPosition(List&lt;WorldObject&gt; objects, Vector3 position)\r\n            {\r\n                if (objects == null || objects.Count == 0) return null;\r\n                WorldObject nearestObject = objects[0];\r\n                float sqrDistanceToNearestObject = Vector3.SqrMagnitude(position - nearestObject.transform.position);\r\n                for (int i = 1; i &lt; objects.Count; i++)\r\n                {\r\n                    float sqrDistanceToObject = Vector3.SqrMagnitude(position - objects[i].transform.position);\r\n                    if (sqrDistanceToObject &lt; sqrDistanceToNearestObject)\r\n                    {\r\n                        sqrDistanceToNearestObject = sqrDistanceToObject;\r\n                        nearestObject = objects[i];\r\n                    }\r\n                }\r\n                return nearestObject;\r\n            }\r\n        }\r\n    }\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50362267/unity-physics-overlapsphere-is-not-detecting-instantiated-gameobjects",
+            "title": "Unity - Physics.OverlapSphere is not detecting instantiated GameObjects",
+            "body": "<p>I am having a problem with my RTS game where my enemy units will not attack any base buildings I create after the level starts. They go to attack every other building that was there when the level starts, but none of the built ones.</p>\n\n<p>There is a list being set up of the closest targets to units and they will go to attack their closest target, but any newly instantiated buildings or units, don't get attacked for some reason.</p>\n\n<p>The function DecideWhatToDo() is called on all units in the WorldObject script when they are not doing anything. It then calls FindNearbyObjects() from the WorkManager script.</p>\n\n<p>Everything works up until new units and buildings are created, has anyone experienced this kind of problem before?</p>\n\n<pre><code>using System.Collections;\nusing System.Collections.Generic;\nusing UnityEngine;\nusing UnityEngine.AI;\nusing RTS;\n\npublic class WorldObject : MonoBehaviour {\n\n    BoxCollider boxCollider;\n    bool isDead;\n    bool isSinking;\n\n    public string objectName;\n    public Texture2D buildImage;\n    public int cost, sellValue, maxHitPoints;\n    public float hitPoints;\n    public virtual bool IsActive { get { return true; } }\n    public float weaponRange = 10.0f;\n    public float weaponRechargeTime = 1.0f;\n    public float weaponAimSpeed = 1.0f;\n    public AudioClip attackSound, selectSound, useWeaponSound;\n    public float attackVolume = 1.0f, selectVolume = 1.0f, useWeaponVolume = 1.0f;\n    public int ObjectId { get; set; }\n    public float detectionRange = 20.0f;\n    public GameObject explosionPrefab, splat;\n\n    protected NavMeshAgent agent;\n    protected AudioElement audioElement;\n    protected Animator anim;\n    protected List&lt;WorldObject&gt; nearbyObjects;\n    protected Rect playingArea = new Rect(0.0f, 0.0f, 0.0f, 0.0f);\n    protected Player player;\n    protected string[] actions = { };\n    protected bool currentlySelected = false;\n    protected Bounds selectionBounds;\n    protected GUIStyle healthStyle = new GUIStyle();\n    protected float healthPercentage = 1.0f;\n    protected WorldObject target = null;\n    protected bool attacking = false;\n    protected bool movingIntoPosition = false;\n    protected bool aiming = false;\n\n    private List&lt;Material&gt; oldMaterials = new List&lt;Material&gt;();\n    private float currentWeaponChargeTime;\n    //we want to restrict how many decisions are made to help with game performance\n    //the default time at the moment is a tenth of a second\n    private float timeSinceLastDecision = 0.0f, timeBetweenDecisions = 0.1f;\n\n    protected virtual void Awake()\n    {\n        anim = GetComponent&lt;Animator&gt;();\n        boxCollider = GetComponent&lt;BoxCollider&gt;();\n        selectionBounds = ResourceManager.InvalidBounds;\n        CalculateBounds();\n    }\n\n    protected virtual void Start()\n    {\n        agent = GetComponent&lt;NavMeshAgent&gt;();\n        SetPlayer();\n        if (player) SetTeamColor();\n        InitialiseAudio();\n    }\n\n    protected virtual void Update()\n    {\n        if (isSinking)\n        {\n            this.transform.Translate(-Vector3.up * 2.5f * Time.deltaTime);\n        }\n        if (ShouldMakeDecision()) DecideWhatToDo();\n        currentWeaponChargeTime += Time.deltaTime;\n        if (attacking &amp;&amp; !movingIntoPosition &amp;&amp; !aiming)\n        {\n\n            PerformAttack();\n        }\n    }\n\n    /**\n * A child class should only determine other conditions under which a decision should\n * not be made. This could be 'harvesting' for a harvester, for example. Alternatively,\n * an object that never has to make decisions could just return false.\n */\n    protected virtual bool ShouldMakeDecision()\n    {\n        if (!attacking &amp;&amp; !movingIntoPosition &amp;&amp; !aiming)\n        {\n            //we are not doing anything at the moment\n            if (timeSinceLastDecision &gt; timeBetweenDecisions)\n            {\n                timeSinceLastDecision = 0.0f;\n                Debug.Log(\"\");\n                return true;\n            }\n            timeSinceLastDecision += Time.deltaTime;\n        }\n\n\n        return false;\n    }\n\n    protected virtual void DecideWhatToDo()\n    {\n        //determine what should be done by the world object at the current point in time\n        Vector3 currentPosition = transform.position;\n        nearbyObjects = WorkManager.FindNearbyObjects(currentPosition, detectionRange);\n\n        if (CanAttack())\n        {\n            List&lt;WorldObject&gt; enemyObjects = new List&lt;WorldObject&gt;();\n            foreach (WorldObject nearbyObject in nearbyObjects)\n            {\n                Resource resource = nearbyObject.GetComponent&lt;Resource&gt;();\n                if (resource) continue;\n                if (nearbyObject.GetPlayer() != player) enemyObjects.Add(nearbyObject);\n            }\n            WorldObject closestObject = WorkManager.FindNearestWorldObjectInListToPosition(enemyObjects, currentPosition);\n            if (closestObject)\n            {\n                attacking = true;\n                //agent.isStopped = true;\n                BeginAttack(closestObject);\n            }\n        }\n    }\n\n    public Player GetPlayer()\n    {\n        return player;\n    }\n\n    protected virtual void OnGUI()\n    {\n        if (currentlySelected &amp;&amp; !ResourceManager.MenuOpen) DrawSelection();\n    }\n\n    protected virtual void InitialiseAudio()\n    {\n        List&lt;AudioClip&gt; sounds = new List&lt;AudioClip&gt;();\n        List&lt;float&gt; volumes = new List&lt;float&gt;();\n        if (attackVolume &lt; 0.0f) attackVolume = 0.0f;\n        if (attackVolume &gt; 1.0f) attackVolume = 1.0f;\n        sounds.Add(attackSound);\n        volumes.Add(attackVolume);\n        if (selectVolume &lt; 0.0f) selectVolume = 0.0f;\n        if (selectVolume &gt; 1.0f) selectVolume = 1.0f;\n        sounds.Add(selectSound);\n        volumes.Add(selectVolume);\n        if (useWeaponVolume &lt; 0.0f) useWeaponVolume = 0.0f;\n        if (useWeaponVolume &gt; 1.0f) useWeaponVolume = 1.0f;\n        sounds.Add(useWeaponSound);\n        volumes.Add(useWeaponVolume);\n        audioElement = new AudioElement(sounds, volumes, objectName + ObjectId, this.transform);\n    }\n\n    public void SetPlayer()\n    {\n        player = transform.root.GetComponentInChildren&lt;Player&gt;();\n    }\n\n    public bool IsOwnedBy(Player owner)\n    {\n        if (player &amp;&amp; player.Equals(owner))\n        {\n            return true;\n        }\n        else\n        {\n            return false;\n        }\n    }\n\n    public void CalculateBounds()\n    {\n        selectionBounds = new Bounds(transform.position, Vector3.zero);\n        foreach (Renderer r in GetComponentsInChildren&lt;Renderer&gt;())\n        {\n            selectionBounds.Encapsulate(r.bounds);\n        }\n    }\n\n    //!!!!!MULTI SELECTION!!!!!\n\n    public virtual void SetSelection(bool selected, Rect playingArea)\n    {\n        currentlySelected = selected;\n        if (selected)\n        {\n            if (audioElement != null) audioElement.Play(selectSound);\n            this.playingArea = playingArea;\n        }\n        CalculateBounds();\n    }\n\n    //!!!!!MULTI SELECTION!!!!!\n\n    public Bounds GetSelectionBounds()\n    {\n        return selectionBounds;\n    }\n\n    public string[] GetActions()\n    {\n        return actions;\n    }\n\n    public void SetColliders(bool enabled)\n    {\n        Collider[] colliders = GetComponentsInChildren&lt;Collider&gt;();\n        foreach (Collider collider in colliders) collider.enabled = enabled;\n    }\n\n    public void SetTransparentMaterial(Material material, bool storeExistingMaterial)\n    {\n        if (storeExistingMaterial) oldMaterials.Clear();\n        Renderer[] renderers = GetComponentsInChildren&lt;Renderer&gt;();\n        foreach (Renderer renderer in renderers)\n        {\n            if (storeExistingMaterial) oldMaterials.Add(renderer.material);\n            renderer.material = material;\n        }\n    }\n\n    public void RestoreMaterials()\n    {\n        Renderer[] renderers = GetComponentsInChildren&lt;Renderer&gt;();\n        if (oldMaterials.Count == renderers.Length)\n        {\n            for (int i = 0; i &lt; renderers.Length; i++)\n            {\n                renderers[i].material = oldMaterials[i];\n            }\n        }\n    }\n\n    public void SetPlayingArea(Rect playingArea)\n    {\n        this.playingArea = playingArea;\n    }\n\n    public virtual void SetHoverState(GameObject hoverObject)\n    {\n        //only handle input if owned by a human player and currently selected\n        if (player &amp;&amp; player.human &amp;&amp; currentlySelected)\n        {\n            //something other than the ground is being hovered over\n            if (hoverObject.name != \"Ground\")\n            {\n                Player owner = hoverObject.transform.root.GetComponent&lt;Player&gt;();\n                Unit unit = hoverObject.transform.parent.GetComponent&lt;Unit&gt;();\n                Building building = hoverObject.transform.parent.GetComponent&lt;Building&gt;();\n                if (owner)\n                { //the object is owned by a player\n                    if (owner.username == player.username) player.hud.SetCursorState(CursorState.Select);\n                    else if (CanAttack()) player.hud.SetCursorState(CursorState.Attack);\n                    else player.hud.SetCursorState(CursorState.Select);\n                }\n                else if (unit || building &amp;&amp; CanAttack()) player.hud.SetCursorState(CursorState.Attack);\n                else player.hud.SetCursorState(CursorState.Select);\n            }\n        }\n    }\n\n    public virtual bool CanAttack()\n    {\n        //default behaviour needs to be overidden by children\n        return false;\n    }\n\n    public virtual void PerformAction(string actionToPerform)\n    {\n        //it is up to children with specific actions to determine what to do with each of those actions\n    }\n\n    public virtual void MouseClick(GameObject hitObject, Vector3 hitPoint, Player controller)\n    {\n\n        //only handle input if currently selected\n        if (currentlySelected &amp;&amp; hitObject &amp;&amp; hitObject.name != \"Ground\")\n        {\n            WorldObject worldObject = hitObject.transform.parent.GetComponent&lt;WorldObject&gt;();\n            //clicked on another selectable object\n            if (worldObject)\n            {\n                Resource resource = hitObject.transform.parent.GetComponent&lt;Resource&gt;();\n                if (resource &amp;&amp; resource.isEmpty()) return;\n                Player owner = hitObject.transform.root.GetComponent&lt;Player&gt;();\n                if (owner)\n                { //the object is controlled by a player\n                    if (player &amp;&amp; player.human)\n                    { //this object is controlled by a human player\n                      //start attack if object is not owned by the same player and this object can attack, else select\n                        if (player.username != owner.username &amp;&amp; CanAttack())\n                        {\n                            BeginAttack(worldObject);\n                        }\n                        else ChangeSelection(worldObject, controller);\n                    }\n                    else ChangeSelection(worldObject, controller);\n                }\n                else ChangeSelection(worldObject, controller);\n            }\n        }\n    }\n\n    protected virtual void BeginAttack(WorldObject target)\n    {\n        //if (audioElement != null) audioElement.Play(attackSound);\n        this.target = target;\n        if (TargetInRange())\n        {\n            anim.SetBool(\"Attacking\", true);\n            attacking = true;\n            PerformAttack();\n        }\n        else AdjustPosition();\n    }\n\n    protected void SetTeamColor()\n    {\n        TeamColor[] teamColors = GetComponentsInChildren&lt;TeamColor&gt;();\n        foreach (TeamColor teamColor in teamColors) teamColor.GetComponent&lt;Renderer&gt;().material.color = player.teamColor;\n    }\n\n    protected virtual void DrawSelectionBox(Rect selectBox)\n    {\n        GUI.Box(selectBox, \"\");\n        CalculateCurrentHealth(0.35f, 0.65f);\n        DrawHealthBar(selectBox, \"\");\n    }\n\n    protected virtual void CalculateCurrentHealth(float lowSplit, float highSplit)\n    {\n        healthPercentage = (float)hitPoints / (float)maxHitPoints;\n        if (healthPercentage &gt; highSplit) healthStyle.normal.background = ResourceManager.HealthyTexture;\n        else if (healthPercentage &gt; lowSplit) healthStyle.normal.background = ResourceManager.DamagedTexture;\n        else healthStyle.normal.background = ResourceManager.CriticalTexture;\n    }\n\n    protected void DrawHealthBar(Rect selectBox, string label)\n    {\n        healthStyle.padding.top = -20;\n        healthStyle.fontStyle = FontStyle.Bold;\n        GUI.Label(new Rect(selectBox.x, selectBox.y - 7, selectBox.width * healthPercentage, 5), label, healthStyle);\n    }\n\n    protected virtual void AimAtTarget()\n    {\n        aiming = true;\n\n        //this behaviour needs to be specified by a specific object\n    }\n\n    private void ChangeSelection(WorldObject worldObject, Player controller)\n    {\n        //this should be called by the following line, but there is an outside chance it will not\n        SetSelection(false, playingArea);\n        if (controller.SelectedObject) controller.SelectedObject.SetSelection(false, playingArea);\n        controller.SelectedObject = worldObject;\n        worldObject.SetSelection(true, controller.hud.GetPlayingArea());\n    }\n\n    private void DrawSelection()\n    {\n        GUI.skin = ResourceManager.SelectBoxSkin;\n        Rect selectBox = WorkManager.CalculateSelectionBox(selectionBounds, playingArea);\n        //Draw the selection box around the currently selected object, within the bounds of the playing area\n        GUI.BeginGroup(playingArea);\n        DrawSelectionBox(selectBox);\n        GUI.EndGroup();\n    }\n\n    private bool TargetInRange()\n    {\n        Vector3 targetLocation = target.transform.position;\n        Vector3 direction = targetLocation - transform.position;\n        if (direction.sqrMagnitude &lt; weaponRange * weaponRange)\n        {\n            return true;\n        }\n        return false;\n    }\n\n    private void AdjustPosition()\n    {\n\n        Unit self = this as Unit;\n        if (self)\n        {\n            movingIntoPosition = true;\n            Vector3 attackPosition = FindNearestAttackPosition();\n            self.StartMove(attackPosition);\n            attacking = true;\n        }\n        else\n        {\n\n            attacking = false;\n        }\n    }\n\n    private Vector3 FindNearestAttackPosition()\n    {\n        Vector3 targetLocation = target.transform.position;\n        Vector3 direction = targetLocation - transform.position;\n        float targetDistance = direction.magnitude;\n        float distanceToTravel = targetDistance - (0.9f * weaponRange);\n        return Vector3.Lerp(transform.position, targetLocation, distanceToTravel / targetDistance);\n    }\n\n    private void PerformAttack()\n    {\n        if (!target)\n        {\n            attacking = false;\n            anim.SetBool(\"Attacking\", false);\n            anim.SetBool(\"IsRunning\", false);\n            return;\n        }\n        if (!TargetInRange())\n        {\n            AdjustPosition();\n        }\n        else if (!TargetInFrontOfWeapon())\n        {\n            AimAtTarget();\n        }\n        else if (ReadyToFire())\n        {\n            //attacking = true;\n            UseWeapon();\n        }\n        //if (TargetInRange() &amp;&amp; (attacking = true))\n        //{\n        //    AdjustPosition();\n        //}\n    }\n\n    private bool TargetInFrontOfWeapon()\n    {\n        Vector3 targetLocation = target.transform.position;\n        Vector3 direction = targetLocation - transform.position;\n        if (direction.normalized == transform.forward.normalized) return true;\n        else return false;\n    }\n\n    private bool ReadyToFire()\n    {\n        if (currentWeaponChargeTime &gt;= weaponRechargeTime)\n        {\n\n            return true;\n        }\n        return false;\n    }\n\n    protected virtual void UseWeapon()\n    {\n\n        if (audioElement != null &amp;&amp; Time.timeScale &gt; 0) audioElement.Play(useWeaponSound);\n        currentWeaponChargeTime = 0.0f;\n        //this behaviour needs to be specified by a specific object\n    }\n\n    public void TakeDamage(float damage)\n    {\n        //GameObject.Instantiate(impactVisual, target.transform.position, Quaternion.identity);\n        hitPoints -= damage;\n        if (hitPoints &lt;= 0)\n        {\n            Instantiate(explosionPrefab, transform.position + new Vector3(0, 5, 0), Quaternion.identity);\n\n            Instantiate(splat, transform.position, Quaternion.identity);\n\n            Destroy(gameObject);\n        }\n    }\n}\n</code></pre>\n\n<hr>\n\n<pre><code>using UnityEngine;\nusing System.Collections.Generic;\n\nnamespace RTS\n{\n    public static class WorkManager\n    {\n\n\n        public static Rect CalculateSelectionBox(Bounds selectionBounds, Rect playingArea)\n        {\n            //shorthand for the coordinates of the centre of the selection bounds\n            float cx = selectionBounds.center.x;\n            float cy = selectionBounds.center.y;\n            float cz = selectionBounds.center.z;\n            //shorthand for the coordinates of the extents of the selection bounds\n            float ex = selectionBounds.extents.x;\n            float ey = selectionBounds.extents.y;\n            float ez = selectionBounds.extents.z;\n\n            //Determine the screen coordinates for the corners of the selection bounds\n            List&lt;Vector3&gt; corners = new List&lt;Vector3&gt;();\n            corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx + ex, cy + ey, cz + ez)));\n            corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx + ex, cy + ey, cz - ez)));\n            corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx + ex, cy - ey, cz + ez)));\n            corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx - ex, cy + ey, cz + ez)));\n            corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx + ex, cy - ey, cz - ez)));\n            corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx - ex, cy - ey, cz + ez)));\n            corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx - ex, cy + ey, cz - ez)));\n            corners.Add(Camera.main.WorldToScreenPoint(new Vector3(cx - ex, cy - ey, cz - ez)));\n\n            //Determine the bounds on screen for the selection bounds\n            Bounds screenBounds = new Bounds(corners[0], Vector3.zero);\n            for (int i = 1; i &lt; corners.Count; i++)\n            {\n                screenBounds.Encapsulate(corners[i]);\n            }\n\n            //Screen coordinates start in the bottom left corner, rather than the top left corner\n            //this correction is needed to make sure the selection box is drawn in the correct place\n            float selectBoxTop = playingArea.height - (screenBounds.center.y + screenBounds.extents.y);\n            float selectBoxLeft = screenBounds.center.x - screenBounds.extents.x;\n            float selectBoxWidth = 2 * screenBounds.extents.x;\n            float selectBoxHeight = 2 * screenBounds.extents.y;\n\n            return new Rect(selectBoxLeft, selectBoxTop, selectBoxWidth, selectBoxHeight);\n        }\n\n        public static GameObject FindHitObject(Vector3 origin)\n        {\n            Ray ray = Camera.main.ScreenPointToRay(origin);\n            RaycastHit hit;\n            if (Physics.Raycast(ray, out hit, ResourceManager.RayCastLimit)) return hit.collider.gameObject;\n            return null;\n        }\n\n        public static Vector3 FindHitPoint(Vector3 origin)\n        {\n            Ray ray = Camera.main.ScreenPointToRay(origin);\n            RaycastHit hit;\n            Debug.DrawRay(ray.origin, ray.direction * ResourceManager.RayCastLimit, Color.yellow);\n            if (Physics.Raycast(ray, out hit, ResourceManager.RayCastLimit)) return hit.point;\n            return ResourceManager.InvalidPosition;\n        }\n\n        public static List&lt;WorldObject&gt; FindNearbyObjects(Vector3 position, float range)\n        {\n            Collider[] hitColliders = Physics.OverlapSphere(position, range);\n            HashSet&lt;int&gt; nearbyObjectIds = new HashSet&lt;int&gt;();\n            List&lt;WorldObject&gt; nearbyObjects = new List&lt;WorldObject&gt;();\n            for (int i = 0; i &lt; hitColliders.Length; i++)\n            {\n                Transform parent = hitColliders[i].transform.parent;\n                if (parent)\n                {\n                    WorldObject parentObject = parent.GetComponent&lt;WorldObject&gt;();\n                    if (parentObject &amp;&amp; !nearbyObjectIds.Contains(parentObject.ObjectId))\n                    {\n\n                            nearbyObjectIds.Add (parentObject.ObjectId);\n                            nearbyObjects.Add (parentObject);\n\n                    }\n                }\n            }\n            return nearbyObjects;\n        }\n\n        public static WorldObject FindNearestWorldObjectInListToPosition(List&lt;WorldObject&gt; objects, Vector3 position)\n        {\n            if (objects == null || objects.Count == 0) return null;\n            WorldObject nearestObject = objects[0];\n            float sqrDistanceToNearestObject = Vector3.SqrMagnitude(position - nearestObject.transform.position);\n            for (int i = 1; i &lt; objects.Count; i++)\n            {\n                float sqrDistanceToObject = Vector3.SqrMagnitude(position - objects[i].transform.position);\n                if (sqrDistanceToObject &lt; sqrDistanceToNearestObject)\n                {\n                    sqrDistanceToNearestObject = sqrDistanceToObject;\n                    nearestObject = objects[i];\n                }\n            }\n            return nearestObject;\n        }\n    }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android"
+            ],
+            "owner": {
+                "reputation": 893,
+                "user_id": 3004667,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://i.stack.imgur.com/l89dD.jpg?s=128&g=1",
+                "display_name": "Boukharist",
+                "link": "https://stackoverflow.com/users/3004667/boukharist"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 1,
+            "score": -2,
+            "last_activity_date": 1526459899,
+            "creation_date": 1526458213,
+            "question_id": 50365543,
+            "body_markdown": "Hello I&#39;m not great with drawing and animation in Android, I was hoping that someone will help me figure out how to apply shadow for flying effect like the picture below :\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/gvhWp.jpg",
+            "link": "https://stackoverflow.com/questions/50365543/how-to-apply-shadow-underneath-view",
+            "title": "How to apply Shadow Underneath View",
+            "body": "<p>Hello I'm not great with drawing and animation in Android, I was hoping that someone will help me figure out how to apply shadow for flying effect like the picture below :</p>\n\n<p><a href=\"https://i.stack.imgur.com/gvhWp.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/gvhWp.jpg\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "material-ui"
+            ],
+            "owner": {
+                "reputation": 147,
+                "user_id": 7224430,
+                "user_type": "registered",
+                "accept_rate": 45,
+                "profile_image": "https://lh6.googleusercontent.com/-1_ktQ-Cjhr4/AAAAAAAAAAI/AAAAAAAAAAA/Ne8jKTCsVP0/photo.jpg?sz=128",
+                "display_name": "Ben",
+                "link": "https://stackoverflow.com/users/7224430/ben"
+            },
+            "is_answered": false,
+            "view_count": 37,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526459898,
+            "creation_date": 1526397022,
+            "question_id": 50353676,
+            "body_markdown": "I&#39;m trying to customize the design (borders, radius border) of the drop-down element of the material-ui select component. \r\nThe Material UI documentation mentions various properties to override and style the various sub-components, but none for the drop-down itself. The reason for it might be that the drop down renders out of the root component, with position absolute relative to the page. \r\n\r\nAny idea how I can style the dropdown? \r\nHere is a screenshot of the current state of the component: \r\n\r\n[![enter image description here][1]][1]\r\nI was able to customize the design of the input element of the material-ui select component \r\n\r\n\r\n  [1]: https://i.stack.imgur.com/Wa3w2.png",
+            "link": "https://stackoverflow.com/questions/50353676/how-to-change-the-style-of-the-dropdown-element-of-the-material-ui-select-compon",
+            "title": "How to change the style of the dropdown element of the material-ui select component",
+            "body": "<p>I'm trying to customize the design (borders, radius border) of the drop-down element of the material-ui select component. \nThe Material UI documentation mentions various properties to override and style the various sub-components, but none for the drop-down itself. The reason for it might be that the drop down renders out of the root component, with position absolute relative to the page. </p>\n\n<p>Any idea how I can style the dropdown? \nHere is a screenshot of the current state of the component: </p>\n\n<p><a href=\"https://i.stack.imgur.com/Wa3w2.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/Wa3w2.png\" alt=\"enter image description here\"></a>\nI was able to customize the design of the input element of the material-ui select component </p>\n"
+        },
+        {
+            "tags": [
+                "vpn"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 7975369,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/873f029500d5afc062ef8507adeeac36?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Sa1",
+                "link": "https://stackoverflow.com/users/7975369/sa1"
+            },
+            "is_answered": false,
+            "view_count": 4,
+            "closed_date": 1526484477,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526459889,
+            "creation_date": 1526459889,
+            "question_id": 50366072,
+            "body_markdown": "From layman perspective what is the difference between Point to Point, Site to Site and Point to Site VPN connection?\n\nI need to explain this to non technical people. I searched on internet but didn&#39;t find non technical details.\n\n",
+            "link": "https://stackoverflow.com/questions/50366072/point-to-point-and-site-to-site-and-point-to-site-vpn-connection",
+            "closed_reason": "off-topic",
+            "title": "Point to Point and Site to Site and Point to Site VPN connection",
+            "body": "<p>From layman perspective what is the difference between Point to Point, Site to Site and Point to Site VPN connection?</p>\n\n<p>I need to explain this to non technical people. I searched on internet but didn't find non technical details.</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "sql",
+                ".htaccess",
+                "mod-rewrite"
+            ],
+            "owner": {
+                "reputation": 9,
+                "user_id": 8102531,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e2225b19a0c3d711b3efe52ac015ec6d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Darren",
+                "link": "https://stackoverflow.com/users/8102531/darren"
+            },
+            "is_answered": true,
+            "view_count": 27,
+            "accepted_answer_id": 50294409,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526459878,
+            "creation_date": 1526036889,
+            "question_id": 50290978,
+            "body_markdown": "I have made a custom PHP/Sql cms with a dynamic post template called blog-post.php\r\n\r\nI am pulling in the content like so:\r\n\r\nhttp://www.example.com/news/blog-post.php?slug=sample-slug-from-database\r\n\r\nThis allows me to pull in any number of posts using the same template, pulling info from the database.\r\n\r\nI have spent 4 hours trying to achieve the following with htaccess ..\r\n\r\n1. Force a trailing slash instead of .php extension\r\n2. Force blog post urls to show as:\r\n\r\nhttp://www.example.com/sample-slug-from-database/\r\n\r\ninstead of \r\n\r\nhttp://www.example.com/news/blog-post.php?slug=sample-slug-from-database\r\n\r\nAny help is greatly appreciated.",
+            "link": "https://stackoverflow.com/questions/50290978/custom-php-sql-cms-htaccess-rules",
+            "title": "Custom PHP/SQL CMS htaccess rules",
+            "body": "<p>I have made a custom PHP/Sql cms with a dynamic post template called blog-post.php</p>\n\n<p>I am pulling in the content like so:</p>\n\n<p><a href=\"http://www.example.com/news/blog-post.php?slug=sample-slug-from-database\" rel=\"nofollow noreferrer\">http://www.example.com/news/blog-post.php?slug=sample-slug-from-database</a></p>\n\n<p>This allows me to pull in any number of posts using the same template, pulling info from the database.</p>\n\n<p>I have spent 4 hours trying to achieve the following with htaccess ..</p>\n\n<ol>\n<li>Force a trailing slash instead of .php extension</li>\n<li>Force blog post urls to show as:</li>\n</ol>\n\n<p><a href=\"http://www.example.com/sample-slug-from-database/\" rel=\"nofollow noreferrer\">http://www.example.com/sample-slug-from-database/</a></p>\n\n<p>instead of </p>\n\n<p><a href=\"http://www.example.com/news/blog-post.php?slug=sample-slug-from-database\" rel=\"nofollow noreferrer\">http://www.example.com/news/blog-post.php?slug=sample-slug-from-database</a></p>\n\n<p>Any help is greatly appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "spring",
+                "spring-batch"
+            ],
+            "owner": {
+                "reputation": 710,
+                "user_id": 1422434,
+                "user_type": "registered",
+                "accept_rate": 59,
+                "profile_image": "https://lh5.googleusercontent.com/-vXV9eaDfsvc/AAAAAAAAAAI/AAAAAAAAC-U/qEY3fBRqBsc/photo.jpg?sz=128",
+                "display_name": "Genaut",
+                "link": "https://stackoverflow.com/users/1422434/genaut"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526459876,
+            "creation_date": 1526459876,
+            "question_id": 50366069,
+            "body_markdown": "I am facing problems with JdbcPagingItemReader. I am stucked in endless loop. I read about that [itemReader][1] contract **have to return null**, but I don&#39;t manage to implement it correctly. Somebody can show me an example?\r\n\r\n\r\n    public List&lt;TransactionDTO&gt; getTransactions(Integer chunk, LocalDateTime startDate, LocalDateTime endDate)\r\n                throws Exception {\r\n    \r\n            final TransactionMapper transactionMapper = new TransactionMapper();\r\n    \r\n            final SqlPagingQueryProviderFactoryBean sqlPagingQueryProviderFactoryBean = new SqlPagingQueryProviderFactoryBean();\r\n            sqlPagingQueryProviderFactoryBean.setDataSource(dataSource);\r\n            sqlPagingQueryProviderFactoryBean.setSelectClause(env.getProperty(&quot;sql.fromdates.select&quot;));\r\n            sqlPagingQueryProviderFactoryBean.setFromClause(env.getProperty(&quot;sql.fromdates.from&quot;));\r\n            sqlPagingQueryProviderFactoryBean.setWhereClause(env.getProperty(&quot;sql.fromdates.where&quot;));\r\n            sqlPagingQueryProviderFactoryBean.setSortKey(env.getProperty(&quot;sql.fromdates.sort&quot;));\r\n    \r\n            final Map&lt;String, Object&gt; parametros = new HashMap&lt;&gt;();\r\n            parametros.put(&quot;startDate&quot;, startDate);\r\n            parametros.put(&quot;endDate&quot;, endDate);\r\n    \r\n            final JdbcPagingItemReader&lt;TransactionDTO&gt; itemReader = new JdbcPagingItemReader&lt;&gt;();\r\n            itemReader.setDataSource(dataSource);\r\n            itemReader.setQueryProvider(sqlPagingQueryProviderFactoryBean.getObject());\r\n            // TODO esto debe ser el chunk\r\n            itemReader.setPageSize(1);\r\n            itemReader.setFetchSize(1);\r\n            itemReader.setRowMapper(transactionMapper);\r\n            itemReader.afterPropertiesSet();\r\n            itemReader.setParameterValues(parametros);\r\n    \r\n            ExecutionContext executionContext = new ExecutionContext();\r\n            itemReader.open(executionContext);\r\n            List&lt;TransactionDTO&gt; list = new ArrayList&lt;&gt;();\r\n    \r\n            TransactionDTO primerDto = itemReader.read();\r\n            while (primerDto != null) {\r\n                list.add(itemReader.read());\r\n            }\r\n            itemReader.close();\r\n    \r\n            return list;\r\n    \r\n        }\r\n\r\n\r\n  [1]: https://docs.spring.io/spring-batch/trunk/apidocs/org/springframework/batch/item/ItemReader.html",
+            "link": "https://stackoverflow.com/questions/50366069/spring-batch-jdbcpagingitemreader-endless-loop",
+            "title": "Spring batch JdbcPagingItemReader endless loop",
+            "body": "<p>I am facing problems with JdbcPagingItemReader. I am stucked in endless loop. I read about that <a href=\"https://docs.spring.io/spring-batch/trunk/apidocs/org/springframework/batch/item/ItemReader.html\" rel=\"nofollow noreferrer\">itemReader</a> contract <strong>have to return null</strong>, but I don't manage to implement it correctly. Somebody can show me an example?</p>\n\n<pre><code>public List&lt;TransactionDTO&gt; getTransactions(Integer chunk, LocalDateTime startDate, LocalDateTime endDate)\n            throws Exception {\n\n        final TransactionMapper transactionMapper = new TransactionMapper();\n\n        final SqlPagingQueryProviderFactoryBean sqlPagingQueryProviderFactoryBean = new SqlPagingQueryProviderFactoryBean();\n        sqlPagingQueryProviderFactoryBean.setDataSource(dataSource);\n        sqlPagingQueryProviderFactoryBean.setSelectClause(env.getProperty(\"sql.fromdates.select\"));\n        sqlPagingQueryProviderFactoryBean.setFromClause(env.getProperty(\"sql.fromdates.from\"));\n        sqlPagingQueryProviderFactoryBean.setWhereClause(env.getProperty(\"sql.fromdates.where\"));\n        sqlPagingQueryProviderFactoryBean.setSortKey(env.getProperty(\"sql.fromdates.sort\"));\n\n        final Map&lt;String, Object&gt; parametros = new HashMap&lt;&gt;();\n        parametros.put(\"startDate\", startDate);\n        parametros.put(\"endDate\", endDate);\n\n        final JdbcPagingItemReader&lt;TransactionDTO&gt; itemReader = new JdbcPagingItemReader&lt;&gt;();\n        itemReader.setDataSource(dataSource);\n        itemReader.setQueryProvider(sqlPagingQueryProviderFactoryBean.getObject());\n        // TODO esto debe ser el chunk\n        itemReader.setPageSize(1);\n        itemReader.setFetchSize(1);\n        itemReader.setRowMapper(transactionMapper);\n        itemReader.afterPropertiesSet();\n        itemReader.setParameterValues(parametros);\n\n        ExecutionContext executionContext = new ExecutionContext();\n        itemReader.open(executionContext);\n        List&lt;TransactionDTO&gt; list = new ArrayList&lt;&gt;();\n\n        TransactionDTO primerDto = itemReader.read();\n        while (primerDto != null) {\n            list.add(itemReader.read());\n        }\n        itemReader.close();\n\n        return list;\n\n    }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "rules",
+                "snort"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9724566,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Leetm",
+                "link": "https://stackoverflow.com/users/9724566/leetm"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526459860,
+            "creation_date": 1526372277,
+            "last_edit_date": 1526459860,
+            "question_id": 50345446,
+            "body_markdown": "I am a new member about Snort.\r\nI try to write a rule to detect a MS word file which is sent from cloud server to my device by http.\r\nThis is my rule:\r\n\r\n    alert tcp $EXTERNAL any -&gt; $HOME_NET any (msg:&quot;MS word is detected&quot;; content: &quot;.docx&quot;; sid:10000001; rev: 1;)\r\nBut it does not work yet.\r\nDo I missing some things? Please help me. Many thanks.",
+            "link": "https://stackoverflow.com/questions/50345446/snort-rule-to-detect-an-ms-word-file",
+            "title": "Snort rule to detect an MS Word file?",
+            "body": "<p>I am a new member about Snort.\nI try to write a rule to detect a MS word file which is sent from cloud server to my device by http.\nThis is my rule:</p>\n\n<pre><code>alert tcp $EXTERNAL any -&gt; $HOME_NET any (msg:\"MS word is detected\"; content: \".docx\"; sid:10000001; rev: 1;)\n</code></pre>\n\n<p>But it does not work yet.\nDo I missing some things? Please help me. Many thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "sql-server",
+                "common-table-expression",
+                "sql-server-2017"
+            ],
+            "owner": {
+                "reputation": 26,
+                "user_id": 3114290,
+                "user_type": "registered",
+                "accept_rate": 78,
+                "profile_image": "https://www.gravatar.com/avatar/af5c24792a35217df433cde229edfad0?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Blair",
+                "link": "https://stackoverflow.com/users/3114290/blair"
+            },
+            "is_answered": true,
+            "view_count": 52,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1526459852,
+            "creation_date": 1526443826,
+            "last_edit_date": 1526445214,
+            "question_id": 50362344,
+            "body_markdown": "I have this T-SQL query\r\n\r\n    WITH CTE AS \r\n    (\r\n    \tSELECT\t\r\n            m.Season AS &#39;Season&#39;,\r\n\t\t\tSUM(bi.Runs) AS &#39;Runs&#39;,\r\n\t\t\tp.LastName + &#39; &#39; + SUBSTRING(p.FirstName, 1, 1) AS &#39;PlayerName&#39;\t\r\n     \tFROM Player p\r\n    \tJOIN BatInnings bi on bi.fk_Player_Id = p.id  \r\n    \tJOIN Innings i on i.Id = bi.fk_Innings_Id\r\n     \tJOIN Team t on t.id = i.fk_Team_Id\r\n    \tJOIN Match m on m.id = i.fk_Match_Id\r\n    \tWHERE\t\r\n            (p.id = @playerId OR @playerId IS NULL) \r\n            AND m.MatchType IN (@matchType1, @matchType2, @matchType3) \r\n            AND (i.fk_Team_Id = @teamId OR @teamId IS NULL) \r\n            AND (t.fk_Club_Id = @clubId OR @clubId IS NULL)\r\n    \tGROUP BY \r\n            m.season, p.LastName + &#39; &#39; + SUBSTRING(p.FirstName, 1, 1)\r\n    ) \r\n    SELECT CTE.* \r\n    FROM CTE \r\n    WHERE CTE.Runs = (SELECT MAX(CTE2.Runs) \r\n              \t\t  FROM CTE CTE2 \r\n\t\t              WHERE CTE2.Season = CTE.Season) \r\n\tORDER BY CTE.Season\r\n\r\nThat pulls out a list based on the highest runs scorer for each season.  The result will look like this.\r\n\r\n    Season   Runs\tPlayer\r\n    1990/91  689\tTodd D\r\n    1991/92\t 617\tGrantham N\r\n    1992/93\t 838\tTodd D\r\n    1993/94\t 532\tTodd D\r\n    1994/95\t 628\tTodd D\r\n    1995/96\t 584\tDowner M\r\n    1996/97\t 743\tTodd D\r\n    1997/98\t 742  \tBrown S\r\n    1998/99\t 841 \tTodd D\r\n    1999/00\t 902 \tHart M\r\n\r\nI want to further this query to then pull out where each record is higher than the previous selected. So using the list previous, the results from this query would then resemble \r\n\r\n    Season\t Runs\tPlayer\r\n    1990/91\t 689\tTodd D\r\n    1992/93\t 838\tTodd D\r\n    1998/99\t 841\tTodd D\r\n    1999/00\t 902\tHart M\r\n\r\nHappy to provide more information if required.\r\n\r\nThanks\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50362344/select-record-if-value-larger-than-previous-in-sql",
+            "title": "Select record if value larger than previous in SQL",
+            "body": "<p>I have this T-SQL query</p>\n\n<pre><code>WITH CTE AS \n(\n    SELECT  \n        m.Season AS 'Season',\n        SUM(bi.Runs) AS 'Runs',\n        p.LastName + ' ' + SUBSTRING(p.FirstName, 1, 1) AS 'PlayerName' \n    FROM Player p\n    JOIN BatInnings bi on bi.fk_Player_Id = p.id  \n    JOIN Innings i on i.Id = bi.fk_Innings_Id\n    JOIN Team t on t.id = i.fk_Team_Id\n    JOIN Match m on m.id = i.fk_Match_Id\n    WHERE   \n        (p.id = @playerId OR @playerId IS NULL) \n        AND m.MatchType IN (@matchType1, @matchType2, @matchType3) \n        AND (i.fk_Team_Id = @teamId OR @teamId IS NULL) \n        AND (t.fk_Club_Id = @clubId OR @clubId IS NULL)\n    GROUP BY \n        m.season, p.LastName + ' ' + SUBSTRING(p.FirstName, 1, 1)\n) \nSELECT CTE.* \nFROM CTE \nWHERE CTE.Runs = (SELECT MAX(CTE2.Runs) \n                  FROM CTE CTE2 \n                  WHERE CTE2.Season = CTE.Season) \nORDER BY CTE.Season\n</code></pre>\n\n<p>That pulls out a list based on the highest runs scorer for each season.  The result will look like this.</p>\n\n<pre><code>Season   Runs   Player\n1990/91  689    Todd D\n1991/92  617    Grantham N\n1992/93  838    Todd D\n1993/94  532    Todd D\n1994/95  628    Todd D\n1995/96  584    Downer M\n1996/97  743    Todd D\n1997/98  742    Brown S\n1998/99  841    Todd D\n1999/00  902    Hart M\n</code></pre>\n\n<p>I want to further this query to then pull out where each record is higher than the previous selected. So using the list previous, the results from this query would then resemble </p>\n\n<pre><code>Season   Runs   Player\n1990/91  689    Todd D\n1992/93  838    Todd D\n1998/99  841    Todd D\n1999/00  902    Hart M\n</code></pre>\n\n<p>Happy to provide more information if required.</p>\n\n<p>Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "arrays"
+            ],
+            "owner": {
+                "reputation": 369,
+                "user_id": 885144,
+                "user_type": "registered",
+                "accept_rate": 25,
+                "profile_image": "https://www.gravatar.com/avatar/911aab1eaae2d549714e3803d901aeab?s=128&d=identicon&r=PG",
+                "display_name": "Rob",
+                "link": "https://stackoverflow.com/users/885144/rob"
+            },
+            "is_answered": true,
+            "view_count": 84776,
+            "answer_count": 11,
+            "score": 52,
+            "last_activity_date": 1526459851,
+            "creation_date": 1312857662,
+            "last_edit_date": 1410472736,
+            "question_id": 6990855,
+            "body_markdown": "Just wondering if you can give me a hand with this:\r\n\r\nI have a multidimensional array...\r\n\r\n    $my_array = array(    \r\n            0 =&gt;  array(  \r\n                &quot;name&quot;   =&gt; &quot;john&quot;,  \r\n                &quot;id&quot;    =&gt;  4  \r\n            ),  \r\n            1   =&gt;  array(  \r\n                &quot;name&quot; =&gt;  &quot;mark&quot;,  \r\n                &quot;id&quot; =&gt; 152  \r\n            ), \r\n\t    2   =&gt;  array(  \r\n                &quot;name&quot; =&gt;  &quot;Eduard&quot;,  \r\n                &quot;id&quot; =&gt; 152  \r\n            )\r\n    );\r\n\r\nAny idea about what would be the fastest and most efficient way to check if the array $my_array contains any value with the key &quot;id&quot; and its value 152. I don&#39;t need to echo or use any of the values. I just need to check (return true) if the array has any records with the ID &quot;key&quot; and the value &quot;152&quot; in it.",
+            "link": "https://stackoverflow.com/questions/6990855/php-check-if-value-and-key-exist-in-multidimensional-array",
+            "title": "PHP: Check if value and key exist in multidimensional array",
+            "body": "<p>Just wondering if you can give me a hand with this:</p>\n\n<p>I have a multidimensional array...</p>\n\n<pre><code>$my_array = array(    \n        0 =&gt;  array(  \n            \"name\"   =&gt; \"john\",  \n            \"id\"    =&gt;  4  \n        ),  \n        1   =&gt;  array(  \n            \"name\" =&gt;  \"mark\",  \n            \"id\" =&gt; 152  \n        ), \n    2   =&gt;  array(  \n            \"name\" =&gt;  \"Eduard\",  \n            \"id\" =&gt; 152  \n        )\n);\n</code></pre>\n\n<p>Any idea about what would be the fastest and most efficient way to check if the array $my_array contains any value with the key \"id\" and its value 152. I don't need to echo or use any of the values. I just need to check (return true) if the array has any records with the ID \"key\" and the value \"152\" in it.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "generics",
+                "generic-programming"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9193100,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-ZhlW9byixIY/AAAAAAAAAAI/AAAAAAAAAGM/HmrfEWv6OXE/photo.jpg?sz=128",
+                "display_name": "Garruk The Wildspeaker",
+                "link": "https://stackoverflow.com/users/9193100/garruk-the-wildspeaker"
+            },
+            "is_answered": true,
+            "view_count": 46,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526459847,
+            "creation_date": 1526459322,
+            "last_edit_date": 1526459692,
+            "question_id": 50365885,
+            "body_markdown": "I have a generic class and static field in it.\r\n    \r\n    public class SomeGenericClass&lt;T&gt; : ISomeInterface&lt;T&gt; where T : SomeClass\r\n    {\r\n        public static ISomeInterface&lt;T&gt; _someField;\r\n    }\r\n\r\nAnd when I want to change value of this field, I have to change it for each type like this\r\n\r\n    var value = ...;\r\n    SomeGenericClass&lt;Type1&gt;._someField = value;\r\n    SomeGenericClass&lt;Type2&gt;._someField = value;\r\n    // ...\r\n    SomeGenericClass&lt;Type3&gt;._someField = value;\r\n\r\nIs it possible to make it in loop, if I have array of types? I would like to see something like this\r\n\r\n    Type[] types = ... //Array of types\r\n    foreach(type in types){\r\n        SomeGenericClass&lt;type&gt;._someField = value;\r\n    }\r\n\r\nOr something like that.\r\n",
+            "link": "https://stackoverflow.com/questions/50365885/set-static-field-in-generic-class-by-type-dynamically",
+            "title": "Set static field in generic class by type dynamically",
+            "body": "<p>I have a generic class and static field in it.</p>\n\n<pre><code>public class SomeGenericClass&lt;T&gt; : ISomeInterface&lt;T&gt; where T : SomeClass\n{\n    public static ISomeInterface&lt;T&gt; _someField;\n}\n</code></pre>\n\n<p>And when I want to change value of this field, I have to change it for each type like this</p>\n\n<pre><code>var value = ...;\nSomeGenericClass&lt;Type1&gt;._someField = value;\nSomeGenericClass&lt;Type2&gt;._someField = value;\n// ...\nSomeGenericClass&lt;Type3&gt;._someField = value;\n</code></pre>\n\n<p>Is it possible to make it in loop, if I have array of types? I would like to see something like this</p>\n\n<pre><code>Type[] types = ... //Array of types\nforeach(type in types){\n    SomeGenericClass&lt;type&gt;._someField = value;\n}\n</code></pre>\n\n<p>Or something like that.</p>\n"
+        },
+        {
+            "tags": [
+                "tkinter"
+            ],
+            "owner": {
+                "reputation": 19,
+                "user_id": 8044078,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/8fa2bbb1d897bee9c9934d19ba01c303?s=128&d=identicon&r=PG&f=1",
+                "display_name": "J.S",
+                "link": "https://stackoverflow.com/users/8044078/j-s"
+            },
+            "is_answered": false,
+            "view_count": 264,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526459837,
+            "creation_date": 1498409062,
+            "last_edit_date": 1526459837,
+            "question_id": 44748478,
+            "body_markdown": "I am trying to open an external file which contains the styling options for the tkinter, but for some reason it is saying that the file cannot be found. \r\n\r\nHere is the full traceback:\r\n\r\n    Traceback (most recent call last):\r\n      File &quot;C:/Users/stjur/Desktop/STYLING.py&quot;, line 5, in &lt;module&gt;\r\n        root.option_readfile(&#39;optionDB .txt&#39;)\r\n      File &quot;C:\\Users\\stjur\\AppData\\Local\\Programs\\Python\\Python36-32\\lib\\tkinter\\__init__.py&quot;, line 871, in option_readfile\r\n        self.tk.call(&#39;option&#39;, &#39;readfile&#39;, fileName, priority)\r\n    _tkinter.TclError: couldn&#39;t open &quot;optionDB .txt&quot;: no such file or directory\r\n\r\n#my code lines:\r\n    from tkinter import *\r\n    root = Tk()\r\n    root.configure(background=&quot;#4d4d4d&quot;)#TOP LEVEL STYLING\r\n    root.option_readfile(&#39;optionDB .txt&#39;)\r\n\r\n    mytext=Text(root,background=&#39;#101010&#39;,foreground=&#39;#D6D6D6&#39;,borderwidth=18,relief=&#39;sunken&#39;,width=17,height=5)\r\n\r\nI tried to research in different places for the answer, but I could not find it, could someone, please help me?\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/44748478/tkinter-tclerror-couldnt-open-optiondb-txt-no-such-file-or-directory",
+            "title": "_tkinter.TclError: couldn&#39;t open &quot;optionDB .txt&quot;: no such file or directory",
+            "body": "<p>I am trying to open an external file which contains the styling options for the tkinter, but for some reason it is saying that the file cannot be found. </p>\n\n<p>Here is the full traceback:</p>\n\n<pre><code>Traceback (most recent call last):\n  File \"C:/Users/stjur/Desktop/STYLING.py\", line 5, in &lt;module&gt;\n    root.option_readfile('optionDB .txt')\n  File \"C:\\Users\\stjur\\AppData\\Local\\Programs\\Python\\Python36-32\\lib\\tkinter\\__init__.py\", line 871, in option_readfile\n    self.tk.call('option', 'readfile', fileName, priority)\n_tkinter.TclError: couldn't open \"optionDB .txt\": no such file or directory\n</code></pre>\n\n<h1>my code lines:</h1>\n\n<pre><code>from tkinter import *\nroot = Tk()\nroot.configure(background=\"#4d4d4d\")#TOP LEVEL STYLING\nroot.option_readfile('optionDB .txt')\n\nmytext=Text(root,background='#101010',foreground='#D6D6D6',borderwidth=18,relief='sunken',width=17,height=5)\n</code></pre>\n\n<p>I tried to research in different places for the answer, but I could not find it, could someone, please help me?</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net-mvc",
+                "asp.net-mvc-5",
+                "rotativa"
+            ],
+            "owner": {
+                "reputation": 118,
+                "user_id": 8562680,
+                "user_type": "registered",
+                "accept_rate": 73,
+                "profile_image": "https://www.gravatar.com/avatar/947b792bc54b9ac705aea90e2f4f1b6c?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Jack",
+                "link": "https://stackoverflow.com/users/8562680/jack"
+            },
+            "is_answered": false,
+            "view_count": 29,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526459832,
+            "creation_date": 1526444722,
+            "last_edit_date": 1526459832,
+            "question_id": 50362451,
+            "body_markdown": "My application is in asp.net mvc 5 on .net framework version 4.5.2 \r\n\r\nI am using Rotavita to convert view in pdf \r\n\r\nI tried adding Rotavita package by Giorgio Bozio from nugget\r\n\r\n[![enter image description here][1]][1]\r\n\r\nIt get install and added new folder by the name RotaVita in my project with exe file \r\n\r\n[![enter image description here][2]][2]\r\n\r\nBut I am not able to use it in controller as it is not available there \r\n\r\n[![enter image description here][3]][3]\r\n\r\nAfter some googling I found a post suggesting to use Rotavita.MVC by Dmitry Pronin . It get install without any problem and now I am able to use it in controller by including \r\n\r\n    using Rotativa.MVC;\r\n\r\nand in action method\r\n\r\n    return new ActionAsPdf(&quot;Index&quot;, Model) { FileName=&quot;rpt.pdf&quot;};\r\n\r\nIt does return a PDF File but it does not contain anything , a blank pdf file \r\n\r\n   [![enter image description here][4]][4]\r\n\r\nI am using RotaVita in asp.net core 2.0 and its work perfectly , but not in asp.net mvc 5 \r\n\r\nHow can I make it work here?\r\n\r\n  [1]: https://i.stack.imgur.com/glUvh.jpg\r\n  [2]: https://i.stack.imgur.com/S1UhH.jpg\r\n  [3]: https://i.stack.imgur.com/OiSQ7.jpg\r\n  [4]: https://i.stack.imgur.com/RTui8.png",
+            "link": "https://stackoverflow.com/questions/50362451/rotativa-not-working-in-asp-net-mvc-5",
+            "title": "RotaTiva not working in asp.net mvc 5",
+            "body": "<p>My application is in asp.net mvc 5 on .net framework version 4.5.2 </p>\n\n<p>I am using Rotavita to convert view in pdf </p>\n\n<p>I tried adding Rotavita package by Giorgio Bozio from nugget</p>\n\n<p><a href=\"https://i.stack.imgur.com/glUvh.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/glUvh.jpg\" alt=\"enter image description here\"></a></p>\n\n<p>It get install and added new folder by the name RotaVita in my project with exe file </p>\n\n<p><a href=\"https://i.stack.imgur.com/S1UhH.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/S1UhH.jpg\" alt=\"enter image description here\"></a></p>\n\n<p>But I am not able to use it in controller as it is not available there </p>\n\n<p><a href=\"https://i.stack.imgur.com/OiSQ7.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/OiSQ7.jpg\" alt=\"enter image description here\"></a></p>\n\n<p>After some googling I found a post suggesting to use Rotavita.MVC by Dmitry Pronin . It get install without any problem and now I am able to use it in controller by including </p>\n\n<pre><code>using Rotativa.MVC;\n</code></pre>\n\n<p>and in action method</p>\n\n<pre><code>return new ActionAsPdf(\"Index\", Model) { FileName=\"rpt.pdf\"};\n</code></pre>\n\n<p>It does return a PDF File but it does not contain anything , a blank pdf file </p>\n\n<p><a href=\"https://i.stack.imgur.com/RTui8.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/RTui8.png\" alt=\"enter image description here\"></a></p>\n\n<p>I am using RotaVita in asp.net core 2.0 and its work perfectly , but not in asp.net mvc 5 </p>\n\n<p>How can I make it work here?</p>\n"
+        },
+        {
+            "tags": [
+                "linq",
+                "unit-testing",
+                "lambda",
+                "moq",
+                "mstest"
+            ],
+            "owner": {
+                "reputation": 700,
+                "user_id": 137447,
+                "user_type": "registered",
+                "accept_rate": 34,
+                "profile_image": "https://www.gravatar.com/avatar/401fd96e0f4ac0c08a53d05a841a539b?s=128&d=identicon&r=PG",
+                "display_name": "Paul Speranza",
+                "link": "https://stackoverflow.com/users/137447/paul-speranza"
+            },
+            "is_answered": true,
+            "view_count": 420,
+            "accepted_answer_id": 28299166,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1526459823,
+            "creation_date": 1422933888,
+            "last_edit_date": 1422966714,
+            "question_id": 28290843,
+            "body_markdown": "I have a repository with this method\r\n\r\n        public virtual IEnumerable&lt;TEntity&gt; Get(Expression&lt;Func&lt;TEntity, bool&gt;&gt; filter = null, Func&lt;IQueryable&lt;TEntity&gt;, \r\n    IOrderedQueryable&lt;TEntity&gt;&gt; orderBy = null, string includeProperties = &quot;&quot;);\r\n\r\n\r\nI have a method that is using it as such to get a user to work on\r\n\r\n    var user = this.applicationUserRepository.Get(x =&gt; x.EmailAddress == userName).FirstOrDefault();\r\n\r\nIt then calls the same method with a different expression further in the method as follows to check the user working on the first user\r\n\r\n    var changingUser = this.applicationUserRepository.Get(x =&gt; x.Id == changingUserId).FirstOrDefault();\r\n\r\nI am trying to mock the repository with two setups to call it twice in the same test.\r\n\r\n\tstring emailAddress = &quot;myaddresss@test.com&quot;;\r\n\tint changingUserId = 5;\r\n\r\n        var targetUsers = new List&lt;ApplicationUser&gt;\r\n            {\r\n                new ApplicationUser { Id = 1, Password = &quot;Testing123&quot;, EmailAddress = emailAddress }\r\n            };\r\n\r\n\t// Setup the user that will be modified to be found\r\n\tvar mockApplicationUserRepository = new Mock&lt;IRepository&lt;ApplicationUser&gt;&gt;();\r\n        mockApplicationUserRepository\r\n            \t.Setup(aur =&gt; aur.Get(x =&gt; x.EmailAddress == userName, null, string.Empty))\r\n            \t.Returns(targetUsers.AsEnumerable());\r\n\r\n\r\n        // Set up to query the changing user to not be found\r\n        mockApplicationUserRepository\r\n        \t.Setup(aur2 =&gt; aur2.Get(x =&gt; x.Id == changingUserId, null, string.Empty))\r\n        \t.Returns(new List&lt;ApplicationUser&gt;().AsEnumerable());\t// Empty list\r\n\r\n\r\nEven though the second call will never be hit, for this test, I want to learn how to set this up.\r\nWhen I run the test the first call \r\n\r\n    var user = this.applicationUserRepository.Get(x =&gt; x.EmailAddress == userName).FirstOrDefault();\r\n\r\nI get null\r\n\r\nIf I change the mock to have \r\n\r\n\tIt.IsAny&lt;Expression&lt;Func&lt;ApplicationUser, bool&gt;&gt;&gt;()\r\n\r\nI get the expected user back.\r\n\r\n\r\nI can not figure out how I will set the two calls up so it will know which expression to use. Any help will be appreciated.",
+            "link": "https://stackoverflow.com/questions/28290843/mock-same-method-in-a-test-using-moq-with-different-linq-expressions",
+            "title": "Mock same method in a test using Moq with different linq expressions",
+            "body": "<p>I have a repository with this method</p>\n\n<pre><code>    public virtual IEnumerable&lt;TEntity&gt; Get(Expression&lt;Func&lt;TEntity, bool&gt;&gt; filter = null, Func&lt;IQueryable&lt;TEntity&gt;, \nIOrderedQueryable&lt;TEntity&gt;&gt; orderBy = null, string includeProperties = \"\");\n</code></pre>\n\n<p>I have a method that is using it as such to get a user to work on</p>\n\n<pre><code>var user = this.applicationUserRepository.Get(x =&gt; x.EmailAddress == userName).FirstOrDefault();\n</code></pre>\n\n<p>It then calls the same method with a different expression further in the method as follows to check the user working on the first user</p>\n\n<pre><code>var changingUser = this.applicationUserRepository.Get(x =&gt; x.Id == changingUserId).FirstOrDefault();\n</code></pre>\n\n<p>I am trying to mock the repository with two setups to call it twice in the same test.</p>\n\n<pre><code>string emailAddress = \"myaddresss@test.com\";\nint changingUserId = 5;\n\n    var targetUsers = new List&lt;ApplicationUser&gt;\n        {\n            new ApplicationUser { Id = 1, Password = \"Testing123\", EmailAddress = emailAddress }\n        };\n\n// Setup the user that will be modified to be found\nvar mockApplicationUserRepository = new Mock&lt;IRepository&lt;ApplicationUser&gt;&gt;();\n    mockApplicationUserRepository\n            .Setup(aur =&gt; aur.Get(x =&gt; x.EmailAddress == userName, null, string.Empty))\n            .Returns(targetUsers.AsEnumerable());\n\n\n    // Set up to query the changing user to not be found\n    mockApplicationUserRepository\n        .Setup(aur2 =&gt; aur2.Get(x =&gt; x.Id == changingUserId, null, string.Empty))\n        .Returns(new List&lt;ApplicationUser&gt;().AsEnumerable());   // Empty list\n</code></pre>\n\n<p>Even though the second call will never be hit, for this test, I want to learn how to set this up.\nWhen I run the test the first call </p>\n\n<pre><code>var user = this.applicationUserRepository.Get(x =&gt; x.EmailAddress == userName).FirstOrDefault();\n</code></pre>\n\n<p>I get null</p>\n\n<p>If I change the mock to have </p>\n\n<pre><code>It.IsAny&lt;Expression&lt;Func&lt;ApplicationUser, bool&gt;&gt;&gt;()\n</code></pre>\n\n<p>I get the expected user back.</p>\n\n<p>I can not figure out how I will set the two calls up so it will know which expression to use. Any help will be appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "sql-server",
+                "ssms",
+                "sql-insert"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9797936,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/bLbhK.jpg?s=128&g=1",
+                "display_name": "Bobalobdob",
+                "link": "https://stackoverflow.com/users/9797936/bobalobdob"
+            },
+            "is_answered": true,
+            "view_count": 33,
+            "answer_count": 3,
+            "score": 1,
+            "last_activity_date": 1526459822,
+            "creation_date": 1526447272,
+            "last_edit_date": 1526452323,
+            "question_id": 50362805,
+            "body_markdown": "Keep in mind, this IS for homework. I&#39;ve been stuck on this problem for at least a week now.\r\n\r\nI need to add a row to the table `Vendors` for each vendor (each has a `VendorID`, and `VendorName`) that does not have a `VendorState` value of `CA`.\r\n\r\nI&#39;m not quite grasping how to exclude rows with a specific value, but I suspect a sub-query is involved.\r\n\r\nAny help is much appreciated. \r\n\r\nedit--\r\nhere is the question word for word\r\n\r\n&gt; Write an INSERT statement that adds a row to the VendorCopy table for\r\n&gt; each non-California vendor in the Vendors table. (This will result in\r\n&gt; duplicate vendors in the VendorCopy table.)\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50362805/how-can-i-create-duplicate-rows-for-each-row-in-a-table-that-does-not-contain-a",
+            "title": "How can I create duplicate rows for each row in a table that does not contain a specific value?",
+            "body": "<p>Keep in mind, this IS for homework. I've been stuck on this problem for at least a week now.</p>\n\n<p>I need to add a row to the table <code>Vendors</code> for each vendor (each has a <code>VendorID</code>, and <code>VendorName</code>) that does not have a <code>VendorState</code> value of <code>CA</code>.</p>\n\n<p>I'm not quite grasping how to exclude rows with a specific value, but I suspect a sub-query is involved.</p>\n\n<p>Any help is much appreciated. </p>\n\n<p>edit--\nhere is the question word for word</p>\n\n<blockquote>\n  <p>Write an INSERT statement that adds a row to the VendorCopy table for\n  each non-California vendor in the Vendors table. (This will result in\n  duplicate vendors in the VendorCopy table.)</p>\n</blockquote>\n"
+        },
+        {
+            "tags": [
+                "scala",
+                "akka",
+                "actor"
+            ],
+            "owner": {
+                "reputation": 6033,
+                "user_id": 1532045,
+                "user_type": "registered",
+                "accept_rate": 41,
+                "profile_image": "https://www.gravatar.com/avatar/c0f1432bd6834661f8e16d0397f43b00?s=128&d=identicon&r=PG",
+                "display_name": "Avner Barr",
+                "link": "https://stackoverflow.com/users/1532045/avner-barr"
+            },
+            "is_answered": false,
+            "view_count": 35,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526459821,
+            "creation_date": 1526458159,
+            "question_id": 50365530,
+            "body_markdown": "I&#39;m doing something like this:\r\n\r\n    ...lots of surrounding context...\r\n    val actor = context.actorOf(Props(new Actor(...))\r\n    (actor ? message) onComplete {\r\n      case Done =&gt; {\r\n       println(&quot;done&quot;)\r\n       Do stuff with the surrounding context of this actor \r\n      }\r\n      case _ =&gt; {\r\n       println(&quot;got wildcard&quot;) // try to handle error message here\r\n      }\r\n    }\r\n\r\n\r\n`Actor` is failing at initialization with\r\n\r\n`akka.actor.ActorInitializationException` (in that actors context)\r\n\r\nIn the parent actor I am getting `**dead letters encountered.**` \r\nsince `actor` was never created properly and `&quot;message&quot;` couldn&#39;t be delivered.\r\n\r\nIn this scenario the `&quot;ask?&quot;` pattern never returns properly.\r\n\r\nI could create a `SupervisorStrategy` in the parent global level,  but I need to understand the context of the actor that generated the exception and it isn&#39;t possible (or convenient) handling it at the global level\r\n\r\nIs there a way to &quot;catch&quot; the initialization exception in the `&quot;ask&quot;` context `actor ? message`?  \r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50365530/scala-akka-how-to-catch-actorinitializationexception-when-using-ask-pattern",
+            "title": "scala akka how to catch ActorInitializationException when using ask pattern",
+            "body": "<p>I'm doing something like this:</p>\n\n<pre><code>...lots of surrounding context...\nval actor = context.actorOf(Props(new Actor(...))\n(actor ? message) onComplete {\n  case Done =&gt; {\n   println(\"done\")\n   Do stuff with the surrounding context of this actor \n  }\n  case _ =&gt; {\n   println(\"got wildcard\") // try to handle error message here\n  }\n}\n</code></pre>\n\n<p><code>Actor</code> is failing at initialization with</p>\n\n<p><code>akka.actor.ActorInitializationException</code> (in that actors context)</p>\n\n<p>In the parent actor I am getting <code>**dead letters encountered.**</code> \nsince <code>actor</code> was never created properly and <code>\"message\"</code> couldn't be delivered.</p>\n\n<p>In this scenario the <code>\"ask?\"</code> pattern never returns properly.</p>\n\n<p>I could create a <code>SupervisorStrategy</code> in the parent global level,  but I need to understand the context of the actor that generated the exception and it isn't possible (or convenient) handling it at the global level</p>\n\n<p>Is there a way to \"catch\" the initialization exception in the <code>\"ask\"</code> context <code>actor ? message</code>?  </p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "wpf",
+                "xaml",
+                "dwm",
+                "visualbrush"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 4379636,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-LFYOhqUPYS4/AAAAAAAAAAI/AAAAAAAAACg/ACvKzD_Kyc4/photo.jpg?sz=128",
+                "display_name": "Drax",
+                "link": "https://stackoverflow.com/users/4379636/drax"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526459820,
+            "creation_date": 1526459820,
+            "question_id": 50366056,
+            "body_markdown": "I recently discovered the VisualBrush control and have been pondering interesting ways to apply them. My question is: Is it at all possible to find/get/create a Visual from an external Window or screen region which can be used by a VisualBrush in a WPF/XAML Window?\r\n\r\n(I have previously used DWMThumbnails, which *can* be bound to an external Window or even the Desktop, but are just far too inflexible for what I&#39;m looking for. But it&#39;s almost exactly as if it&#39;s a VisualBrush of an external Window, so if the DWM can do it, it must be doable somehow?)\r\n\r\nThanks for any input :)",
+            "link": "https://stackoverflow.com/questions/50366056/is-it-possible-in-wpf-to-bind-a-visualbrush-to-the-visual-of-an-external-hosted",
+            "title": "Is it possible in WPF to Bind a VisualBrush to the Visual of an External (hosted?) Window?",
+            "body": "<p>I recently discovered the VisualBrush control and have been pondering interesting ways to apply them. My question is: Is it at all possible to find/get/create a Visual from an external Window or screen region which can be used by a VisualBrush in a WPF/XAML Window?</p>\n\n<p>(I have previously used DWMThumbnails, which <em>can</em> be bound to an external Window or even the Desktop, but are just far too inflexible for what I'm looking for. But it's almost exactly as if it's a VisualBrush of an external Window, so if the DWM can do it, it must be doable somehow?)</p>\n\n<p>Thanks for any input :)</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "xml",
+                "domdocument",
+                "getelementsbytagname"
+            ],
+            "owner": {
+                "reputation": 7,
+                "user_id": 9704066,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/d95b23527b1914a4b5f86af2a916c100?s=128&d=identicon&r=PG&f=1",
+                "display_name": "nemo",
+                "link": "https://stackoverflow.com/users/9704066/nemo"
+            },
+            "is_answered": false,
+            "view_count": 29,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526459816,
+            "creation_date": 1526371829,
+            "last_edit_date": 1526459816,
+            "question_id": 50345324,
+            "body_markdown": "Via the link [https://www.ncbi.nlm.nih.gov/gene/7128?report=xml&amp;format=text][1] I retrieved an XML format. From this format I retrieved all information between Gene-commentary_headings. Therefore I used DOMDocuments and getElemenetsByTagName. Now, I am trying to retrieve the line; for example with name GeneOntology. GeneOntology is located by the 22 tag of Gene-commmentary_heading. I retrieve only the information that is located within the part of the Gene-commentary_headings. \r\n\r\n    &lt;Gene-commentary_heading&gt;GeneOntology&lt;/Gene-commentary_heading&gt;.\r\n\r\n \r\nNow, I am trying to print for example all tags with the name Other-source_anchor. For example \r\n\r\n    &lt;Other-source_anchor&gt;DNA binding&lt;/Other-source_anchor&gt;\r\n\r\nBut there is also on GOA with the same tag but at higher level. I would like only to retrieve the tags at the level of DNA binding. If I use \r\n\r\n    foreach($node-&gt;getElementsByTagName(&#39;Other-source_anchor&#39;) as $subnode)\r\n\r\nI get no result. if I change $node by $doc, I retrieve all the nodeValues with the tag. How do I make sure that I only retrieve the nodeValues of the Other-source_anchor tag at the level of DNA binding? \r\n\r\nBellow is the code I wrote:\r\n\r\n\r\n    $esearch_test = &quot;https://www.ncbi.nlm.nih.gov/gene/7128?report=xml&amp;format=text&quot;;\r\n    $result = file_get_contents($esearch_test);\r\n    $xml = simplexml_load_string($result);\r\n    \r\n    $doc = new DOMDocument();\r\n    $doc = DOMDocument::loadXML($xml);\r\n    $c = 1;\r\n\r\n    foreach($doc-&gt;getElementsByTagName(&#39;Gene-commentary_heading&#39;) as $node) {\r\n        if ($node-&gt;textContent ==&quot;GeneOntology&quot;){\r\n            // echo &quot;&lt;pre&gt;&quot;.&quot;$c: &quot;.$node-&gt;textContent.&quot;&lt;/pre&gt;&quot;;\r\n            // echo &quot;&lt;pre&gt;&quot;.&quot;$c: &quot;.$node-&gt;nodeName.&quot;&lt;/pre&gt;&quot;;\r\n            // echo &quot;&lt;pre&gt;&quot;.&quot;$c: &quot;.$node-&gt;nodeValue.&quot;&lt;/pre&gt;&quot;;\r\n            foreach ($doc-&gt;getElementsByTagName(&#39;Other-source_anchor&#39;) as $subnode){\r\n                echo &quot;&lt;pre&gt;&quot;.&quot;$c: &quot;.$subnode-&gt;nodeName.&quot;&lt;/pre&gt;&quot;;\r\n                echo &quot;&lt;pre&gt;&quot;.&quot;$c: &quot;.$subnode-&gt;nodeValue.&quot;&lt;/pre&gt;&quot;; \r\n            }\r\n        }\r\n    \r\n        $c++; # 22: GeneOntology\r\n    \r\n    } \r\n\r\n\r\nPart of the xml file I am using in the code above. \r\n\r\n    &lt;Gene-commentary_heading&gt;**GeneOntology**&lt;/Gene-commentary_heading&gt;\r\n          &lt;Gene-commentary_source&gt;\r\n            &lt;Other-source&gt;\r\n              &lt;Other-source_pre-text&gt;Provided by&lt;/Other-source_pre-text&gt;\r\n              &lt;Other-source_anchor&gt;GOA&lt;/Other-source_anchor&gt;\r\n              &lt;Other-source_url&gt;http://www.ebi.ac.uk/GOA/&lt;/Other-source_url&gt;\r\n            &lt;/Other-source&gt;\r\n          &lt;/Gene-commentary_source&gt;\r\n          &lt;Gene-commentary_comment&gt;\r\n            &lt;Gene-commentary&gt;\r\n              &lt;Gene-commentary_type value=&quot;comment&quot;&gt;254&lt;/Gene-commentary_type&gt;\r\n              &lt;Gene-commentary_label&gt;Function&lt;/Gene-commentary_label&gt;\r\n              &lt;Gene-commentary_comment&gt;\r\n                &lt;Gene-commentary&gt;\r\n                  &lt;Gene-commentary_type value=&quot;comment&quot;&gt;254&lt;/Gene-commentary_type&gt;\r\n                  &lt;Gene-commentary_source&gt;\r\n                    &lt;Other-source&gt;\r\n                      &lt;Other-source_src&gt;\r\n                        &lt;Dbtag&gt;\r\n                          &lt;Dbtag_db&gt;GO&lt;/Dbtag_db&gt;\r\n                          &lt;Dbtag_tag&gt;\r\n                            &lt;Object-id&gt;\r\n                              &lt;Object-id_id&gt;3677&lt;/Object-id_id&gt;\r\n                            &lt;/Object-id&gt;\r\n                          &lt;/Dbtag_tag&gt;\r\n                        &lt;/Dbtag&gt;\r\n                      &lt;/Other-source_src&gt;\r\n                      &lt;Other-source_anchor&gt;DNA binding&lt;/Other-source_anchor&gt;\r\n                      &lt;Other-source_post-text&gt;evidence: IEA&lt;/Other-source_post-text&gt;\r\n                    &lt;/Other-source&gt;\r\n                  &lt;/Gene-commentary_source&gt;\r\n                &lt;/Gene-commentary&gt;\r\n                &lt;Gene-commentary&gt;",
+            "link": "https://stackoverflow.com/questions/50345324/how-do-you-print-nodevalue-with-the-same-tag-name-at-diffrent-levels-and-diffr",
+            "title": "How do you print nodeValue with the same tag name (at diffrent levels) and diffrent values?",
+            "body": "<p>Via the link [<a href=\"https://www.ncbi.nlm.nih.gov/gene/7128?report=xml&amp;format=text][1]\" rel=\"nofollow noreferrer\">https://www.ncbi.nlm.nih.gov/gene/7128?report=xml&amp;format=text][1]</a> I retrieved an XML format. From this format I retrieved all information between Gene-commentary_headings. Therefore I used DOMDocuments and getElemenetsByTagName. Now, I am trying to retrieve the line; for example with name GeneOntology. GeneOntology is located by the 22 tag of Gene-commmentary_heading. I retrieve only the information that is located within the part of the Gene-commentary_headings. </p>\n\n<pre><code>&lt;Gene-commentary_heading&gt;GeneOntology&lt;/Gene-commentary_heading&gt;.\n</code></pre>\n\n<p>Now, I am trying to print for example all tags with the name Other-source_anchor. For example </p>\n\n<pre><code>&lt;Other-source_anchor&gt;DNA binding&lt;/Other-source_anchor&gt;\n</code></pre>\n\n<p>But there is also on GOA with the same tag but at higher level. I would like only to retrieve the tags at the level of DNA binding. If I use </p>\n\n<pre><code>foreach($node-&gt;getElementsByTagName('Other-source_anchor') as $subnode)\n</code></pre>\n\n<p>I get no result. if I change $node by $doc, I retrieve all the nodeValues with the tag. How do I make sure that I only retrieve the nodeValues of the Other-source_anchor tag at the level of DNA binding? </p>\n\n<p>Bellow is the code I wrote:</p>\n\n<pre><code>$esearch_test = \"https://www.ncbi.nlm.nih.gov/gene/7128?report=xml&amp;format=text\";\n$result = file_get_contents($esearch_test);\n$xml = simplexml_load_string($result);\n\n$doc = new DOMDocument();\n$doc = DOMDocument::loadXML($xml);\n$c = 1;\n\nforeach($doc-&gt;getElementsByTagName('Gene-commentary_heading') as $node) {\n    if ($node-&gt;textContent ==\"GeneOntology\"){\n        // echo \"&lt;pre&gt;\".\"$c: \".$node-&gt;textContent.\"&lt;/pre&gt;\";\n        // echo \"&lt;pre&gt;\".\"$c: \".$node-&gt;nodeName.\"&lt;/pre&gt;\";\n        // echo \"&lt;pre&gt;\".\"$c: \".$node-&gt;nodeValue.\"&lt;/pre&gt;\";\n        foreach ($doc-&gt;getElementsByTagName('Other-source_anchor') as $subnode){\n            echo \"&lt;pre&gt;\".\"$c: \".$subnode-&gt;nodeName.\"&lt;/pre&gt;\";\n            echo \"&lt;pre&gt;\".\"$c: \".$subnode-&gt;nodeValue.\"&lt;/pre&gt;\"; \n        }\n    }\n\n    $c++; # 22: GeneOntology\n\n} \n</code></pre>\n\n<p>Part of the xml file I am using in the code above. </p>\n\n<pre><code>&lt;Gene-commentary_heading&gt;**GeneOntology**&lt;/Gene-commentary_heading&gt;\n      &lt;Gene-commentary_source&gt;\n        &lt;Other-source&gt;\n          &lt;Other-source_pre-text&gt;Provided by&lt;/Other-source_pre-text&gt;\n          &lt;Other-source_anchor&gt;GOA&lt;/Other-source_anchor&gt;\n          &lt;Other-source_url&gt;http://www.ebi.ac.uk/GOA/&lt;/Other-source_url&gt;\n        &lt;/Other-source&gt;\n      &lt;/Gene-commentary_source&gt;\n      &lt;Gene-commentary_comment&gt;\n        &lt;Gene-commentary&gt;\n          &lt;Gene-commentary_type value=\"comment\"&gt;254&lt;/Gene-commentary_type&gt;\n          &lt;Gene-commentary_label&gt;Function&lt;/Gene-commentary_label&gt;\n          &lt;Gene-commentary_comment&gt;\n            &lt;Gene-commentary&gt;\n              &lt;Gene-commentary_type value=\"comment\"&gt;254&lt;/Gene-commentary_type&gt;\n              &lt;Gene-commentary_source&gt;\n                &lt;Other-source&gt;\n                  &lt;Other-source_src&gt;\n                    &lt;Dbtag&gt;\n                      &lt;Dbtag_db&gt;GO&lt;/Dbtag_db&gt;\n                      &lt;Dbtag_tag&gt;\n                        &lt;Object-id&gt;\n                          &lt;Object-id_id&gt;3677&lt;/Object-id_id&gt;\n                        &lt;/Object-id&gt;\n                      &lt;/Dbtag_tag&gt;\n                    &lt;/Dbtag&gt;\n                  &lt;/Other-source_src&gt;\n                  &lt;Other-source_anchor&gt;DNA binding&lt;/Other-source_anchor&gt;\n                  &lt;Other-source_post-text&gt;evidence: IEA&lt;/Other-source_post-text&gt;\n                &lt;/Other-source&gt;\n              &lt;/Gene-commentary_source&gt;\n            &lt;/Gene-commentary&gt;\n            &lt;Gene-commentary&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "list",
+                "dictionary",
+                "tuples"
+            ],
+            "owner": {
+                "reputation": 23726,
+                "user_id": 104427,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://www.gravatar.com/avatar/2e852d4a44a1d795a9f207bcd30920bc?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Escualo",
+                "link": "https://stackoverflow.com/users/104427/escualo"
+            },
+            "is_answered": true,
+            "view_count": 41291,
+            "accepted_answer_id": 1938638,
+            "answer_count": 11,
+            "score": 51,
+            "last_activity_date": 1526459814,
+            "creation_date": 1261378889,
+            "last_edit_date": 1526459814,
+            "question_id": 1938614,
+            "body_markdown": "I was studying the [difference between lists and tuples][1] (in Python). An obvious one is that tuples are immutable (the values cannot be changed after initial assignment), while lists are mutable.\r\n\r\nA sentence in the article got me: \r\n\r\n&gt; Only immutable elements can be used as\r\n&gt; dictionary keys, and hence only tuples\r\n&gt; and not lists can be used as keys.\r\n\r\nI have a hard time thinking of a situation where I would like to use a tuple as a dictionary key. Can you provide an example problem where this would be the natural, efficient, elegant, or obvious solution?\r\n\r\n**Edit:**\r\n\r\nThanks for your examples. So far I take that a very important application is the caching of function values.\r\n\r\n  [1]: https://docs.python.org/3/faq/design.html#why-are-there-separate-tuple-and-list-data-types",
+            "link": "https://stackoverflow.com/questions/1938614/in-what-case-would-i-use-a-tuple-as-a-dictionary-key",
+            "title": "In what case would I use a tuple as a dictionary key?",
+            "body": "<p>I was studying the <a href=\"https://docs.python.org/3/faq/design.html#why-are-there-separate-tuple-and-list-data-types\" rel=\"nofollow noreferrer\">difference between lists and tuples</a> (in Python). An obvious one is that tuples are immutable (the values cannot be changed after initial assignment), while lists are mutable.</p>\n\n<p>A sentence in the article got me: </p>\n\n<blockquote>\n  <p>Only immutable elements can be used as\n  dictionary keys, and hence only tuples\n  and not lists can be used as keys.</p>\n</blockquote>\n\n<p>I have a hard time thinking of a situation where I would like to use a tuple as a dictionary key. Can you provide an example problem where this would be the natural, efficient, elegant, or obvious solution?</p>\n\n<p><strong>Edit:</strong></p>\n\n<p>Thanks for your examples. So far I take that a very important application is the caching of function values.</p>\n"
+        },
+        {
+            "tags": [
+                "android-studio",
+                "intellij-idea",
+                "github-api",
+                "android-studio-3.2"
+            ],
+            "owner": {
+                "reputation": 5115,
+                "user_id": 3231532,
+                "user_type": "registered",
+                "accept_rate": 40,
+                "profile_image": "https://i.stack.imgur.com/JgfJv.png?s=128&g=1",
+                "display_name": "Kelevandos",
+                "link": "https://stackoverflow.com/users/3231532/kelevandos"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526459808,
+            "creation_date": 1526459808,
+            "question_id": 50366052,
+            "body_markdown": "I just updated to the new 3.2 Canary build of Android Studio and everything seems to work fine, except for Github integration.\r\n\r\nWhen I try to push or pull through the UI, I get the following error:\r\n\r\n    Invocation failed Unexpected Response from Server:  Unauthorized\r\n    java.lang.RuntimeException: Invocation failed Unexpected Response from Server:  Unauthorized\r\n    \tat org.jetbrains.git4idea.http.GitAskPassXmlRpcClient.askPassword(GitAskPassXmlRpcClient.java:65)\r\n    \tat org.jetbrains.git4idea.http.GitAskPassApp.main(GitAskPassApp.java:68)\r\n    Caused by: java.io.IOException: Unexpected Response from Server:  Unauthorized\r\n    \tat org.apache.xmlrpc.LiteXmlRpcTransport.sendRequest(LiteXmlRpcTransport.java:231)\r\n    \tat org.apache.xmlrpc.LiteXmlRpcTransport.sendXmlRpc(LiteXmlRpcTransport.java:90)\r\n\r\nHowever, the test tool under *Settings* **&gt;** *Version Control* **&gt;** *GitHub* works perfectly. So does the console git. And so did the 3.1 AS I used before.\r\n\r\nAny ideas what the reason could be?",
+            "link": "https://stackoverflow.com/questions/50366052/android-studio-3-2-canary-14-github-integration",
+            "title": "Android Studio 3.2 Canary 14 Github integration",
+            "body": "<p>I just updated to the new 3.2 Canary build of Android Studio and everything seems to work fine, except for Github integration.</p>\n\n<p>When I try to push or pull through the UI, I get the following error:</p>\n\n<pre><code>Invocation failed Unexpected Response from Server:  Unauthorized\njava.lang.RuntimeException: Invocation failed Unexpected Response from Server:  Unauthorized\n    at org.jetbrains.git4idea.http.GitAskPassXmlRpcClient.askPassword(GitAskPassXmlRpcClient.java:65)\n    at org.jetbrains.git4idea.http.GitAskPassApp.main(GitAskPassApp.java:68)\nCaused by: java.io.IOException: Unexpected Response from Server:  Unauthorized\n    at org.apache.xmlrpc.LiteXmlRpcTransport.sendRequest(LiteXmlRpcTransport.java:231)\n    at org.apache.xmlrpc.LiteXmlRpcTransport.sendXmlRpc(LiteXmlRpcTransport.java:90)\n</code></pre>\n\n<p>However, the test tool under <em>Settings</em> <strong>></strong> <em>Version Control</em> <strong>></strong> <em>GitHub</em> works perfectly. So does the console git. And so did the 3.1 AS I used before.</p>\n\n<p>Any ideas what the reason could be?</p>\n"
+        },
+        {
+            "tags": [
+                "asp.net",
+                ".net",
+                "nuget",
+                "swashbuckle"
+            ],
+            "owner": {
+                "reputation": 9,
+                "user_id": 1286624,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e1cd0cfe659b46d3545fd17abc0dbd88?s=128&d=identicon&r=PG",
+                "display_name": "Vijay.Gopalakrishna",
+                "link": "https://stackoverflow.com/users/1286624/vijay-gopalakrishna"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526459806,
+            "creation_date": 1526378425,
+            "last_edit_date": 1526459806,
+            "question_id": 50347367,
+            "body_markdown": "We get this error from within team city, when we include Swashbuckle.AspNetCore as part of my .net framework 461 project. \r\n\r\n    error:  error NU1101: Unable to find package Swashbuckle.AspNetCore. No packages exist with this id in source(s): http://teamcity.xyz:80/guestAuth/app/nuget/v1/FeedService.svc/\r\n\r\nWorks and build locally. \r\n\r\nDetails: We are building API, using .net core 2.0 web API, for internal reasons we are deploying it as windows service. Now as .net core 2.0 is platform independent. We had to tweak as below,\r\n\r\n      &lt;PropertyGroup&gt;\r\n        &lt;!--&lt;TargetFramework&gt;netcoreapp2.0&lt;/TargetFramework&gt;--&gt;\r\n        &lt;TargetFrameworks&gt;net461&lt;/TargetFrameworks&gt;\r\n        &lt;OutputType&gt;Exe&lt;/OutputType&gt;\r\n      &lt;/PropertyGroup&gt;\r\n\r\nThis enabled us to deploy it as windows service! This all works well. \r\n\r\nSwagger integration, \r\n\r\n     services.AddSwaggerGen(c =&gt;\r\n                {\r\n                    c.SwaggerDoc(&quot;v1&quot;, new Info\r\n                    {\r\n                    }\r\n                }\r\n\r\n    app.UseStaticFiles();\r\n\r\n\r\n    app.UseSwagger();\r\n    \r\n    app.UseSwaggerUI(s =&gt;\r\n     {\r\n         s.SwaggerEndpoint(&quot;/swagger/v1/swagger.json&quot;, &quot;MY API&quot;);\r\n         s.RoutePrefix = string.Empty;\r\n     });\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50347367/nu1101-unable-to-find-package-swashbuckle-aspnetcore-no-packages-exist-with-th",
+            "title": "NU1101: Unable to find package Swashbuckle.AspNetCore. No packages exist with this id in source(s)",
+            "body": "<p>We get this error from within team city, when we include Swashbuckle.AspNetCore as part of my .net framework 461 project. </p>\n\n<pre><code>error:  error NU1101: Unable to find package Swashbuckle.AspNetCore. No packages exist with this id in source(s): http://teamcity.xyz:80/guestAuth/app/nuget/v1/FeedService.svc/\n</code></pre>\n\n<p>Works and build locally. </p>\n\n<p>Details: We are building API, using .net core 2.0 web API, for internal reasons we are deploying it as windows service. Now as .net core 2.0 is platform independent. We had to tweak as below,</p>\n\n<pre><code>  &lt;PropertyGroup&gt;\n    &lt;!--&lt;TargetFramework&gt;netcoreapp2.0&lt;/TargetFramework&gt;--&gt;\n    &lt;TargetFrameworks&gt;net461&lt;/TargetFrameworks&gt;\n    &lt;OutputType&gt;Exe&lt;/OutputType&gt;\n  &lt;/PropertyGroup&gt;\n</code></pre>\n\n<p>This enabled us to deploy it as windows service! This all works well. </p>\n\n<p>Swagger integration, </p>\n\n<pre><code> services.AddSwaggerGen(c =&gt;\n            {\n                c.SwaggerDoc(\"v1\", new Info\n                {\n                }\n            }\n\napp.UseStaticFiles();\n\n\napp.UseSwagger();\n\napp.UseSwaggerUI(s =&gt;\n {\n     s.SwaggerEndpoint(\"/swagger/v1/swagger.json\", \"MY API\");\n     s.RoutePrefix = string.Empty;\n });\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "css",
+                "angular-cli"
+            ],
+            "owner": {
+                "reputation": 18,
+                "user_id": 831909,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/1bae2cfbdf6333f8f9061295d56bfb59?s=128&d=identicon&r=PG",
+                "display_name": "naresh mesineni",
+                "link": "https://stackoverflow.com/users/831909/naresh-mesineni"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526459806,
+            "creation_date": 1526459806,
+            "question_id": 50366050,
+            "body_markdown": "I have requirement, that depends on device size (desktop or tablet) wants to load the different styles sheets.\r\n\r\nIn my angular project with CLI configuration I have added styles following way.\r\n\r\n     &quot;styles&quot;: [\r\n        &quot;dashboard-control/dashboard-panel.css&quot;,\r\n        &quot;dashboard-control/dashboard-changes.css&quot;,\r\n        &quot;styles.css&quot;\r\n      ],\r\n\r\nI can add the my styles in assests folder and give reference in index.html. using media I can load different styles.\r\n\r\nBut how can I use  media=&#39;screen and (max-width: 1366px)&#39;  in .angular-cli.json\r\n\r\n\r\n\r\nRegards\r\nNaresh \r\n ",
+            "link": "https://stackoverflow.com/questions/50366050/how-to-add-css-media-query-in-angular-cli-josn-angular-5",
+            "title": "How to add css media query in .angular-cli.josn angular 5",
+            "body": "<p>I have requirement, that depends on device size (desktop or tablet) wants to load the different styles sheets.</p>\n\n<p>In my angular project with CLI configuration I have added styles following way.</p>\n\n<pre><code> \"styles\": [\n    \"dashboard-control/dashboard-panel.css\",\n    \"dashboard-control/dashboard-changes.css\",\n    \"styles.css\"\n  ],\n</code></pre>\n\n<p>I can add the my styles in assests folder and give reference in index.html. using media I can load different styles.</p>\n\n<p>But how can I use  media='screen and (max-width: 1366px)'  in .angular-cli.json</p>\n\n<p>Regards\nNaresh </p>\n"
+        },
+        {
+            "tags": [
+                "tomcat"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 6731827,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/104561533329418/picture?type=large",
+                "display_name": "Jian Zhang",
+                "link": "https://stackoverflow.com/users/6731827/jian-zhang"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526459800,
+            "creation_date": 1526458634,
+            "last_edit_date": 1526459800,
+            "question_id": 50365666,
+            "body_markdown": "When I restart my tomcat :\r\n \r\n 1. sh /Users/mac/Documents/server/apache-tomcat-9.0.0.M22/bin/startup.sh\r\n 2. tail -100f /home/prod/xxxx/tomcat/apache-tomcat-9.0.0.M22/logs/catalina.out\r\n\r\n&lt;br&gt;**org.apache.tomcat.util.scan.StandardJarScanner.scan Failed to scan [file:/home/prod/zhangjian/tomcat/apache-tomcat-9.0.0.M22/lib/._tomcat-i18n-fr.jar] from classloader hierarchy**\r\n&lt;br&gt;java.util.zip.ZipException: error in opening zip \r\n&lt;br&gt;   at java.util.zip.ZipFile.open(Native Method)\r\n&lt;br&gt;   at java.util.zip.ZipFile.&lt;init&gt;(ZipFile.java:225)\r\n&lt;br&gt;   at java.util.zip.ZipFile.&lt;init&gt;(ZipFile.java:155)\r\n&lt;br&gt;   at java.util.jar.JarFile.&lt;init&gt;(JarFile.java:166)\r\n&lt;br&gt;   at java.util.jar.JarFile.&lt;init&gt;(JarFile.java:130)\r\n&lt;br&gt;   at org.apache.tomcat.util.scan.JarFileUrlJar.&lt;init&gt;(JarFileUrlJar.java:60)\r\n&lt;br&gt;   at org.apache.tomcat.util.scan.JarFactory.newInstance(JarFactory.java:49)\r\n&lt;br&gt;   at org.apache.tomcat.util.scan.StandardJarScanner.process(StandardJarScanner.java:335)\r\n&lt;br&gt;   at org.apache.tomcat.util.scan.StandardJarScanner.scan(StandardJarScanner.java:285)\r\n&lt;br&gt;   at org.apache.catalina.startup.ContextConfig.processJarsForWebFragments(ContextConfig.java:1900)\r\n&lt;br&gt;   at org.apache.catalina.startup.ContextConfig.webConfig(ContextConfig.java:1126)\r\n&lt;br&gt;&lt;br&gt;**details** as below:\r\n[enter image description here][1]\r\n  [1]: https://i.stack.imgur.com/h5CiT.png",
+            "link": "https://stackoverflow.com/questions/50365666/xorg-apache-tomcat-util-scan-standardjarscanner-scan-failed-to-scan",
+            "title": "xorg.apache.tomcat.util.scan.StandardJarScanner.scan Failed to scan",
+            "body": "<p>When I restart my tomcat :</p>\n\n<ol>\n<li>sh /Users/mac/Documents/server/apache-tomcat-9.0.0.M22/bin/startup.sh</li>\n<li>tail -100f /home/prod/xxxx/tomcat/apache-tomcat-9.0.0.M22/logs/catalina.out</li>\n</ol>\n\n<p><br><strong>org.apache.tomcat.util.scan.StandardJarScanner.scan Failed to scan [file:/home/prod/zhangjian/tomcat/apache-tomcat-9.0.0.M22/lib/._tomcat-i18n-fr.jar] from classloader hierarchy</strong>\n<br>java.util.zip.ZipException: error in opening zip \n<br>   at java.util.zip.ZipFile.open(Native Method)\n<br>   at java.util.zip.ZipFile.(ZipFile.java:225)\n<br>   at java.util.zip.ZipFile.(ZipFile.java:155)\n<br>   at java.util.jar.JarFile.(JarFile.java:166)\n<br>   at java.util.jar.JarFile.(JarFile.java:130)\n<br>   at org.apache.tomcat.util.scan.JarFileUrlJar.(JarFileUrlJar.java:60)\n<br>   at org.apache.tomcat.util.scan.JarFactory.newInstance(JarFactory.java:49)\n<br>   at org.apache.tomcat.util.scan.StandardJarScanner.process(StandardJarScanner.java:335)\n<br>   at org.apache.tomcat.util.scan.StandardJarScanner.scan(StandardJarScanner.java:285)\n<br>   at org.apache.catalina.startup.ContextConfig.processJarsForWebFragments(ContextConfig.java:1900)\n<br>   at org.apache.catalina.startup.ContextConfig.webConfig(ContextConfig.java:1126)\n<br><br><strong>details</strong> as below:\n<a href=\"https://i.stack.imgur.com/h5CiT.png\" rel=\"nofollow noreferrer\">enter image description here</a></p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "spring",
+                "spring-security"
+            ],
+            "owner": {
+                "reputation": 592,
+                "user_id": 508662,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://www.gravatar.com/avatar/89c0bfc625ad401017c2d5aff14ddf78?s=128&d=identicon&r=PG",
+                "display_name": "sachin",
+                "link": "https://stackoverflow.com/users/508662/sachin"
+            },
+            "is_answered": false,
+            "view_count": 22,
+            "answer_count": 1,
+            "score": -2,
+            "last_activity_date": 1526459792,
+            "creation_date": 1526456515,
+            "question_id": 50365012,
+            "body_markdown": "    &lt;security:http entry-point-ref=&quot;casEntryPoint&quot; use-expressions=&quot;true&quot;&gt;\r\n    \r\n    \t&lt;security:intercept-url pattern=&quot;/**&quot; access=&quot;hasAnyRole(All roles)&quot; /&gt;\r\n    \t&lt;security:intercept-url pattern=&quot;/unauthorized&quot; access=&quot;hasRole(&#39;ROLE_UNAUTHORIZED&#39;)&quot;  /&gt;\r\n    \t&lt;security:intercept-url pattern=&quot;/unauthorized&quot; access=&quot;!hasAuthority(&#39;ROLE_SUPER_ADMIN&#39;)&quot; /&gt;\r\n    \r\n    &lt;/security:http&gt;\r\n\r\n\r\nI want to restrict URL from specific roles.\r\n\r\n    &lt;security:intercept-url pattern=&quot;/unauthorized&quot; access=&quot;!hasAuthority(&#39;ROLE_SUPER_ADMIN&#39;)&quot; /&gt;\r\nI have tried but not working.\r\n\r\nRefer image, I logged in as admin still I can access the /unauthorized from Url bar.\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/7wBIh.png",
+            "link": "https://stackoverflow.com/questions/50365012/restrict-specific-url-access-for-specific-role-in-spring-security",
+            "title": "Restrict Specific url access for specific Role in spring security",
+            "body": "<pre><code>&lt;security:http entry-point-ref=\"casEntryPoint\" use-expressions=\"true\"&gt;\n\n    &lt;security:intercept-url pattern=\"/**\" access=\"hasAnyRole(All roles)\" /&gt;\n    &lt;security:intercept-url pattern=\"/unauthorized\" access=\"hasRole('ROLE_UNAUTHORIZED')\"  /&gt;\n    &lt;security:intercept-url pattern=\"/unauthorized\" access=\"!hasAuthority('ROLE_SUPER_ADMIN')\" /&gt;\n\n&lt;/security:http&gt;\n</code></pre>\n\n<p>I want to restrict URL from specific roles.</p>\n\n<pre><code>&lt;security:intercept-url pattern=\"/unauthorized\" access=\"!hasAuthority('ROLE_SUPER_ADMIN')\" /&gt;\n</code></pre>\n\n<p>I have tried but not working.</p>\n\n<p>Refer image, I logged in as admin still I can access the /unauthorized from Url bar.</p>\n\n<p><a href=\"https://i.stack.imgur.com/7wBIh.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/7wBIh.png\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "garbage-collection",
+                "concurrent-mark-sweep"
+            ],
+            "owner": {
+                "reputation": 36447,
+                "user_id": 277683,
+                "user_type": "registered",
+                "accept_rate": 68,
+                "profile_image": "https://www.gravatar.com/avatar/c15311acd88ded73e20238c71adf253f?s=128&d=identicon&r=PG",
+                "display_name": "Konrad Garus",
+                "link": "https://stackoverflow.com/users/277683/konrad-garus"
+            },
+            "is_answered": true,
+            "view_count": 16120,
+            "accepted_answer_id": 9698982,
+            "answer_count": 1,
+            "score": 10,
+            "last_activity_date": 1526459781,
+            "creation_date": 1331711167,
+            "question_id": 9697754,
+            "body_markdown": "I am confused about two parameters that may control when the CMS collector kicks in:\r\n\r\n`MaxHeapFreeRatio` (70% by default)\r\n\r\n`CMSInitiatingOccupancyFraction` (over 90% by default)\r\n\r\nWhat does each of those parameters mean, exactly? When does the collector start (the marking phase), and collect (the sweeping phase)?",
+            "link": "https://stackoverflow.com/questions/9697754/cms-garbage-collector-when-does-it-run",
+            "title": "CMS garbage collector - when does it run?",
+            "body": "<p>I am confused about two parameters that may control when the CMS collector kicks in:</p>\n\n<p><code>MaxHeapFreeRatio</code> (70% by default)</p>\n\n<p><code>CMSInitiatingOccupancyFraction</code> (over 90% by default)</p>\n\n<p>What does each of those parameters mean, exactly? When does the collector start (the marking phase), and collect (the sweeping phase)?</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "visual-studio",
+                "visual-studio-2017",
+                "nunit"
+            ],
+            "owner": {
+                "reputation": 805,
+                "user_id": 3038042,
+                "user_type": "registered",
+                "accept_rate": 72,
+                "profile_image": "https://i.stack.imgur.com/WuiuD.jpg?s=128&g=1",
+                "display_name": "Amete Blessed",
+                "link": "https://stackoverflow.com/users/3038042/amete-blessed"
+            },
+            "is_answered": true,
+            "view_count": 540,
+            "accepted_answer_id": 50366041,
+            "answer_count": 5,
+            "score": 1,
+            "last_activity_date": 1526459777,
+            "creation_date": 1522080364,
+            "last_edit_date": 1522081939,
+            "question_id": 49495900,
+            "body_markdown": "I am using the latest VS2017 version 15.6.4, NUnit3TestAdapter 3.10.0 and Nunit version 3.9.0.0. \r\n\r\nWhen I try to run a unit test in Test Explorer the test are grayed out, when I right click and and run selected tests I see the following error: **No test is available**\r\nHere is how my test class looks\r\n\r\n        [TestFixture]\r\n        public partial class ListViewBOTest\r\n        {\r\n        [Test]\r\n         public void TestSearch_DateTime()\r\n          {\r\n            Assert.AreEqual(1,0);\r\n          }\r\n    \r\n        }\r\n\r\n\r\n\r\n[![Here is a screenshot of my tests][1]][1]\r\n\r\n**Text from output:**\r\n\r\n    [3/26/2018 10:53:55 AM Informational] ------ Run test started ------\r\n    [3/26/2018 10:53:55 AM Informational] NUnit Adapter 3.10.0.21: Test execution started\r\n    [3/26/2018 10:53:55 AM Informational] Running all tests in C:\\Projects\\MVPPlant\\DEV\\CMMSdg.Plant\\CMMSdg.Plant\\Sln.2010\\CMMSdg.Plant.BusinessObjects.Test\\bin\\Debug\\CMMSdg.Plant.BusinessObjects.Test.dll\r\n    [3/26/2018 10:53:56 AM Informational] NUnit failed to load C:\\Projects\\MVPPlant\\DEV\\CMMSdg.Plant\\CMMSdg.Plant\\Sln.2010\\CMMSdg.Plant.BusinessObjects.Test\\bin\\Debug\\CMMSdg.Plant.BusinessObjects.Test.dll\r\n    [3/26/2018 10:53:56 AM Informational] NUnit Adapter 3.10.0.21: Test execution complete\r\n    [3/26/2018 10:53:56 AM Warning] No test is available in C:\\Projects\\MVPPlant\\DEV\\CMMSdg.Plant\\CMMSdg.Plant\\Sln.2010\\CMMSdg.Plant.BusinessObjects.Test\\bin\\Debug\\CMMSdg.Plant.BusinessObjects.Test.dll. Make sure that test discoverer &amp; executors are registered and platform &amp; framework version settings are appropriate and try again.\r\n    [3/26/2018 10:53:56 AM Informational] ========== Run test finished: 0 run (0:00:01.0435303) ==========\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/MVaQb.png",
+            "link": "https://stackoverflow.com/questions/49495900/vs2017-and-nunit-3-9-no-test-is-available",
+            "title": "VS2017 and NUnit 3.9 No test is available",
+            "body": "<p>I am using the latest VS2017 version 15.6.4, NUnit3TestAdapter 3.10.0 and Nunit version 3.9.0.0. </p>\n\n<p>When I try to run a unit test in Test Explorer the test are grayed out, when I right click and and run selected tests I see the following error: <strong>No test is available</strong>\nHere is how my test class looks</p>\n\n<pre><code>    [TestFixture]\n    public partial class ListViewBOTest\n    {\n    [Test]\n     public void TestSearch_DateTime()\n      {\n        Assert.AreEqual(1,0);\n      }\n\n    }\n</code></pre>\n\n<p><a href=\"https://i.stack.imgur.com/MVaQb.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/MVaQb.png\" alt=\"Here is a screenshot of my tests\"></a></p>\n\n<p><strong>Text from output:</strong></p>\n\n<pre><code>[3/26/2018 10:53:55 AM Informational] ------ Run test started ------\n[3/26/2018 10:53:55 AM Informational] NUnit Adapter 3.10.0.21: Test execution started\n[3/26/2018 10:53:55 AM Informational] Running all tests in C:\\Projects\\MVPPlant\\DEV\\CMMSdg.Plant\\CMMSdg.Plant\\Sln.2010\\CMMSdg.Plant.BusinessObjects.Test\\bin\\Debug\\CMMSdg.Plant.BusinessObjects.Test.dll\n[3/26/2018 10:53:56 AM Informational] NUnit failed to load C:\\Projects\\MVPPlant\\DEV\\CMMSdg.Plant\\CMMSdg.Plant\\Sln.2010\\CMMSdg.Plant.BusinessObjects.Test\\bin\\Debug\\CMMSdg.Plant.BusinessObjects.Test.dll\n[3/26/2018 10:53:56 AM Informational] NUnit Adapter 3.10.0.21: Test execution complete\n[3/26/2018 10:53:56 AM Warning] No test is available in C:\\Projects\\MVPPlant\\DEV\\CMMSdg.Plant\\CMMSdg.Plant\\Sln.2010\\CMMSdg.Plant.BusinessObjects.Test\\bin\\Debug\\CMMSdg.Plant.BusinessObjects.Test.dll. Make sure that test discoverer &amp; executors are registered and platform &amp; framework version settings are appropriate and try again.\n[3/26/2018 10:53:56 AM Informational] ========== Run test finished: 0 run (0:00:01.0435303) ==========\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pip",
+                "nltk",
+                "easy-install"
+            ],
+            "owner": {
+                "reputation": 311,
+                "user_id": 2348946,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3698b2cf3cb33b285e77015c6b366490?s=128&d=identicon&r=PG",
+                "display_name": "contentclown",
+                "link": "https://stackoverflow.com/users/2348946/contentclown"
+            },
+            "is_answered": true,
+            "view_count": 100197,
+            "answer_count": 19,
+            "score": 59,
+            "last_activity_date": 1526459771,
+            "creation_date": 1367641761,
+            "last_edit_date": 1502212267,
+            "question_id": 16370583,
+            "body_markdown": "I have a difficult time using pip to install almost anything. I&#39;m new to coding, so I thought maybe this is something I&#39;ve been doing wrong and have opted out to easy_install to get most of what I needed done, which has generally worked. However, now I&#39;m trying to download the nltk library, and neither is getting the job done.\r\n\r\nI tried entering\r\n\r\n    sudo pip install nltk\r\n\r\nbut got the following response:\r\n\r\n    /Library/Frameworks/Python.framework/Versions/2.7/bin/pip run on Sat May  4 00:15:38 2013\r\n    Downloading/unpacking nltk\r\n    \r\n      Getting page https://pypi.python.org/simple/nltk/\r\n      Could not fetch URL [need more reputation to post link]: There was a problem confirming the ssl certificate: &lt;urlopen error [Errno 1] _ssl.c:504: error:0D0890A1:asn1 encoding routines:ASN1_verify:unknown message digest algorithm&gt;\r\n    \r\n      Will skip URL [need more reputation to post link]/simple/nltk/ when looking for download links for nltk\r\n    \r\n      Getting page [need more reputation to post link]/simple/\r\n      Could not fetch URL https://pypi.python. org/simple/: There was a problem confirming the ssl certificate: &lt;urlopen error [Errno 1] _ssl.c:504: error:0D0890A1:asn1 encoding routines:ASN1_verify:unknown message digest algorithm&gt;\r\n    \r\n      Will skip URL [need more reputation to post link] when looking for download links for nltk\r\n    \r\n      Cannot fetch index base URL [need more reputation to post link]\r\n    \r\n      URLs to search for versions for nltk:\r\n      * [need more reputation to post link]\r\n      Getting page [need more reputation to post link]\r\n      Could not fetch URL [need more reputation to post link]: There was a problem confirming the ssl certificate: &lt;urlopen error [Errno 1] _ssl.c:504: error:0D0890A1:asn1 encoding routines:ASN1_verify:unknown message digest algorithm&gt;\r\n    \r\n      Will skip URL [need more reputation to post link] when looking for download links for nltk\r\n    \r\n      Could not find any downloads that satisfy the requirement nltk\r\n    \r\n    No distributions at all found for nltk\r\n    \r\n    Exception information:\r\n    Traceback (most recent call last):\r\n      File &quot;/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/pip-1.3.1-py2.7.egg/pip/basecommand.py&quot;, line 139, in main\r\n        status = self.run(options, args)\r\n      File &quot;/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/pip-1.3.1-py2.7.egg/pip/commands/install.py&quot;, line 266, in run\r\n        requirement_set.prepare_files(finder, force_root_egg_info=self.bundle, bundle=self.bundle)\r\n      File &quot;/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/pip-1.3.1-py2.7.egg/pip/req.py&quot;, line 1026, in prepare_files\r\n        url = finder.find_requirement(req_to_install, upgrade=self.upgrade)\r\n      File &quot;/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/pip-1.3.1-py2.7.egg/pip/index.py&quot;, line 171, in find_requirement\r\n        raise DistributionNotFound(&#39;No distributions at all found for %s&#39; % req)\r\n    DistributionNotFound: No distributions at all found for nltk\r\n    \r\n    --easy_install installed fragments of the library and the code ran into trouble very quickly upon trying to run it.\r\n\r\nAny thoughts on this issue? I&#39;d really appreciate some feedback on how I can either get pip working or something to get around the issue in the meantime.",
+            "link": "https://stackoverflow.com/questions/16370583/pip-issue-installing-almost-any-library",
+            "title": "pip issue installing almost any library",
+            "body": "<p>I have a difficult time using pip to install almost anything. I'm new to coding, so I thought maybe this is something I've been doing wrong and have opted out to easy_install to get most of what I needed done, which has generally worked. However, now I'm trying to download the nltk library, and neither is getting the job done.</p>\n\n<p>I tried entering</p>\n\n<pre><code>sudo pip install nltk\n</code></pre>\n\n<p>but got the following response:</p>\n\n<pre><code>/Library/Frameworks/Python.framework/Versions/2.7/bin/pip run on Sat May  4 00:15:38 2013\nDownloading/unpacking nltk\n\n  Getting page https://pypi.python.org/simple/nltk/\n  Could not fetch URL [need more reputation to post link]: There was a problem confirming the ssl certificate: &lt;urlopen error [Errno 1] _ssl.c:504: error:0D0890A1:asn1 encoding routines:ASN1_verify:unknown message digest algorithm&gt;\n\n  Will skip URL [need more reputation to post link]/simple/nltk/ when looking for download links for nltk\n\n  Getting page [need more reputation to post link]/simple/\n  Could not fetch URL https://pypi.python. org/simple/: There was a problem confirming the ssl certificate: &lt;urlopen error [Errno 1] _ssl.c:504: error:0D0890A1:asn1 encoding routines:ASN1_verify:unknown message digest algorithm&gt;\n\n  Will skip URL [need more reputation to post link] when looking for download links for nltk\n\n  Cannot fetch index base URL [need more reputation to post link]\n\n  URLs to search for versions for nltk:\n  * [need more reputation to post link]\n  Getting page [need more reputation to post link]\n  Could not fetch URL [need more reputation to post link]: There was a problem confirming the ssl certificate: &lt;urlopen error [Errno 1] _ssl.c:504: error:0D0890A1:asn1 encoding routines:ASN1_verify:unknown message digest algorithm&gt;\n\n  Will skip URL [need more reputation to post link] when looking for download links for nltk\n\n  Could not find any downloads that satisfy the requirement nltk\n\nNo distributions at all found for nltk\n\nException information:\nTraceback (most recent call last):\n  File \"/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/pip-1.3.1-py2.7.egg/pip/basecommand.py\", line 139, in main\n    status = self.run(options, args)\n  File \"/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/pip-1.3.1-py2.7.egg/pip/commands/install.py\", line 266, in run\n    requirement_set.prepare_files(finder, force_root_egg_info=self.bundle, bundle=self.bundle)\n  File \"/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/pip-1.3.1-py2.7.egg/pip/req.py\", line 1026, in prepare_files\n    url = finder.find_requirement(req_to_install, upgrade=self.upgrade)\n  File \"/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/pip-1.3.1-py2.7.egg/pip/index.py\", line 171, in find_requirement\n    raise DistributionNotFound('No distributions at all found for %s' % req)\nDistributionNotFound: No distributions at all found for nltk\n\n--easy_install installed fragments of the library and the code ran into trouble very quickly upon trying to run it.\n</code></pre>\n\n<p>Any thoughts on this issue? I'd really appreciate some feedback on how I can either get pip working or something to get around the issue in the meantime.</p>\n"
+        },
+        {
+            "tags": [
+                "jquery",
+                "html"
+            ],
+            "owner": {
+                "reputation": 44,
+                "user_id": 1099757,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://i.stack.imgur.com/9wCQn.jpg?s=128&g=1",
+                "display_name": "Savaş Zorlu",
+                "link": "https://stackoverflow.com/users/1099757/sava%c5%9f-zorlu"
+            },
+            "is_answered": true,
+            "view_count": 18,
+            "accepted_answer_id": 50366033,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1526459763,
+            "creation_date": 1526459271,
+            "question_id": 50365867,
+            "body_markdown": "I found this snippet at https://stackoverflow.com/questions/31474243/show-hide-dynamic-content-with-data-attributes\r\n\r\nIt is a handy snippet to dynamically show and hide divs based on data attributes. \r\n\r\nCan anyone suggest a method to add SHOW ALL option to the menu?\r\n\r\n\r\n\r\n\r\n\r\n&lt;!-- begin snippet: js hide: false console: false babel: false --&gt;\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    var countries = {},\r\n      country;\r\n    $(&#39;.countries li[data-country]&#39;).each(function(i, el) {\r\n      country = $(el).data(&#39;country&#39;);\r\n      countryname = $(el).data(&#39;countryname&#39;);\r\n      if (countries.hasOwnProperty(countryname)) {\r\n        countries[countryname] += 1;\r\n      } else {\r\n        countries[countryname] = 1;\r\n      }\r\n    });\r\n\r\n    for (var key in countries) {\r\n      $(&#39;#menu&#39;).append(&#39;&lt;span data-countrycode=&quot;&#39; + key + &#39;&quot;&gt;&#39; + key + &#39; (&#39; + countries[key] + &#39;)&lt;/span&gt;&#39;);\r\n    }\r\n\r\n    var $list = $(&quot;.countries&quot;);\r\n\r\n    $list.children().detach().sort(function(a, b) {\r\n        return $(a).text().split(&#39; &#39;)[1].localeCompare($(b).text().split(&#39; &#39;)[1]);\r\n    }).appendTo($list);\r\n\r\n\r\n    $(&#39;#menu span&#39;).click(function() {\r\n      var clicked = $(this).data(&#39;countrycode&#39;);\r\n      $(&#39;li[data-countryname=&#39; + clicked + &#39;]&#39;).show(1000);\r\n      $(&#39;li&#39;).not(&#39;[data-countryname=&#39; + clicked + &#39;]&#39;).hide(200);\r\n    });\r\n\r\n&lt;!-- language: lang-css --&gt;\r\n\r\n    #menu span {\r\n      display: inline-block;\r\n      margin-right: 20px;\r\n    }\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;script src=&quot;https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js&quot;&gt;&lt;/script&gt;\r\n    &lt;div id=&quot;menu&quot;&gt;&lt;/div&gt;\r\n\r\n    &lt;ul class=&quot;countries&quot;&gt;\r\n       &lt;li data-country=&quot;country-2&quot; data-countryname=&quot;UK&quot;&gt;Category UK&lt;/li&gt;\r\n       &lt;li data-country=&quot;country-2&quot; data-countryname=&quot;UK&quot;&gt;Category UK&lt;/li&gt;\r\n       &lt;li data-country=&quot;country-2&quot; data-countryname=&quot;UK&quot;&gt;Category UK&lt;/li&gt;\r\n       &lt;li data-country=&quot;country-3&quot; data-countryname=&quot;Germany&quot;&gt;Category Germany&lt;/li&gt;\r\n       &lt;li data-country=&quot;country-1&quot; data-countryname=&quot;France&quot;&gt;Category Alpha&lt;/li&gt;\r\n       &lt;li data-country=&quot;country-1&quot; data-countryname=&quot;France&quot;&gt;Category Beta&lt;/li&gt;\r\n       &lt;li data-country=&quot;country-1&quot; data-countryname=&quot;France&quot;&gt;Category C&lt;/li&gt;\r\n       &lt;li data-country=&quot;country-1&quot; data-countryname=&quot;France&quot;&gt;Category D&lt;/li&gt;\r\n       &lt;li data-country=&quot;country-1&quot; data-countryname=&quot;France&quot;&gt;Category E&lt;/li&gt;\r\n    &lt;/ul&gt;\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50365867/show-hide-dynamic-content-with-data-attributes-and-show-all-results",
+            "title": "Show/hide dynamic content with data attributes and show all results",
+            "body": "<p>I found this snippet at <a href=\"https://stackoverflow.com/questions/31474243/show-hide-dynamic-content-with-data-attributes\">Show/hide dynamic content with data attributes</a></p>\n\n<p>It is a handy snippet to dynamically show and hide divs based on data attributes. </p>\n\n<p>Can anyone suggest a method to add SHOW ALL option to the menu?</p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"false\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-js lang-js prettyprint-override\"><code>var countries = {},\r\n  country;\r\n$('.countries li[data-country]').each(function(i, el) {\r\n  country = $(el).data('country');\r\n  countryname = $(el).data('countryname');\r\n  if (countries.hasOwnProperty(countryname)) {\r\n    countries[countryname] += 1;\r\n  } else {\r\n    countries[countryname] = 1;\r\n  }\r\n});\r\n\r\nfor (var key in countries) {\r\n  $('#menu').append('&lt;span data-countrycode=\"' + key + '\"&gt;' + key + ' (' + countries[key] + ')&lt;/span&gt;');\r\n}\r\n\r\nvar $list = $(\".countries\");\r\n\r\n$list.children().detach().sort(function(a, b) {\r\n    return $(a).text().split(' ')[1].localeCompare($(b).text().split(' ')[1]);\r\n}).appendTo($list);\r\n\r\n\r\n$('#menu span').click(function() {\r\n  var clicked = $(this).data('countrycode');\r\n  $('li[data-countryname=' + clicked + ']').show(1000);\r\n  $('li').not('[data-countryname=' + clicked + ']').hide(200);\r\n});</code></pre>\r\n<pre class=\"snippet-code-css lang-css prettyprint-override\"><code>#menu span {\r\n  display: inline-block;\r\n  margin-right: 20px;\r\n}</code></pre>\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>&lt;script src=\"https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js\"&gt;&lt;/script&gt;\r\n&lt;div id=\"menu\"&gt;&lt;/div&gt;\r\n\r\n&lt;ul class=\"countries\"&gt;\r\n   &lt;li data-country=\"country-2\" data-countryname=\"UK\"&gt;Category UK&lt;/li&gt;\r\n   &lt;li data-country=\"country-2\" data-countryname=\"UK\"&gt;Category UK&lt;/li&gt;\r\n   &lt;li data-country=\"country-2\" data-countryname=\"UK\"&gt;Category UK&lt;/li&gt;\r\n   &lt;li data-country=\"country-3\" data-countryname=\"Germany\"&gt;Category Germany&lt;/li&gt;\r\n   &lt;li data-country=\"country-1\" data-countryname=\"France\"&gt;Category Alpha&lt;/li&gt;\r\n   &lt;li data-country=\"country-1\" data-countryname=\"France\"&gt;Category Beta&lt;/li&gt;\r\n   &lt;li data-country=\"country-1\" data-countryname=\"France\"&gt;Category C&lt;/li&gt;\r\n   &lt;li data-country=\"country-1\" data-countryname=\"France\"&gt;Category D&lt;/li&gt;\r\n   &lt;li data-country=\"country-1\" data-countryname=\"France\"&gt;Category E&lt;/li&gt;\r\n&lt;/ul&gt;</code></pre>\r\n</div>\r\n</div>\r\n</p>\n"
+        },
+        {
+            "tags": [
+                "windows-services",
+                "webcam"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 562173,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/d28af7b60bb7a25ef3f022e379ab7f44?s=128&d=identicon&r=PG",
+                "display_name": "user562173",
+                "link": "https://stackoverflow.com/users/562173/user562173"
+            },
+            "is_answered": true,
+            "view_count": 1452,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526459756,
+            "creation_date": 1297756187,
+            "question_id": 5001051,
+            "body_markdown": "Is it a way to capture video frames from webcam in Windows Service? WIA always need a parent handler which can only be used in Windows client with user interface.\r\n\r\nI need to write a windows service to process webcam frames but I don&#39;t know how to achieve this. Any help is appreciated. Thanks.\r\n\r\nPeter",
+            "link": "https://stackoverflow.com/questions/5001051/how-to-capture-frames-from-webcam-in-windows-service-with-c",
+            "title": "How to capture frames from webcam in Windows Service with C#?",
+            "body": "<p>Is it a way to capture video frames from webcam in Windows Service? WIA always need a parent handler which can only be used in Windows client with user interface.</p>\n\n<p>I need to write a windows service to process webcam frames but I don't know how to achieve this. Any help is appreciated. Thanks.</p>\n\n<p>Peter</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                ".net",
+                "xsd",
+                "wsdl"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 1528951,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/c0bf0d071d7d51bc95640f09cc4e7e0d?s=128&d=identicon&r=PG",
+                "display_name": "cortadillo0815",
+                "link": "https://stackoverflow.com/users/1528951/cortadillo0815"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526459750,
+            "creation_date": 1526458665,
+            "question_id": 50365681,
+            "body_markdown": "i got a local wsdl file referencing two separate Xsd files. \r\nhow can I create the relate [c#] classes to that service ? \r\n\r\nI tried to use wsdl.exe , but it ignores the Xsd files located in the same folder\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50365681/howto-create-code-from-wsdl-and-separated-xsd",
+            "title": "Howto create code from wsdl and separated Xsd",
+            "body": "<p>i got a local wsdl file referencing two separate Xsd files. \nhow can I create the relate [c#] classes to that service ? </p>\n\n<p>I tried to use wsdl.exe , but it ignores the Xsd files located in the same folder</p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "ode",
+                "model-fitting",
+                "initalization"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9794313,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/4910498f325a2ae91bf12cb8b668bac1?s=128&d=identicon&r=PG&f=1",
+                "display_name": "phuong",
+                "link": "https://stackoverflow.com/users/9794313/phuong"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526459741,
+            "creation_date": 1526391064,
+            "last_edit_date": 1526459741,
+            "question_id": 50351566,
+            "body_markdown": "I am doing a model fitting using **minpack.lm** package. The objective function is the residual between my experimental data &amp; my ODE model.\r\n \r\nThe tricky thing is the initial value for my ODE model. So I use a loop to run randomly initial values and keep the best result which minimizes the objective function. \r\nThe problem is that if the random initial value is bad, my model can&#39;t solve the ODE equation, the result I get is either **NAN** or errors such as **the problem not converged** or **number of time steps 1 exceeded maxsteps at t = 0**. So my questions are:\r\n\r\n 1. Is there any way to stop when the initial value is bad and pass to the next initial value in one loop?\r\n 2. Do you have any advice to choose a best initial value than run randomly?\r\n\r\nThanks a lot\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50351566/initial-values-for-non-least-squares-fit-in-r",
+            "title": "Initial values for non least squares fit in R",
+            "body": "<p>I am doing a model fitting using <strong>minpack.lm</strong> package. The objective function is the residual between my experimental data &amp; my ODE model.</p>\n\n<p>The tricky thing is the initial value for my ODE model. So I use a loop to run randomly initial values and keep the best result which minimizes the objective function. \nThe problem is that if the random initial value is bad, my model can't solve the ODE equation, the result I get is either <strong>NAN</strong> or errors such as <strong>the problem not converged</strong> or <strong>number of time steps 1 exceeded maxsteps at t = 0</strong>. So my questions are:</p>\n\n<ol>\n<li>Is there any way to stop when the initial value is bad and pass to the next initial value in one loop?</li>\n<li>Do you have any advice to choose a best initial value than run randomly?</li>\n</ol>\n\n<p>Thanks a lot</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 63
+}

@@ -1,0 +1,847 @@
+{
+    "items": [
+        {
+            "tags": [
+                "javascript",
+                "node.js",
+                "tensorflow.js"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 7767085,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2ffc84920303ba857b4b78ef94095a78?s=128&d=identicon&r=PG&f=1",
+                "display_name": "YMLEE",
+                "link": "https://stackoverflow.com/users/7767085/ymlee"
+            },
+            "is_answered": false,
+            "view_count": 42,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526442065,
+            "creation_date": 1524034189,
+            "question_id": 49892997,
+            "body_markdown": "**mobilenet.js**\r\n\r\n    var loadFrozenModel = require(&#39;@tensorflow/tfjs-converter&#39;);\r\n    var NamedTensorMap = require(&#39;@tensorflow/tfjs-converter&#39;);\r\n    var tfc = require(&#39;@tensorflow/tfjs-core&#39;);\r\n    var IMAGENET_CLASSES = require(&#39;./imagenet_classes&#39;);\r\n\r\n\r\n    const GOOGLE_CLOUD_STORAGE_DIR =     &#39;https://storage.googleapis.com/tfjs-models/savedmodel/&#39;;\r\n    const MODEL_FILE_URL = &#39;mobilenet_v1_1.0_224/optimized_model.pb&#39;;\r\n    const WEIGHT_MANIFEST_FILE_URL = &#39;mobilenet_v1_1.0_224/weights_manifest.json&#39;;\r\n    const INPUT_NODE_NAME = &#39;input&#39;;\r\n    const OUTPUT_NODE_NAME = &#39;MobilenetV1/Predictions/Reshape_1&#39;;\r\n    const PREPROCESS_DIVISOR = tfc.scalar(255 / 2);\r\n\r\n    class MobileNet {\r\n      constructor() {}\r\n\r\n      async load() {\r\n        this.model = await loadFrozenModel(\r\n            GOOGLE_CLOUD_STORAGE_DIR + MODEL_FILE_URL,\r\n            GOOGLE_CLOUD_STORAGE_DIR + WEIGHT_MANIFEST_FILE_URL);\r\n    }\r\n\r\n      dispose() {\r\n        if (this.model) {\r\n          this.model.dispose();\r\n        }\r\n      }\r\n\r\n      predict(input) {\r\n        const preprocessedInput = tfc.div(\r\n            tfc.sub(input.asType(&#39;float32&#39;), PREPROCESS_DIVISOR),\r\n             PREPROCESS_DIVISOR);\r\n        const reshapedInput =\r\n            preprocessedInput.reshape([1, ...preprocessedInput.shape]);\r\n        const dict = {};\r\n        dict[INPUT_NODE_NAME] = reshapedInput;\r\n        return this.model.execute(dict, OUTPUT_NODE_NAME);\r\n      }\r\n\r\n      getTopKClasses(predictions, topK) {\r\n        const values = predictions.dataSync();\r\n        predictions.dispose();\r\n\r\n        let predictionList = [];\r\n        for (let i = 0; i &lt; values.length; i++) {\r\n          predictionList.push({value: values[i], index: i});\r\n        }\r\n        predictionList = predictionList\r\n                             .sort((a, b) =&gt; {\r\n                               return b.value - a.value;\r\n                             })\r\n                             .slice(0, topK);\r\n        return predictionList.map(x =&gt; {\r\n          return {label: IMAGENET_CLASSES[x.index], value: x.value};\r\n        });\r\n      }\r\n    }\r\n\r\n    module.exports = MobileNet;\r\n\r\n**test.js**\r\n\r\n      var tfc = require(&#39;@tensorflow/tfjs-core&#39;);\r\n      var MobileNet = require(&#39;./mobilenet&#39;);\r\n      var fs = require(&#39;fs&#39;);\r\n      var image = require(&#39;get-image-data&#39;)\r\n\r\n      var i = 0;\r\n\r\n      var meta;\r\n\r\n      image(&#39;./cat.jpg&#39;, function(err, getImageData){\r\n        if(err) throw err;\r\n        console.log(&#39;start to image data &#39;);\r\n\r\n        console.log(i++);\r\n\r\n        console.log(&quot;meta : &quot; + getImageData.data.length);\r\n        console.log(&quot;getImageData :&quot;+getImageData);\r\n  \r\n        const mobileNet = new MobileNet();\r\n        console.time(&#39;Loading of model&#39;);\r\n\r\n        // await mobileNet.load();\r\n        console.timeEnd(&#39;Loading of model&#39;);\r\n        console.log(&quot;maybee this is error on the data type&quot;);\r\n\r\n        const pixels = tfc.fromPixels(image);\r\n\r\n        console.time(&#39;First prediction&#39;);\r\n        let result = mobileNet.predict(pixels);\r\n        const topK = mobileNet.getTopKClasses(result, 5);\r\n        console.timeEnd(&#39;First prediction&#39;);\r\n\r\n        resultElement.innerText = &#39;&#39;;\r\n        topK.forEach(x =&gt; {\r\n          resultElement.innerText += `${x.value.toFixed(3)}: ${x.label}\\n`;\r\n        });\r\n\r\n        console.time(&#39;Subsequent predictions&#39;);\r\n        result = mobileNet.predict(pixels);\r\n        mobileNet.getTopKClasses(result, 5);\r\n        console.timeEnd(&#39;Subsequent predictions&#39;);\r\n    \r\n        mobileNet.dispose();\r\n      });\r\n\r\n\r\nI want to analyze the image using the tensorflow.js.\r\nBut it doesn&#39;t work.\r\n\r\nReferenceError: ImageData is not defined\r\n    at MathBackendCPU.fromPixels (/Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/@tensorflow/tfjs-core/dist/kernels/backend_cpu.js:75:31)\r\n    at Engine.fromPixels (/Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/@tensorflow/tfjs-core/dist/engine.js:292:29)\r\n    at ArrayOps.fromPixels (/Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/@tensorflow/tfjs-core/dist/ops/array_ops.js:195:41)\r\n    at /Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/@tensorflow/tfjs-core/dist/ops/operation.js:11:61\r\n    at Object.Tracking.tidy (/Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/@tensorflow/tfjs-core/dist/tracking.js:36:22)\r\n    at Object.descriptor.value [as fromPixels] (/Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/@tensorflow/tfjs-core/dist/ops/operation.js:11:26)\r\n    at /Users/leeyongmin/Documents/tfjs-converter-master-2/demo/test.js:26:22\r\n    at /Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/get-image-data/index.js:18:7\r\n    at load (/Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/get-image/server.js:18:5)\r\n    at FSReqWrap.readFileAfterClose [as oncomplete] (fs.js:511:3)\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/49892997/i-would-like-to-analyze-the-image-with-tensorflw-js-nodejs",
+            "title": "I would like to analyze the image with tensorflw.js - nodejs",
+            "body": "<p><strong>mobilenet.js</strong></p>\n\n<pre><code>var loadFrozenModel = require('@tensorflow/tfjs-converter');\nvar NamedTensorMap = require('@tensorflow/tfjs-converter');\nvar tfc = require('@tensorflow/tfjs-core');\nvar IMAGENET_CLASSES = require('./imagenet_classes');\n\n\nconst GOOGLE_CLOUD_STORAGE_DIR =     'https://storage.googleapis.com/tfjs-models/savedmodel/';\nconst MODEL_FILE_URL = 'mobilenet_v1_1.0_224/optimized_model.pb';\nconst WEIGHT_MANIFEST_FILE_URL = 'mobilenet_v1_1.0_224/weights_manifest.json';\nconst INPUT_NODE_NAME = 'input';\nconst OUTPUT_NODE_NAME = 'MobilenetV1/Predictions/Reshape_1';\nconst PREPROCESS_DIVISOR = tfc.scalar(255 / 2);\n\nclass MobileNet {\n  constructor() {}\n\n  async load() {\n    this.model = await loadFrozenModel(\n        GOOGLE_CLOUD_STORAGE_DIR + MODEL_FILE_URL,\n        GOOGLE_CLOUD_STORAGE_DIR + WEIGHT_MANIFEST_FILE_URL);\n}\n\n  dispose() {\n    if (this.model) {\n      this.model.dispose();\n    }\n  }\n\n  predict(input) {\n    const preprocessedInput = tfc.div(\n        tfc.sub(input.asType('float32'), PREPROCESS_DIVISOR),\n         PREPROCESS_DIVISOR);\n    const reshapedInput =\n        preprocessedInput.reshape([1, ...preprocessedInput.shape]);\n    const dict = {};\n    dict[INPUT_NODE_NAME] = reshapedInput;\n    return this.model.execute(dict, OUTPUT_NODE_NAME);\n  }\n\n  getTopKClasses(predictions, topK) {\n    const values = predictions.dataSync();\n    predictions.dispose();\n\n    let predictionList = [];\n    for (let i = 0; i &lt; values.length; i++) {\n      predictionList.push({value: values[i], index: i});\n    }\n    predictionList = predictionList\n                         .sort((a, b) =&gt; {\n                           return b.value - a.value;\n                         })\n                         .slice(0, topK);\n    return predictionList.map(x =&gt; {\n      return {label: IMAGENET_CLASSES[x.index], value: x.value};\n    });\n  }\n}\n\nmodule.exports = MobileNet;\n</code></pre>\n\n<p><strong>test.js</strong></p>\n\n<pre><code>  var tfc = require('@tensorflow/tfjs-core');\n  var MobileNet = require('./mobilenet');\n  var fs = require('fs');\n  var image = require('get-image-data')\n\n  var i = 0;\n\n  var meta;\n\n  image('./cat.jpg', function(err, getImageData){\n    if(err) throw err;\n    console.log('start to image data ');\n\n    console.log(i++);\n\n    console.log(\"meta : \" + getImageData.data.length);\n    console.log(\"getImageData :\"+getImageData);\n\n    const mobileNet = new MobileNet();\n    console.time('Loading of model');\n\n    // await mobileNet.load();\n    console.timeEnd('Loading of model');\n    console.log(\"maybee this is error on the data type\");\n\n    const pixels = tfc.fromPixels(image);\n\n    console.time('First prediction');\n    let result = mobileNet.predict(pixels);\n    const topK = mobileNet.getTopKClasses(result, 5);\n    console.timeEnd('First prediction');\n\n    resultElement.innerText = '';\n    topK.forEach(x =&gt; {\n      resultElement.innerText += `${x.value.toFixed(3)}: ${x.label}\\n`;\n    });\n\n    console.time('Subsequent predictions');\n    result = mobileNet.predict(pixels);\n    mobileNet.getTopKClasses(result, 5);\n    console.timeEnd('Subsequent predictions');\n\n    mobileNet.dispose();\n  });\n</code></pre>\n\n<p>I want to analyze the image using the tensorflow.js.\nBut it doesn't work.</p>\n\n<p>ReferenceError: ImageData is not defined\n    at MathBackendCPU.fromPixels (/Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/@tensorflow/tfjs-core/dist/kernels/backend_cpu.js:75:31)\n    at Engine.fromPixels (/Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/@tensorflow/tfjs-core/dist/engine.js:292:29)\n    at ArrayOps.fromPixels (/Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/@tensorflow/tfjs-core/dist/ops/array_ops.js:195:41)\n    at /Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/@tensorflow/tfjs-core/dist/ops/operation.js:11:61\n    at Object.Tracking.tidy (/Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/@tensorflow/tfjs-core/dist/tracking.js:36:22)\n    at Object.descriptor.value [as fromPixels] (/Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/@tensorflow/tfjs-core/dist/ops/operation.js:11:26)\n    at /Users/leeyongmin/Documents/tfjs-converter-master-2/demo/test.js:26:22\n    at /Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/get-image-data/index.js:18:7\n    at load (/Users/leeyongmin/Documents/tfjs-converter-master-2/demo/node_modules/get-image/server.js:18:5)\n    at FSReqWrap.readFileAfterClose [as oncomplete] (fs.js:511:3)</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "ecmascript-6"
+            ],
+            "owner": {
+                "reputation": 333,
+                "user_id": 4963770,
+                "user_type": "registered",
+                "accept_rate": 59,
+                "profile_image": "https://i.stack.imgur.com/7CO67.jpg?s=128&g=1",
+                "display_name": "Aboo Pallikara",
+                "link": "https://stackoverflow.com/users/4963770/aboo-pallikara"
+            },
+            "is_answered": true,
+            "view_count": 54,
+            "closed_date": 1510378871,
+            "accepted_answer_id": 47224230,
+            "answer_count": 2,
+            "score": -1,
+            "last_activity_date": 1526442052,
+            "creation_date": 1510320852,
+            "last_edit_date": 1526442052,
+            "question_id": 47224002,
+            "body_markdown": "One Object inside another Object and inside an Array.The data structure is \r\n\r\n    {\r\n    &quot;_id&quot; : &quot;BXPqcoCYSXPQNkq9S&quot;,\r\n    &quot;client_id&quot; : &quot;REzch3X67Efm2bCri&quot;,\r\n   \r\n    &quot;locations&quot; : [ \r\n        &quot;kochi&quot;, \r\n        &quot;trivandrum&quot;\r\n    ],\r\n    &quot;tags&quot; : {\r\n        &quot;status&quot; : [ \r\n                            &quot;Active&quot;, \r\n                            &quot;Paused&quot;\r\n        ],\r\n       &quot;category&quot; : [ \r\n                            &quot;Display&quot;, \r\n                            &quot;Search&quot;\r\n        ]\r\n\r\n\r\n\r\n     \r\n     }\r\n    }\r\nMy Question is How to get Output is ***status*** and ***category*** ? \r\n\r\nI am Alredy used to find active and Paused Method is  \r\n\r\n    profile.map((data)=&gt;(\r\n          \r\n      console.log(data.tags[&#39;status&#39;]) //Active \r\n                                      //Paused\r\n      ))\r\n\r\nHow to get value without name Specifeid ***status*** ?",
+            "link": "https://stackoverflow.com/questions/47224002/how-to-get-a-key-name-object-of-object-in-mapping-function",
+            "closed_reason": "duplicate",
+            "title": "How to get a key name object of object in mapping function",
+            "body": "<p>One Object inside another Object and inside an Array.The data structure is </p>\n\n<pre><code>{\n\"_id\" : \"BXPqcoCYSXPQNkq9S\",\n\"client_id\" : \"REzch3X67Efm2bCri\",\n\n\"locations\" : [ \n    \"kochi\", \n    \"trivandrum\"\n],\n\"tags\" : {\n    \"status\" : [ \n                        \"Active\", \n                        \"Paused\"\n    ],\n   \"category\" : [ \n                        \"Display\", \n                        \"Search\"\n    ]\n\n\n\n\n }\n}\n</code></pre>\n\n<p>My Question is How to get Output is <strong><em>status</em></strong> and <strong><em>category</em></strong> ? </p>\n\n<p>I am Alredy used to find active and Paused Method is  </p>\n\n<pre><code>profile.map((data)=&gt;(\n\n  console.log(data.tags['status']) //Active \n                                  //Paused\n  ))\n</code></pre>\n\n<p>How to get value without name Specifeid <strong><em>status</em></strong> ?</p>\n"
+        },
+        {
+            "tags": [
+                "mongodb",
+                "retrofit2"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9688419,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9b7f6e9705006f697ff7cef68fd6a331?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Kyaw Min Htwe",
+                "link": "https://stackoverflow.com/users/9688419/kyaw-min-htwe"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "closed_date": 1526436117,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526442039,
+            "creation_date": 1526435893,
+            "question_id": 50361418,
+            "body_markdown": "I&#39;m beginner and I&#39;m trying to get one user data in MongoDB with retrofit.I already got create and get all users(CR).In my case, `db.users.findOne({})`.It&#39;s work in commend line and not work in coding of server side.Although I checked `request.params.id`, it&#39;s also right.Please help me.\r\n[Commendline check][1]\r\n\r\n\r\n[Serverside code][2]\r\n\r\n[Postman check][3]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/bTZjb.png\r\n  [2]: https://i.stack.imgur.com/eiL97.png\r\n  [3]: https://i.stack.imgur.com/3DtGg.png",
+            "link": "https://stackoverflow.com/questions/50361418/mongodb-findone-return-404-not-found-in-postman-but-in-commend-line-it-comes",
+            "closed_reason": "duplicate",
+            "title": "MongoDB findOne() return 404 &quot;Not found&quot; in Postman but in commend line it comes out",
+            "body": "<p>I'm beginner and I'm trying to get one user data in MongoDB with retrofit.I already got create and get all users(CR).In my case, <code>db.users.findOne({})</code>.It's work in commend line and not work in coding of server side.Although I checked <code>request.params.id</code>, it's also right.Please help me.\n<a href=\"https://i.stack.imgur.com/bTZjb.png\" rel=\"nofollow noreferrer\">Commendline check</a></p>\n\n<p><a href=\"https://i.stack.imgur.com/eiL97.png\" rel=\"nofollow noreferrer\">Serverside code</a></p>\n\n<p><a href=\"https://i.stack.imgur.com/3DtGg.png\" rel=\"nofollow noreferrer\">Postman check</a></p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "itext",
+                "sap",
+                "webdynpro"
+            ],
+            "owner": {
+                "reputation": 110,
+                "user_id": 2206834,
+                "user_type": "registered",
+                "accept_rate": 46,
+                "profile_image": "https://www.gravatar.com/avatar/382939f2982a0c5b92fd03323da8dfca?s=128&d=identicon&r=PG",
+                "display_name": "user2206834",
+                "link": "https://stackoverflow.com/users/2206834/user2206834"
+            },
+            "is_answered": false,
+            "view_count": 488,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526442039,
+            "creation_date": 1387188156,
+            "last_edit_date": 1481318301,
+            "question_id": 20608016,
+            "body_markdown": "I&#39;m trying to fill an existing table in my PDF.\r\nI found some examples on iText but they always create a new table and then fills it.\r\n\r\nIn my case I have already created a table and now I want to add rows to this?\r\nIs it possible to do this?",
+            "link": "https://stackoverflow.com/questions/20608016/itext-filling-existing-table-pdf",
+            "title": "iText Filling existing table PDF",
+            "body": "<p>I'm trying to fill an existing table in my PDF.\nI found some examples on iText but they always create a new table and then fills it.</p>\n\n<p>In my case I have already created a table and now I want to add rows to this?\nIs it possible to do this?</p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "dataframe",
+                "reshape",
+                "spread"
+            ],
+            "owner": {
+                "reputation": 474,
+                "user_id": 4941925,
+                "user_type": "registered",
+                "accept_rate": 98,
+                "profile_image": "https://www.gravatar.com/avatar/ce71cea96a8206a73716ea3533c94fbb?s=128&d=identicon&r=PG&f=1",
+                "display_name": "costebk08",
+                "link": "https://stackoverflow.com/users/4941925/costebk08"
+            },
+            "is_answered": true,
+            "view_count": 32,
+            "accepted_answer_id": 50355509,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1526442034,
+            "creation_date": 1526402761,
+            "last_edit_date": 1526403171,
+            "question_id": 50355406,
+            "body_markdown": "I have data that looks like the following:\r\n\r\n    library(dplyr)\r\n    library(tidyr)\r\n    a &lt;- data_frame(type=c(&quot;A&quot;, &quot;A&quot;, &quot;B&quot;, &quot;B&quot;, &quot;C&quot;, &quot;D&quot;))\r\n    print(a)\r\n    # A tibble: 6 x 1\r\n    type \r\n    &lt;chr&gt;\r\n    1 A    \r\n    2 A    \r\n    3 B    \r\n    4 B    \r\n    5 C    \r\n    6 D\r\nWhere `type` contains categorical information.  I am trying to convert each category in `type` into its own column coded as 1 if a `type` is present and 0 if not; thus, the final result would look like:\r\n \r\n\r\n    b &lt;- data_frame(A=c(1, 1, 0, 0, 0, 0),\r\n                    B=c(0, 0, 1, 1, 0, 0),\r\n                    C=c(0, 0, 0, 0, 1, 0),\r\n                    D=c(0, 0, 0, 0, 0, 1))\r\n\r\n       # A tibble: 6 x 4\r\n         A     B     C     D\r\n       &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;\r\n    1    1.    0.    0.    0.\r\n    2    1.    0.    0.    0.\r\n    3    0.    1.    0.    0.\r\n    4    0.    1.    0.    0.\r\n    5    0.    0.    1.    0.\r\n    6    0.    0.    0.    1.\r\n\r\nI have tried the following:\r\n\r\n    a$dat &lt;- 1\r\n    spread(a, type, dat)\r\n\r\nHowever, it does not work as there are multiple instances of some of the categories.  Any help would be appreciated.  Thank you!",
+            "link": "https://stackoverflow.com/questions/50355406/convert-categories-in-one-column-to-multiple-columns-coded-as-1-or-0-if-present",
+            "title": "Convert categories in one column to multiple columns coded as 1 or 0 if present or absent in R",
+            "body": "<p>I have data that looks like the following:</p>\n\n<pre><code>library(dplyr)\nlibrary(tidyr)\na &lt;- data_frame(type=c(\"A\", \"A\", \"B\", \"B\", \"C\", \"D\"))\nprint(a)\n# A tibble: 6 x 1\ntype \n&lt;chr&gt;\n1 A    \n2 A    \n3 B    \n4 B    \n5 C    \n6 D\n</code></pre>\n\n<p>Where <code>type</code> contains categorical information.  I am trying to convert each category in <code>type</code> into its own column coded as 1 if a <code>type</code> is present and 0 if not; thus, the final result would look like:</p>\n\n<pre><code>b &lt;- data_frame(A=c(1, 1, 0, 0, 0, 0),\n                B=c(0, 0, 1, 1, 0, 0),\n                C=c(0, 0, 0, 0, 1, 0),\n                D=c(0, 0, 0, 0, 0, 1))\n\n   # A tibble: 6 x 4\n     A     B     C     D\n   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;\n1    1.    0.    0.    0.\n2    1.    0.    0.    0.\n3    0.    1.    0.    0.\n4    0.    1.    0.    0.\n5    0.    0.    1.    0.\n6    0.    0.    0.    1.\n</code></pre>\n\n<p>I have tried the following:</p>\n\n<pre><code>a$dat &lt;- 1\nspread(a, type, dat)\n</code></pre>\n\n<p>However, it does not work as there are multiple instances of some of the categories.  Any help would be appreciated.  Thank you!</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "reactjs",
+                "ecmascript-6"
+            ],
+            "owner": {
+                "user_type": "does_not_exist",
+                "display_name": "user796443"
+            },
+            "is_answered": true,
+            "view_count": 62,
+            "accepted_answer_id": 39930292,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526442033,
+            "creation_date": 1475912062,
+            "last_edit_date": 1526442033,
+            "question_id": 39929915,
+            "body_markdown": "Data looks like this:\r\n\r\n    const items = [\r\n      { image: &quot;http://loremflickr.com/320/320/sport-car?random=1&quot;, title: &quot;BMW 545&quot;, price: &quot;6.500$&quot; },\r\n      { image: &quot;http://loremflickr.com/320/320/sport-car?random=2&quot;, title: &quot;Mercedes GL&quot;, price: &quot;16.500$&quot; },\r\n      { image: &quot;http://loremflickr.com/320/320/sport-car?random=3&quot;, title: &quot;Toyota&quot;, price: &quot;16.500$&quot; },\r\n      { image: &quot;http://loremflickr.com/320/320/sport-car?random=4&quot;, title: &quot;Porsche&quot;, price: &quot;16.500$&quot; },\r\n      { image: &quot;http://loremflickr.com/320/320/sport-car?random=5&quot;, title: &quot;VW Golf&quot;, price: &quot;16.500$&quot; },\r\n      { image: &quot;http://loremflickr.com/320/320/sport-car?random=6&quot;, title: &quot;Infinity GS&quot;, price: &quot;16.500$&quot; },\r\n      { image: &quot;http://loremflickr.com/320/320/sport-car?random=7&quot;, title: &quot;Ford GT&quot;, price: &quot;16.500$&quot; },\r\n      { image: &quot;http://loremflickr.com/320/320/sport-car?random=8&quot;, title: &quot;Mitsubishi Lancer&quot;, price: &quot;16.500$&quot; },\r\n      { image: &quot;http://loremflickr.com/320/320/sport-car?random=9&quot;, title: &quot;Fiat Punto&quot;, price: &quot;16.500$&quot; },\r\n      { image: &quot;http://loremflickr.com/320/320/sport-car?random=10&quot;, title: &quot;Pegaout Corsa&quot;, price: &quot;16.500$&quot; },\r\n      { image: &quot;http://loremflickr.com/320/320/sport-car?random=11&quot;, title: &quot;Open Corsa&quot;, price: &quot;16.500$&quot; },\r\n      { image: &quot;http://loremflickr.com/320/320/sport-car?random=12&quot;, title: &quot;VW Passat&quot;, price: &quot;16.500$&quot; }\r\n    ]\r\n\r\nfinal structure should look like this:\r\n\r\n\r\n      &lt;div className=&quot;Grid&quot;&gt;\r\n        &lt;div className=&quot;Grid-cell u-size1of2&quot;&gt;&lt;Card type=&quot;double&quot;/&gt;&lt;/div&gt;\r\n        &lt;div className=&quot;Grid-cell u-size1of2&quot;&gt;&lt;Card type=&quot;double&quot;/&gt;&lt;/div&gt;\r\n      &lt;/div&gt;\r\n      &lt;div className=&quot;Grid&quot;&gt;\r\n        &lt;div className=&quot;Grid-cell u-size1of4&quot;&gt;&lt;Card/&gt;&lt;/div&gt;\r\n        &lt;div className=&quot;Grid-cell u-size2of4&quot;&gt;&lt;Card type=&quot;double&quot;/&gt;&lt;/div&gt;\r\n        &lt;div className=&quot;Grid-cell u-size1of4&quot;&gt;&lt;Card/&gt;&lt;/div&gt;\r\n      &lt;/div&gt;\r\n      &lt;div className=&quot;Grid&quot;&gt;\r\n        &lt;div className=&quot;Grid-cell u-size1of2&quot;&gt;&lt;Card type=&quot;double&quot;/&gt;&lt;/div&gt;\r\n        &lt;div className=&quot;Grid-cell u-size1of2&quot;&gt;&lt;Card type=&quot;double&quot;/&gt;&lt;/div&gt;\r\n      &lt;/div&gt;\r\n      &lt;div className=&quot;Grid&quot;&gt;\r\n        &lt;div className=&quot;Grid-cell u-size1of4&quot;&gt;&lt;Card/&gt;&lt;/div&gt;\r\n        &lt;div className=&quot;Grid-cell u-size2of4&quot;&gt;&lt;Card type=&quot;double&quot;/&gt;&lt;/div&gt;\r\n        &lt;div className=&quot;Grid-cell u-size1of4&quot;&gt;&lt;Card/&gt;&lt;/div&gt;\r\n      &lt;/div&gt;\r\n      &lt;div className=&quot;Grid&quot;&gt;\r\n        &lt;div className=&quot;Grid-cell u-size1of2&quot;&gt;&lt;Card type=&quot;double&quot;/&gt;&lt;/div&gt;\r\n        &lt;div className=&quot;Grid-cell u-size1of2&quot;&gt;&lt;Card type=&quot;double&quot;/&gt;&lt;/div&gt;\r\n      &lt;/div&gt;\r\n\r\nimage / title / price can be passed to Card component.\r\n\r\nI started by creating a `for` loop, but that thing very soon started to look like a monstrosity of `if/else`.\r\n\r\nIs it possible to use `map` for this? or there a better library for handling this kind of templating?\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\n  [1]: http://i.stack.imgur.com/BbyGH.jpg",
+            "link": "https://stackoverflow.com/questions/39929915/react-component-iterating-over-data-and-mapping-a-complicated-row-structure",
+            "title": "react component iterating over data and mapping a complicated row structure",
+            "body": "<p>Data looks like this:</p>\n\n<pre><code>const items = [\n  { image: \"http://loremflickr.com/320/320/sport-car?random=1\", title: \"BMW 545\", price: \"6.500$\" },\n  { image: \"http://loremflickr.com/320/320/sport-car?random=2\", title: \"Mercedes GL\", price: \"16.500$\" },\n  { image: \"http://loremflickr.com/320/320/sport-car?random=3\", title: \"Toyota\", price: \"16.500$\" },\n  { image: \"http://loremflickr.com/320/320/sport-car?random=4\", title: \"Porsche\", price: \"16.500$\" },\n  { image: \"http://loremflickr.com/320/320/sport-car?random=5\", title: \"VW Golf\", price: \"16.500$\" },\n  { image: \"http://loremflickr.com/320/320/sport-car?random=6\", title: \"Infinity GS\", price: \"16.500$\" },\n  { image: \"http://loremflickr.com/320/320/sport-car?random=7\", title: \"Ford GT\", price: \"16.500$\" },\n  { image: \"http://loremflickr.com/320/320/sport-car?random=8\", title: \"Mitsubishi Lancer\", price: \"16.500$\" },\n  { image: \"http://loremflickr.com/320/320/sport-car?random=9\", title: \"Fiat Punto\", price: \"16.500$\" },\n  { image: \"http://loremflickr.com/320/320/sport-car?random=10\", title: \"Pegaout Corsa\", price: \"16.500$\" },\n  { image: \"http://loremflickr.com/320/320/sport-car?random=11\", title: \"Open Corsa\", price: \"16.500$\" },\n  { image: \"http://loremflickr.com/320/320/sport-car?random=12\", title: \"VW Passat\", price: \"16.500$\" }\n]\n</code></pre>\n\n<p>final structure should look like this:</p>\n\n<pre><code>  &lt;div className=\"Grid\"&gt;\n    &lt;div className=\"Grid-cell u-size1of2\"&gt;&lt;Card type=\"double\"/&gt;&lt;/div&gt;\n    &lt;div className=\"Grid-cell u-size1of2\"&gt;&lt;Card type=\"double\"/&gt;&lt;/div&gt;\n  &lt;/div&gt;\n  &lt;div className=\"Grid\"&gt;\n    &lt;div className=\"Grid-cell u-size1of4\"&gt;&lt;Card/&gt;&lt;/div&gt;\n    &lt;div className=\"Grid-cell u-size2of4\"&gt;&lt;Card type=\"double\"/&gt;&lt;/div&gt;\n    &lt;div className=\"Grid-cell u-size1of4\"&gt;&lt;Card/&gt;&lt;/div&gt;\n  &lt;/div&gt;\n  &lt;div className=\"Grid\"&gt;\n    &lt;div className=\"Grid-cell u-size1of2\"&gt;&lt;Card type=\"double\"/&gt;&lt;/div&gt;\n    &lt;div className=\"Grid-cell u-size1of2\"&gt;&lt;Card type=\"double\"/&gt;&lt;/div&gt;\n  &lt;/div&gt;\n  &lt;div className=\"Grid\"&gt;\n    &lt;div className=\"Grid-cell u-size1of4\"&gt;&lt;Card/&gt;&lt;/div&gt;\n    &lt;div className=\"Grid-cell u-size2of4\"&gt;&lt;Card type=\"double\"/&gt;&lt;/div&gt;\n    &lt;div className=\"Grid-cell u-size1of4\"&gt;&lt;Card/&gt;&lt;/div&gt;\n  &lt;/div&gt;\n  &lt;div className=\"Grid\"&gt;\n    &lt;div className=\"Grid-cell u-size1of2\"&gt;&lt;Card type=\"double\"/&gt;&lt;/div&gt;\n    &lt;div className=\"Grid-cell u-size1of2\"&gt;&lt;Card type=\"double\"/&gt;&lt;/div&gt;\n  &lt;/div&gt;\n</code></pre>\n\n<p>image / title / price can be passed to Card component.</p>\n\n<p>I started by creating a <code>for</code> loop, but that thing very soon started to look like a monstrosity of <code>if/else</code>.</p>\n\n<p>Is it possible to use <code>map</code> for this? or there a better library for handling this kind of templating?</p>\n\n<p><a href=\"https://i.stack.imgur.com/BbyGH.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/BbyGH.jpg\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "spring",
+                "session",
+                "spring-boot",
+                "spring-security",
+                "redis"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 8402752,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-K1zUxiOeCDs/AAAAAAAAAAI/AAAAAAAAAA0/svmsoFS5ySM/photo.jpg?sz=128",
+                "display_name": "Zhen",
+                "link": "https://stackoverflow.com/users/8402752/zhen"
+            },
+            "is_answered": false,
+            "view_count": 37,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526442031,
+            "creation_date": 1525999448,
+            "last_edit_date": 1526442031,
+            "question_id": 50283416,
+            "body_markdown": "I have a spring-boot security demo,I want to share session with redis.I add some code to pom.xml\r\n\r\n    &lt;dependency&gt;\r\n        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;\r\n        &lt;artifactId&gt;spring-boot-starter-data-redis&lt;/artifactId&gt;\r\n    &lt;/dependency&gt;\r\n    &lt;dependency&gt;\r\n        &lt;groupId&gt;org.springframework.session&lt;/groupId&gt;\r\n        &lt;artifactId&gt;spring-session-data-redis&lt;/artifactId&gt;\r\n    &lt;/dependency&gt;\r\n\r\nand new one redis config class\r\n\r\n    @Configuration\r\n    @EnableRedisHttpSession\r\n    public class RedisSessionConfig {\r\n        @Bean\r\n        public RedisTemplate&lt;Object, Object&gt; sessionRedisTemplate(\r\n                RedisConnectionFactory connectionFactory) {\r\n            RedisTemplate&lt;Object, Object&gt; template = new RedisTemplate&lt;&gt;();\r\n            template.setKeySerializer(new GenericJackson2JsonRedisSerializer());\r\n            template.setHashKeySerializer(new GenericJackson2JsonRedisSerializer());\r\n            template.setConnectionFactory(connectionFactory);\r\n            return template;\r\n        }\r\n    }\r\n\r\nadd param to &#39;application.properties&#39; file.\r\n\r\n    spring.session.store-type=redis\r\n    # redis database\r\n    spring.redis.database=8\r\n    # redis host\r\n    spring.redis.host=102.128.2.65\r\n    # redis password\r\n    #spring.redis.password=\r\n    #redis port\r\n    spring.redis.port=6379\r\n\r\n\r\nthe program can startup as before.and I can find some spring message in the redis.\r\n[enter image description here][1]\r\n\r\nIt&#39;s wrong when login success.I find spring security put the SessionRepositoryFilter$SessionRepositoryRequestWrapper$HttpSessionWrapper to session with the session key &#39;SPRING_SECURITY_CONTEXT&#39; when login success .\r\nwhy? The HttpSessionWrapper class is a spring&#39;s inner class.why spring put it to redis and did&#39;t serialized?\r\nI don&#39;t know how to fix this problem.please help me ,thanks very much.\r\n\r\nThe error log：\r\n\r\n    20:25:17.629 [http-nio-8099-exec-6] ERROR o.s.boot.web.support.ErrorPageFilter - Forwarding to error page from request [/login] due to exception [Cannot serialize; nested exception is org.springframework.core.serializer.support.SerializationFailedException: Failed to serialize object using DefaultSerializer; nested exception is java.io.NotSerializableException: org.springframework.session.web.http.SessionRepositoryFilter$SessionRepositoryRequestWrapper$HttpSessionWrapper]\r\n        org.springframework.data.redis.serializer.SerializationException: Cannot serialize; nested exception is org.springframework.core.serializer.support.SerializationFailedException: Failed to serialize object using DefaultSerializer; nested exception is java.io.NotSerializableException: org.springframework.session.web.http.SessionRepositoryFilter$SessionRepositoryRequestWrapper$HttpSessionWrapper\r\n        \tat org.springframework.data.redis.serializer.JdkSerializationRedisSerializer.serialize(JdkSerializationRedisSerializer.java:93)\r\n        \tat org.springframework.data.redis.core.AbstractOperations.rawHashValue(AbstractOperations.java:171)\r\n        \tat org.springframework.data.redis.core.DefaultHashOperations.putAll(DefaultHashOperations.java:129)\r\n        \tat org.springframework.data.redis.core.DefaultBoundHashOperations.putAll(DefaultBoundHashOperations.java:86)\r\n        \tat org.springframework.session.data.redis.RedisOperationsSessionRepository$RedisSession.saveDelta(RedisOperationsSessionRepository.java:770)\r\n        \tat org.springframework.session.data.redis.RedisOperationsSessionRepository$RedisSession.access$000(RedisOperationsSessionRepository.java:662)\r\n        \tat org.springframework.session.data.redis.RedisOperationsSessionRepository.save(RedisOperationsSessionRepository.java:388)\r\n        \tat org.springframework.session.data.redis.RedisOperationsSessionRepository.save(RedisOperationsSessionRepository.java:245)\r\n        \tat org.springframework.session.web.http.SessionRepositoryFilter$SessionRepositoryRequestWrapper.commitSession(SessionRepositoryFilter.java:245)\r\n        \tat org.springframework.session.web.http.SessionRepositoryFilter$SessionRepositoryRequestWrapper.access$100(SessionRepositoryFilter.java:217)\r\n        \tat org.springframework.session.web.http.SessionRepositoryFilter.doFilterInternal(SessionRepositoryFilter.java:170)\r\n        \tat org.springframework.session.web.http.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:80)\r\n        \tat org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:193)\r\n        \tat org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:166)\r\n        \tat org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:197)\r\n        \tat org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:107)\r\n        \tat org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:193)\r\n        \tat org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:166)\r\n        \tat org.springframework.boot.web.support.ErrorPageFilter.doFilter(ErrorPageFilter.java:117)\r\n        \tat org.springframework.boot.web.support.ErrorPageFilter.access$000(ErrorPageFilter.java:61)\r\n        \tat org.springframework.boot.web.support.ErrorPageFilter$1.doFilterInternal(ErrorPageFilter.java:92)\r\n        \tat org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:107)\r\n        \tat org.springframework.boot.web.support.ErrorPageFilter.doFilter(ErrorPageFilter.java:110)\r\n        \tat org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:193)\r\n        \tat org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:166)\r\n        \tat org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:198)\r\n        \tat org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:96)\r\n        \tat org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:496)\r\n        \tat org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:140)\r\n        \tat org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:81)\r\n        \tat org.apache.catalina.valves.AbstractAccessLogValve.invoke(AbstractAccessLogValve.java:650)\r\n        \tat org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:87)\r\n        \tat org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:342)\r\n        \tat org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:803)\r\n        \tat org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:66)\r\n        \tat org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:790)\r\n        \tat org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1459)\r\n        \tat org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:49)\r\n        \tat java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)\r\n        \tat java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)\r\n        \tat org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:61)\r\n        \tat java.lang.Thread.run(Thread.java:748)\r\n\r\n\r\nIn fact,I was download the spring source code and try fix it by edit source code.but I give up when spring haven&#39;t the problem but another apache class appear. So... is my config file wrong? or spring security share session doesn&#39;t like my way?\r\n\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/xk8WK.png",
+            "link": "https://stackoverflow.com/questions/50283416/spring-boot-security-share-session-by-redis",
+            "title": "spring-boot security share session by redis",
+            "body": "<p>I have a spring-boot security demo,I want to share session with redis.I add some code to pom.xml</p>\n\n<pre><code>&lt;dependency&gt;\n    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;\n    &lt;artifactId&gt;spring-boot-starter-data-redis&lt;/artifactId&gt;\n&lt;/dependency&gt;\n&lt;dependency&gt;\n    &lt;groupId&gt;org.springframework.session&lt;/groupId&gt;\n    &lt;artifactId&gt;spring-session-data-redis&lt;/artifactId&gt;\n&lt;/dependency&gt;\n</code></pre>\n\n<p>and new one redis config class</p>\n\n<pre><code>@Configuration\n@EnableRedisHttpSession\npublic class RedisSessionConfig {\n    @Bean\n    public RedisTemplate&lt;Object, Object&gt; sessionRedisTemplate(\n            RedisConnectionFactory connectionFactory) {\n        RedisTemplate&lt;Object, Object&gt; template = new RedisTemplate&lt;&gt;();\n        template.setKeySerializer(new GenericJackson2JsonRedisSerializer());\n        template.setHashKeySerializer(new GenericJackson2JsonRedisSerializer());\n        template.setConnectionFactory(connectionFactory);\n        return template;\n    }\n}\n</code></pre>\n\n<p>add param to 'application.properties' file.</p>\n\n<pre><code>spring.session.store-type=redis\n# redis database\nspring.redis.database=8\n# redis host\nspring.redis.host=102.128.2.65\n# redis password\n#spring.redis.password=\n#redis port\nspring.redis.port=6379\n</code></pre>\n\n<p>the program can startup as before.and I can find some spring message in the redis.\n<a href=\"https://i.stack.imgur.com/xk8WK.png\" rel=\"nofollow noreferrer\">enter image description here</a></p>\n\n<p>It's wrong when login success.I find spring security put the SessionRepositoryFilter$SessionRepositoryRequestWrapper$HttpSessionWrapper to session with the session key 'SPRING_SECURITY_CONTEXT' when login success .\nwhy? The HttpSessionWrapper class is a spring's inner class.why spring put it to redis and did't serialized?\nI don't know how to fix this problem.please help me ,thanks very much.</p>\n\n<p>The error log：</p>\n\n<pre><code>20:25:17.629 [http-nio-8099-exec-6] ERROR o.s.boot.web.support.ErrorPageFilter - Forwarding to error page from request [/login] due to exception [Cannot serialize; nested exception is org.springframework.core.serializer.support.SerializationFailedException: Failed to serialize object using DefaultSerializer; nested exception is java.io.NotSerializableException: org.springframework.session.web.http.SessionRepositoryFilter$SessionRepositoryRequestWrapper$HttpSessionWrapper]\n    org.springframework.data.redis.serializer.SerializationException: Cannot serialize; nested exception is org.springframework.core.serializer.support.SerializationFailedException: Failed to serialize object using DefaultSerializer; nested exception is java.io.NotSerializableException: org.springframework.session.web.http.SessionRepositoryFilter$SessionRepositoryRequestWrapper$HttpSessionWrapper\n        at org.springframework.data.redis.serializer.JdkSerializationRedisSerializer.serialize(JdkSerializationRedisSerializer.java:93)\n        at org.springframework.data.redis.core.AbstractOperations.rawHashValue(AbstractOperations.java:171)\n        at org.springframework.data.redis.core.DefaultHashOperations.putAll(DefaultHashOperations.java:129)\n        at org.springframework.data.redis.core.DefaultBoundHashOperations.putAll(DefaultBoundHashOperations.java:86)\n        at org.springframework.session.data.redis.RedisOperationsSessionRepository$RedisSession.saveDelta(RedisOperationsSessionRepository.java:770)\n        at org.springframework.session.data.redis.RedisOperationsSessionRepository$RedisSession.access$000(RedisOperationsSessionRepository.java:662)\n        at org.springframework.session.data.redis.RedisOperationsSessionRepository.save(RedisOperationsSessionRepository.java:388)\n        at org.springframework.session.data.redis.RedisOperationsSessionRepository.save(RedisOperationsSessionRepository.java:245)\n        at org.springframework.session.web.http.SessionRepositoryFilter$SessionRepositoryRequestWrapper.commitSession(SessionRepositoryFilter.java:245)\n        at org.springframework.session.web.http.SessionRepositoryFilter$SessionRepositoryRequestWrapper.access$100(SessionRepositoryFilter.java:217)\n        at org.springframework.session.web.http.SessionRepositoryFilter.doFilterInternal(SessionRepositoryFilter.java:170)\n        at org.springframework.session.web.http.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:80)\n        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:193)\n        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:166)\n        at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:197)\n        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:107)\n        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:193)\n        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:166)\n        at org.springframework.boot.web.support.ErrorPageFilter.doFilter(ErrorPageFilter.java:117)\n        at org.springframework.boot.web.support.ErrorPageFilter.access$000(ErrorPageFilter.java:61)\n        at org.springframework.boot.web.support.ErrorPageFilter$1.doFilterInternal(ErrorPageFilter.java:92)\n        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:107)\n        at org.springframework.boot.web.support.ErrorPageFilter.doFilter(ErrorPageFilter.java:110)\n        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:193)\n        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:166)\n        at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:198)\n        at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:96)\n        at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:496)\n        at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:140)\n        at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:81)\n        at org.apache.catalina.valves.AbstractAccessLogValve.invoke(AbstractAccessLogValve.java:650)\n        at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:87)\n        at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:342)\n        at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:803)\n        at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:66)\n        at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:790)\n        at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1459)\n        at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:49)\n        at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)\n        at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)\n        at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:61)\n        at java.lang.Thread.run(Thread.java:748)\n</code></pre>\n\n<p>In fact,I was download the spring source code and try fix it by edit source code.but I give up when spring haven't the problem but another apache class appear. So... is my config file wrong? or spring security share session doesn't like my way?</p>\n"
+        },
+        {
+            "tags": [
+                "mysql"
+            ],
+            "owner": {
+                "reputation": 39,
+                "user_id": 5462418,
+                "user_type": "registered",
+                "accept_rate": 33,
+                "profile_image": "https://www.gravatar.com/avatar/c588cdef154dfe1d4c0d82b2d1ae4c0d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Social Code",
+                "link": "https://stackoverflow.com/users/5462418/social-code"
+            },
+            "is_answered": true,
+            "view_count": 12,
+            "accepted_answer_id": 50362153,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526442029,
+            "creation_date": 1526439864,
+            "question_id": 50361874,
+            "body_markdown": "I&#39;m using mysql for my project. I have two table: `user` and `img`. And this is schema for them.\r\n\r\n    User\r\n    id: int (AI)\r\n    username: varchar(50)\r\n    password: varchar(50)\r\n\r\n    Img\r\n    id: int (AI)\r\n    user_id: int\r\n    path: varchar(100)\r\n\r\nI know that mysql not support array like nosql, so i must use two table to store multiple image per one user. \r\n\r\nThe proplem: When i get all user with their image, it&#39;s duplicate data, the query like this:\r\n\r\n    SELECT u.*, i.path FROM user u INNER JOIN img i ON u.id=i.user_id ORDER BY u.id DESC\r\n\r\nI know the reason, but i can&#39;t solve it, data must be like this\r\n\r\n&gt; User || Img\r\n&gt; \r\n&gt; 5    || 897696987.jpg, Jghd8867D.jpg     \r\n&gt;\r\n&gt; 8    || 8768788Kd.jpg\r\n\r\nBut is show:\r\n\r\n&gt; User || Img\r\n&gt; \r\n&gt; 5    || 897696987.jpg   \r\n&gt;\r\n&gt; 5    || Jghd8867D.jpg\r\n&gt;\r\n&gt; 8    || 8768788Kd.jpg\r\n\r\nHow can i do to make it better?\r\nThank you!",
+            "link": "https://stackoverflow.com/questions/50361874/query-row-in-mysql-with-duplicated-row",
+            "title": "Query row in mysql with duplicated row",
+            "body": "<p>I'm using mysql for my project. I have two table: <code>user</code> and <code>img</code>. And this is schema for them.</p>\n\n<pre><code>User\nid: int (AI)\nusername: varchar(50)\npassword: varchar(50)\n\nImg\nid: int (AI)\nuser_id: int\npath: varchar(100)\n</code></pre>\n\n<p>I know that mysql not support array like nosql, so i must use two table to store multiple image per one user. </p>\n\n<p>The proplem: When i get all user with their image, it's duplicate data, the query like this:</p>\n\n<pre><code>SELECT u.*, i.path FROM user u INNER JOIN img i ON u.id=i.user_id ORDER BY u.id DESC\n</code></pre>\n\n<p>I know the reason, but i can't solve it, data must be like this</p>\n\n<blockquote>\n  <p>User || Img</p>\n  \n  <p>5    || 897696987.jpg, Jghd8867D.jpg     </p>\n  \n  <p>8    || 8768788Kd.jpg</p>\n</blockquote>\n\n<p>But is show:</p>\n\n<blockquote>\n  <p>User || Img</p>\n  \n  <p>5    || 897696987.jpg   </p>\n  \n  <p>5    || Jghd8867D.jpg</p>\n  \n  <p>8    || 8768788Kd.jpg</p>\n</blockquote>\n\n<p>How can i do to make it better?\nThank you!</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "icons",
+                "material-design",
+                "icon-fonts",
+                "google-material-icons"
+            ],
+            "owner": {
+                "reputation": 237,
+                "user_id": 4610640,
+                "user_type": "registered",
+                "accept_rate": 44,
+                "profile_image": "https://graph.facebook.com/1071784512847661/picture?type=large",
+                "display_name": "quantum apps",
+                "link": "https://stackoverflow.com/users/4610640/quantum-apps"
+            },
+            "is_answered": true,
+            "view_count": 3215,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1526442021,
+            "creation_date": 1460722628,
+            "last_edit_date": 1460725556,
+            "question_id": 36646942,
+            "body_markdown": "In my app there are a lot of places where i have to programmatically add icons into my textviews.\r\n\r\nOn the Android material design website i saw, that you can use icon fonts, but there is nothing that indicates that you can do this inside an android app, lose from the png and svg icons itself.\r\n&lt;br&gt;&lt;br&gt;\r\n&lt;http://google.github.io/material-design-icons/&gt;\r\n\r\nis it possible to use icon-fonts in android? and if it is possible how do i implemented this into my app?\r\ncan someone help me with this?. ",
+            "link": "https://stackoverflow.com/questions/36646942/how-to-add-material-design-icons-font-to-an-android-app",
+            "title": "how to add material design icons-font to an Android app",
+            "body": "<p>In my app there are a lot of places where i have to programmatically add icons into my textviews.</p>\n\n<p>On the Android material design website i saw, that you can use icon fonts, but there is nothing that indicates that you can do this inside an android app, lose from the png and svg icons itself.\n<br><br>\n<a href=\"http://google.github.io/material-design-icons/\" rel=\"nofollow\">http://google.github.io/material-design-icons/</a></p>\n\n<p>is it possible to use icon-fonts in android? and if it is possible how do i implemented this into my app?\ncan someone help me with this?. </p>\n"
+        },
+        {
+            "tags": [
+                "linux",
+                "docker",
+                "grafana",
+                "prometheus",
+                "cadvisor"
+            ],
+            "owner": {
+                "reputation": 32,
+                "user_id": 3147824,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://i.stack.imgur.com/0p8Nb.jpg?s=128&g=1",
+                "display_name": "Sean Hu",
+                "link": "https://stackoverflow.com/users/3147824/sean-hu"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526442020,
+            "creation_date": 1526283088,
+            "last_edit_date": 1526297588,
+            "question_id": 50325098,
+            "body_markdown": "**Environment:**\r\n \r\n - Linux (Redhat7)\r\n - Deployed docker (cAdvisor, Prometheus, Grafana)\r\n - cAdvisor collect the metrics &gt; Pass to Prometheus &gt; Display with Grafana\r\n - Apache reverse proxy is in the environment (Therefore no direct connection with specific ports)\r\n\r\n**Issue:**\r\n\r\n - cAdvisor does not show all container&#39;s uptime\r\n - Grafana does not show Prometheus and Grafana container&#39;s uptime\r\n - Only displays cAdvisor container&#39;s uptime\r\n\r\n**What I have (Issue):**\r\n[![enter image description here][1]][1]\r\n[![enter image description here][2]][2]\r\n\r\n**What I want to have:**\r\n[![enter image description here][3]][3]\r\n\r\n**Setting in Prometheus:**\r\n[![enter image description here][4]][4]\r\n[![enter image description here][5]][5]\r\n\r\n**Command to run cAdvisor:**\r\n\r\nsudo docker run --volume=/:/rootfs:ro --volume=/var/run:/var/run:rw --volume=/var/lib/docker/:/var/lib/docker:ro --volume=/dev/disk/:/dev/disk:ro --publish=8080:8080 --name=cadvisor  --detach=true --privileged=true --volume=/cgroup:/cgroup:ro --network=docker8443 --ip=172.28.5.201 google/cadvisor:latest\r\n\r\n\r\n**Questions:**\r\n\r\n - Is something missing in Prometheus target to show all container&#39;s uptime?\r\n - Is something missing in cAdvisor setup?\r\n - Is query for the graph incorrect? (I have tried following, but it shows &quot;No data point&quot;)\r\n[![enter image description here][6]][6]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/LfhcP.png\r\n  [2]: https://i.stack.imgur.com/4504k.png\r\n  [3]: https://i.stack.imgur.com/Im1Nz.png\r\n  [4]: https://i.stack.imgur.com/FvgZr.png\r\n  [5]: https://i.stack.imgur.com/G2P7o.png\r\n  [6]: https://i.stack.imgur.com/xda6o.png",
+            "link": "https://stackoverflow.com/questions/50325098/cadvisor-does-not-show-all-containers-uptime-prometheuscadvisorgrafana",
+            "title": "cAdvisor does not show all container&#39;s uptime (Prometheus+cAdvisor+Grafana)",
+            "body": "<p><strong>Environment:</strong></p>\n\n<ul>\n<li>Linux (Redhat7)</li>\n<li>Deployed docker (cAdvisor, Prometheus, Grafana)</li>\n<li>cAdvisor collect the metrics > Pass to Prometheus > Display with Grafana</li>\n<li>Apache reverse proxy is in the environment (Therefore no direct connection with specific ports)</li>\n</ul>\n\n<p><strong>Issue:</strong></p>\n\n<ul>\n<li>cAdvisor does not show all container's uptime</li>\n<li>Grafana does not show Prometheus and Grafana container's uptime</li>\n<li>Only displays cAdvisor container's uptime</li>\n</ul>\n\n<p><strong>What I have (Issue):</strong>\n<a href=\"https://i.stack.imgur.com/LfhcP.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/LfhcP.png\" alt=\"enter image description here\"></a>\n<a href=\"https://i.stack.imgur.com/4504k.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/4504k.png\" alt=\"enter image description here\"></a></p>\n\n<p><strong>What I want to have:</strong>\n<a href=\"https://i.stack.imgur.com/Im1Nz.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/Im1Nz.png\" alt=\"enter image description here\"></a></p>\n\n<p><strong>Setting in Prometheus:</strong>\n<a href=\"https://i.stack.imgur.com/FvgZr.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/FvgZr.png\" alt=\"enter image description here\"></a>\n<a href=\"https://i.stack.imgur.com/G2P7o.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/G2P7o.png\" alt=\"enter image description here\"></a></p>\n\n<p><strong>Command to run cAdvisor:</strong></p>\n\n<p>sudo docker run --volume=/:/rootfs:ro --volume=/var/run:/var/run:rw --volume=/var/lib/docker/:/var/lib/docker:ro --volume=/dev/disk/:/dev/disk:ro --publish=8080:8080 --name=cadvisor  --detach=true --privileged=true --volume=/cgroup:/cgroup:ro --network=docker8443 --ip=172.28.5.201 google/cadvisor:latest</p>\n\n<p><strong>Questions:</strong></p>\n\n<ul>\n<li>Is something missing in Prometheus target to show all container's uptime?</li>\n<li>Is something missing in cAdvisor setup?</li>\n<li>Is query for the graph incorrect? (I have tried following, but it shows \"No data point\")\n<a href=\"https://i.stack.imgur.com/xda6o.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/xda6o.png\" alt=\"enter image description here\"></a></li>\n</ul>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "opengl",
+                "pyglet"
+            ],
+            "owner": {
+                "reputation": 146,
+                "user_id": 4592312,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/68561d18727bccdb1aa57cac00d14dc0?s=128&d=identicon&r=PG",
+                "display_name": "Clemens Frahnow",
+                "link": "https://stackoverflow.com/users/4592312/clemens-frahnow"
+            },
+            "is_answered": false,
+            "view_count": 361,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526442017,
+            "creation_date": 1424555459,
+            "last_edit_date": 1526442017,
+            "question_id": 28651784,
+            "body_markdown": "I want to implement shadowmapping in python using pyglet.\r\nIt already works, but just if my window has dimensions of powers of 2.\r\nI want two things to change:\r\n\r\n&gt; 1. Render the depth buffer with another resolution than 2^x, 2^y\r\n&gt; 2. Render the depth buffer with a higher resolution than the window.\r\n\r\nThe Problem with 1. is, that when I change the resolution to something odd and use\r\n\r\n    buffers = get_buffer_manager()\r\n    self.depth_tex = buffers.get_depth_buffer().get_texture()\r\n\r\nI get an error: *pyglet.image.ImageException: Depth texture requires that buffer dimensions be powers of 2*\r\n\r\nThe Problem #2 is that only the size of the window is written to the depth buffer, the rest is 1. So if my window has the size 512x512 and I set the viewport for the z-buffer to 1024x1024, the z-buffer has a 1024x1024 rectangle with a part of the picture in it, the rest is white.\r\n\r\nCode: \r\n\r\n    class MyWindow(pyglet.window.Window):\r\n        def __init__(self):\r\n            super(JuliaWindow, self).__init__(caption = &#39;julia&#39;, width=512, height=512)\r\n\r\n        ....\r\n\r\n        def on_draw(self):\r\n            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)\r\n\r\n            # if no depth texture exists (mesh is static)\r\n            if not self.depth_tex:\r\n                #try it, it won&#39;t work (white buffer)\r\n                #glViewport(0,0,1024,1024)\r\n                glMatrixMode(GL_PROJECTION)\r\n                glLoadIdentity()\r\n                gluPerspective(60,self.width/float(self.height),0.5,20)\r\n\r\n                glMatrixMode(GL_MODELVIEW)\r\n                glLoadIdentity()\r\n                gluLookAt(2.0,1.5,2.5,0.0,0.0,0.0,0.0,1.0,0.0)\r\n\r\n                glColorMask(GL_FALSE,GL_FALSE,GL_FALSE,GL_FALSE)\r\n\r\n                mv = (GLfloat * 16)()\r\n                glGetFloatv(GL_MODELVIEW_MATRIX, mv)\r\n                p = (GLfloat * 16)()\r\n                glGetFloatv(GL_PROJECTION_MATRIX, p)\r\n    \r\n                self.shaderD.bind()\r\n                self.batch.draw()\r\n\r\n                self.shaderD.unbind()\r\n\r\n                buffers = get_buffer_manager()\r\n                self.depth_tex = buffers.get_depth_buffer().get_texture()\r\n\r\n            glBindTexture(self.depth_tex.target, self.depth_tex.id)\r\n\r\n            #reset viewport\r\n            #glViewport(0,0,self.width,self.height)\r\n            glMatrixMode(GL_PROJECTION)\r\n            glLoadIdentity()\r\n            gluPerspective(60,self.width/float(self.height),0.5,20)\r\n\r\n            glMatrixMode(GL_MODELVIEW)\r\n            glLoadIdentity()\r\n            gluLookAt(self.x, self.y, self.z,0.0,0.0,0.0,0.0,1.0,0.0)\r\n\r\n            self.shader.bind()\r\n            self.shader.uniform_matrixf(&#39;depthMV&#39;, list(a))\r\n            self.shader.uniform_matrixf(&#39;depthP&#39;, list(b))\r\n\r\n            glClear(GL_DEPTH_BUFFER_BIT)\r\n            glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE)\r\n\r\n            self.batch.draw()\r\n            self.shader.unbind()\r\n\r\n\r\n  [1]: http://i.stack.imgur.com/FMkTm.png",
+            "link": "https://stackoverflow.com/questions/28651784/how-to-render-the-depth-buffer-to-texture-in-pyglet-for-shadow-mapping",
+            "title": "How to render the depth buffer to texture in pyglet for shadow mapping?",
+            "body": "<p>I want to implement shadowmapping in python using pyglet.\nIt already works, but just if my window has dimensions of powers of 2.\nI want two things to change:</p>\n\n<blockquote>\n  <ol>\n  <li>Render the depth buffer with another resolution than 2^x, 2^y</li>\n  <li>Render the depth buffer with a higher resolution than the window.</li>\n  </ol>\n</blockquote>\n\n<p>The Problem with 1. is, that when I change the resolution to something odd and use</p>\n\n<pre><code>buffers = get_buffer_manager()\nself.depth_tex = buffers.get_depth_buffer().get_texture()\n</code></pre>\n\n<p>I get an error: <em>pyglet.image.ImageException: Depth texture requires that buffer dimensions be powers of 2</em></p>\n\n<p>The Problem #2 is that only the size of the window is written to the depth buffer, the rest is 1. So if my window has the size 512x512 and I set the viewport for the z-buffer to 1024x1024, the z-buffer has a 1024x1024 rectangle with a part of the picture in it, the rest is white.</p>\n\n<p>Code: </p>\n\n<pre><code>class MyWindow(pyglet.window.Window):\n    def __init__(self):\n        super(JuliaWindow, self).__init__(caption = 'julia', width=512, height=512)\n\n    ....\n\n    def on_draw(self):\n        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)\n\n        # if no depth texture exists (mesh is static)\n        if not self.depth_tex:\n            #try it, it won't work (white buffer)\n            #glViewport(0,0,1024,1024)\n            glMatrixMode(GL_PROJECTION)\n            glLoadIdentity()\n            gluPerspective(60,self.width/float(self.height),0.5,20)\n\n            glMatrixMode(GL_MODELVIEW)\n            glLoadIdentity()\n            gluLookAt(2.0,1.5,2.5,0.0,0.0,0.0,0.0,1.0,0.0)\n\n            glColorMask(GL_FALSE,GL_FALSE,GL_FALSE,GL_FALSE)\n\n            mv = (GLfloat * 16)()\n            glGetFloatv(GL_MODELVIEW_MATRIX, mv)\n            p = (GLfloat * 16)()\n            glGetFloatv(GL_PROJECTION_MATRIX, p)\n\n            self.shaderD.bind()\n            self.batch.draw()\n\n            self.shaderD.unbind()\n\n            buffers = get_buffer_manager()\n            self.depth_tex = buffers.get_depth_buffer().get_texture()\n\n        glBindTexture(self.depth_tex.target, self.depth_tex.id)\n\n        #reset viewport\n        #glViewport(0,0,self.width,self.height)\n        glMatrixMode(GL_PROJECTION)\n        glLoadIdentity()\n        gluPerspective(60,self.width/float(self.height),0.5,20)\n\n        glMatrixMode(GL_MODELVIEW)\n        glLoadIdentity()\n        gluLookAt(self.x, self.y, self.z,0.0,0.0,0.0,0.0,1.0,0.0)\n\n        self.shader.bind()\n        self.shader.uniform_matrixf('depthMV', list(a))\n        self.shader.uniform_matrixf('depthP', list(b))\n\n        glClear(GL_DEPTH_BUFFER_BIT)\n        glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE)\n\n        self.batch.draw()\n        self.shader.unbind()\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "vue.js",
+                "templating"
+            ],
+            "owner": {
+                "reputation": 138,
+                "user_id": 2869411,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/05224e4f8a4b68f35180113b350dd627?s=128&d=identicon&r=PG&f=1",
+                "display_name": "aserwin",
+                "link": "https://stackoverflow.com/users/2869411/aserwin"
+            },
+            "is_answered": true,
+            "view_count": 24,
+            "accepted_answer_id": 50362149,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526442013,
+            "creation_date": 1526433163,
+            "question_id": 50361129,
+            "body_markdown": "I apologize if this is a duplicate, but I honestly didn&#39;t find a similar enough question (or more specifically, answer)\r\n\r\nI am working a project right now that involves using Twig template engine AND Vue.js on the front end. I know some larger frameworks offer similar combinations (Laravel uses Blade and includes Vue).\r\n\r\nIs this too much? For a smaller project (in PHP with an ORM), is there any clear advantage to having both a templating engine AND a front end framework like Vue?\r\n\r\nI hope this question is clear enough.\r\n\r\nThanks",
+            "link": "https://stackoverflow.com/questions/50361129/template-engine-front-end-framework",
+            "title": "Template engine + Front end framework",
+            "body": "<p>I apologize if this is a duplicate, but I honestly didn't find a similar enough question (or more specifically, answer)</p>\n\n<p>I am working a project right now that involves using Twig template engine AND Vue.js on the front end. I know some larger frameworks offer similar combinations (Laravel uses Blade and includes Vue).</p>\n\n<p>Is this too much? For a smaller project (in PHP with an ORM), is there any clear advantage to having both a templating engine AND a front end framework like Vue?</p>\n\n<p>I hope this question is clear enough.</p>\n\n<p>Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "linux",
+                "memory-management"
+            ],
+            "owner": {
+                "reputation": 61,
+                "user_id": 3375547,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://graph.facebook.com/592551535/picture?type=large",
+                "display_name": "user3375547",
+                "link": "https://stackoverflow.com/users/3375547/user3375547"
+            },
+            "is_answered": false,
+            "view_count": 70,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526442000,
+            "creation_date": 1454440702,
+            "last_edit_date": 1526442000,
+            "question_id": 35162033,
+            "body_markdown": "I am working on a ppc platform, where CONFIG_TASK_SIZE=0xa0000000, which means user space program can map anywhere between 0 and 0xa0000000\r\n\r\nNow for some reason, I don&#39;t wanna user space processes to use 0x40000000 to 0x80000000.\r\n\r\nDoes anyone know how to achieve this. Either from kernel or user land.\r\n\r\nI have tried reserved-memory in device tree, but that didn&#39;t work.\r\n",
+            "link": "https://stackoverflow.com/questions/35162033/linux-how-to-prevent-user-space-processes-from-mapping-certain-memory-range",
+            "title": "Linux : how to prevent user space processes from mapping certain memory range",
+            "body": "<p>I am working on a ppc platform, where CONFIG_TASK_SIZE=0xa0000000, which means user space program can map anywhere between 0 and 0xa0000000</p>\n\n<p>Now for some reason, I don't wanna user space processes to use 0x40000000 to 0x80000000.</p>\n\n<p>Does anyone know how to achieve this. Either from kernel or user land.</p>\n\n<p>I have tried reserved-memory in device tree, but that didn't work.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "ssis"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 2156322,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://www.gravatar.com/avatar/26a381a8842bc505b4fecd3ba1084891?s=128&d=identicon&r=PG",
+                "display_name": "anggun perpatih",
+                "link": "https://stackoverflow.com/users/2156322/anggun-perpatih"
+            },
+            "is_answered": false,
+            "view_count": 513,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526441982,
+            "creation_date": 1374570830,
+            "last_edit_date": 1526441982,
+            "question_id": 17806035,
+            "body_markdown": "I want to make mapping from \r\n\r\n    OleDbSource (select mFK_Prefix,mFK_Sufix,mElement_Base,mBase_Value,mPeriode_Start,mPeriode_End,mSandi_Pelapor,mOrder from [dbo].[STG_AAKL])\r\n\r\nto \r\n\r\n    OledbDestination(select FK_Prefix,FK_Sufix,Element_Base,Base_Value,Periode_Start,Periode_End,Sandi_Pelapor,Order from [dbo].[TM_AAKL])\r\n\r\nHow to programmatically make mapping from oledbsource to oledbdestination using ssis inc#.\r\n\r\nfor complete or my program there is at below this\r\n\r\n\t[Microsoft.SqlServer.Dts.Tasks.ScriptTask.SSISScriptTaskEntryPointAttribute]\r\n\tpublic partial class ScriptMain : Microsoft.SqlServer.Dts.Tasks.ScriptTask.VSTARTScriptObjectModelBase\r\n\t{\r\n\t\tpublic void Main()\r\n\t\t{\r\n            string DestinationCS = @&quot;Data Source=.\\SQL2012;Initial Catalog=DWH_LSMK;Provider=SQLOLEDB.1;Integrated Security=SSPI;Application Name=SSIS-Package;Auto Translate=False;&quot;;\r\n            string SourceCS = @&quot;Data Source=.\\SQL2012;Initial Catalog=DWH_LSMK;Provider=SQLOLEDB.1;Integrated Security=SSPI;Application Name=SSIS-Package;Auto Translate=False;&quot;;\r\n            GeneratePackage(SourceCS, DestinationCS); \r\n            Dts.TaskResult = (int)ScriptResults.Success;\r\n\t\t}\r\n        protected ConnectionManager AddOleFbConnection(Package pck, string nameConexion, string cadenaConection)\r\n        {\r\n            ConnectionManager Cm;\r\n            Cm = pck.Connections.Add(&quot;OLEDB&quot;);\r\n            Cm.ConnectionString = cadenaConection;\r\n            Cm.Name = nameConexion;\r\n            return (Cm);\r\n        }\r\n        protected virtual TaskHost AddDataFlow(Package pck,string dataFlowName)\r\n        {\r\n            Executable e = pck.Executables.Add(&quot;STOCK:PipelineTask&quot;);\r\n            TaskHost thMainPipe = (TaskHost)e;\r\n            thMainPipe.Name = dataFlowName;\r\n            return (thMainPipe);\r\n        }\r\n        protected virtual IDTSComponentMetaData100 AddSourceOledbFromTable(MainPipe flujo,string nombrecomponenete,string nombretable,ConnectionManager Connection )\r\n        {\r\n            IDTSComponentMetaData100 ConexionAoregen = flujo.ComponentMetaDataCollection.New();\r\n            ConexionAoregen.Name = nombrecomponenete;\r\n            ConexionAoregen.ComponentClassID = &quot;DTSAdapter.OleDbSource&quot;;\r\n            CManagedComponentWrapper instance = ConexionAoregen.Instantiate();\r\n            instance.ProvideComponentProperties();\r\n            ConexionAoregen.RuntimeConnectionCollection[0].ConnectionManager = DtsConvert.GetExtendedInterface(Connection);\r\n            ConexionAoregen.RuntimeConnectionCollection[0].ConnectionManagerID = Connection.ID;\r\n            ConexionAoregen.Name = nombrecomponenete;\r\n            instance.SetComponentProperty(&quot;AccessMode&quot;,0);\r\n            instance.SetComponentProperty(&quot;OpenRowset&quot;, nombretable);\r\n            try\r\n            {\r\n                instance.AcquireConnections(null);\r\n                instance.ReinitializeMetaData();\r\n                instance.ReleaseConnections();\r\n            }\r\n            catch (Exception e)\r\n            {\r\n                throw; \r\n            }\r\n            return (ConexionAoregen);\r\n        }\r\n        protected virtual IDTSComponentMetaData100 AddOleDbDestinationTable(MainPipe DataFlowTask,ConnectionManager destinationconnection,IDTSComponentMetaData100 fuentedatos,string tabledestination)\r\n        {\r\n            IDTSComponentMetaData100 ComponentDestino = DataFlowTask.ComponentMetaDataCollection.New();\r\n            ComponentDestino.ComponentClassID = &quot;DTSAdapter.OleDbDestination&quot;;\r\n            CManagedComponentWrapper instance = ComponentDestino.Instantiate();\r\n            instance.ProvideComponentProperties();\r\n            ComponentDestino.RuntimeConnectionCollection[0].ConnectionManager = DtsConvert.GetExtendedInterface(destinationconnection);\r\n            ComponentDestino.RuntimeConnectionCollection[0].ConnectionManagerID = destinationconnection.Name;\r\n            instance.SetComponentProperty(&quot;AccessMode&quot;,3);\r\n            //instance.SetComponentProperty(&quot;FastLoadOptions&quot;,&quot;TABLOCK,CHECK_CONSTRAINTS&quot;);\r\n            instance.SetComponentProperty(&quot;OpenRowset&quot;, tabledestination);\r\n            IDTSPath100 union = DataFlowTask.PathCollection.New();\r\n            union.AttachPathAndPropagateNotifications(fuentedatos.OutputCollection[0], ComponentDestino.InputCollection[0] );\r\n            instance.AcquireConnections(null);\r\n            instance.ReinitializeMetaData();\r\n            instance.ReleaseConnections();\r\n\r\n            foreach (IDTSOutputColumn100 col in fuentedatos.OutputCollection[0].OutputColumnCollection)\r\n            {\r\n\r\n                for (int i = 0; i &lt; ComponentDestino.InputCollection[0].ExternalMetadataColumnCollection.Count; i += 1)\r\n                {\r\n                    string campo = ComponentDestino.InputCollection[0].ExternalMetadataColumnCollection[i].Name;\r\n\r\n\r\n \r\n\r\n                    if ((col.Name.ToUpper() == &quot;MPERIODE_START&quot;) &amp;&amp; (campo.ToUpper() == &quot;PERIODE_END&quot;))\r\n                    {\r\n                        IDTSInputColumn100 colnueva = ComponentDestino.InputCollection[0].InputColumnCollection.New();\r\n                        colnueva.LineageID = col.ID;\r\n                        colnueva.ExternalMetadataColumnID = col.ID;\r\n                        colnueva.MappedColumnID = col.ID;\r\n                        colnueva.Name = col.Name;\r\n                        // break;\r\n                    }\r\n                    else if ((col.Name.ToUpper() == &quot;MPERIODE_END&quot;) &amp;&amp; (campo.ToUpper() == &quot;PERIODE_START&quot;))\r\n                    {\r\n                        IDTSInputColumn100 colnueva = ComponentDestino.InputCollection[0].InputColumnCollection.New();\r\n                        colnueva.LineageID = col.ID;\r\n                        colnueva.ExternalMetadataColumnID = col.ID;\r\n                        colnueva.MappedColumnID = col.ID;\r\n                        colnueva.Name = col.Name;\r\n                        //break; \r\n                    }\r\n          \r\n                \r\n                }\r\n            }\r\n            foreach (IDTSInputColumn100 inputColumn in ComponentDestino.InputCollection[0].InputColumnCollection)\r\n                Console.WriteLine(inputColumn.Name);\r\n            Console.Read();\r\n\r\n            return (ComponentDestino); \r\n\r\n        }\r\n        public void GeneratePackage(string SourceConnectionString, string DestinationConnectionString)\r\n        {\r\n            OleDbConnection cn = new OleDbConnection(SourceConnectionString);\r\n            cn.Open();\r\n            Package Mipk = new Package();\r\n            Mipk.Name = &quot;KBGK_AAKL&quot;;\r\n            Application App = new Application();\r\n            ConnectionManager ConnOrigen = AddOleFbConnection(Mipk, &quot;Source&quot;, SourceConnectionString);\r\n            ConnectionManager ConnDestina = AddOleFbConnection(Mipk, &quot;Destination&quot;, DestinationConnectionString);\r\n            MainPipe Df = AddDataFlow(Mipk,&quot;KBGK AAKL&quot;).InnerObject as MainPipe ;\r\n            IDTSComponentMetaData100 source = AddSourceOledbFromTable(Df, &quot;Source Component&quot;, &quot;STG_AAKL&quot;, ConnOrigen);\r\n            AddOleDbDestinationTable(Df, ConnDestina,source,&quot;TM_AAKL&quot; );\r\n            App.SaveToXml(String.Format(@&quot;D:\\\\LSMK-source\\\\SSIS\\\\AutoGenerate\\\\Autogenerate_AAKL.dtsx&quot;, Mipk.Name), Mipk, null);\r\n\r\n\r\n\r\n        }\r\n\r\n        #region ScriptResults declaration\r\n  \r\n        enum ScriptResults\r\n        {\r\n            Success = Microsoft.SqlServer.Dts.Runtime.DTSExecResult.Success,\r\n            Failure = Microsoft.SqlServer.Dts.Runtime.DTSExecResult.Failure\r\n        };\r\n        #endregion\r\n\t}\r\n}\r\n",
+            "link": "https://stackoverflow.com/questions/17806035/how-to-mapping-column-from-oledbsource-to-oledbdestination-using-ssis-in-c",
+            "title": "How to mapping column from oledbsource to oledbdestination using SSIS in C#",
+            "body": "<p>I want to make mapping from </p>\n\n<pre><code>OleDbSource (select mFK_Prefix,mFK_Sufix,mElement_Base,mBase_Value,mPeriode_Start,mPeriode_End,mSandi_Pelapor,mOrder from [dbo].[STG_AAKL])\n</code></pre>\n\n<p>to </p>\n\n<pre><code>OledbDestination(select FK_Prefix,FK_Sufix,Element_Base,Base_Value,Periode_Start,Periode_End,Sandi_Pelapor,Order from [dbo].[TM_AAKL])\n</code></pre>\n\n<p>How to programmatically make mapping from oledbsource to oledbdestination using ssis inc#.</p>\n\n<p>for complete or my program there is at below this</p>\n\n<pre><code>[Microsoft.SqlServer.Dts.Tasks.ScriptTask.SSISScriptTaskEntryPointAttribute]\npublic partial class ScriptMain : Microsoft.SqlServer.Dts.Tasks.ScriptTask.VSTARTScriptObjectModelBase\n{\n    public void Main()\n    {\n        string DestinationCS = @\"Data Source=.\\SQL2012;Initial Catalog=DWH_LSMK;Provider=SQLOLEDB.1;Integrated Security=SSPI;Application Name=SSIS-Package;Auto Translate=False;\";\n        string SourceCS = @\"Data Source=.\\SQL2012;Initial Catalog=DWH_LSMK;Provider=SQLOLEDB.1;Integrated Security=SSPI;Application Name=SSIS-Package;Auto Translate=False;\";\n        GeneratePackage(SourceCS, DestinationCS); \n        Dts.TaskResult = (int)ScriptResults.Success;\n    }\n    protected ConnectionManager AddOleFbConnection(Package pck, string nameConexion, string cadenaConection)\n    {\n        ConnectionManager Cm;\n        Cm = pck.Connections.Add(\"OLEDB\");\n        Cm.ConnectionString = cadenaConection;\n        Cm.Name = nameConexion;\n        return (Cm);\n    }\n    protected virtual TaskHost AddDataFlow(Package pck,string dataFlowName)\n    {\n        Executable e = pck.Executables.Add(\"STOCK:PipelineTask\");\n        TaskHost thMainPipe = (TaskHost)e;\n        thMainPipe.Name = dataFlowName;\n        return (thMainPipe);\n    }\n    protected virtual IDTSComponentMetaData100 AddSourceOledbFromTable(MainPipe flujo,string nombrecomponenete,string nombretable,ConnectionManager Connection )\n    {\n        IDTSComponentMetaData100 ConexionAoregen = flujo.ComponentMetaDataCollection.New();\n        ConexionAoregen.Name = nombrecomponenete;\n        ConexionAoregen.ComponentClassID = \"DTSAdapter.OleDbSource\";\n        CManagedComponentWrapper instance = ConexionAoregen.Instantiate();\n        instance.ProvideComponentProperties();\n        ConexionAoregen.RuntimeConnectionCollection[0].ConnectionManager = DtsConvert.GetExtendedInterface(Connection);\n        ConexionAoregen.RuntimeConnectionCollection[0].ConnectionManagerID = Connection.ID;\n        ConexionAoregen.Name = nombrecomponenete;\n        instance.SetComponentProperty(\"AccessMode\",0);\n        instance.SetComponentProperty(\"OpenRowset\", nombretable);\n        try\n        {\n            instance.AcquireConnections(null);\n            instance.ReinitializeMetaData();\n            instance.ReleaseConnections();\n        }\n        catch (Exception e)\n        {\n            throw; \n        }\n        return (ConexionAoregen);\n    }\n    protected virtual IDTSComponentMetaData100 AddOleDbDestinationTable(MainPipe DataFlowTask,ConnectionManager destinationconnection,IDTSComponentMetaData100 fuentedatos,string tabledestination)\n    {\n        IDTSComponentMetaData100 ComponentDestino = DataFlowTask.ComponentMetaDataCollection.New();\n        ComponentDestino.ComponentClassID = \"DTSAdapter.OleDbDestination\";\n        CManagedComponentWrapper instance = ComponentDestino.Instantiate();\n        instance.ProvideComponentProperties();\n        ComponentDestino.RuntimeConnectionCollection[0].ConnectionManager = DtsConvert.GetExtendedInterface(destinationconnection);\n        ComponentDestino.RuntimeConnectionCollection[0].ConnectionManagerID = destinationconnection.Name;\n        instance.SetComponentProperty(\"AccessMode\",3);\n        //instance.SetComponentProperty(\"FastLoadOptions\",\"TABLOCK,CHECK_CONSTRAINTS\");\n        instance.SetComponentProperty(\"OpenRowset\", tabledestination);\n        IDTSPath100 union = DataFlowTask.PathCollection.New();\n        union.AttachPathAndPropagateNotifications(fuentedatos.OutputCollection[0], ComponentDestino.InputCollection[0] );\n        instance.AcquireConnections(null);\n        instance.ReinitializeMetaData();\n        instance.ReleaseConnections();\n\n        foreach (IDTSOutputColumn100 col in fuentedatos.OutputCollection[0].OutputColumnCollection)\n        {\n\n            for (int i = 0; i &lt; ComponentDestino.InputCollection[0].ExternalMetadataColumnCollection.Count; i += 1)\n            {\n                string campo = ComponentDestino.InputCollection[0].ExternalMetadataColumnCollection[i].Name;\n\n\n\n\n                if ((col.Name.ToUpper() == \"MPERIODE_START\") &amp;&amp; (campo.ToUpper() == \"PERIODE_END\"))\n                {\n                    IDTSInputColumn100 colnueva = ComponentDestino.InputCollection[0].InputColumnCollection.New();\n                    colnueva.LineageID = col.ID;\n                    colnueva.ExternalMetadataColumnID = col.ID;\n                    colnueva.MappedColumnID = col.ID;\n                    colnueva.Name = col.Name;\n                    // break;\n                }\n                else if ((col.Name.ToUpper() == \"MPERIODE_END\") &amp;&amp; (campo.ToUpper() == \"PERIODE_START\"))\n                {\n                    IDTSInputColumn100 colnueva = ComponentDestino.InputCollection[0].InputColumnCollection.New();\n                    colnueva.LineageID = col.ID;\n                    colnueva.ExternalMetadataColumnID = col.ID;\n                    colnueva.MappedColumnID = col.ID;\n                    colnueva.Name = col.Name;\n                    //break; \n                }\n\n\n            }\n        }\n        foreach (IDTSInputColumn100 inputColumn in ComponentDestino.InputCollection[0].InputColumnCollection)\n            Console.WriteLine(inputColumn.Name);\n        Console.Read();\n\n        return (ComponentDestino); \n\n    }\n    public void GeneratePackage(string SourceConnectionString, string DestinationConnectionString)\n    {\n        OleDbConnection cn = new OleDbConnection(SourceConnectionString);\n        cn.Open();\n        Package Mipk = new Package();\n        Mipk.Name = \"KBGK_AAKL\";\n        Application App = new Application();\n        ConnectionManager ConnOrigen = AddOleFbConnection(Mipk, \"Source\", SourceConnectionString);\n        ConnectionManager ConnDestina = AddOleFbConnection(Mipk, \"Destination\", DestinationConnectionString);\n        MainPipe Df = AddDataFlow(Mipk,\"KBGK AAKL\").InnerObject as MainPipe ;\n        IDTSComponentMetaData100 source = AddSourceOledbFromTable(Df, \"Source Component\", \"STG_AAKL\", ConnOrigen);\n        AddOleDbDestinationTable(Df, ConnDestina,source,\"TM_AAKL\" );\n        App.SaveToXml(String.Format(@\"D:\\\\LSMK-source\\\\SSIS\\\\AutoGenerate\\\\Autogenerate_AAKL.dtsx\", Mipk.Name), Mipk, null);\n\n\n\n    }\n\n    #region ScriptResults declaration\n\n    enum ScriptResults\n    {\n        Success = Microsoft.SqlServer.Dts.Runtime.DTSExecResult.Success,\n        Failure = Microsoft.SqlServer.Dts.Runtime.DTSExecResult.Failure\n    };\n    #endregion\n}\n</code></pre>\n\n<p>}</p>\n"
+        },
+        {
+            "tags": [
+                "entity-framework",
+                "primary-key",
+                "repository-pattern",
+                "entity-framework-core"
+            ],
+            "owner": {
+                "reputation": 135,
+                "user_id": 1121289,
+                "user_type": "registered",
+                "accept_rate": 73,
+                "profile_image": "https://www.gravatar.com/avatar/742f37dcc493f284d597971a7903b94d?s=128&d=identicon&r=PG",
+                "display_name": "cResults",
+                "link": "https://stackoverflow.com/users/1121289/cresults"
+            },
+            "is_answered": true,
+            "view_count": 2772,
+            "accepted_answer_id": 34993637,
+            "answer_count": 2,
+            "score": 8,
+            "last_activity_date": 1526441977,
+            "creation_date": 1433637318,
+            "last_edit_date": 1512663206,
+            "question_id": 30688909,
+            "body_markdown": "We are currently using the method below which depends upon IObjectContextAdapter in an abstract Repository.  From what I&#39;m reading, it appears that anything related to ObjectContext is being chopped out of Entity Framework Core.  The method below is the only place we depend upon anything related to ObjectContext. \r\n\r\nWe&#39;d like to upgrade to Entity Framework Core.  This is our only road block.  Is there a way to get the value of the primary key of an entity with the Entity Framework Core apis?\r\n\r\n    // Entity Framework\r\n    public virtual int GetKey(T entity)\r\n    {\r\n        var oContext = ((IObjectContextAdapter)_DbContext).ObjectContext;\r\n        var oSet = oContext.CreateObjectSet&lt;T&gt;();\r\n        var keyName = oSet.EntitySet.ElementType\r\n                                    .KeyMembers\r\n                                    .Select(k =&gt; k.Name)\r\n                                    .Single();\r\n\r\n        return (int)entity.GetType().GetProperty(keyName).GetValue(entity, null);\r\n    }\r\n",
+            "link": "https://stackoverflow.com/questions/30688909/how-to-get-primary-key-value-with-entity-framework-core",
+            "title": "How to get primary key value with Entity Framework Core",
+            "body": "<p>We are currently using the method below which depends upon IObjectContextAdapter in an abstract Repository.  From what I'm reading, it appears that anything related to ObjectContext is being chopped out of Entity Framework Core.  The method below is the only place we depend upon anything related to ObjectContext. </p>\n\n<p>We'd like to upgrade to Entity Framework Core.  This is our only road block.  Is there a way to get the value of the primary key of an entity with the Entity Framework Core apis?</p>\n\n<pre><code>// Entity Framework\npublic virtual int GetKey(T entity)\n{\n    var oContext = ((IObjectContextAdapter)_DbContext).ObjectContext;\n    var oSet = oContext.CreateObjectSet&lt;T&gt;();\n    var keyName = oSet.EntitySet.ElementType\n                                .KeyMembers\n                                .Select(k =&gt; k.Name)\n                                .Single();\n\n    return (int)entity.GetType().GetProperty(keyName).GetValue(entity, null);\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "asp.net",
+                "asp.net-mvc",
+                "iis",
+                "razor",
+                "windows-server-2008-r2"
+            ],
+            "owner": {
+                "reputation": 43034,
+                "user_id": 231716,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://www.gravatar.com/avatar/f983f7a23d33aa383453583cbf20bf2a?s=128&d=identicon&r=PG",
+                "display_name": "Brian Mains",
+                "link": "https://stackoverflow.com/users/231716/brian-mains"
+            },
+            "is_answered": true,
+            "view_count": 7170,
+            "accepted_answer_id": 9935416,
+            "answer_count": 5,
+            "score": 2,
+            "last_activity_date": 1526441923,
+            "creation_date": 1333019638,
+            "question_id": 9924220,
+            "body_markdown": "For some reason, when I deploy my Razor MVC web site to my Windows 2008 R2 server, I&#39;m getting 500 internal server errors for all CSS and JS.  I&#39;m not sure why, because I&#39;ve done the following:\r\n\r\n- Enabled static content in IIS\r\n- Enabled anonymous access, with the default ID being the application pool identity and given that identity read/write permission to the folders\r\n- Ensured my static content handler was setup correctly\r\n\r\nWhat other problems could it be?  How can I even debug this to see what the actual error is?  Even though I have an Application_Error handler, nothing is getting logged.  And IIS logs doesn&#39;t give me the error info?\r\n\r\nThanks.",
+            "link": "https://stackoverflow.com/questions/9924220/iis-7-5-and-razor-site-500-errors-for-css-and-js",
+            "title": "IIS 7.5 and Razor Site: 500 errors for CSS and JS",
+            "body": "<p>For some reason, when I deploy my Razor MVC web site to my Windows 2008 R2 server, I'm getting 500 internal server errors for all CSS and JS.  I'm not sure why, because I've done the following:</p>\n\n<ul>\n<li>Enabled static content in IIS</li>\n<li>Enabled anonymous access, with the default ID being the application pool identity and given that identity read/write permission to the folders</li>\n<li>Ensured my static content handler was setup correctly</li>\n</ul>\n\n<p>What other problems could it be?  How can I even debug this to see what the actual error is?  Even though I have an Application_Error handler, nothing is getting logged.  And IIS logs doesn't give me the error info?</p>\n\n<p>Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "cordova",
+                "ionic-framework",
+                "ionic-native",
+                "cordova-media-plugin"
+            ],
+            "owner": {
+                "reputation": 101,
+                "user_id": 2933860,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/605275e249eaf5367494ec0ff1f5322c?s=128&d=identicon&r=PG",
+                "display_name": "AlexisCaffa",
+                "link": "https://stackoverflow.com/users/2933860/alexiscaffa"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526441920,
+            "creation_date": 1526441920,
+            "question_id": 50362143,
+            "body_markdown": "A **Ionic app is not playing media resources**.\r\n\r\nThe android logs says:  \r\n```Warning | Tag: cr_Ime | updateState: type [0-&gt;0], flags [0], show [false], ```  \r\nnothing more.\r\n\r\n - No playing\r\n - No errors\r\n - No building warning\r\n - Re-removed and re-added plugins and platforms  \r\n - Tested mp3, aac &amp; ogg files locally packaged and remotelly over http server.\r\n\r\nionic `3.20.0`  \r\ncordova `7.1.0`  \r\ncordova-android `6.3.0`  \r\ncordova-plugin-media `5.0.2`  \r\nandroid `6` &amp; `7`",
+            "link": "https://stackoverflow.com/questions/50362143/ionic-cordova-media-plugin-not-work-on-android-cr-ime-updatestate-type-0-0",
+            "title": "Ionic cordova media plugin not work on android, cr_Ime updateState: type [0-&gt;0], flags [0], show [false],",
+            "body": "<p>A <strong>Ionic app is not playing media resources</strong>.</p>\n\n<p>The android logs says:<br>\n<code>Warning | Tag: cr_Ime | updateState: type [0-&gt;0], flags [0], show [false],</code><br>\nnothing more.</p>\n\n<ul>\n<li>No playing</li>\n<li>No errors</li>\n<li>No building warning</li>\n<li>Re-removed and re-added plugins and platforms  </li>\n<li>Tested mp3, aac &amp; ogg files locally packaged and remotelly over http server.</li>\n</ul>\n\n<p>ionic <code>3.20.0</code><br>\ncordova <code>7.1.0</code><br>\ncordova-android <code>6.3.0</code><br>\ncordova-plugin-media <code>5.0.2</code><br>\nandroid <code>6</code> &amp; <code>7</code></p>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "entity-framework",
+                "identity",
+                "guid",
+                "ef-fluent-api"
+            ],
+            "owner": {
+                "reputation": 220,
+                "user_id": 3711357,
+                "user_type": "registered",
+                "accept_rate": 41,
+                "profile_image": "https://www.gravatar.com/avatar/8404ee48d33a6daae89fb6944371f2b1?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3711357",
+                "link": "https://stackoverflow.com/users/3711357/user3711357"
+            },
+            "is_answered": false,
+            "view_count": 65,
+            "closed_date": 1513801484,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526441917,
+            "creation_date": 1513791484,
+            "last_edit_date": 1526441917,
+            "question_id": 47911549,
+            "body_markdown": "My sql table has two columns that needs identity generated.\r\n\r\n1) ID //its identity seeds trwo, identity(1,1)\r\n\r\n2) pGuid //newid() as default values\r\n\r\nProblem is when insert entry from UI then, it works for ID and not for pGuid field.\r\n\r\nusing entity framework, fluent API.\r\n\r\nmapping added as\r\n\r\n  &#39;this.property(&quot;pGuid&quot;).HasColumn(&quot;pGuid&quot;);`\r\n\r\nwhat is missing with mapping and so, its not working.",
+            "link": "https://stackoverflow.com/questions/47911549/how-to-have-two-auto-increment-columns-in-sql-entity-framework-mapping",
+            "closed_reason": "duplicate",
+            "title": "How to have two auto increment columns in sql - entity framework mapping",
+            "body": "<p>My sql table has two columns that needs identity generated.</p>\n\n<p>1) ID //its identity seeds trwo, identity(1,1)</p>\n\n<p>2) pGuid //newid() as default values</p>\n\n<p>Problem is when insert entry from UI then, it works for ID and not for pGuid field.</p>\n\n<p>using entity framework, fluent API.</p>\n\n<p>mapping added as</p>\n\n<p>'this.property(\"pGuid\").HasColumn(\"pGuid\");`</p>\n\n<p>what is missing with mapping and so, its not working.</p>\n"
+        },
+        {
+            "tags": [
+                "css",
+                "linear-gradients"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9797698,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/Wwjiw.png?s=128&g=1",
+                "display_name": "Adrian P",
+                "link": "https://stackoverflow.com/users/9797698/adrian-p"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1526441909,
+            "creation_date": 1526441658,
+            "last_edit_date": 1526441909,
+            "question_id": 50362102,
+            "body_markdown": "[![enter image description here][1]][1]\r\n\r\nSo as you can see here I am trying to get this gradient to smooth out to nothing on both sides, but the center looks so rough. Photoshop doesn&#39;t have this issue as you can just use the Smoothness slider inside the gradient settings.  How do I apply the same concept in CSS?  I want it to look like this:\r\n\r\n[![enter image description here][2]][2]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/BLajC.png\r\n  [2]: https://i.stack.imgur.com/bGsZd.png",
+            "link": "https://stackoverflow.com/questions/50362102/rough-transition-on-gradient-line",
+            "title": "Rough transition on gradient line",
+            "body": "<p><a href=\"https://i.stack.imgur.com/BLajC.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/BLajC.png\" alt=\"enter image description here\"></a></p>\n\n<p>So as you can see here I am trying to get this gradient to smooth out to nothing on both sides, but the center looks so rough. Photoshop doesn't have this issue as you can just use the Smoothness slider inside the gradient settings.  How do I apply the same concept in CSS?  I want it to look like this:</p>\n\n<p><a href=\"https://i.stack.imgur.com/bGsZd.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/bGsZd.png\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "android",
+                "android-volley"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 7685944,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1313682438725458/picture?type=large",
+                "display_name": "Shopno Hin",
+                "link": "https://stackoverflow.com/users/7685944/shopno-hin"
+            },
+            "is_answered": false,
+            "view_count": 45,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526441908,
+            "creation_date": 1526374686,
+            "last_edit_date": 1526441908,
+            "question_id": 50346113,
+            "body_markdown": "I&#39;m updating the volley data using handler it works fine, when I&#39;m scrolling down for swipe refresh, then also it works fine but when I want to go down and I&#39;m scrolling down to up the app got crashed and closed automatically.\r\nhere is the code of handler.\r\n\r\n\r\n    Handler handler = new Handler();\r\n    Runnable runnable = new Runnable() {\r\n         @Override\r\n         public void run() {\r\n             loadDataFromServer();\r\n             handler.postDelayed(this, 200);\r\n         }\r\n      };Handler.postDelayed(runnable, 200) ;\r\n\r\nerror log is here\r\n\r\n\r\n    05-16 09:23:16.697 19724-19724/com.messenger.nillrong E/AndroidRuntime: FATAL EXCEPTION: main\r\n    Process: com.messenger.nillrong, PID: 19724\r\n    java.lang.IndexOutOfBoundsException: Inconsistency detected. Invalid item position 8(offset:8).state:9 android.support.v7.widget.RecyclerView{58bee7e VFED..... .F...... 0,0-1080,1845 #7f08007b app:id/recyclerViewId}, adapter:com.messenger.nillrong.MyRecyclerAdapter@2b31fdf, layout:android.support.v7.widget.LinearLayoutManager@f74b42c, context:com.messenger.nillrong.MainActivity@5452394\r\n        at android.support.v7.widget.RecyclerView$Recycler.tryGetViewHolderForPositionByDeadline(RecyclerView.java:5817)\r\n        at android.support.v7.widget.GapWorker.prefetchPositionWithDeadline(GapWorker.java:285)\r\n        at android.support.v7.widget.GapWorker.flushTaskWithDeadline(GapWorker.java:342)\r\n        at android.support.v7.widget.GapWorker.flushTasksWithDeadline(GapWorker.java:358)\r\n        at android.support.v7.widget.GapWorker.prefetch(GapWorker.java:365)\r\n        at android.support.v7.widget.GapWorker.run(GapWorker.java:396)\r\n        at android.os.Handler.handleCallback(Handler.java:754)\r\n        at android.os.Handler.dispatchMessage(Handler.java:95)\r\n        at android.os.Looper.loop(Looper.java:163)\r\n        at android.app.ActivityThread.main(ActivityThread.java:6342)\r\n        at java.lang.reflect.Method.invoke(Native Method)\r\n        at com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:880)\r\n        at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:770)\r\n     05-16 09:23:16.765 19724-19724/com.messenger.nillrong I/Process: Sending signa",
+            "link": "https://stackoverflow.com/questions/50346113/how-to-handle-the-handler-exception",
+            "title": "How to handle the handler exception?",
+            "body": "<p>I'm updating the volley data using handler it works fine, when I'm scrolling down for swipe refresh, then also it works fine but when I want to go down and I'm scrolling down to up the app got crashed and closed automatically.\nhere is the code of handler.</p>\n\n<pre><code>Handler handler = new Handler();\nRunnable runnable = new Runnable() {\n     @Override\n     public void run() {\n         loadDataFromServer();\n         handler.postDelayed(this, 200);\n     }\n  };Handler.postDelayed(runnable, 200) ;\n</code></pre>\n\n<p>error log is here</p>\n\n<pre><code>05-16 09:23:16.697 19724-19724/com.messenger.nillrong E/AndroidRuntime: FATAL EXCEPTION: main\nProcess: com.messenger.nillrong, PID: 19724\njava.lang.IndexOutOfBoundsException: Inconsistency detected. Invalid item position 8(offset:8).state:9 android.support.v7.widget.RecyclerView{58bee7e VFED..... .F...... 0,0-1080,1845 #7f08007b app:id/recyclerViewId}, adapter:com.messenger.nillrong.MyRecyclerAdapter@2b31fdf, layout:android.support.v7.widget.LinearLayoutManager@f74b42c, context:com.messenger.nillrong.MainActivity@5452394\n    at android.support.v7.widget.RecyclerView$Recycler.tryGetViewHolderForPositionByDeadline(RecyclerView.java:5817)\n    at android.support.v7.widget.GapWorker.prefetchPositionWithDeadline(GapWorker.java:285)\n    at android.support.v7.widget.GapWorker.flushTaskWithDeadline(GapWorker.java:342)\n    at android.support.v7.widget.GapWorker.flushTasksWithDeadline(GapWorker.java:358)\n    at android.support.v7.widget.GapWorker.prefetch(GapWorker.java:365)\n    at android.support.v7.widget.GapWorker.run(GapWorker.java:396)\n    at android.os.Handler.handleCallback(Handler.java:754)\n    at android.os.Handler.dispatchMessage(Handler.java:95)\n    at android.os.Looper.loop(Looper.java:163)\n    at android.app.ActivityThread.main(ActivityThread.java:6342)\n    at java.lang.reflect.Method.invoke(Native Method)\n    at com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:880)\n    at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:770)\n 05-16 09:23:16.765 19724-19724/com.messenger.nillrong I/Process: Sending signa\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "arrays",
+                "performance",
+                "time"
+            ],
+            "owner": {
+                "reputation": 377,
+                "user_id": 2333311,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://i.stack.imgur.com/cTavI.jpg?s=128&g=1",
+                "display_name": "Ask_Me_A_Question",
+                "link": "https://stackoverflow.com/users/2333311/ask-me-a-question"
+            },
+            "is_answered": true,
+            "view_count": 40,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526441905,
+            "creation_date": 1412802316,
+            "last_edit_date": 1526441905,
+            "question_id": 26266431,
+            "body_markdown": "I have two arrays like this..\r\n\r\n     Long key1= 1l;\t Long key2= 2l;\t Long key3= 3l;\t Long key4= 4l;\t \r\n\t Long key5= 2l;\t Long key6= 3l;\t Long key7= 1l;\t Long key8= 2l;\r\n\t Long key9= 4l;\r\n    \r\n\t MyObject ob1= new MyObject(1l);\t MyObject ob2= new MyObject(3l);\t MyObject ob3= new MyObject(2l);\r\n\t MyObject ob4= new MyObject(1l);\t MyObject ob5= new MyObject(4l);\t MyObject ob6= new MyObject(3l);\r\n\t MyObject ob7= new MyObject(4l);\t MyObject ob8= new MyObject(2l);\t MyObject ob9= new MyObject(1l);\r\n\t \r\n\t Long[] keys= new Long[]{key1,key2,key3,key4,key5,key5,key7,key8,key9};\r\n\t MyObject[] objects= new MyObject[]{ob1,ob2,ob3,ob4,ob5,ob6,ob7,ob8,ob9};\r\n\r\nI want to map Objects with keys. So each key will have list of Objects associate with it. \r\n\r\n(More or less my problem is like.. Map &#39;A&#39; with &quot;Apple, Axe, Aero&quot;  ; &#39;B&#39; with &quot;Box, Ball..etc&quot;) \r\n\r\nI am successful by the way I am doing but the problem is time complexity it is more than O(n * n)(I am taking a key , comparing it with each objects key.). \r\n\r\nCan someone help me to get this work with less than o(n * n) time complexity.For me Time complexity matters. \r\n\r\nUsing JDK 1.6.\r\n\r\n\r\n\r\n\r\n       My Program:\r\n\r\n\r\n     import java.util.ArrayList;\r\n     import java.util.HashMap;\r\n     import java.util.List;\r\n     import java.util.Map;\r\n\r\n     public class Bar \r\n       {\r\n\t Long key1= 1l;\t Long key2= 2l;\t Long key3= 3l;\t Long key4= 4l;\t \r\n\t Long key5= 2l;\t Long key6= 3l;\t Long key7= 1l;\t Long key8= 2l;\r\n\t Long key9= 4l;\r\n    \r\n\t MyObject ob1= new MyObject(1l);\t MyObject ob2= new MyObject(3l);\t MyObject ob3= new MyObject(2l);\r\n\t MyObject ob4= new MyObject(1l);\t MyObject ob5= new MyObject(4l);\t MyObject ob6= new MyObject(3l);\r\n\t MyObject ob7= new MyObject(4l);\t MyObject ob8= new MyObject(2l);\t MyObject ob9= new MyObject(1l);\r\n\t \r\n\t Long[] keys= new Long[]{key1,key2,key3,key4,key5,key5,key7,key8,key9};\r\n\t MyObject[] objects= new MyObject[]{ob1,ob2,ob3,ob4,ob5,ob6,ob7,ob8,ob9};\r\n\t \r\n\t \r\n\t public void mapper()\r\n\t {\r\n\t\tMap&lt;Long, List&lt;MyObject&gt;&gt; keyToObjectMap= new HashMap&lt;Long,List&lt;MyObject&gt;&gt;(); \r\n\t\t\r\n\t\tfor(int i=0;i&lt;keys.length;i++)\r\n\t\t{\r\n\t\t\tfor(MyObject object:objects)\r\n\t\t\t{\r\n\t\t\t\tif(keyToObjectMap.containsKey(keys[i]))\r\n\t\t\t\t{\r\n\t\t\t\t\tif(keys[i].equals(object.getKey()))\r\n\t\t\t\t\t{\r\n\t\t\t\t\t\tList&lt;MyObject&gt; objs= keyToObjectMap.get(keys[i]);\r\n\t\t\t\t\t\tif(!objs.contains(object))\r\n\t\t\t\t\t\t{\r\n\t\t\t\t\t\t\tobjs.add(object);\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t\tkeyToObjectMap.put(keys[i], objs);\t\r\n\t\t\t\t\t}\r\n\t\t\t\t}\r\n\t\t\t\telse if(keys[i].equals(object.getKey())) \r\n\t\t\t\t{\r\n\t\t\t\t\tList&lt;MyObject&gt; objs= new ArrayList&lt;MyObject&gt;();\r\n\t\t\t\t\tobjs.add(object);\r\n\t\t\t\t\tkeyToObjectMap.put(keys[i], objs);\t\r\n\t\t\t\t}\t\t\t\t\t\r\n\t\t\t}\r\n\t\t}\t\t\r\n\t } \t \r\n\r\n\t public static void main(String[] args) \r\n\t {\r\n\t\t Bar b= new Bar();\r\n\t\t b.mapper();\r\n\t}\r\n\r\n       }\r\n\r\n\r\n\r\n     class MyObject\r\n     {\r\n\tLong key;\r\n\tString desc=&quot;description&quot;;\t\r\n\t\r\n\tMyObject(Long key)\r\n\t{\r\n\t\tthis.key=key;\r\n\t}\r\n\t\r\n\tpublic Long getKey(){\r\n\t\treturn key;\r\n\t}\r\n    }\r\n\r\n\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/26266431/mapping-key-values-from-arrays-of-values-where-time-complexity-matters",
+            "title": "Mapping key values from arrays of values where time complexity matters",
+            "body": "<p>I have two arrays like this..</p>\n\n<pre><code> Long key1= 1l;  Long key2= 2l;  Long key3= 3l;  Long key4= 4l;  \n Long key5= 2l;  Long key6= 3l;  Long key7= 1l;  Long key8= 2l;\n Long key9= 4l;\n\n MyObject ob1= new MyObject(1l);     MyObject ob2= new MyObject(3l);     MyObject ob3= new MyObject(2l);\n MyObject ob4= new MyObject(1l);     MyObject ob5= new MyObject(4l);     MyObject ob6= new MyObject(3l);\n MyObject ob7= new MyObject(4l);     MyObject ob8= new MyObject(2l);     MyObject ob9= new MyObject(1l);\n\n Long[] keys= new Long[]{key1,key2,key3,key4,key5,key5,key7,key8,key9};\n MyObject[] objects= new MyObject[]{ob1,ob2,ob3,ob4,ob5,ob6,ob7,ob8,ob9};\n</code></pre>\n\n<p>I want to map Objects with keys. So each key will have list of Objects associate with it. </p>\n\n<p>(More or less my problem is like.. Map 'A' with \"Apple, Axe, Aero\"  ; 'B' with \"Box, Ball..etc\") </p>\n\n<p>I am successful by the way I am doing but the problem is time complexity it is more than O(n * n)(I am taking a key , comparing it with each objects key.). </p>\n\n<p>Can someone help me to get this work with less than o(n * n) time complexity.For me Time complexity matters. </p>\n\n<p>Using JDK 1.6.</p>\n\n<pre><code>   My Program:\n\n\n import java.util.ArrayList;\n import java.util.HashMap;\n import java.util.List;\n import java.util.Map;\n\n public class Bar \n   {\n Long key1= 1l;  Long key2= 2l;  Long key3= 3l;  Long key4= 4l;  \n Long key5= 2l;  Long key6= 3l;  Long key7= 1l;  Long key8= 2l;\n Long key9= 4l;\n\n MyObject ob1= new MyObject(1l);     MyObject ob2= new MyObject(3l);     MyObject ob3= new MyObject(2l);\n MyObject ob4= new MyObject(1l);     MyObject ob5= new MyObject(4l);     MyObject ob6= new MyObject(3l);\n MyObject ob7= new MyObject(4l);     MyObject ob8= new MyObject(2l);     MyObject ob9= new MyObject(1l);\n\n Long[] keys= new Long[]{key1,key2,key3,key4,key5,key5,key7,key8,key9};\n MyObject[] objects= new MyObject[]{ob1,ob2,ob3,ob4,ob5,ob6,ob7,ob8,ob9};\n\n\n public void mapper()\n {\n    Map&lt;Long, List&lt;MyObject&gt;&gt; keyToObjectMap= new HashMap&lt;Long,List&lt;MyObject&gt;&gt;(); \n\n    for(int i=0;i&lt;keys.length;i++)\n    {\n        for(MyObject object:objects)\n        {\n            if(keyToObjectMap.containsKey(keys[i]))\n            {\n                if(keys[i].equals(object.getKey()))\n                {\n                    List&lt;MyObject&gt; objs= keyToObjectMap.get(keys[i]);\n                    if(!objs.contains(object))\n                    {\n                        objs.add(object);\n                    }\n                    keyToObjectMap.put(keys[i], objs);  \n                }\n            }\n            else if(keys[i].equals(object.getKey())) \n            {\n                List&lt;MyObject&gt; objs= new ArrayList&lt;MyObject&gt;();\n                objs.add(object);\n                keyToObjectMap.put(keys[i], objs);  \n            }                   \n        }\n    }       \n }   \n\n public static void main(String[] args) \n {\n     Bar b= new Bar();\n     b.mapper();\n}\n\n   }\n\n\n\n class MyObject\n {\nLong key;\nString desc=\"description\";  \n\nMyObject(Long key)\n{\n    this.key=key;\n}\n\npublic Long getKey(){\n    return key;\n}\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "docker",
+                "kubernetes",
+                "swarm",
+                "kubernetes-pod"
+            ],
+            "owner": {
+                "reputation": 38,
+                "user_id": 6513431,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/3518355968fbbcd1a6a23bb76a988d6c?s=128&d=identicon&r=PG&f=1",
+                "display_name": "jisan",
+                "link": "https://stackoverflow.com/users/6513431/jisan"
+            },
+            "is_answered": true,
+            "view_count": 253,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1526441889,
+            "creation_date": 1489069930,
+            "last_edit_date": 1526441889,
+            "question_id": 42697985,
+            "body_markdown": "Is it possible to map, the device port(USB port) of a worker node, to a POD?\r\nSimilar to `docker create --device=/dev/ttyACM0:/dev/ttyACM0`\r\n\r\nIs it possible? I checked the refence doc, but could not find anything.\r\n\r\nIn Docker service, is it possible to map `--device port` to service container(if I am running only 1 container)? \r\n",
+            "link": "https://stackoverflow.com/questions/42697985/kubernetes-node-device-port-usb-mapping-to-pod-or-swarm-service-device-mapp",
+            "title": "Kubernetes node Device port (USB) mapping to POD? Or Swarm service --device mapping",
+            "body": "<p>Is it possible to map, the device port(USB port) of a worker node, to a POD?\nSimilar to <code>docker create --device=/dev/ttyACM0:/dev/ttyACM0</code></p>\n\n<p>Is it possible? I checked the refence doc, but could not find anything.</p>\n\n<p>In Docker service, is it possible to map <code>--device port</code> to service container(if I am running only 1 container)? </p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "memory-leaks",
+                "profiling"
+            ],
+            "owner": {
+                "reputation": 863,
+                "user_id": 124123,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/ce10a383fc95b9faaa02ae1da0debf18?s=128&d=identicon&r=PG",
+                "display_name": "Abel Morelos",
+                "link": "https://stackoverflow.com/users/124123/abel-morelos"
+            },
+            "is_answered": true,
+            "view_count": 6981,
+            "accepted_answer_id": 2991376,
+            "answer_count": 2,
+            "score": 4,
+            "last_activity_date": 1526441883,
+            "creation_date": 1275923038,
+            "question_id": 2990609,
+            "body_markdown": "I have a curious problem, I need to analyze a Java heap dump (from an IBM JRE) which has 1.5GB in size, the problem is that while analyzing the dump (I&#39;ve tried [HeapAnalyzer][1] and the [IBM Memory Analyzer 0.5][2]) the tools runs out of memory I can&#39;t really analyze the dump. I have 3GB of RAM in my machine, but seems like it&#39;s not enough to analyze the 1.5 GB dump,\r\n\r\nMy question is, do you know a specific tool for heap dump analysis (supporting IBM JRE dumps) that I could run with the amount of memory I have? \r\n\r\nThanks.\r\n\r\n\r\n  [1]: http://www.alphaworks.ibm.com/tech/heapanalyzer\r\n  [2]: https://www.ibm.com/developerworks/java/jdk/tools/memoryanalyzer/",
+            "link": "https://stackoverflow.com/questions/2990609/running-out-of-memory-while-analyzing-a-java-heap-dump",
+            "title": "Running out of memory while analyzing a Java Heap Dump",
+            "body": "<p>I have a curious problem, I need to analyze a Java heap dump (from an IBM JRE) which has 1.5GB in size, the problem is that while analyzing the dump (I've tried <a href=\"http://www.alphaworks.ibm.com/tech/heapanalyzer\" rel=\"nofollow noreferrer\">HeapAnalyzer</a> and the <a href=\"https://www.ibm.com/developerworks/java/jdk/tools/memoryanalyzer/\" rel=\"nofollow noreferrer\">IBM Memory Analyzer 0.5</a>) the tools runs out of memory I can't really analyze the dump. I have 3GB of RAM in my machine, but seems like it's not enough to analyze the 1.5 GB dump,</p>\n\n<p>My question is, do you know a specific tool for heap dump analysis (supporting IBM JRE dumps) that I could run with the amount of memory I have? </p>\n\n<p>Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "php"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9748873,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "adam",
+                "link": "https://stackoverflow.com/users/9748873/adam"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526441872,
+            "creation_date": 1526437446,
+            "last_edit_date": 1526441872,
+            "question_id": 50361601,
+            "body_markdown": "The code is not function. It should go to the page that contain detail, but the detail show nothing. What is actually happen? \r\n\r\n[![enter image description here][1]][1]\r\n\r\n      function addRowHandlers() {\r\n      var tbody = $(&quot;#employee-click&quot;); //document.getElementById(&quot;employee- \r\n      click&quot;);\r\n       tbody.each(function() {\r\n       $(this).on(&#39;click&#39;, function() {\r\n      \r\n       window.location.href = &quot;detail.php&quot;;\r\n\t\t\t\t\t\t\t\t\r\n       })\r\n       })\r\n        }\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/XnaHr.png",
+            "link": "https://stackoverflow.com/questions/50361601/why-i-click-the-row-in-table-it-show-nothing-in-the-next-page",
+            "title": "Why I click the row in table it show nothing in the next page?",
+            "body": "<p>The code is not function. It should go to the page that contain detail, but the detail show nothing. What is actually happen? </p>\n\n<p><a href=\"https://i.stack.imgur.com/XnaHr.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/XnaHr.png\" alt=\"enter image description here\"></a></p>\n\n<pre><code>  function addRowHandlers() {\n  var tbody = $(\"#employee-click\"); //document.getElementById(\"employee- \n  click\");\n   tbody.each(function() {\n   $(this).on('click', function() {\n\n   window.location.href = \"detail.php\";\n\n   })\n   })\n    }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "hibernate"
+            ],
+            "owner": {
+                "reputation": 2379,
+                "user_id": 1059670,
+                "user_type": "registered",
+                "accept_rate": 79,
+                "profile_image": "https://www.gravatar.com/avatar/eff91a3d37f0deaaa986bbc0c38b47af?s=128&d=identicon&r=PG&f=1",
+                "display_name": "rags",
+                "link": "https://stackoverflow.com/users/1059670/rags"
+            },
+            "is_answered": true,
+            "view_count": 1062,
+            "accepted_answer_id": 10564943,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526441870,
+            "creation_date": 1336742679,
+            "last_edit_date": 1526441870,
+            "question_id": 10552249,
+            "body_markdown": "I have three tables. A student can register for multiple courses.\r\n\r\n**Student**\r\nRollNumber    Integer, StudentName   String\r\n\r\n**Course**\r\nCourseID       Integer, CourseName     String\r\n\r\n**StudentCourses**\r\nRollNumber    Integer, CourseID      Integer, AllotedRoom   Integer\r\n\r\n\r\n**Student.hbm.xml**\r\n\r\n    &lt;hibernate-mapping&gt;\r\n      &lt;class name=&quot;myPackage.Student&quot; table=&quot;STUDENT&quot;&gt;\r\n            &lt;id name=&quot;ROLLNUMBER&quot; type=&quot;integer&quot;&gt;\r\n                &lt;column name=&quot;ROLLNUMBER&quot; /&gt;\r\n            &lt;/id&gt;\r\n    \r\n            &lt;property name=&quot;STUDENTNAME&quot; type=&quot;string&quot;&gt;\r\n                &lt;column name=&quot;STUDENTNAME&quot;/&gt;\r\n            &lt;/property&gt;\r\n      &lt;/class&gt;\r\n    &lt;/hibernate-mapping&gt;\r\n\r\n**Course.hbm.xml**\r\n\r\n    &lt;hibernate-mapping&gt;\r\n      &lt;class name=&quot;myPackage.Course&quot; table=&quot;COURSE&quot;&gt;\r\n            &lt;id name=&quot;COURSEID&quot; type=&quot;integer&quot;&gt;\r\n                &lt;column name=&quot;COURSEID&quot; /&gt;\r\n            &lt;/id&gt;\r\n    \r\n            &lt;property name=&quot;COURSENAME&quot; type=&quot;string&quot;&gt;\r\n                &lt;column name=&quot;COURSENAME&quot;/&gt;\r\n            &lt;/property&gt;\r\n      &lt;/class&gt;\r\n    &lt;/hibernate-mapping&gt;\r\n\r\n**StudentCourses.hbm.xml**\r\n\r\n    &lt;hibernate-mapping&gt;\r\n      &lt;class name=&quot;myPackage.StudentCourses&quot; table=&quot;STUDENTCOURSES&quot;&gt;\r\n            &lt;composite-id name=&quot;STUDENTCOURSES_pk&quot; class=&quot;myPackage.STUDENTCOURSES_PK&quot;&gt;\r\n                 &lt;key-property name=&quot;STUDENTID&quot; column=&quot;STUDENTID&quot;/&gt;\r\n                 &lt;key-property name=&quot;COURSEID&quot; column=&quot;COURSEID&quot;/&gt;\r\n            &lt;/composite-id&gt;\r\n    \r\n            &lt;property name=&quot;ALLOTEDROOM&quot; type=&quot;integer&quot;&gt;\r\n                &lt;column name=&quot;ALLOTEDROOM&quot;/&gt;\r\n            &lt;/property&gt;\r\n      &lt;/class&gt;\r\n    &lt;/hibernate-mapping&gt;\r\n\r\n\r\nFor any record that is selected in StudentCourses table, I want to get student name as well as \r\ncourse name. How should my mapping files look like for this ?",
+            "link": "https://stackoverflow.com/questions/10552249/how-to-do-one-to-one-mapping-with-composite-key-in-hibernate",
+            "title": "How to do one-to-one mapping with composite key in hibernate",
+            "body": "<p>I have three tables. A student can register for multiple courses.</p>\n\n<p><strong>Student</strong>\nRollNumber    Integer, StudentName   String</p>\n\n<p><strong>Course</strong>\nCourseID       Integer, CourseName     String</p>\n\n<p><strong>StudentCourses</strong>\nRollNumber    Integer, CourseID      Integer, AllotedRoom   Integer</p>\n\n<p><strong>Student.hbm.xml</strong></p>\n\n<pre><code>&lt;hibernate-mapping&gt;\n  &lt;class name=\"myPackage.Student\" table=\"STUDENT\"&gt;\n        &lt;id name=\"ROLLNUMBER\" type=\"integer\"&gt;\n            &lt;column name=\"ROLLNUMBER\" /&gt;\n        &lt;/id&gt;\n\n        &lt;property name=\"STUDENTNAME\" type=\"string\"&gt;\n            &lt;column name=\"STUDENTNAME\"/&gt;\n        &lt;/property&gt;\n  &lt;/class&gt;\n&lt;/hibernate-mapping&gt;\n</code></pre>\n\n<p><strong>Course.hbm.xml</strong></p>\n\n<pre><code>&lt;hibernate-mapping&gt;\n  &lt;class name=\"myPackage.Course\" table=\"COURSE\"&gt;\n        &lt;id name=\"COURSEID\" type=\"integer\"&gt;\n            &lt;column name=\"COURSEID\" /&gt;\n        &lt;/id&gt;\n\n        &lt;property name=\"COURSENAME\" type=\"string\"&gt;\n            &lt;column name=\"COURSENAME\"/&gt;\n        &lt;/property&gt;\n  &lt;/class&gt;\n&lt;/hibernate-mapping&gt;\n</code></pre>\n\n<p><strong>StudentCourses.hbm.xml</strong></p>\n\n<pre><code>&lt;hibernate-mapping&gt;\n  &lt;class name=\"myPackage.StudentCourses\" table=\"STUDENTCOURSES\"&gt;\n        &lt;composite-id name=\"STUDENTCOURSES_pk\" class=\"myPackage.STUDENTCOURSES_PK\"&gt;\n             &lt;key-property name=\"STUDENTID\" column=\"STUDENTID\"/&gt;\n             &lt;key-property name=\"COURSEID\" column=\"COURSEID\"/&gt;\n        &lt;/composite-id&gt;\n\n        &lt;property name=\"ALLOTEDROOM\" type=\"integer\"&gt;\n            &lt;column name=\"ALLOTEDROOM\"/&gt;\n        &lt;/property&gt;\n  &lt;/class&gt;\n&lt;/hibernate-mapping&gt;\n</code></pre>\n\n<p>For any record that is selected in StudentCourses table, I want to get student name as well as \ncourse name. How should my mapping files look like for this ?</p>\n"
+        },
+        {
+            "tags": [
+                "jquery"
+            ],
+            "owner": {
+                "reputation": 312,
+                "user_id": 667903,
+                "user_type": "registered",
+                "accept_rate": 68,
+                "profile_image": "https://www.gravatar.com/avatar/5bee4e3e9b196090fd4fde76977beae6?s=128&d=identicon&r=PG",
+                "display_name": "Steve",
+                "link": "https://stackoverflow.com/users/667903/steve"
+            },
+            "is_answered": true,
+            "view_count": 21,
+            "accepted_answer_id": 50361941,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526441869,
+            "creation_date": 1526439599,
+            "last_edit_date": 1526441869,
+            "question_id": 50361846,
+            "body_markdown": "In a Wordpress site I have the following code, but hovering over `.insightdesign_text_reveal` does not reveal `.insightdesign_text_reveal_description`.\r\n\r\nHelp appreciated.\r\n\r\n    &lt;script&gt;\r\n        jQuery(document).ready(function() {\r\n            jQuery(&quot;.insightdesign_text_reveal&quot;).hover(function(){\r\n                jQuery(this).find(&quot;.insightdesign_text_reveal_description&quot;).show();\r\n            } function(){\r\n                jQuery(this).find(&quot;.insightdesign_text_reveal_description&quot;).hide();\t\r\n            };\r\n        });\r\n    &lt;/script&gt;\r\n    &lt;style&gt;\r\n        .insightdesign_text_reveal_description {\r\n            display: none;\r\n        }\r\n    &lt;/style&gt;\r\n    &lt;div class=&quot;et_pb_module insightdesign_text_reveal insightdesign_text_reveal_0 et_pb_bg_layout_light clearfix &quot;&gt;\r\n        &lt;h3 class=&quot;et_pb_module_header&quot;&gt;History&lt;/h3&gt;\r\n        &lt;div class=&quot;insightdesign_text_reveal_description&quot;&gt;\r\n            &lt;p&gt;Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry&#39;s standard.&lt;/p&gt;\r\n        &lt;/div&gt; &lt;!-- .et_pb_team_member_description --&gt;\r\n    &lt;/div&gt;",
+            "link": "https://stackoverflow.com/questions/50361846/hover-on-parent-shows-hidden-child",
+            "title": "Hover on parent shows hidden child",
+            "body": "<p>In a Wordpress site I have the following code, but hovering over <code>.insightdesign_text_reveal</code> does not reveal <code>.insightdesign_text_reveal_description</code>.</p>\n\n<p>Help appreciated.</p>\n\n<pre><code>&lt;script&gt;\n    jQuery(document).ready(function() {\n        jQuery(\".insightdesign_text_reveal\").hover(function(){\n            jQuery(this).find(\".insightdesign_text_reveal_description\").show();\n        } function(){\n            jQuery(this).find(\".insightdesign_text_reveal_description\").hide(); \n        };\n    });\n&lt;/script&gt;\n&lt;style&gt;\n    .insightdesign_text_reveal_description {\n        display: none;\n    }\n&lt;/style&gt;\n&lt;div class=\"et_pb_module insightdesign_text_reveal insightdesign_text_reveal_0 et_pb_bg_layout_light clearfix \"&gt;\n    &lt;h3 class=\"et_pb_module_header\"&gt;History&lt;/h3&gt;\n    &lt;div class=\"insightdesign_text_reveal_description\"&gt;\n        &lt;p&gt;Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard.&lt;/p&gt;\n    &lt;/div&gt; &lt;!-- .et_pb_team_member_description --&gt;\n&lt;/div&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "sql-server",
+                "tsql"
+            ],
+            "owner": {
+                "reputation": 2376,
+                "user_id": 769449,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://i.stack.imgur.com/sT2eg.png?s=128&g=1",
+                "display_name": "Flo",
+                "link": "https://stackoverflow.com/users/769449/flo"
+            },
+            "is_answered": true,
+            "view_count": 119941,
+            "accepted_answer_id": 8274092,
+            "answer_count": 4,
+            "score": 60,
+            "last_activity_date": 1526441868,
+            "creation_date": 1322253372,
+            "last_edit_date": 1453470673,
+            "question_id": 8273987,
+            "body_markdown": "I want to select rows that have a `distinct email`, see the example table below:\r\n\r\n    +----+---------+-------------------+-------------+\r\n    | id | title   | email             | commentname |\r\n    +----+---------+-------------------+-------------+\r\n    |  3 | test\t   | rob@hotmail.com   | rob         |\r\n    |  4 | i agree | rob@hotmail.com   | rob         |\r\n    |  5 | its ok  | rob@hotmail.com   | rob         |\r\n    |  6 | hey     | rob@hotmail.com   | rob         |\r\n    |  7 | nice!   | simon@hotmail.com | simon       |\r\n    |  8 | yeah    | john@hotmail.com  | john        |\r\n    +----+---------+-------------------+-------------+\r\n\r\nThe desired result would be:\r\n\r\n    +----+-------+-------------------+-------------+\r\n    | id | title | email             | commentname |\r\n    +----+-------+-------------------+-------------+\r\n    |  3 | test  | rob@hotmail.com   | rob         |\r\n    |  7 | nice! | simon@hotmail.com | simon       |\r\n    |  8 | yeah  | john@hotmail.com  | john        |\r\n    +----+-------+-------------------+-------------+\r\n\r\nWhere I don&#39;t care which `id` column value is returned.\r\nWhat would be the required SQL?",
+            "link": "https://stackoverflow.com/questions/8273987/select-unique-rows-based-on-single-distinct-column",
+            "title": "select unique rows based on single distinct column",
+            "body": "<p>I want to select rows that have a <code>distinct email</code>, see the example table below:</p>\n\n<pre><code>+----+---------+-------------------+-------------+\n| id | title   | email             | commentname |\n+----+---------+-------------------+-------------+\n|  3 | test    | rob@hotmail.com   | rob         |\n|  4 | i agree | rob@hotmail.com   | rob         |\n|  5 | its ok  | rob@hotmail.com   | rob         |\n|  6 | hey     | rob@hotmail.com   | rob         |\n|  7 | nice!   | simon@hotmail.com | simon       |\n|  8 | yeah    | john@hotmail.com  | john        |\n+----+---------+-------------------+-------------+\n</code></pre>\n\n<p>The desired result would be:</p>\n\n<pre><code>+----+-------+-------------------+-------------+\n| id | title | email             | commentname |\n+----+-------+-------------------+-------------+\n|  3 | test  | rob@hotmail.com   | rob         |\n|  7 | nice! | simon@hotmail.com | simon       |\n|  8 | yeah  | john@hotmail.com  | john        |\n+----+-------+-------------------+-------------+\n</code></pre>\n\n<p>Where I don't care which <code>id</code> column value is returned.\nWhat would be the required SQL?</p>\n"
+        },
+        {
+            "tags": [
+                "apache-kafka",
+                "apache-kafka-connect"
+            ],
+            "owner": {
+                "reputation": 32,
+                "user_id": 6591820,
+                "user_type": "registered",
+                "accept_rate": 36,
+                "profile_image": "https://www.gravatar.com/avatar/9ef3ec8da7931776424c685a33f82400?s=128&d=identicon&r=PG&f=1",
+                "display_name": "minsu",
+                "link": "https://stackoverflow.com/users/6591820/minsu"
+            },
+            "is_answered": true,
+            "view_count": 25,
+            "accepted_answer_id": 50145759,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526441868,
+            "creation_date": 1525311014,
+            "last_edit_date": 1526441868,
+            "question_id": 50145696,
+            "body_markdown": "I have deployed kafka connect elasticsearch.\r\n\r\nConnect distributed is running confluent 3.1.2.\r\n(It was operated as one group.id in total 4 equipments.)\r\n\r\nI&#39;ve given `tasks.max=4`, but I do not know why I get only one task.\r\n",
+            "link": "https://stackoverflow.com/questions/50145696/why-is-kafka-connect-distributed-mode-always-assigned-only-one-task",
+            "title": "Why is kafka connect distributed mode always assigned only one task?",
+            "body": "<p>I have deployed kafka connect elasticsearch.</p>\n\n<p>Connect distributed is running confluent 3.1.2.\n(It was operated as one group.id in total 4 equipments.)</p>\n\n<p>I've given <code>tasks.max=4</code>, but I do not know why I get only one task.</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift",
+                "firebase",
+                "uicollectionview",
+                "uicollectionviewcell"
+            ],
+            "owner": {
+                "reputation": 74,
+                "user_id": 8206300,
+                "user_type": "registered",
+                "accept_rate": 57,
+                "profile_image": "https://i.stack.imgur.com/ElkGS.jpg?s=128&g=1",
+                "display_name": "Lukas Bimba",
+                "link": "https://stackoverflow.com/users/8206300/lukas-bimba"
+            },
+            "is_answered": true,
+            "view_count": 24,
+            "accepted_answer_id": 50362133,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526441868,
+            "creation_date": 1526438966,
+            "question_id": 50361775,
+            "body_markdown": "I am using a UICollectionView to display images downloaded from firebase. The problem is that the download thumbnail is very inconsistent. Sometimes it loads correctly but most of the time the thumbnails are duplicated or in the wrong cell.\r\n\r\n**Firebase Download**\r\n\r\n\r\n    func downloadImages(refreshing: Bool, refreshControl: UIRefreshControl?) {\r\n            self.posts.removeAll()\r\n            self.collectionViews.reloadData()\r\n            let ref = Database.database().reference().child(&quot;posts&quot;)\r\n            MBProgressHUD.showAdded(to: self.view, animated: true)\r\n            ref.queryOrdered(byChild: &quot;businessName&quot;).observe(.childAdded, with: { snapshot in\r\n                if let dict = snapshot.value as? NSDictionary {\r\n                    self.posts = []\r\n                    for item in dict {\r\n                        let json = JSON(item.value)\r\n                        let uid = json[&quot;uid&quot;].stringValue\r\n                        var name: String = json[&quot;businessName&quot;].stringValue\r\n                        let address: String = json[&quot;businessStreet&quot;].stringValue\r\n                        let state: String = json[&quot;businessCity&quot;].stringValue\r\n                        let caption: String = json[&quot;caption&quot;].stringValue\r\n                        let downloadURL: String = json[&quot;download_url&quot;].stringValue\r\n                        let timestamp = json[&quot;timestamp&quot;].doubleValue\r\n                        let date = Date(timeIntervalSince1970: timestamp/1000)\r\n                        let postID: String = json[&quot;postID&quot;].stringValue\r\n                        \r\n                        let lat = json[&quot;businessLatitude&quot;].doubleValue\r\n                        let long = json[&quot;businessLongitude&quot;].doubleValue\r\n                        let businessLocation = CLLocation(latitude: lat, longitude: long)\r\n                        \r\n                        let latitude = self.locationManager.location?.coordinate.latitude\r\n                        let longitude = self.locationManager.location?.coordinate.longitude\r\n                        let userLocation = CLLocation(latitude: latitude!, longitude: longitude!)\r\n                        \r\n                        let distanceInMeters: Double = userLocation.distance(from: businessLocation)\r\n                        let distanceInMiles: Double = distanceInMeters * 0.00062137\r\n                        let distanceLabelText = String(format: &quot;%.2f miles away&quot;, distanceInMiles)\r\n                        //let distanceLabelText = &quot;Not Available&quot;\r\n                        \r\n                        let usersReference = Database.database().reference(withPath: &quot;users&quot;).queryOrderedByKey().queryEqual(toValue: uid)\r\n                        usersReference.observeSingleEvent(of: .value, with: { snapshot in\r\n                            if let dict = snapshot.value as? NSDictionary {\r\n                                let userInfo = dict.allValues[0]\r\n                                let userJSON = JSON(userInfo)\r\n                                name = userJSON[&quot;name&quot;].stringValue\r\n                                \r\n                            }\r\n                            let post = Post(uid: uid, caption: caption, downloadURL: downloadURL, name: name, date: date, address: address, state: state, distance: distanceLabelText, postID: postID)\r\n                            self.collectionViews.reloadData()\r\n                            self.posts.append(post)\r\n                            self.posts.sort {$0.distance.compare($1.distance) == .orderedAscending}\r\n                            //self.collectionViews.reloadData()\r\n                            \r\n                            \r\n                        })\r\n                    }\r\n                }\r\n                if refreshing {\r\n                    self.posts.removeAll()\r\n                    self.collectionViews.reloadData()\r\n                    refreshControl?.endRefreshing()\r\n                }\r\n                MBProgressHUD.hide(for: self.view, animated: true)\r\n            })\r\n            \r\n        }\r\n\r\n**UICollectionView Cell**\r\n\r\n\r\n    override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -&gt; UICollectionViewCell {\r\n            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: &quot;Cell&quot;, for: indexPath) as! CollectionViewCell\r\n            cell.postImage.image = nil\r\n            cell.postImage.sd_cancelCurrentImageLoad()\r\n            if self.posts[indexPath.row].downloadURL != nil {\r\n                cell.postImage.downloadImagezzz(from: self.posts[indexPath.row].downloadURL)\r\n            } else {\r\n                print(&quot;\\n \\(indexPath.row) could not return a value for pathToImage256 from Post. \\n&quot;)\r\n            }\r\n            \r\n            return cell\r\n        }\r\n\r\n**Download and set image**\r\n\r\n    extension UIImageView {\r\n        func downloadImagezzz(from imgURL: String) {\r\n            let url = URLRequest(url: URL(string: imgURL)!)\r\n            \r\n            let task = URLSession.shared.dataTask(with: url) {\r\n                (data, responds, error) in\r\n                \r\n                if error != nil {\r\n                    print(error!)\r\n                    return\r\n                }\r\n                \r\n                DispatchQueue.main.async {\r\n                    self.image = UIImage(data: data!)\r\n                    \r\n                }\r\n            }\r\n            task.resume()\r\n        }\r\n    }\r\n\r\nI think the problem is the last part titled &quot;Download and set image&quot;. ",
+            "link": "https://stackoverflow.com/questions/50361775/swift-firebase-uicollectionview-image-thumbnails-inconsistent",
+            "title": "Swift Firebase UICollectionView - Image thumbnails inconsistent",
+            "body": "<p>I am using a UICollectionView to display images downloaded from firebase. The problem is that the download thumbnail is very inconsistent. Sometimes it loads correctly but most of the time the thumbnails are duplicated or in the wrong cell.</p>\n\n<p><strong>Firebase Download</strong></p>\n\n<pre><code>func downloadImages(refreshing: Bool, refreshControl: UIRefreshControl?) {\n        self.posts.removeAll()\n        self.collectionViews.reloadData()\n        let ref = Database.database().reference().child(\"posts\")\n        MBProgressHUD.showAdded(to: self.view, animated: true)\n        ref.queryOrdered(byChild: \"businessName\").observe(.childAdded, with: { snapshot in\n            if let dict = snapshot.value as? NSDictionary {\n                self.posts = []\n                for item in dict {\n                    let json = JSON(item.value)\n                    let uid = json[\"uid\"].stringValue\n                    var name: String = json[\"businessName\"].stringValue\n                    let address: String = json[\"businessStreet\"].stringValue\n                    let state: String = json[\"businessCity\"].stringValue\n                    let caption: String = json[\"caption\"].stringValue\n                    let downloadURL: String = json[\"download_url\"].stringValue\n                    let timestamp = json[\"timestamp\"].doubleValue\n                    let date = Date(timeIntervalSince1970: timestamp/1000)\n                    let postID: String = json[\"postID\"].stringValue\n\n                    let lat = json[\"businessLatitude\"].doubleValue\n                    let long = json[\"businessLongitude\"].doubleValue\n                    let businessLocation = CLLocation(latitude: lat, longitude: long)\n\n                    let latitude = self.locationManager.location?.coordinate.latitude\n                    let longitude = self.locationManager.location?.coordinate.longitude\n                    let userLocation = CLLocation(latitude: latitude!, longitude: longitude!)\n\n                    let distanceInMeters: Double = userLocation.distance(from: businessLocation)\n                    let distanceInMiles: Double = distanceInMeters * 0.00062137\n                    let distanceLabelText = String(format: \"%.2f miles away\", distanceInMiles)\n                    //let distanceLabelText = \"Not Available\"\n\n                    let usersReference = Database.database().reference(withPath: \"users\").queryOrderedByKey().queryEqual(toValue: uid)\n                    usersReference.observeSingleEvent(of: .value, with: { snapshot in\n                        if let dict = snapshot.value as? NSDictionary {\n                            let userInfo = dict.allValues[0]\n                            let userJSON = JSON(userInfo)\n                            name = userJSON[\"name\"].stringValue\n\n                        }\n                        let post = Post(uid: uid, caption: caption, downloadURL: downloadURL, name: name, date: date, address: address, state: state, distance: distanceLabelText, postID: postID)\n                        self.collectionViews.reloadData()\n                        self.posts.append(post)\n                        self.posts.sort {$0.distance.compare($1.distance) == .orderedAscending}\n                        //self.collectionViews.reloadData()\n\n\n                    })\n                }\n            }\n            if refreshing {\n                self.posts.removeAll()\n                self.collectionViews.reloadData()\n                refreshControl?.endRefreshing()\n            }\n            MBProgressHUD.hide(for: self.view, animated: true)\n        })\n\n    }\n</code></pre>\n\n<p><strong>UICollectionView Cell</strong></p>\n\n<pre><code>override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -&gt; UICollectionViewCell {\n        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: \"Cell\", for: indexPath) as! CollectionViewCell\n        cell.postImage.image = nil\n        cell.postImage.sd_cancelCurrentImageLoad()\n        if self.posts[indexPath.row].downloadURL != nil {\n            cell.postImage.downloadImagezzz(from: self.posts[indexPath.row].downloadURL)\n        } else {\n            print(\"\\n \\(indexPath.row) could not return a value for pathToImage256 from Post. \\n\")\n        }\n\n        return cell\n    }\n</code></pre>\n\n<p><strong>Download and set image</strong></p>\n\n<pre><code>extension UIImageView {\n    func downloadImagezzz(from imgURL: String) {\n        let url = URLRequest(url: URL(string: imgURL)!)\n\n        let task = URLSession.shared.dataTask(with: url) {\n            (data, responds, error) in\n\n            if error != nil {\n                print(error!)\n                return\n            }\n\n            DispatchQueue.main.async {\n                self.image = UIImage(data: data!)\n\n            }\n        }\n        task.resume()\n    }\n}\n</code></pre>\n\n<p>I think the problem is the last part titled \"Download and set image\". </p>\n"
+        },
+        {
+            "tags": [
+                "node.js",
+                "tensorflow.js",
+                "deeplearn.js"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9029466,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/10b3a915fce8f8cdf70c7a3621ae4464?s=128&d=identicon&r=PG&f=1",
+                "display_name": "ShuuRi",
+                "link": "https://stackoverflow.com/users/9029466/shuuri"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526441862,
+            "creation_date": 1526370720,
+            "question_id": 50344998,
+            "body_markdown": "I got this error when my program read the .png image file and used the data as the parameter for the fromPixels() function in tensorflow.js.\r\nWhy it said ImageData is not defined? Am I miss out any dependencies?\r\n\r\n    /home/R/Desktop/process_img/node_modules/deeplearn/dist/kernels/backend_cpu.js:85\r\n            if (pixels instanceof ImageData) {\r\n                                  ^\r\n    \r\n    ReferenceError: ImageData is not defined\r\n        at MathBackendCPU.fromPixels (/home/R/Desktop/process_img/node_modules/deeplearn/dist/kernels/backend_cpu.js:85:31)\r\n        at Engine.fromPixels (/home/R/Desktop/process_img/node_modules/deeplearn/dist/engine.js:287:29)\r\n        at Ops.fromPixels (/home/R/Desktop/process_img/node_modules/deeplearn/dist/ops/array_ops.js:184:41)\r\n        at (/home/R/Desktop/process_img/node_modules/deeplearn/dist/ops/operation.js:11:61\r\n        at Object.Tracking.tidy (/home/R/Desktop/process_img/node_modules/deeplearn/dist/tracking.js:34:22)\r\n        at Object.descriptor.value [as fromPixels] (/home/R/Desktop/process_img/node_modules/deeplearn/dist/ops/operation.js:11:26)\r\n        at /home/R/Desktop/process_img/index.js:29:29\r\n        at FSReqWrap.readFileAfterClose [as oncomplete] (fs.js:447:3)\r\n\r\n\r\n**Here is the code:**\r\n\r\n    #!/usr/bin/node\r\n    &quot;use strict&quot;;\r\n    \r\n    const {KNNImageClassifier} = require(&#39;deeplearn-knn-image-classifier&#39;);\r\n    const _deeplearn = require(&#39;deeplearn&#39;);\r\n    \r\n    const child = require(&#39;child_process&#39;);\r\n    const fs = require(&#39;fs&#39;);\r\n    \r\n    const { Image } = require(&#39;canvas&#39;);\r\n    \r\n    const NUM_CLASSES = 3;\r\n    const IMAGE_SIZE = 227; // Must be 227\r\n    const TOPK = 10;\r\n    \r\n    var filename = &#39;images.png&#39;;\r\n    //console.log(img.dtype);\r\n    \r\n    var knn = new KNNImageClassifier(NUM_CLASSES, TOPK);\r\n    fs.readFile(filename, function(err, squid){\r\n        if (err) throw err;\r\n        var img = new Image();\r\n        img.src = squid;\r\n        const img1 = _deeplearn.fromPixels(img);\r\n      });\r\n\r\n*p/s: Please inform me if need more information.*\r\n\r\nThanks.",
+            "link": "https://stackoverflow.com/questions/50344998/referenceerror-imagedata-is-not-defined-at-mathbackendcpu-frompixels-when-pass",
+            "title": "ReferenceError: ImageData is not defined at MathBackendCPU.fromPixels when pass image into the function",
+            "body": "<p>I got this error when my program read the .png image file and used the data as the parameter for the fromPixels() function in tensorflow.js.\nWhy it said ImageData is not defined? Am I miss out any dependencies?</p>\n\n<pre><code>/home/R/Desktop/process_img/node_modules/deeplearn/dist/kernels/backend_cpu.js:85\n        if (pixels instanceof ImageData) {\n                              ^\n\nReferenceError: ImageData is not defined\n    at MathBackendCPU.fromPixels (/home/R/Desktop/process_img/node_modules/deeplearn/dist/kernels/backend_cpu.js:85:31)\n    at Engine.fromPixels (/home/R/Desktop/process_img/node_modules/deeplearn/dist/engine.js:287:29)\n    at Ops.fromPixels (/home/R/Desktop/process_img/node_modules/deeplearn/dist/ops/array_ops.js:184:41)\n    at (/home/R/Desktop/process_img/node_modules/deeplearn/dist/ops/operation.js:11:61\n    at Object.Tracking.tidy (/home/R/Desktop/process_img/node_modules/deeplearn/dist/tracking.js:34:22)\n    at Object.descriptor.value [as fromPixels] (/home/R/Desktop/process_img/node_modules/deeplearn/dist/ops/operation.js:11:26)\n    at /home/R/Desktop/process_img/index.js:29:29\n    at FSReqWrap.readFileAfterClose [as oncomplete] (fs.js:447:3)\n</code></pre>\n\n<p><strong>Here is the code:</strong></p>\n\n<pre><code>#!/usr/bin/node\n\"use strict\";\n\nconst {KNNImageClassifier} = require('deeplearn-knn-image-classifier');\nconst _deeplearn = require('deeplearn');\n\nconst child = require('child_process');\nconst fs = require('fs');\n\nconst { Image } = require('canvas');\n\nconst NUM_CLASSES = 3;\nconst IMAGE_SIZE = 227; // Must be 227\nconst TOPK = 10;\n\nvar filename = 'images.png';\n//console.log(img.dtype);\n\nvar knn = new KNNImageClassifier(NUM_CLASSES, TOPK);\nfs.readFile(filename, function(err, squid){\n    if (err) throw err;\n    var img = new Image();\n    img.src = squid;\n    const img1 = _deeplearn.fromPixels(img);\n  });\n</code></pre>\n\n<p><em>p/s: Please inform me if need more information.</em></p>\n\n<p>Thanks.</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 154
+}

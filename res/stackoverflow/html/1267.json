@@ -1,0 +1,835 @@
+{
+    "items": [
+        {
+            "tags": [
+                "c++",
+                "performance",
+                "lambda"
+            ],
+            "owner": {
+                "reputation": 160,
+                "user_id": 2151275,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/2d9bf4f71e74bb9681f47ba862067c48?s=128&d=identicon&r=PG",
+                "display_name": "heLomaN",
+                "link": "https://stackoverflow.com/users/2151275/heloman"
+            },
+            "is_answered": true,
+            "view_count": 71,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1526454271,
+            "creation_date": 1526376802,
+            "last_edit_date": 1526454271,
+            "question_id": 50346822,
+            "body_markdown": "For some purpose, one may declare a functor in a frequently callee function. Will the construction of the functor cost a lot, or just comparable to defining a plain struct?\r\n\r\n\r\n    void f() {\r\n        static int x = 0;\r\n        auto a = [&amp;](){ x += 1;};\r\n        for (auto i = 0, i &lt; 10; ++i) {\r\n            a();\r\n        }\r\n    }\r\n\r\n    // somewhere else call f thousands of times\r\n    f()\r\n\r\n**Edit** Updated the sample code.",
+            "link": "https://stackoverflow.com/questions/50346822/does-lambda-object-construction-cost-a-lot",
+            "title": "Does lambda object construction cost a lot?",
+            "body": "<p>For some purpose, one may declare a functor in a frequently callee function. Will the construction of the functor cost a lot, or just comparable to defining a plain struct?</p>\n\n<pre><code>void f() {\n    static int x = 0;\n    auto a = [&amp;](){ x += 1;};\n    for (auto i = 0, i &lt; 10; ++i) {\n        a();\n    }\n}\n\n// somewhere else call f thousands of times\nf()\n</code></pre>\n\n<p><strong>Edit</strong> Updated the sample code.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "gunicorn",
+                "falconframework",
+                "rx-py"
+            ],
+            "owner": {
+                "reputation": 16582,
+                "user_id": 744859,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/0e0ac290b833189cfaab8b5b060db879?s=128&d=identicon&r=PG",
+                "display_name": "Jav_Rock",
+                "link": "https://stackoverflow.com/users/744859/jav-rock"
+            },
+            "is_answered": true,
+            "view_count": 59,
+            "bounty_amount": 200,
+            "bounty_closes_date": 1527059070,
+            "answer_count": 1,
+            "score": 4,
+            "last_activity_date": 1526454270,
+            "creation_date": 1526281140,
+            "last_edit_date": 1526447536,
+            "question_id": 50324645,
+            "body_markdown": "I have implemented a web service using **Falcon**. This service stores a **state machine** (pytransitions) that is passed to service&#39;s resources in the constructor. The service is runs with **gunicorn**.\r\n\r\nThe web service launches a process on start using **RxPy**. The event returned in the `on_next(event)` is used to trigger a transition in the state machine.\r\n\r\n**THE BUG**\r\n\r\nI expect that the state machine has a consistent state both in the service and in the resources but it seems that in the resources the state never changes.\r\n\r\nWe have a test that tries to reproduce this behavior, but surprisingly the test works \r\n\r\n    class TochoLevel(object):\r\n    \r\n        def __init__(self, tochine):\r\n            self.tochine = tochine\r\n    \r\n        def on_get(self, req, res):\r\n            res.status = falcon.HTTP_200\r\n            res.body = self.tochine.state\r\n    \r\n    \r\n    def get_machine():\r\n        states = [&quot;low&quot;, &quot;medium&quot;, &quot;high&quot;]\r\n    \r\n        transitions = [\r\n            {&#39;trigger&#39;: &#39;to_medium&#39;, &#39;source&#39;: [&#39;low&#39;, &#39;medium&#39;, &#39;high&#39;], &#39;dest&#39;: &#39;medium&#39;},\r\n            {&#39;trigger&#39;: &#39;to_high&#39;, &#39;source&#39;: [&#39;low&#39;, &#39;medium&#39;, &#39;high&#39;], &#39;dest&#39;: &#39;high&#39;},\r\n            {&#39;trigger&#39;: &#39;to_low&#39;, &#39;source&#39;: [&#39;low&#39;, &#39;medium&#39;, &#39;high&#39;], &#39;dest&#39;: &#39;low&#39;}\r\n        ]\r\n    \r\n        locked_factory = MachineFactory.get_predefined(locked=True)\r\n    \r\n        return locked_factory(\r\n            states=states,\r\n            transitions=transitions,\r\n            initial=&#39;low&#39;,\r\n            auto_transitions=False,\r\n            queued=False\r\n        )\r\n    \r\n    def _level_observable(observer):\r\n        for i in range(1, 21):\r\n            sleep(0.1)\r\n            next_val = &#39;to_low&#39;\r\n    \r\n            if 8 &lt;= i &lt;= 15:\r\n                next_val = &#39;to_medium&#39;\r\n            elif i &gt; 15:\r\n                next_val = &#39;to_high&#39;\r\n            observer.on_next(next_val)\r\n    \r\n        observer.on_completed()\r\n    \r\n    def get_level_observable():\r\n        return Observable.create(_level_observable)\r\n    \r\n    class NotBlockingService(falcon.API):\r\n        def __init__(self):\r\n            super(NotBlockingService, self).__init__()\r\n    \r\n            self.tochine = get_machine()\r\n            self.add_route(&#39;/tochez&#39;, TochoLevel(self.tochine))\r\n    \r\n        def _run_machine(self, val):\r\n            self.tochine.trigger(val)\r\n            print(&#39;machine exec: {}, state: {}&#39;.format(val, self.tochine.state))\r\n            return self.tochine.state\r\n    \r\n        def start(self):\r\n            source = get_level_observable()\r\n            (source.subscribe_on(ThreadPoolScheduler(2))\r\n                .subscribe(self._run_machine))\r\n    \r\n    \r\n    def test_can_query_falcon_service_while_being_susbcribed_as_observer():\r\n    \r\n        svc = NotBlockingService()\r\n        client = testing.TestClient(svc)\r\n    \r\n        assert client.simulate_get(&#39;/tochez&#39;).text == &#39;low&#39;\r\n    \r\n        start = time()\r\n        svc.start()\r\n        sleep(1.2)\r\n    \r\n        assert client.simulate_get(&#39;/tochez&#39;).text == &#39;medium&#39;\r\n        end = time()\r\n    \r\n        sleep(1.2)\r\n    \r\n        assert client.simulate_get(&#39;/tochez&#39;).text == &#39;high&#39;\r\n        assert (end - start) &lt; 2\r\n\r\n\r\n**THE  QUESTION**\r\n\r\nWhy the state machine does not change the state in the resource  `TochoLevel` when I launch the service with **gunicorn** and propagate the states in the `on_next` method of **rxpy**?",
+            "link": "https://stackoverflow.com/questions/50324645/python-web-service-subscribed-to-reactive-source-produces-strange-behavior-in-ob",
+            "title": "Python web service subscribed to reactive source produces strange behavior in object",
+            "body": "<p>I have implemented a web service using <strong>Falcon</strong>. This service stores a <strong>state machine</strong> (pytransitions) that is passed to service's resources in the constructor. The service is runs with <strong>gunicorn</strong>.</p>\n\n<p>The web service launches a process on start using <strong>RxPy</strong>. The event returned in the <code>on_next(event)</code> is used to trigger a transition in the state machine.</p>\n\n<p><strong>THE BUG</strong></p>\n\n<p>I expect that the state machine has a consistent state both in the service and in the resources but it seems that in the resources the state never changes.</p>\n\n<p>We have a test that tries to reproduce this behavior, but surprisingly the test works </p>\n\n<pre><code>class TochoLevel(object):\n\n    def __init__(self, tochine):\n        self.tochine = tochine\n\n    def on_get(self, req, res):\n        res.status = falcon.HTTP_200\n        res.body = self.tochine.state\n\n\ndef get_machine():\n    states = [\"low\", \"medium\", \"high\"]\n\n    transitions = [\n        {'trigger': 'to_medium', 'source': ['low', 'medium', 'high'], 'dest': 'medium'},\n        {'trigger': 'to_high', 'source': ['low', 'medium', 'high'], 'dest': 'high'},\n        {'trigger': 'to_low', 'source': ['low', 'medium', 'high'], 'dest': 'low'}\n    ]\n\n    locked_factory = MachineFactory.get_predefined(locked=True)\n\n    return locked_factory(\n        states=states,\n        transitions=transitions,\n        initial='low',\n        auto_transitions=False,\n        queued=False\n    )\n\ndef _level_observable(observer):\n    for i in range(1, 21):\n        sleep(0.1)\n        next_val = 'to_low'\n\n        if 8 &lt;= i &lt;= 15:\n            next_val = 'to_medium'\n        elif i &gt; 15:\n            next_val = 'to_high'\n        observer.on_next(next_val)\n\n    observer.on_completed()\n\ndef get_level_observable():\n    return Observable.create(_level_observable)\n\nclass NotBlockingService(falcon.API):\n    def __init__(self):\n        super(NotBlockingService, self).__init__()\n\n        self.tochine = get_machine()\n        self.add_route('/tochez', TochoLevel(self.tochine))\n\n    def _run_machine(self, val):\n        self.tochine.trigger(val)\n        print('machine exec: {}, state: {}'.format(val, self.tochine.state))\n        return self.tochine.state\n\n    def start(self):\n        source = get_level_observable()\n        (source.subscribe_on(ThreadPoolScheduler(2))\n            .subscribe(self._run_machine))\n\n\ndef test_can_query_falcon_service_while_being_susbcribed_as_observer():\n\n    svc = NotBlockingService()\n    client = testing.TestClient(svc)\n\n    assert client.simulate_get('/tochez').text == 'low'\n\n    start = time()\n    svc.start()\n    sleep(1.2)\n\n    assert client.simulate_get('/tochez').text == 'medium'\n    end = time()\n\n    sleep(1.2)\n\n    assert client.simulate_get('/tochez').text == 'high'\n    assert (end - start) &lt; 2\n</code></pre>\n\n<p><strong>THE  QUESTION</strong></p>\n\n<p>Why the state machine does not change the state in the resource  <code>TochoLevel</code> when I launch the service with <strong>gunicorn</strong> and propagate the states in the <code>on_next</code> method of <strong>rxpy</strong>?</p>\n"
+        },
+        {
+            "tags": [
+                "doctrine2"
+            ],
+            "owner": {
+                "reputation": 272,
+                "user_id": 1439485,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://www.gravatar.com/avatar/3e68a062eb2a23793e57ecfad5fc1b38?s=128&d=identicon&r=PG",
+                "display_name": "prometheus",
+                "link": "https://stackoverflow.com/users/1439485/prometheus"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526454261,
+            "creation_date": 1526454261,
+            "question_id": 50364373,
+            "body_markdown": "When retrieving an array result from a query I get the keys named with camelCase but I want snake_case instead. \r\n\r\nBy register the underscore naming strategy it seems only affect the naming of tables and column names.\r\n\r\nWhat am I missing out here?",
+            "link": "https://stackoverflow.com/questions/50364373/how-to-get-underscore-naming-convention-for-keys-in-array-result-using-doctrine",
+            "title": "How to get underscore naming convention for keys in array result using Doctrine 2?",
+            "body": "<p>When retrieving an array result from a query I get the keys named with camelCase but I want snake_case instead. </p>\n\n<p>By register the underscore naming strategy it seems only affect the naming of tables and column names.</p>\n\n<p>What am I missing out here?</p>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "ubuntu",
+                "sqlcmd"
+            ],
+            "owner": {
+                "reputation": 13332,
+                "user_id": 3604745,
+                "user_type": "registered",
+                "accept_rate": 84,
+                "profile_image": "https://i.stack.imgur.com/U7HAo.png?s=128&g=1",
+                "display_name": "Hack-R",
+                "link": "https://stackoverflow.com/users/3604745/hack-r"
+            },
+            "is_answered": true,
+            "view_count": 100,
+            "accepted_answer_id": 49590850,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1526454260,
+            "creation_date": 1522167914,
+            "last_edit_date": 1522168252,
+            "question_id": 49518007,
+            "body_markdown": "I&#39;m on Ubuntu 16.04 trying to use `sqlcmd` launched programmatically from a script to do a SQL query in the VM&#39;s cloud.\r\n\r\n    vm-dev:~$ sudo sqlcmd -S my-db.url.net -d my-db\r\n\r\nI keep getting this error:\r\n\r\n&gt; Sqlcmd: Error: Microsoft ODBC Driver 17 for SQL Server : Can&#39;t open\r\n&gt; lib &#39;/opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17.0.so.1.1&#39; : file\r\n&gt; not found.\r\n\r\n\r\nBut the file is clearly there:\r\n\r\n    vm-dev:~$ ls /opt/microsoft/msodbcsql17/lib64/\r\n   \r\n\r\n&gt;  libmsodbcsql-17.0.so.1.1\r\n\r\n ",
+            "link": "https://stackoverflow.com/questions/49518007/sqlcmd-not-able-to-find-a-library-libmsodbcsql-17-0-so-1-1-that-is-there",
+            "title": "sqlcmd not able to find a library (libmsodbcsql-17.0.so.1.1) that is there",
+            "body": "<p>I'm on Ubuntu 16.04 trying to use <code>sqlcmd</code> launched programmatically from a script to do a SQL query in the VM's cloud.</p>\n\n<pre><code>vm-dev:~$ sudo sqlcmd -S my-db.url.net -d my-db\n</code></pre>\n\n<p>I keep getting this error:</p>\n\n<blockquote>\n  <p>Sqlcmd: Error: Microsoft ODBC Driver 17 for SQL Server : Can't open\n  lib '/opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17.0.so.1.1' : file\n  not found.</p>\n</blockquote>\n\n<p>But the file is clearly there:</p>\n\n<pre><code>vm-dev:~$ ls /opt/microsoft/msodbcsql17/lib64/\n</code></pre>\n\n<blockquote>\n  <p>libmsodbcsql-17.0.so.1.1</p>\n</blockquote>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "sockets",
+                "tcp",
+                "port"
+            ],
+            "owner": {
+                "reputation": 1418,
+                "user_id": 801807,
+                "user_type": "registered",
+                "accept_rate": 91,
+                "profile_image": "https://www.gravatar.com/avatar/64bd9e28277c62b120b8febb470200cc?s=128&d=identicon&r=PG",
+                "display_name": "Tu Hoang",
+                "link": "https://stackoverflow.com/users/801807/tu-hoang"
+            },
+            "is_answered": true,
+            "view_count": 137674,
+            "accepted_answer_id": 6380198,
+            "answer_count": 12,
+            "score": 55,
+            "last_activity_date": 1526454246,
+            "creation_date": 1308269531,
+            "last_edit_date": 1388519394,
+            "question_id": 6380057,
+            "body_markdown": "I have a question regarding client socket on TCP/IP network. Let&#39;s say I use\r\n\r\n    try:\r\n\r\n        comSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\r\n        comSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\r\n\r\n    except socket.error, msg:\r\n\r\n        sys.stderr.write(&quot;[ERROR] %s\\n&quot; % msg[1])\r\n        sys.exit(1)\r\n\r\n    try:\r\n        comSocket.bind((&#39;&#39;, 5555))\r\n\r\n        comSocket.connect()\r\n\r\n    except socket.error, msg:\r\n\r\n        sys.stderr.write(&quot;[ERROR] %s\\n&quot; % msg[1])\r\n\r\n        sys.exit(2)\r\n\r\nThe socket created will be bound to port 5555. The problem is that after ending the connection\r\n\r\n    comSocket.shutdown(1)\r\n    comSocket.close()\r\n\r\nUsing wireshark, I see the socket closed with FIN,ACK and ACK from both sides, I can&#39;t use the port again. I get the following error:\r\n\r\n    [ERROR] Address already in use\r\n\r\nI wonder how can I clear the port right away so that next time I still can use that same port.\r\n\r\n    comSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\r\n\r\nsetsockopt doesn&#39;t seem to be able to resolve the problem\r\nThank you!",
+            "link": "https://stackoverflow.com/questions/6380057/python-binding-socket-address-already-in-use",
+            "title": "Python: Binding Socket: &quot;Address already in use&quot;",
+            "body": "<p>I have a question regarding client socket on TCP/IP network. Let's say I use</p>\n\n<pre><code>try:\n\n    comSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n    comSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n\nexcept socket.error, msg:\n\n    sys.stderr.write(\"[ERROR] %s\\n\" % msg[1])\n    sys.exit(1)\n\ntry:\n    comSocket.bind(('', 5555))\n\n    comSocket.connect()\n\nexcept socket.error, msg:\n\n    sys.stderr.write(\"[ERROR] %s\\n\" % msg[1])\n\n    sys.exit(2)\n</code></pre>\n\n<p>The socket created will be bound to port 5555. The problem is that after ending the connection</p>\n\n<pre><code>comSocket.shutdown(1)\ncomSocket.close()\n</code></pre>\n\n<p>Using wireshark, I see the socket closed with FIN,ACK and ACK from both sides, I can't use the port again. I get the following error:</p>\n\n<pre><code>[ERROR] Address already in use\n</code></pre>\n\n<p>I wonder how can I clear the port right away so that next time I still can use that same port.</p>\n\n<pre><code>comSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n</code></pre>\n\n<p>setsockopt doesn't seem to be able to resolve the problem\nThank you!</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "image",
+                "view"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9798334,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/b04a5a5c1cbd7447ffb0d59f025e13b0?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Avi",
+                "link": "https://stackoverflow.com/users/9798334/avi"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526454244,
+            "creation_date": 1526454244,
+            "question_id": 50364367,
+            "body_markdown": "i wrote code that displays Tiff file in picturebox. the user views the file and then saves it to archive directory. the save action uses webservice that accept the file as base64 String.\r\n\r\nto display the file, i use this code:\r\n\r\n    using (var fs = new System.IO.FileStream(filename, FileMode.Open, FileAccess.Read))\r\n                                    {\r\n                                        var bmp = new Bitmap(fs);\r\n                                        viewer.Image = (Bitmap)bmp.Clone();\r\n                                        fs.Close();\r\n                                    }\r\n\r\nto convert the file to base64:\r\n\r\n    using (var fs = new System.IO.FileStream(fileOriginalPath, FileMode.Open, FileAccess.Read))\r\n    \r\n                    {\r\n                        var bmp = new Bitmap(fs);\r\n                        Image image = (Bitmap)bmp.Clone();\r\n                        MemoryStream m = new MemoryStream();\r\n                        image.Save(m, image.RawFormat);\r\n                        byte[] imageBytes = m.ToArray();\r\n                        string base64String = Convert.ToBase64String(imageBytes);\r\n    }\r\n\r\nit works fine but very (VERY) slow. about 3 seconds to view the file and another 3 seconds to save. I&#39;m dealing with list of hundreds of files...it&#39;s impossible to deliver this program like that.\r\n\r\nseems that the problem is in line\r\n new Bitmap(fs) which lasts about 1.5 seconds.\r\n I have an ancient program that uses kodak imgEdit control for VB6 that views the same file in no time.\r\n\r\nI tried different ways to view the file but get the &quot;access denied because it&#39;s in use of another program&quot; error when trying to delete the file after the save or even open it without the FileAccess.Read parameter.\r\n\r\nhow can I improve the view and save actions?\r\n\r\n10x.\r\n",
+            "link": "https://stackoverflow.com/questions/50364367/displaying-tiff-in-picture-box-is-slow-using-bitmap",
+            "title": "displaying TIFF in picture box is slow using bitmap",
+            "body": "<p>i wrote code that displays Tiff file in picturebox. the user views the file and then saves it to archive directory. the save action uses webservice that accept the file as base64 String.</p>\n\n<p>to display the file, i use this code:</p>\n\n<pre><code>using (var fs = new System.IO.FileStream(filename, FileMode.Open, FileAccess.Read))\n                                {\n                                    var bmp = new Bitmap(fs);\n                                    viewer.Image = (Bitmap)bmp.Clone();\n                                    fs.Close();\n                                }\n</code></pre>\n\n<p>to convert the file to base64:</p>\n\n<pre><code>using (var fs = new System.IO.FileStream(fileOriginalPath, FileMode.Open, FileAccess.Read))\n\n                {\n                    var bmp = new Bitmap(fs);\n                    Image image = (Bitmap)bmp.Clone();\n                    MemoryStream m = new MemoryStream();\n                    image.Save(m, image.RawFormat);\n                    byte[] imageBytes = m.ToArray();\n                    string base64String = Convert.ToBase64String(imageBytes);\n}\n</code></pre>\n\n<p>it works fine but very (VERY) slow. about 3 seconds to view the file and another 3 seconds to save. I'm dealing with list of hundreds of files...it's impossible to deliver this program like that.</p>\n\n<p>seems that the problem is in line\n new Bitmap(fs) which lasts about 1.5 seconds.\n I have an ancient program that uses kodak imgEdit control for VB6 that views the same file in no time.</p>\n\n<p>I tried different ways to view the file but get the \"access denied because it's in use of another program\" error when trying to delete the file after the save or even open it without the FileAccess.Read parameter.</p>\n\n<p>how can I improve the view and save actions?</p>\n\n<p>10x.</p>\n"
+        },
+        {
+            "tags": [
+                "disassembly",
+                "base",
+                "objdump",
+                "radix"
+            ],
+            "owner": {
+                "reputation": 120,
+                "user_id": 1753435,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/b81cf3b8c8432e0bcac7322120a09b56?s=128&d=identicon&r=PG",
+                "display_name": "andreee",
+                "link": "https://stackoverflow.com/users/1753435/andreee"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526454238,
+            "creation_date": 1526454238,
+            "question_id": 50364365,
+            "body_markdown": "Is there any option to change the radix of numbers displayed within an `objdump` disassebly (and possibly further outputs)?\r\nFor example, `objdump -M intel -d myprogram` displays:\r\n\r\n    [...]\r\n    400b35:       48 83 c4 10             add    rsp,0x10\r\n    400b39:       4c 8d 45 bc             lea    r8,[rbp-0x44]\r\n    [...]\r\nInstead, I would like to see something like:\r\n\r\n    [...]\r\n    400b35:       48 83 c4 10             add    rsp,16\r\n    400b39:       4c 8d 45 bc             lea    r8,[rbp-68]\r\n    [...]\r\nThis should of course only apply to the disassembled part, not to PC addresses and opcodes on the left. I was not able to find any option in the manpage.",
+            "link": "https://stackoverflow.com/questions/50364365/change-radix-base-of-objdump-output",
+            "title": "Change radix/base of objdump output",
+            "body": "<p>Is there any option to change the radix of numbers displayed within an <code>objdump</code> disassebly (and possibly further outputs)?\nFor example, <code>objdump -M intel -d myprogram</code> displays:</p>\n\n<pre><code>[...]\n400b35:       48 83 c4 10             add    rsp,0x10\n400b39:       4c 8d 45 bc             lea    r8,[rbp-0x44]\n[...]\n</code></pre>\n\n<p>Instead, I would like to see something like:</p>\n\n<pre><code>[...]\n400b35:       48 83 c4 10             add    rsp,16\n400b39:       4c 8d 45 bc             lea    r8,[rbp-68]\n[...]\n</code></pre>\n\n<p>This should of course only apply to the disassembled part, not to PC addresses and opcodes on the left. I was not able to find any option in the manpage.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "mysql",
+                "netbeans",
+                "phpmyadmin"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 5033896,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/98e97821d2bdf1f9cf61dc4fbee981c4?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Khim Reyes",
+                "link": "https://stackoverflow.com/users/5033896/khim-reyes"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526454237,
+            "creation_date": 1526454237,
+            "question_id": 50364364,
+            "body_markdown": " I have this code and it&#39;s supposed to upload a file to the database i&#39;m having trouble with this because the file that&#39;s uploaded turns corrupt.\r\n\r\n       private void btnTestUploadActionPerformed(java.awt.event.ActionEvent evt) {                                              \r\n    \r\n            db.ExecutePreparedUpdateCompSubAdv(&quot;M515181&quot;, &quot;C:/Users/user/Desktop/Important/CAPSTONE 3/Book1.xlsx&quot;);\r\n            db.ExecutePreparedUpdateCompSub(&quot;M515181&quot;, &quot;C:/Users/user/Desktop/Important/CAPSTONE 3/Book1.xlsx&quot;);\r\n            \r\n            System.out.println(&quot;UPDATED&quot;);\r\n        }   \r\n\r\n this is the method it calls from DBMethods\r\n\r\n     public void ExecutePreparedUpdateCompSub(String msgID, String filepath) {\r\n            String sql = &quot;&quot;;\r\n            try {\r\n                String newFilePath = &quot;&quot;;\r\n    \r\n                for (int i = 0; i &lt; filepath.length(); i++) {\r\n                    if (filepath.charAt(i) == &#39;\\\\&#39;) {\r\n                        newFilePath += &quot;/&quot;;\r\n                    } else {\r\n                        newFilePath += filepath.charAt(i);\r\n                    }\r\n                }\r\n                Path path = Paths.get(newFilePath);\r\n                byte[] file = Files.readAllBytes(path);\r\n    \r\n                sql = &quot;UPDATE `COMPOSITE_SUBMISSION` SET `FILE_SENT`=?  WHERE `REFERENCE_ID`=?;&quot;;\r\n                PreparedStatement pstmt = conn.prepareStatement(sql);\r\n                pstmt.setBytes(1, ef.compressData(file));\r\n                pstmt.setString(2, msgID);\r\n    \r\n                pstmt.executeUpdate();\r\n            } catch (SQLException ex) {\r\n                System.out.println(&quot;ExecutePreparedUpdate(SQL): &quot; + ex);\r\n            } catch (IOException ex) {\r\n                System.out.println(&quot;ExecutePreparedUpdate(IO): &quot; + ex);\r\n            }\r\n        }\r\n    \r\n        public void ExecutePreparedUpdateCompSubAdv(String msgID, String filepath) {\r\n            String sql = &quot;&quot;;\r\n            try {\r\n                String newFilePath = &quot;&quot;;\r\n    \r\n                for (int i = 0; i &lt; filepath.length(); i++) {\r\n                    if (filepath.charAt(i) == &#39;\\\\&#39;) {\r\n                        newFilePath += &quot;/&quot;;\r\n                    } else {\r\n                        newFilePath += filepath.charAt(i);\r\n                    }\r\n                }\r\n                Path path = Paths.get(newFilePath);\r\n                byte[] file = Files.readAllBytes(path);\r\n                \r\n                sql = &quot;UPDATE `adviser_composite_submission` SET `acs_file_sent`=?  WHERE `acs_reference_id`=?;&quot;;\r\n                PreparedStatement pstmt = conn.prepareStatement(sql);\r\n                pstmt.setBytes(1, ef.compressData(file));\r\n                pstmt.setString(2, msgID);\r\n    \r\n                pstmt.executeUpdate();\r\n            } catch (SQLException ex) {\r\n                System.out.println(&quot;ExecutePreparedUpdateCompSubAdv(SQL): &quot; + ex);\r\n            } catch (IOException ex) {\r\n                System.out.println(&quot;ExecutePreparedUpdateCompSubAdv(IO): &quot; + ex);\r\n            }\r\n        }\r\n\r\nthe first method works but the second method does not even though they have the same structure. I don&#39;t know what to do anymore.",
+            "link": "https://stackoverflow.com/questions/50364364/file-gets-corrupted-when-uploaded-in-database",
+            "title": "file gets corrupted when uploaded in database",
+            "body": "<p>I have this code and it's supposed to upload a file to the database i'm having trouble with this because the file that's uploaded turns corrupt.</p>\n\n<pre><code>   private void btnTestUploadActionPerformed(java.awt.event.ActionEvent evt) {                                              \n\n        db.ExecutePreparedUpdateCompSubAdv(\"M515181\", \"C:/Users/user/Desktop/Important/CAPSTONE 3/Book1.xlsx\");\n        db.ExecutePreparedUpdateCompSub(\"M515181\", \"C:/Users/user/Desktop/Important/CAPSTONE 3/Book1.xlsx\");\n\n        System.out.println(\"UPDATED\");\n    }   \n</code></pre>\n\n<p>this is the method it calls from DBMethods</p>\n\n<pre><code> public void ExecutePreparedUpdateCompSub(String msgID, String filepath) {\n        String sql = \"\";\n        try {\n            String newFilePath = \"\";\n\n            for (int i = 0; i &lt; filepath.length(); i++) {\n                if (filepath.charAt(i) == '\\\\') {\n                    newFilePath += \"/\";\n                } else {\n                    newFilePath += filepath.charAt(i);\n                }\n            }\n            Path path = Paths.get(newFilePath);\n            byte[] file = Files.readAllBytes(path);\n\n            sql = \"UPDATE `COMPOSITE_SUBMISSION` SET `FILE_SENT`=?  WHERE `REFERENCE_ID`=?;\";\n            PreparedStatement pstmt = conn.prepareStatement(sql);\n            pstmt.setBytes(1, ef.compressData(file));\n            pstmt.setString(2, msgID);\n\n            pstmt.executeUpdate();\n        } catch (SQLException ex) {\n            System.out.println(\"ExecutePreparedUpdate(SQL): \" + ex);\n        } catch (IOException ex) {\n            System.out.println(\"ExecutePreparedUpdate(IO): \" + ex);\n        }\n    }\n\n    public void ExecutePreparedUpdateCompSubAdv(String msgID, String filepath) {\n        String sql = \"\";\n        try {\n            String newFilePath = \"\";\n\n            for (int i = 0; i &lt; filepath.length(); i++) {\n                if (filepath.charAt(i) == '\\\\') {\n                    newFilePath += \"/\";\n                } else {\n                    newFilePath += filepath.charAt(i);\n                }\n            }\n            Path path = Paths.get(newFilePath);\n            byte[] file = Files.readAllBytes(path);\n\n            sql = \"UPDATE `adviser_composite_submission` SET `acs_file_sent`=?  WHERE `acs_reference_id`=?;\";\n            PreparedStatement pstmt = conn.prepareStatement(sql);\n            pstmt.setBytes(1, ef.compressData(file));\n            pstmt.setString(2, msgID);\n\n            pstmt.executeUpdate();\n        } catch (SQLException ex) {\n            System.out.println(\"ExecutePreparedUpdateCompSubAdv(SQL): \" + ex);\n        } catch (IOException ex) {\n            System.out.println(\"ExecutePreparedUpdateCompSubAdv(IO): \" + ex);\n        }\n    }\n</code></pre>\n\n<p>the first method works but the second method does not even though they have the same structure. I don't know what to do anymore.</p>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "observers",
+                "angular-observable"
+            ],
+            "owner": {
+                "reputation": 59,
+                "user_id": 6721134,
+                "user_type": "registered",
+                "accept_rate": 4,
+                "profile_image": "https://www.gravatar.com/avatar/5d27a064dab37f34dae5e3490e31fb2b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Guy E",
+                "link": "https://stackoverflow.com/users/6721134/guy-e"
+            },
+            "is_answered": true,
+            "view_count": 20,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1526454234,
+            "creation_date": 1526453270,
+            "last_edit_date": 1526453596,
+            "question_id": 50364109,
+            "body_markdown": "I&#39;m having a simple component that display a list of links. Each link should be displayed\\hide according to permissions. In order to get the permissions set, I should use a service. \r\nThis is a lean version of the HTML:\r\n\r\n    &lt;a *ngIf=isVisible(10) routerLink=&quot;..&quot; [queryParams]=&quot;{id:&#39;10&#39;}&quot;&gt;bla1&lt;/a&gt;     \r\n    &lt;a *ngIf=isVisible(40) routerLink=&quot;..&quot; [queryParams]= &quot;{id:&#39;20&#39;}&quot;&gt;bla2&lt;/a&gt;        \r\n\r\nThis is the component:\r\n\r\n    constructor(private reportService : service) {}\r\n\r\n    ngOnInit() {\r\n      this.reportService.GetReportsPermissions().subscribe(result =&gt; \r\n        {\r\n          this.reportsPersmissions = result;\r\n        }, error =&gt; { console.log(error)});\r\n     }\r\n     \r\n     isVisible(reportTypeID : ReportType) : boolean\r\n     {\r\n       return typeof this.reportsPersmissions != &#39;undefined&#39; &amp;&amp; \r\n         this.reportsPersmissions.find(rp =&gt; rp.ReportType == \r\n         reportTypeID).IsPermitted;\r\n     }\r\n \r\nThe problem is that isVisible function is called when the service is not yet responded and  reportsPersmissions is undefined. \r\nI could think of another option of add \r\n\r\n    *ngIf= reportsPersmissions \r\nstatement as a container div around the list of links:\r\n\r\n    &lt;div *ngIf=reportsPersmissions&gt; //Optional - see below\r\n      &lt;a *ngIf=isVisible(10) routerLink=&quot;..&quot; [queryParams]=&quot;{id:&#39;10&#39;}&quot;&gt;bla1&lt;/a&gt;     \r\n      &lt;a *ngIf=isVisible(40) routerLink=&quot;..&quot; [queryParams]= &quot;{id:&#39;20&#39;}&quot;&gt;bla2&lt;/a&gt;        \r\n    &lt;/div&gt;\r\n\r\nIs this the right way of doing it or is there a better way (best practice) doing that ?",
+            "link": "https://stackoverflow.com/questions/50364109/function-triggered-by-html-element-running-before-service-return-response",
+            "title": "function triggered by Html element running before service return response",
+            "body": "<p>I'm having a simple component that display a list of links. Each link should be displayed\\hide according to permissions. In order to get the permissions set, I should use a service. \nThis is a lean version of the HTML:</p>\n\n<pre><code>&lt;a *ngIf=isVisible(10) routerLink=\"..\" [queryParams]=\"{id:'10'}\"&gt;bla1&lt;/a&gt;     \n&lt;a *ngIf=isVisible(40) routerLink=\"..\" [queryParams]= \"{id:'20'}\"&gt;bla2&lt;/a&gt;        \n</code></pre>\n\n<p>This is the component:</p>\n\n<pre><code>constructor(private reportService : service) {}\n\nngOnInit() {\n  this.reportService.GetReportsPermissions().subscribe(result =&gt; \n    {\n      this.reportsPersmissions = result;\n    }, error =&gt; { console.log(error)});\n }\n\n isVisible(reportTypeID : ReportType) : boolean\n {\n   return typeof this.reportsPersmissions != 'undefined' &amp;&amp; \n     this.reportsPersmissions.find(rp =&gt; rp.ReportType == \n     reportTypeID).IsPermitted;\n }\n</code></pre>\n\n<p>The problem is that isVisible function is called when the service is not yet responded and  reportsPersmissions is undefined. \nI could think of another option of add </p>\n\n<pre><code>*ngIf= reportsPersmissions \n</code></pre>\n\n<p>statement as a container div around the list of links:</p>\n\n<pre><code>&lt;div *ngIf=reportsPersmissions&gt; //Optional - see below\n  &lt;a *ngIf=isVisible(10) routerLink=\"..\" [queryParams]=\"{id:'10'}\"&gt;bla1&lt;/a&gt;     \n  &lt;a *ngIf=isVisible(40) routerLink=\"..\" [queryParams]= \"{id:'20'}\"&gt;bla2&lt;/a&gt;        \n&lt;/div&gt;\n</code></pre>\n\n<p>Is this the right way of doing it or is there a better way (best practice) doing that ?</p>\n"
+        },
+        {
+            "tags": [
+                "mysql",
+                "amazon-rds"
+            ],
+            "owner": {
+                "reputation": 931,
+                "user_id": 218811,
+                "user_type": "registered",
+                "accept_rate": 61,
+                "profile_image": "https://www.gravatar.com/avatar/1fb4582e2ffc67e2b97f7191ece16f87?s=128&d=identicon&r=PG",
+                "display_name": "Phil",
+                "link": "https://stackoverflow.com/users/218811/phil"
+            },
+            "is_answered": false,
+            "view_count": 1649,
+            "answer_count": 1,
+            "score": 3,
+            "last_activity_date": 1526454233,
+            "creation_date": 1420631017,
+            "last_edit_date": 1420631640,
+            "question_id": 27818753,
+            "body_markdown": "We are using an Amazon RDS instance and it ran out of free storage space. Looking into the issue we dropped a no-longer required table. Amazon&#39;s monitoring tool showed that 1Gb of space was now available.\r\n\r\nFurther investigation showed that another table had 7 million entries, so we removed 5 million of them (using a simple delete command). However now the Free Storage Space has dropped to almost 1/2 Gb. We are dangerously close to running out of space again.\r\n\r\nI (naively) assumed that deleting entries from a table would reclaim space. Why is this not the case? Do I need to perform some form of manual cleanup operation? Why did performing the delete cause nearly 1/2 Gb of free space to be used (looking at the table the size was 2677Mb before the delete and is now 2961Mb!)\r\n\r\nThanks,\r\n\r\nPhil",
+            "link": "https://stackoverflow.com/questions/27818753/how-to-free-up-space-in-a-mysql-amazon-rds-instance",
+            "title": "How to free up space in a MySQL Amazon RDS instance",
+            "body": "<p>We are using an Amazon RDS instance and it ran out of free storage space. Looking into the issue we dropped a no-longer required table. Amazon's monitoring tool showed that 1Gb of space was now available.</p>\n\n<p>Further investigation showed that another table had 7 million entries, so we removed 5 million of them (using a simple delete command). However now the Free Storage Space has dropped to almost 1/2 Gb. We are dangerously close to running out of space again.</p>\n\n<p>I (naively) assumed that deleting entries from a table would reclaim space. Why is this not the case? Do I need to perform some form of manual cleanup operation? Why did performing the delete cause nearly 1/2 Gb of free space to be used (looking at the table the size was 2677Mb before the delete and is now 2961Mb!)</p>\n\n<p>Thanks,</p>\n\n<p>Phil</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "iphone",
+                "swift"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 6138400,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/93e74df7ff6c21de3daf884c3914cb2d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "gopal",
+                "link": "https://stackoverflow.com/users/6138400/gopal"
+            },
+            "is_answered": false,
+            "view_count": 41,
+            "answer_count": 0,
+            "score": -4,
+            "last_activity_date": 1526454233,
+            "creation_date": 1526449043,
+            "last_edit_date": 1526454233,
+            "question_id": 50363141,
+            "body_markdown": "I have Implemented an iOS Food Delivery App Using swift Language on Native iOS Platform. Its Working fine.But My Question is when I compared to my iOS app with Android App in real Devices, the server data loading very fastly in Android App. Both are using same restful Services.but I don&#39;t know, why iOS App data is loading very slowly.Can anyone guide me to solve this problem?? [Note: Both iPhone and Android Devices running on same Wi-Fi Network]\r\n\r\nAfter Successful getting of data from Server I am using this code \r\n\r\n\r\n    override func viewWillAppear(_ animated: Bool) {\r\n        super.viewWillAppear(animated)\r\n\r\n        if (rows == nil) {\r\n            myTable.separatorStyle = .none\r\n\r\n            activityIndicatorView.startAnimating()\r\n\r\n            dispatchQueue.async {\r\n                Thread.sleep(forTimeInterval: 3)\r\n\r\n                OperationQueue.main.addOperation() {\r\n                    self.myTable.separatorStyle = .singleLine\r\n\r\n                    self.activityIndicatorView.stopAnimating()\r\n\r\n\r\n                    //self.rows = [&quot;One&quot;, &quot;Two&quot;, &quot;Three&quot;, &quot;Four&quot;, &quot;Five&quot;]\r\n\r\n                    //self.myTable.reloadData()\r\n                }\r\n            }\r\n        }\r\n    }\r\n  viewdidload()\r\n\r\n{\r\n activityIndicatorView = UIActivityIndicatorView(activityIndicatorStyle: .gray)\r\n\r\n        myTable.backgroundView = activityIndicatorView\r\n\r\n}\r\n                       ",
+            "link": "https://stackoverflow.com/questions/50363141/restful-services-are-loading-very-slow-in-ios-swift",
+            "title": "RestFul Services are loading very slow in ios swift",
+            "body": "<p>I have Implemented an iOS Food Delivery App Using swift Language on Native iOS Platform. Its Working fine.But My Question is when I compared to my iOS app with Android App in real Devices, the server data loading very fastly in Android App. Both are using same restful Services.but I don't know, why iOS App data is loading very slowly.Can anyone guide me to solve this problem?? [Note: Both iPhone and Android Devices running on same Wi-Fi Network]</p>\n\n<p>After Successful getting of data from Server I am using this code </p>\n\n<pre><code>override func viewWillAppear(_ animated: Bool) {\n    super.viewWillAppear(animated)\n\n    if (rows == nil) {\n        myTable.separatorStyle = .none\n\n        activityIndicatorView.startAnimating()\n\n        dispatchQueue.async {\n            Thread.sleep(forTimeInterval: 3)\n\n            OperationQueue.main.addOperation() {\n                self.myTable.separatorStyle = .singleLine\n\n                self.activityIndicatorView.stopAnimating()\n\n\n                //self.rows = [\"One\", \"Two\", \"Three\", \"Four\", \"Five\"]\n\n                //self.myTable.reloadData()\n            }\n        }\n    }\n}\n</code></pre>\n\n<p>viewdidload()</p>\n\n<p>{\n activityIndicatorView = UIActivityIndicatorView(activityIndicatorStyle: .gray)</p>\n\n<pre><code>    myTable.backgroundView = activityIndicatorView\n</code></pre>\n\n<p>}</p>\n"
+        },
+        {
+            "tags": [
+                "ruby-on-rails",
+                "ruby-on-rails-5",
+                "ruby-on-rails-5.2"
+            ],
+            "owner": {
+                "reputation": 9694,
+                "user_id": 91970,
+                "user_type": "registered",
+                "accept_rate": 78,
+                "profile_image": "https://www.gravatar.com/avatar/64aa7d1e0eb006175565adb0a47a4452?s=128&d=identicon&r=PG",
+                "display_name": "marcamillion",
+                "link": "https://stackoverflow.com/users/91970/marcamillion"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "closed_date": 1526455749,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526454198,
+            "creation_date": 1526454198,
+            "question_id": 50364351,
+            "body_markdown": "I have a `Stock` model that has the following callback:\r\n\r\n`after_save :update_port_stock_current_price`\r\n\r\nBut I only want that executed if the `Stock` object being saved had the price changed. \r\n\r\nHow do I detect if a specific attribute, i.e. `stock.price` has changed in this save?",
+            "link": "https://stackoverflow.com/questions/50364351/how-do-i-execute-a-callback-only-if-a-specific-attribute-on-the-object-changes",
+            "closed_reason": "duplicate",
+            "title": "How do I execute a callback only if a specific attribute on the object changes?",
+            "body": "<p>I have a <code>Stock</code> model that has the following callback:</p>\n\n<p><code>after_save :update_port_stock_current_price</code></p>\n\n<p>But I only want that executed if the <code>Stock</code> object being saved had the price changed. </p>\n\n<p>How do I detect if a specific attribute, i.e. <code>stock.price</code> has changed in this save?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "android"
+            ],
+            "owner": {
+                "reputation": 146,
+                "user_id": 2440495,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/fbcda1fca7396cdc862749a86ae7cdb9?s=128&d=identicon&r=PG",
+                "display_name": "ArL",
+                "link": "https://stackoverflow.com/users/2440495/arl"
+            },
+            "is_answered": false,
+            "view_count": 39,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526454183,
+            "creation_date": 1526443046,
+            "last_edit_date": 1526454183,
+            "question_id": 50362260,
+            "body_markdown": "I&#39;m trying to send the `Serializable` object from one application to another.\r\n\r\nMy android application has a serializable class \r\n\r\n    public class MyClass implements Serializable\r\n\r\nand I then put one instance of it to the intent\r\n\r\n    MyClass myObject = new MyClass();\r\n    intent.putExtra(&quot;payItem&quot;, myObject);\r\n    intent.setAction(&quot;com.mypackage.some.action&quot;);\r\n\r\nwhen I call startActiviy\r\n\r\n    startActivity(intent);\r\n\r\n I got app crash\r\n\r\n    5-16 11:09:24.738 30673-30673/? E/AndroidRuntime: FATAL EXCEPTION: main\r\n    Process: system:ui, PID: 30673\r\n    java.lang.RuntimeException: Unable to start activity ComponentInfo{android/com.android.internal.app.ResolverActivity}: java.lang.RuntimeException: Parcelable encountered ClassNotFoundException reading a Serializable object (name = com.mypackage.MyClass)\r\n        at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:2955)\r\n        at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3030)\r\n        at android.app.ActivityThread.-wrap11(Unknown Source:0)\r\n        at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1696)\r\n        at android.os.Handler.dispatchMessage(Handler.java:105)\r\n        at android.os.Looper.loop(Looper.java:164)\r\n        at android.app.ActivityThread.main(ActivityThread.java:6938)\r\n        at java.lang.reflect.Method.invoke(Native Method)\r\n        at com.android.internal.os.Zygote$MethodAndArgsCaller.run(Zygote.java:327)\r\n        at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1374)\r\n     Caused by: java.lang.RuntimeException: Parcelable encountered ClassNotFoundException reading a Serializable object (name = com.mypackage.MyClass)\r\n        at android.os.Parcel.readSerializable(Parcel.java:2956)\r\n        at android.os.Parcel.readValue(Parcel.java:2742)\r\n        at android.os.Parcel.readArrayMapInternal(Parcel.java:3058)\r\n        at android.os.BaseBundle.unparcel(BaseBundle.java:257)\r\n        at android.os.Bundle.getParcelable(Bundle.java:888)\r\n        at android.content.Intent.getParcelableExtra(Intent.java:7734)\r\n        at android.app.Activity.getReferrer(Activity.java:5398)\r\n        at com.android.internal.app.ResolverActivity.getReferrerPackageName(ResolverActivity.java:554)\r\n        at com.android.internal.app.ResolverActivity.onCreate(ResolverActivity.java:435)\r\n        at com.android.internal.app.ResolverActivity.onCreate(ResolverActivity.java:331)\r\n        at android.app.Activity.performCreate(Activity.java:7174)\r\n        at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1220)\r\n        at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:2908)\r\n        at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3030)&#160;\r\n        at android.app.ActivityThread.-wrap11(Unknown Source:0)&#160;\r\n        at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1696)&#160;\r\n        at android.os.Handler.dispatchMessage(Handler.java:105)&#160;\r\n        at android.os.Looper.loop(Looper.java:164)&#160;\r\n        at android.app.ActivityThread.main(ActivityThread.java:6938)&#160;\r\n        at java.lang.reflect.Method.invoke(Native Method)&#160;\r\n        at com.android.internal.os.Zygote$MethodAndArgsCaller.run(Zygote.java:327)&#160;\r\n        at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1374)&#160;\r\n     Caused by: java.lang.ClassNotFoundException: com.mypackage.MyClass\r\n        at java.lang.Class.classForName(Native Method)\r\n        at java.lang.Class.forName(Class.java:453)\r\n        at android.os.Parcel$2.resolveClass(Parcel.java:2942)\r\n        at java.io.ObjectInputStream.readNonProxyDesc(ObjectInputStream.java:1616)\r\n        at java.io.ObjectInputStream.readClassDesc(ObjectInputStream.java:1521)\r\n        at java.io.ObjectInputStream.readOrdinaryObject(ObjectInputStream.java:1777)\r\n        at java.io.ObjectInputStream.readObject0(ObjectInputStream.java:1354)\r\n        at java.io.ObjectInputStream.readObject(ObjectInputStream.java:374)\r\n        at android.os.Parcel.readSerializable(Parcel.java:2950)\r\n        at android.os.Parcel.readValue(Parcel.java:2742)&#160;\r\n        at android.os.Parcel.readArrayMapInternal(Parcel.java:3058)&#160;\r\n        at android.os.BaseBundle.unparcel(BaseBundle.java:257)&#160;\r\n        at android.os.Bundle.getParcelable(Bundle.java:888)&#160;\r\n        at android.content.Intent.getParcelableExtra(Intent.java:7734)&#160;\r\n        at android.app.Activity.getReferrer(Activity.java:5398)&#160;\r\n        at com.android.internal.app.ResolverActivity.getReferrerPackageName(ResolverActivity.java:554)&#160;\r\n        at com.android.internal.app.ResolverActivity.onCreate(ResolverActivity.java:435)&#160;\r\n        at com.android.internal.app.ResolverActivity.onCreate(ResolverActivity.java:331)&#160;\r\n        at android.app.Activity.performCreate(Activity.java:7174)&#160;\r\n        at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1220)&#160;\r\n        at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:2908)&#160;\r\n        at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3030)&#160;\r\n        at android.app.ActivityThread.-wrap11(Unknown Source:0)&#160;\r\n        at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1696)&#160;\r\n        at android.os.Handler.dispatchMessage(Handler.java:105)&#160;\r\n        at android.os.Looper.loop(Looper.java:164)&#160;\r\n        at android.app.ActivityThread.main(ActivityThread.java:6938)&#160;\r\n        at java.lang.reflect.Method.invoke(Native Method)&#160;\r\n        at com.android.internal.os.Zygote$MethodAndArgsCaller.run(Zygote.java:327)&#160;\r\n        at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1374)&#160;\r\n     Caused by: java.lang.ClassNotFoundException: Didn&#39;t find class &quot;com.mypackage.MyClass&quot; on path: DexPathList[[directory &quot;.&quot;],nativeLibraryDirectories=[/system/lib64, /system/vendor/lib64, /system/lib64, /system/vendor/lib64]]\r\n        at dalvik.system.BaseDexClassLoader.findClass(BaseDexClassLoader.java:93)\r\n        at java.lang.ClassLoader.loadClass(ClassLoader.java:379)\r\n        at java.lang.ClassLoader.loadClass(ClassLoader.java:312)\r\n        at java.lang.Class.classForName(Native Method)&#160;\r\n        at java.lang.Class.forName(Class.java:453)&#160;\r\n        at android.os.Parcel$2.resolveClass(Parcel.java:2942)&#160;\r\n        at java.io.ObjectInputStream.readNonProxyDesc(ObjectInputStream.java:1616)&#160;\r\n        at java.io.ObjectInputStream.readClassDesc(ObjectInputStream.java:1521)&#160;\r\n        at java.io.ObjectInputStream.readOrdinaryObject(ObjectInputStream.java:1777)&#160;\r\n        at java.io.ObjectInputStream.readObject0(ObjectInputStream.java:1354)&#160;\r\n        at java.io.ObjectInputStream.readObject(ObjectInputStream.java:374)&#160;\r\n        at android.os.Parcel.readSerializable(Parcel.java:2950)&#160;\r\n        at android.os.Parcel.readValue(Parcel.java:2742)&#160;\r\n        at android.os.Parcel.readArrayMapInternal(Parcel.java:3058)&#160;\r\n        at android.os.BaseBundle.unparcel(BaseBundle.java:257)&#160;\r\n        at android.os.Bundle.getParcelable(Bundle.java:888)&#160;\r\n        at android.content.Intent.getParcelableExtra(Intent.java:7734)&#160;\r\n        at android.app.Activity.getReferrer(Activity.java:5398)&#160;\r\n        at com.android.internal.app.ResolverActivity.getReferrerPackageName(ResolverActivity.java:554)&#160;\r\n        at com.android.internal.app.ResolverActivity.onCreate(ResolverActivity.java:435)&#160;\r\n        at com.android.internal.app.ResolverActivity.onCreate(ResolverActivity.java:331)&#160;\r\n        at android.app.Activity.performCreate(Activity.java:7174)&#160;\r\n        at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1220)&#160;\r\n        at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:2908)&#160;\r\n        at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3030)&#160;\r\n        at android.app.ActivityThread.-wrap11(Unknown Source:0)&#160;\r\n        at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1696)&#160;\r\n        at android.os.Handler.dispatchMessage(Handler.java:105)&#160;\r\n        at android.os.Looper.loop(Looper.java:164)&#160;\r\n        at android.app.ActivityThread.main(ActivityThread.java:6938)&#160;\r\n        at java.lang.reflect.Method.invoke(Native Method)&#160;\r\n        at com.android.internal.os.Zygote$MethodAndArgsCaller.run(Zygote.java:327)&#160;\r\n        at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1374)&#160;\r\n\r\n\r\nActually my phone has installed two applications with both register an activity \r\nwith the same action name\r\n\r\n    &lt;activity\r\n            android:name=&quot;com.mypackage.MyActivity&quot;\r\n            android:exported=&quot;true&quot;\r\n            &gt;\r\n            &lt;intent-filter&gt;\r\n                &lt;action android:name=&quot;com.mypackage.some.action&quot;/&gt;\r\n                &lt;category android:name=&quot;android.intent.category.DEFAULT&quot;/&gt;\r\n            &lt;/intent-filter&gt;\r\n        &lt;/activity&gt;\r\n\r\nI would expect a dialog shown to let me choose which activity should be started, but I just got the error above. If I uninstall one of the applications, no error occurs and it runs as expected.\r\n\r\nMy question is \r\n\r\n 1. Why the dialog is not shown\r\n 2. Is it the reason of the crash\r\n 3. What&#39;s the solution to avoid that error if the two applications are both installed\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50362260/android-java-lang-runtimeexception-parcelable-encountered-classnotfoundexceptio",
+            "title": "Android java.lang.RuntimeException: Parcelable encountered ClassNotFoundException reading a Serializable object",
+            "body": "<p>I'm trying to send the <code>Serializable</code> object from one application to another.</p>\n\n<p>My android application has a serializable class </p>\n\n<pre><code>public class MyClass implements Serializable\n</code></pre>\n\n<p>and I then put one instance of it to the intent</p>\n\n<pre><code>MyClass myObject = new MyClass();\nintent.putExtra(\"payItem\", myObject);\nintent.setAction(\"com.mypackage.some.action\");\n</code></pre>\n\n<p>when I call startActiviy</p>\n\n<pre><code>startActivity(intent);\n</code></pre>\n\n<p>I got app crash</p>\n\n<pre><code>5-16 11:09:24.738 30673-30673/? E/AndroidRuntime: FATAL EXCEPTION: main\nProcess: system:ui, PID: 30673\njava.lang.RuntimeException: Unable to start activity ComponentInfo{android/com.android.internal.app.ResolverActivity}: java.lang.RuntimeException: Parcelable encountered ClassNotFoundException reading a Serializable object (name = com.mypackage.MyClass)\n    at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:2955)\n    at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3030)\n    at android.app.ActivityThread.-wrap11(Unknown Source:0)\n    at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1696)\n    at android.os.Handler.dispatchMessage(Handler.java:105)\n    at android.os.Looper.loop(Looper.java:164)\n    at android.app.ActivityThread.main(ActivityThread.java:6938)\n    at java.lang.reflect.Method.invoke(Native Method)\n    at com.android.internal.os.Zygote$MethodAndArgsCaller.run(Zygote.java:327)\n    at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1374)\n Caused by: java.lang.RuntimeException: Parcelable encountered ClassNotFoundException reading a Serializable object (name = com.mypackage.MyClass)\n    at android.os.Parcel.readSerializable(Parcel.java:2956)\n    at android.os.Parcel.readValue(Parcel.java:2742)\n    at android.os.Parcel.readArrayMapInternal(Parcel.java:3058)\n    at android.os.BaseBundle.unparcel(BaseBundle.java:257)\n    at android.os.Bundle.getParcelable(Bundle.java:888)\n    at android.content.Intent.getParcelableExtra(Intent.java:7734)\n    at android.app.Activity.getReferrer(Activity.java:5398)\n    at com.android.internal.app.ResolverActivity.getReferrerPackageName(ResolverActivity.java:554)\n    at com.android.internal.app.ResolverActivity.onCreate(ResolverActivity.java:435)\n    at com.android.internal.app.ResolverActivity.onCreate(ResolverActivity.java:331)\n    at android.app.Activity.performCreate(Activity.java:7174)\n    at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1220)\n    at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:2908)\n    at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3030) \n    at android.app.ActivityThread.-wrap11(Unknown Source:0) \n    at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1696) \n    at android.os.Handler.dispatchMessage(Handler.java:105) \n    at android.os.Looper.loop(Looper.java:164) \n    at android.app.ActivityThread.main(ActivityThread.java:6938) \n    at java.lang.reflect.Method.invoke(Native Method) \n    at com.android.internal.os.Zygote$MethodAndArgsCaller.run(Zygote.java:327) \n    at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1374) \n Caused by: java.lang.ClassNotFoundException: com.mypackage.MyClass\n    at java.lang.Class.classForName(Native Method)\n    at java.lang.Class.forName(Class.java:453)\n    at android.os.Parcel$2.resolveClass(Parcel.java:2942)\n    at java.io.ObjectInputStream.readNonProxyDesc(ObjectInputStream.java:1616)\n    at java.io.ObjectInputStream.readClassDesc(ObjectInputStream.java:1521)\n    at java.io.ObjectInputStream.readOrdinaryObject(ObjectInputStream.java:1777)\n    at java.io.ObjectInputStream.readObject0(ObjectInputStream.java:1354)\n    at java.io.ObjectInputStream.readObject(ObjectInputStream.java:374)\n    at android.os.Parcel.readSerializable(Parcel.java:2950)\n    at android.os.Parcel.readValue(Parcel.java:2742) \n    at android.os.Parcel.readArrayMapInternal(Parcel.java:3058) \n    at android.os.BaseBundle.unparcel(BaseBundle.java:257) \n    at android.os.Bundle.getParcelable(Bundle.java:888) \n    at android.content.Intent.getParcelableExtra(Intent.java:7734) \n    at android.app.Activity.getReferrer(Activity.java:5398) \n    at com.android.internal.app.ResolverActivity.getReferrerPackageName(ResolverActivity.java:554) \n    at com.android.internal.app.ResolverActivity.onCreate(ResolverActivity.java:435) \n    at com.android.internal.app.ResolverActivity.onCreate(ResolverActivity.java:331) \n    at android.app.Activity.performCreate(Activity.java:7174) \n    at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1220) \n    at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:2908) \n    at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3030) \n    at android.app.ActivityThread.-wrap11(Unknown Source:0) \n    at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1696) \n    at android.os.Handler.dispatchMessage(Handler.java:105) \n    at android.os.Looper.loop(Looper.java:164) \n    at android.app.ActivityThread.main(ActivityThread.java:6938) \n    at java.lang.reflect.Method.invoke(Native Method) \n    at com.android.internal.os.Zygote$MethodAndArgsCaller.run(Zygote.java:327) \n    at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1374) \n Caused by: java.lang.ClassNotFoundException: Didn't find class \"com.mypackage.MyClass\" on path: DexPathList[[directory \".\"],nativeLibraryDirectories=[/system/lib64, /system/vendor/lib64, /system/lib64, /system/vendor/lib64]]\n    at dalvik.system.BaseDexClassLoader.findClass(BaseDexClassLoader.java:93)\n    at java.lang.ClassLoader.loadClass(ClassLoader.java:379)\n    at java.lang.ClassLoader.loadClass(ClassLoader.java:312)\n    at java.lang.Class.classForName(Native Method) \n    at java.lang.Class.forName(Class.java:453) \n    at android.os.Parcel$2.resolveClass(Parcel.java:2942) \n    at java.io.ObjectInputStream.readNonProxyDesc(ObjectInputStream.java:1616) \n    at java.io.ObjectInputStream.readClassDesc(ObjectInputStream.java:1521) \n    at java.io.ObjectInputStream.readOrdinaryObject(ObjectInputStream.java:1777) \n    at java.io.ObjectInputStream.readObject0(ObjectInputStream.java:1354) \n    at java.io.ObjectInputStream.readObject(ObjectInputStream.java:374) \n    at android.os.Parcel.readSerializable(Parcel.java:2950) \n    at android.os.Parcel.readValue(Parcel.java:2742) \n    at android.os.Parcel.readArrayMapInternal(Parcel.java:3058) \n    at android.os.BaseBundle.unparcel(BaseBundle.java:257) \n    at android.os.Bundle.getParcelable(Bundle.java:888) \n    at android.content.Intent.getParcelableExtra(Intent.java:7734) \n    at android.app.Activity.getReferrer(Activity.java:5398) \n    at com.android.internal.app.ResolverActivity.getReferrerPackageName(ResolverActivity.java:554) \n    at com.android.internal.app.ResolverActivity.onCreate(ResolverActivity.java:435) \n    at com.android.internal.app.ResolverActivity.onCreate(ResolverActivity.java:331) \n    at android.app.Activity.performCreate(Activity.java:7174) \n    at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1220) \n    at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:2908) \n    at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:3030) \n    at android.app.ActivityThread.-wrap11(Unknown Source:0) \n    at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1696) \n    at android.os.Handler.dispatchMessage(Handler.java:105) \n    at android.os.Looper.loop(Looper.java:164) \n    at android.app.ActivityThread.main(ActivityThread.java:6938) \n    at java.lang.reflect.Method.invoke(Native Method) \n    at com.android.internal.os.Zygote$MethodAndArgsCaller.run(Zygote.java:327) \n    at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1374) \n</code></pre>\n\n<p>Actually my phone has installed two applications with both register an activity \nwith the same action name</p>\n\n<pre><code>&lt;activity\n        android:name=\"com.mypackage.MyActivity\"\n        android:exported=\"true\"\n        &gt;\n        &lt;intent-filter&gt;\n            &lt;action android:name=\"com.mypackage.some.action\"/&gt;\n            &lt;category android:name=\"android.intent.category.DEFAULT\"/&gt;\n        &lt;/intent-filter&gt;\n    &lt;/activity&gt;\n</code></pre>\n\n<p>I would expect a dialog shown to let me choose which activity should be started, but I just got the error above. If I uninstall one of the applications, no error occurs and it runs as expected.</p>\n\n<p>My question is </p>\n\n<ol>\n<li>Why the dialog is not shown</li>\n<li>Is it the reason of the crash</li>\n<li>What's the solution to avoid that error if the two applications are both installed</li>\n</ol>\n"
+        },
+        {
+            "tags": [
+                "xamarin",
+                "xamarin.forms"
+            ],
+            "owner": {
+                "reputation": 491,
+                "user_id": 6001456,
+                "user_type": "registered",
+                "accept_rate": 76,
+                "profile_image": "https://www.gravatar.com/avatar/8e3eb7338e4a3ed37522a4e19a3f56c9?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Uros",
+                "link": "https://stackoverflow.com/users/6001456/uros"
+            },
+            "is_answered": true,
+            "view_count": 2801,
+            "accepted_answer_id": 42997507,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526454182,
+            "creation_date": 1490349513,
+            "last_edit_date": 1490350606,
+            "question_id": 42996388,
+            "body_markdown": "I followed [this][1] tutorial to create underline effect. However, when my page starts it breaks without exception being caught. Has anyone managed to create underline effect? Here is a code:\r\n\r\nUnderlineEffect.cs:\r\n\r\n&lt;!-- language: lang-cs --&gt;\r\n\r\n    namespace XX.CustomForms\r\n    {\r\n        public class UnderlineEffect : RoutingEffect\r\n        {\r\n            public const string EffectNamespace = &quot;XX.CustomForms&quot;;\r\n\r\n            public UnderlineEffect() : base($&quot;{EffectNamespace}.{nameof(UnderlineEffect)}&quot;)\r\n            {\r\n            }\r\n        }\r\n    }\r\n\r\nUnderlineLabel_Droid.cs:\r\n\r\n&lt;!-- language: lang-cs --&gt;\r\n\r\n    [assembly: ResolutionGroupName(UnderlineEffect.EffectNamespace)]\r\n    [assembly: ExportEffect(typeof(UnderlineEffect), nameof(UnderlineEffect))]\r\n    namespace XX.Droid.Renderers\r\n    {\r\n        public class UnderlineEffect : PlatformEffect\r\n        {\r\n            protected override void OnAttached()\r\n            {\r\n                SetUnderline(true);\r\n            }\r\n\r\n            protected override void OnDetached()\r\n            {\r\n                SetUnderline(false);\r\n            }\r\n\r\n            protected override void OnElementPropertyChanged(System.ComponentModel.PropertyChangedEventArgs args)\r\n            {\r\n                base.OnElementPropertyChanged(args);\r\n\r\n                if (args.PropertyName == Label.TextProperty.PropertyName || args.PropertyName == Label.FormattedTextProperty.PropertyName)\r\n                {\r\n                    SetUnderline(true);\r\n                }\r\n            }\r\n\r\n            private void SetUnderline(bool underlined)\r\n            {\r\n                try\r\n                {\r\n                    var textView = (TextView)Control;\r\n                    if (underlined)\r\n                    {\r\n                        textView.PaintFlags |= PaintFlags.UnderlineText;\r\n                    }\r\n                    else\r\n                    {\r\n                        textView.PaintFlags &amp;= ~PaintFlags.UnderlineText;\r\n                    }\r\n                }\r\n                catch (Exception ex)\r\n                {\r\n                    Console.WriteLine(&quot;Cannot underline Label. Error: &quot;, ex.Message);\r\n                }\r\n            }\r\n        }\r\n    }\r\n\r\nAnd my xaml:\r\n\r\n        xmlns:custom=&quot;clr-namespace:XX.CustomForms;assembly=XX&quot;\r\n\r\n        &lt;Label Text=&quot;Privacy Notice&quot; HorizontalTextAlignment=&quot;Center&quot; &gt;\r\n            &lt;Label.Effects&gt;\r\n                &lt;custom:UnderlineEffect /&gt;\r\n            &lt;/Label.Effects&gt;\r\n        &lt;/Label&gt;\r\n\r\n  [1]: http://smstuebe.de/2016/08/29/underlinedlabel.xamarin.forms/",
+            "link": "https://stackoverflow.com/questions/42996388/how-to-underline-label-with-underline-effect-in-xamarin-forms",
+            "title": "How to underline label with underline effect in Xamarin Forms?",
+            "body": "<p>I followed <a href=\"http://smstuebe.de/2016/08/29/underlinedlabel.xamarin.forms/\" rel=\"nofollow noreferrer\">this</a> tutorial to create underline effect. However, when my page starts it breaks without exception being caught. Has anyone managed to create underline effect? Here is a code:</p>\n\n<p>UnderlineEffect.cs:</p>\n\n<pre class=\"lang-cs prettyprint-override\"><code>namespace XX.CustomForms\n{\n    public class UnderlineEffect : RoutingEffect\n    {\n        public const string EffectNamespace = \"XX.CustomForms\";\n\n        public UnderlineEffect() : base($\"{EffectNamespace}.{nameof(UnderlineEffect)}\")\n        {\n        }\n    }\n}\n</code></pre>\n\n<p>UnderlineLabel_Droid.cs:</p>\n\n<pre class=\"lang-cs prettyprint-override\"><code>[assembly: ResolutionGroupName(UnderlineEffect.EffectNamespace)]\n[assembly: ExportEffect(typeof(UnderlineEffect), nameof(UnderlineEffect))]\nnamespace XX.Droid.Renderers\n{\n    public class UnderlineEffect : PlatformEffect\n    {\n        protected override void OnAttached()\n        {\n            SetUnderline(true);\n        }\n\n        protected override void OnDetached()\n        {\n            SetUnderline(false);\n        }\n\n        protected override void OnElementPropertyChanged(System.ComponentModel.PropertyChangedEventArgs args)\n        {\n            base.OnElementPropertyChanged(args);\n\n            if (args.PropertyName == Label.TextProperty.PropertyName || args.PropertyName == Label.FormattedTextProperty.PropertyName)\n            {\n                SetUnderline(true);\n            }\n        }\n\n        private void SetUnderline(bool underlined)\n        {\n            try\n            {\n                var textView = (TextView)Control;\n                if (underlined)\n                {\n                    textView.PaintFlags |= PaintFlags.UnderlineText;\n                }\n                else\n                {\n                    textView.PaintFlags &amp;= ~PaintFlags.UnderlineText;\n                }\n            }\n            catch (Exception ex)\n            {\n                Console.WriteLine(\"Cannot underline Label. Error: \", ex.Message);\n            }\n        }\n    }\n}\n</code></pre>\n\n<p>And my xaml:</p>\n\n<pre><code>    xmlns:custom=\"clr-namespace:XX.CustomForms;assembly=XX\"\n\n    &lt;Label Text=\"Privacy Notice\" HorizontalTextAlignment=\"Center\" &gt;\n        &lt;Label.Effects&gt;\n            &lt;custom:UnderlineEffect /&gt;\n        &lt;/Label.Effects&gt;\n    &lt;/Label&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "google-spreadsheet"
+            ],
+            "owner": {
+                "reputation": 50,
+                "user_id": 4648355,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/27ff7c3e597a0b441f5c5f3d284248c3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Wolf",
+                "link": "https://stackoverflow.com/users/4648355/wolf"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526454182,
+            "creation_date": 1526410769,
+            "last_edit_date": 1526412200,
+            "question_id": 50357441,
+            "body_markdown": "so we got this google sheet (yes i already posted this on google forums, just expanding options) where we keep track of product orders, so the sheet contains names, and products, the thing is because of other parameters we structured the sheet so each item a client gets, is added on a new line, what we are trying to figure out, is how we can show this data, condensed so we don&#39;t see the repeated names, so we then export that data to create receipts, attached is a link to a demo sheet:\r\n\r\nLINK TO DEMO  &gt;&gt;  [THE SHEET][1]:\r\n\r\n              WHAT WE HAVE:     &gt;&gt;&gt;    WHAT WE WOULD LIKE TO ACCOMPLISH:\r\n\r\n           NAME    -  PRODUCT            NAME    -  PRODUCT\r\n           DANIEL  -  ORANGE            DANIEL   -  ORANGE\r\n           ALICE   -  PINEAPPLE         ALICE    -  PINEAPPLE - APPLE\r\n           ALICE   -  APPLE             ROBERT   -  BANANA - KIWI \r\n           ROBERT  -  BANANA\r\n           ROBERT  -  BANANA\r\n           ROBERT  -  KIWI\r\n\r\n  [1]: https://docs.google.com/spreadsheets/d/1boZaGA0oaD4y7RABG2FYLoAQ_xDw-7HqEGhOAAT1BLs/edit?usp=sharing",
+            "link": "https://stackoverflow.com/questions/50357441/google-sheet-unique-values-and-adjacent-data",
+            "title": "Google Sheet unique values and adjacent data",
+            "body": "<p>so we got this google sheet (yes i already posted this on google forums, just expanding options) where we keep track of product orders, so the sheet contains names, and products, the thing is because of other parameters we structured the sheet so each item a client gets, is added on a new line, what we are trying to figure out, is how we can show this data, condensed so we don't see the repeated names, so we then export that data to create receipts, attached is a link to a demo sheet:</p>\n\n<p>LINK TO DEMO  >>  <a href=\"https://docs.google.com/spreadsheets/d/1boZaGA0oaD4y7RABG2FYLoAQ_xDw-7HqEGhOAAT1BLs/edit?usp=sharing\" rel=\"nofollow noreferrer\">THE SHEET</a>:</p>\n\n<pre><code>          WHAT WE HAVE:     &gt;&gt;&gt;    WHAT WE WOULD LIKE TO ACCOMPLISH:\n\n       NAME    -  PRODUCT            NAME    -  PRODUCT\n       DANIEL  -  ORANGE            DANIEL   -  ORANGE\n       ALICE   -  PINEAPPLE         ALICE    -  PINEAPPLE - APPLE\n       ALICE   -  APPLE             ROBERT   -  BANANA - KIWI \n       ROBERT  -  BANANA\n       ROBERT  -  BANANA\n       ROBERT  -  KIWI\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "reactjs",
+                "functional-programming",
+                "async-await",
+                "puppeteer"
+            ],
+            "owner": {
+                "reputation": 9,
+                "user_id": 7159441,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/Q174L.jpg?s=128&g=1",
+                "display_name": "hangloos",
+                "link": "https://stackoverflow.com/users/7159441/hangloos"
+            },
+            "is_answered": true,
+            "view_count": 18,
+            "accepted_answer_id": 50364344,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526454180,
+            "creation_date": 1526425855,
+            "question_id": 50360351,
+            "body_markdown": "I&#39;m working on refactoring my puppeteer code to reuse repeat code in a partial format. I have multiple items that will repeat the same 4 lines beside for the selector variable. See the example of the 4 lines below. \r\n\r\nI want to be able to pass that ACHIEVEMENTS.community_ask_question_id into a repeatable function. Does anyone have any ideas?\r\n\r\n    await page.waitForSelector(ACHIEVEMENTS.community_ask_question_id);  \r\n    await page.click(ACHIEVEMENTS.community_ask_question_id,{delay: 500}); \r\n    await page.click(COMPLETE_ACHIEVEMENT, {delay: 500}); \r\n    await page.click(CONFIRM_COMPLETE, {delay: 500});",
+            "link": "https://stackoverflow.com/questions/50360351/utilizing-partials-in-puppeteer",
+            "title": "Utilizing Partials In Puppeteer",
+            "body": "<p>I'm working on refactoring my puppeteer code to reuse repeat code in a partial format. I have multiple items that will repeat the same 4 lines beside for the selector variable. See the example of the 4 lines below. </p>\n\n<p>I want to be able to pass that ACHIEVEMENTS.community_ask_question_id into a repeatable function. Does anyone have any ideas?</p>\n\n<pre><code>await page.waitForSelector(ACHIEVEMENTS.community_ask_question_id);  \nawait page.click(ACHIEVEMENTS.community_ask_question_id,{delay: 500}); \nawait page.click(COMPLETE_ACHIEVEMENT, {delay: 500}); \nawait page.click(CONFIRM_COMPLETE, {delay: 500});\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "xcode",
+                "xcode-project",
+                "xcodeproj"
+            ],
+            "owner": {
+                "reputation": 120,
+                "user_id": 5461392,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://i.stack.imgur.com/IeDtu.png?s=128&g=1",
+                "display_name": "Evil Coder",
+                "link": "https://stackoverflow.com/users/5461392/evil-coder"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526454179,
+            "creation_date": 1526454179,
+            "question_id": 50364342,
+            "body_markdown": "My project contains many files and third-party frameworks and so on.\r\nWorking as a team, When I&#39;m adding a single file to the project it&#39;s showing many changes in the project file, How can we set project file to show only my changes. It should not change the project file in many places and remote changes. Actually, I have seen some **rake tidy** command to show only our changes. Is there any way like that?",
+            "link": "https://stackoverflow.com/questions/50364342/project-file-changed-many-places",
+            "title": "Project file changed many places",
+            "body": "<p>My project contains many files and third-party frameworks and so on.\nWorking as a team, When I'm adding a single file to the project it's showing many changes in the project file, How can we set project file to show only my changes. It should not change the project file in many places and remote changes. Actually, I have seen some <strong>rake tidy</strong> command to show only our changes. Is there any way like that?</p>\n"
+        },
+        {
+            "tags": [
+                "objective-c",
+                "kony",
+                "fscalendar"
+            ],
+            "owner": {
+                "reputation": 442,
+                "user_id": 8046402,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/d495629d39d48fd9885ae48c91b4afc4?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Suganya Marlin",
+                "link": "https://stackoverflow.com/users/8046402/suganya-marlin"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526454177,
+            "creation_date": 1526454177,
+            "question_id": 50364341,
+            "body_markdown": "   I am new to ObjC and I am using FSCalendar framework for multiple date selection. When I run this project in iOS , everything works fine but when I do this as an FFI for kony , I am getting too many errors like the following. Can anyone help me to resolve these bugs?\r\n\r\n   \r\n\r\n[![enter image description here][1]][1]\r\n\r\n    #import &quot;FSCalendarConstants.h&quot;\r\n    \r\n    @class FSCalendar;\r\n    \r\n    typedef NS_ENUM(NSInteger, FSCalendarCellState) {\r\n        FSCalendarCellStateNormal      = 0,\r\n        FSCalendarCellStateSelected    = 1,\r\n        FSCalendarCellStatePlaceholder = 1 &lt;&lt; 1,\r\n        FSCalendarCellStateDisabled    = 1 &lt;&lt; 2,\r\n        FSCalendarCellStateToday       = 1 &lt;&lt; 3,\r\n        FSCalendarCellStateWeekend     = 1 &lt;&lt; 4,\r\n        FSCalendarCellStateTodaySelected = FSCalendarCellStateToday|FSCalendarCellStateSelected\r\n    };\r\n    \r\n    typedef NS_ENUM(NSUInteger, FSCalendarSeparators) {\r\n        FSCalendarSeparatorNone          = 0,\r\n        FSCalendarSeparatorInterRows     = 1\r\n    };\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/dNWZR.png",
+            "link": "https://stackoverflow.com/questions/50364341/redefinition-issue-in-frameworks-when-integrate-in-crossplatforms-like-kony",
+            "title": "Redefinition issue in frameworks when integrate in crossplatforms like kony",
+            "body": "<p>I am new to ObjC and I am using FSCalendar framework for multiple date selection. When I run this project in iOS , everything works fine but when I do this as an FFI for kony , I am getting too many errors like the following. Can anyone help me to resolve these bugs?</p>\n\n<p><a href=\"https://i.stack.imgur.com/dNWZR.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/dNWZR.png\" alt=\"enter image description here\"></a></p>\n\n<pre><code>#import \"FSCalendarConstants.h\"\n\n@class FSCalendar;\n\ntypedef NS_ENUM(NSInteger, FSCalendarCellState) {\n    FSCalendarCellStateNormal      = 0,\n    FSCalendarCellStateSelected    = 1,\n    FSCalendarCellStatePlaceholder = 1 &lt;&lt; 1,\n    FSCalendarCellStateDisabled    = 1 &lt;&lt; 2,\n    FSCalendarCellStateToday       = 1 &lt;&lt; 3,\n    FSCalendarCellStateWeekend     = 1 &lt;&lt; 4,\n    FSCalendarCellStateTodaySelected = FSCalendarCellStateToday|FSCalendarCellStateSelected\n};\n\ntypedef NS_ENUM(NSUInteger, FSCalendarSeparators) {\n    FSCalendarSeparatorNone          = 0,\n    FSCalendarSeparatorInterRows     = 1\n};\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "caching"
+            ],
+            "owner": {
+                "reputation": 366,
+                "user_id": 590582,
+                "user_type": "registered",
+                "accept_rate": 58,
+                "profile_image": "https://www.gravatar.com/avatar/4a71fa65192c7759fe3f7f1524054fcf?s=128&d=identicon&r=PG",
+                "display_name": "BraginiNI",
+                "link": "https://stackoverflow.com/users/590582/braginini"
+            },
+            "is_answered": true,
+            "view_count": 2901,
+            "answer_count": 5,
+            "score": 3,
+            "last_activity_date": 1526454172,
+            "creation_date": 1296045255,
+            "last_edit_date": 1526454172,
+            "question_id": 4804598,
+            "body_markdown": "How can I organize a 2 level cache in Java?\r\n\r\n - 1st level - memory\r\n - 2nd level - filesystem\r\n\r\nWhere I can find information about 2 level cache implementation and cache strategies configuration or can you show me any methods that can solve this problem.",
+            "link": "https://stackoverflow.com/questions/4804598/2-level-cache-in-java",
+            "title": "2-level cache in java",
+            "body": "<p>How can I organize a 2 level cache in Java?</p>\n\n<ul>\n<li>1st level - memory</li>\n<li>2nd level - filesystem</li>\n</ul>\n\n<p>Where I can find information about 2 level cache implementation and cache strategies configuration or can you show me any methods that can solve this problem.</p>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "file-upload",
+                "angular5",
+                "image-upload"
+            ],
+            "owner": {
+                "reputation": 14,
+                "user_id": 2177607,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/c960941316b30d05f12c0896184f2daa?s=128&d=identicon&r=PG",
+                "display_name": "Harikrishnan",
+                "link": "https://stackoverflow.com/users/2177607/harikrishnan"
+            },
+            "is_answered": true,
+            "view_count": 13,
+            "accepted_answer_id": 50364073,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526454160,
+            "creation_date": 1526450323,
+            "last_edit_date": 1526453357,
+            "question_id": 50363392,
+            "body_markdown": "I am having a ngform with file input along with other input fields.  Currently I am passing data to the component using ngmodel on submit.\r\nBut I don&#39;t know how to perform the file upload with ngmodel.In the backend I am using Laravel.\r\n\r\nCurrently I am able to get the file data in the component function **handleFileInput**.I want to pass this data along with other form input fields.How do I achieve that?\r\n\r\n**Template code**\r\n\r\n    &lt;div class=&quot;form-group&quot;&gt;\r\n    &lt;label for=&quot;file&quot;&gt;Choose File&lt;/label&gt;\r\n    &lt;input type=&quot;file&quot; id=&quot;file&quot; (change)=&quot;handleFileInput($event.target.files)&quot;&gt;                               \r\n    &lt;/div&gt;\r\n\r\n\r\n**Component code**\r\n\r\n    handleFileInput(files: FileList) {\r\n          this.fileToUpload = files.item(0);\r\n        }\r\n\r\n**onSubmit Method**\r\n\r\n    onSubmit() {\r\n            this.loading = true;\r\n            this._dataService.create(this.model, company_url).subscribe(data =&gt; {\r\n                this.submitted = true;\r\n                this.loading = false;\r\n                this.companyForm.reset();\r\n            },\r\n                error =&gt; {\r\n                    this.loading = false; console.log(error);\r\n                    this.error_message = error;\r\n                });\r\n        }",
+            "link": "https://stackoverflow.com/questions/50363392/access-file-upload-data-on-ngform-submit-function-in-angular-5",
+            "title": "Access file upload data on ngform submit function in angular 5?",
+            "body": "<p>I am having a ngform with file input along with other input fields.  Currently I am passing data to the component using ngmodel on submit.\nBut I don't know how to perform the file upload with ngmodel.In the backend I am using Laravel.</p>\n\n<p>Currently I am able to get the file data in the component function <strong>handleFileInput</strong>.I want to pass this data along with other form input fields.How do I achieve that?</p>\n\n<p><strong>Template code</strong></p>\n\n<pre><code>&lt;div class=\"form-group\"&gt;\n&lt;label for=\"file\"&gt;Choose File&lt;/label&gt;\n&lt;input type=\"file\" id=\"file\" (change)=\"handleFileInput($event.target.files)\"&gt;                               \n&lt;/div&gt;\n</code></pre>\n\n<p><strong>Component code</strong></p>\n\n<pre><code>handleFileInput(files: FileList) {\n      this.fileToUpload = files.item(0);\n    }\n</code></pre>\n\n<p><strong>onSubmit Method</strong></p>\n\n<pre><code>onSubmit() {\n        this.loading = true;\n        this._dataService.create(this.model, company_url).subscribe(data =&gt; {\n            this.submitted = true;\n            this.loading = false;\n            this.companyForm.reset();\n        },\n            error =&gt; {\n                this.loading = false; console.log(error);\n                this.error_message = error;\n            });\n    }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift",
+                "uitextview",
+                "uipickerview"
+            ],
+            "owner": {
+                "reputation": 346,
+                "user_id": 5744323,
+                "user_type": "registered",
+                "accept_rate": 77,
+                "profile_image": "https://i.stack.imgur.com/HPeWt.png?s=128&g=1",
+                "display_name": "Anirudha Mahale",
+                "link": "https://stackoverflow.com/users/5744323/anirudha-mahale"
+            },
+            "is_answered": true,
+            "view_count": 52,
+            "accepted_answer_id": 50364338,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526454139,
+            "creation_date": 1526451286,
+            "last_edit_date": 1526453257,
+            "question_id": 50363620,
+            "body_markdown": "I have used UIPickerView as inputView for UITextView.\r\nThe `selectRow:` function doesn&#39;t select properly for alternate time\r\n\r\nHere is the code\r\n\r\n   \r\n\r\n    func textViewDidBeginEditing(_ textView: UITextView) {\r\n        let inputView = UIView(frame: CGRect(x: 0,y: 0, width: self.view.frame.width, height: 240))\r\n        let codePicker = UIPickerView(frame: CGRect(x: 0, y: 0, width: self.view.bounds.width, height: 240))\r\n        codePicker.tag = 2\r\n        \r\n        if codePicker.dataSource == nil {\r\n            codePicker.dataSource = self\r\n        }\r\n        if codePicker.delegate == nil {\r\n            codePicker.delegate = self\r\n        }\r\n        \r\n        codePicker.showsSelectionIndicator = true\r\n        print(&quot;selectedBankRow: \\(selectedRow)&quot;)\r\n        codePicker.selectRow(selectedRow, inComponent: 0, animated: true)\r\n        inputView.addSubview(codePicker)\r\n        textView.inputView = inputView\r\n        return\r\n    }\r\n\r\nThe print statement print correct row but the `selectRow:` function selects the previous to the previous value which was selected, what could be the error? Even the status bar goes black each alternate time only for this UITextView interaction.",
+            "link": "https://stackoverflow.com/questions/50363620/uipickerview-as-inputview-for-uitextview-swift",
+            "title": "UIPickerView as inputView for UITextView swift",
+            "body": "<p>I have used UIPickerView as inputView for UITextView.\nThe <code>selectRow:</code> function doesn't select properly for alternate time</p>\n\n<p>Here is the code</p>\n\n<pre><code>func textViewDidBeginEditing(_ textView: UITextView) {\n    let inputView = UIView(frame: CGRect(x: 0,y: 0, width: self.view.frame.width, height: 240))\n    let codePicker = UIPickerView(frame: CGRect(x: 0, y: 0, width: self.view.bounds.width, height: 240))\n    codePicker.tag = 2\n\n    if codePicker.dataSource == nil {\n        codePicker.dataSource = self\n    }\n    if codePicker.delegate == nil {\n        codePicker.delegate = self\n    }\n\n    codePicker.showsSelectionIndicator = true\n    print(\"selectedBankRow: \\(selectedRow)\")\n    codePicker.selectRow(selectedRow, inComponent: 0, animated: true)\n    inputView.addSubview(codePicker)\n    textView.inputView = inputView\n    return\n}\n</code></pre>\n\n<p>The print statement print correct row but the <code>selectRow:</code> function selects the previous to the previous value which was selected, what could be the error? Even the status bar goes black each alternate time only for this UITextView interaction.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "jdbc"
+            ],
+            "owner": {
+                "reputation": 134,
+                "user_id": 1244794,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://www.gravatar.com/avatar/1f36d7ea17b29b97129399cc5e4a0943?s=128&d=identicon&r=PG",
+                "display_name": "Shrikant",
+                "link": "https://stackoverflow.com/users/1244794/shrikant"
+            },
+            "is_answered": false,
+            "view_count": 22,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526454125,
+            "creation_date": 1526454125,
+            "question_id": 50364334,
+            "body_markdown": "As the name suggests, doesn&#39;t it get registered with DriverManager class? And what is the difference between Driver and NonRegisteringDriver class (I know NonRegisteringDriver is parent of Driver, but still I don&#39;t know exact difference). Why do we mostly use Driver class instead of NonRegisteringDriver class? And also what does it make so useful about registering Driver instead of non registering it?\r\n\r\nThanks in advance.",
+            "link": "https://stackoverflow.com/questions/50364334/what-is-nonregisteringdriver-class-in-java",
+            "title": "What is NonRegisteringDriver class in java",
+            "body": "<p>As the name suggests, doesn't it get registered with DriverManager class? And what is the difference between Driver and NonRegisteringDriver class (I know NonRegisteringDriver is parent of Driver, but still I don't know exact difference). Why do we mostly use Driver class instead of NonRegisteringDriver class? And also what does it make so useful about registering Driver instead of non registering it?</p>\n\n<p>Thanks in advance.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 9724497,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/8975f721b0d9db3c959df0e0da19fe7b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "CrackCode",
+                "link": "https://stackoverflow.com/users/9724497/crackcode"
+            },
+            "is_answered": false,
+            "view_count": 29,
+            "closed_date": 1526453161,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526454123,
+            "creation_date": 1526453044,
+            "last_edit_date": 1526454123,
+            "question_id": 50364047,
+            "body_markdown": "Getting type error in console, Uncaught TypeError: Cannot read property &#39;addEventListener&#39; of null after clicking the &quot;Click&quot; button .\r\n\r\n        \r\n    \r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    document.getElementById(&quot;btn&quot;).addEventListener(&quot;click&quot;, function(){\r\n      document.getElementById(&quot;para&quot;).innerHTML(&quot;This is text&quot;);\r\n    });\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;ul id=&quot;myList&quot;&gt;\r\n      &lt;li&gt;item1&lt;/li&gt;\r\n      &lt;li&gt;item 2&lt;/li&gt;\r\n    &lt;/ul&gt;\r\n    &lt;button id=&quot;btn&quot;&gt;Click &lt;/button&gt;\r\n    &lt;form name=&quot;myForm&quot;&gt;\r\n      Select output mode: &lt;input type=&quot;radio&quot; name=&quot;output&quot; value=&quot;printer&quot; checked /&gt; Printer\r\n      &lt;input type=&quot;radio&quot; name=&quot;output&quot; value=&quot;scanner&quot; /&gt; Scanner\r\n    &lt;/form&gt;\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\n\t\t\r\n",
+            "link": "https://stackoverflow.com/questions/50364047/can-someone-tell-me-why-my-click-event-is-not-working",
+            "closed_reason": "duplicate",
+            "title": "Can someone tell me why my click event is not working?",
+            "body": "<p>Getting type error in console: </p>\n\n<blockquote>\n  <p>Uncaught TypeError: Cannot read property 'addEventListener' of null </p>\n</blockquote>\n\n<p>after clicking the \"Click\" button. How can I fix this?</p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-js lang-js prettyprint-override\"><code>document.getElementById(\"btn\").addEventListener(\"click\", function(){\r\n  document.getElementById(\"para\").innerHTML(\"This is text\");\r\n});</code></pre>\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>&lt;ul id=\"myList\"&gt;\r\n  &lt;li&gt;item1&lt;/li&gt;\r\n  &lt;li&gt;item 2&lt;/li&gt;\r\n&lt;/ul&gt;\r\n&lt;button id=\"btn\"&gt;Click &lt;/button&gt;\r\n&lt;form name=\"myForm\"&gt;\r\n  Select output mode: &lt;input type=\"radio\" name=\"output\" value=\"printer\" checked /&gt; Printer\r\n  &lt;input type=\"radio\" name=\"output\" value=\"scanner\" /&gt; Scanner\r\n&lt;/form&gt;</code></pre>\r\n</div>\r\n</div>\r\n</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-decorators",
+                "class-decorator"
+            ],
+            "owner": {
+                "reputation": 3998,
+                "user_id": 1600533,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://www.gravatar.com/avatar/1867190f5117fa54856a8b07947632e5?s=128&d=identicon&r=PG",
+                "display_name": "Eldamir",
+                "link": "https://stackoverflow.com/users/1600533/eldamir"
+            },
+            "is_answered": true,
+            "view_count": 44,
+            "accepted_answer_id": 50364331,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526454114,
+            "creation_date": 1526453510,
+            "question_id": 50364173,
+            "body_markdown": "I am trying to work out how I can change functionality of `__setattr__` of a class using a decorator on the class, but I am running into issue when trying to access `self` inside the function that replaces `__setattr__`. If I change the problmatic line to not access `self`, e.g. replacing it with `val = str(val)`, I get the expected behaviour.\r\n\r\nI see similar problems in other questions here, but they use a different approach, where a class is used as a decorater. My approach below feels less complicated, so I&#39;d love to keep it like that if possible.\r\n\r\nWhy might `a` not be defined on `self`/`foo` where I expect it to be?\r\n\r\n    # Define the function to be used as decorator\r\n    # The decorator function accepts the relevant fieldname as argument\r\n    # and returns the function that wraps the class\r\n    def field_proxied(field_name):\r\n        \r\n        # wrapped accepts the class (type) and modifies the functionality of\r\n        # __setattr__ before returning the modified class (type)\r\n        def wrapped(wrapped_class):\r\n            super_setattr = wrapped_class.__setattr__\r\n\r\n            # The new __setattr__ implementation makes sure that given an int,\r\n            # the fieldname becomes a string of that int plus the int in the\r\n            # `a` attribute\r\n            def setattr(self, attrname, val):\r\n                if attrname == field_name and isinstance(val, int):\r\n                    val = str(self.a + val)  # &lt;-- Crash. No attribute `a`\r\n                    super_setattr(self, attrname, val)\r\n            wrapped_class.__setattr__ = setattr\r\n            return wrapped_class\r\n        return wrapped\r\n\r\n    @field_proxied(&quot;b&quot;)\r\n    class Foo(object):\r\n        def __init__(self):\r\n            self.a = 2\r\n            self.b = None\r\n\r\n    foo = Foo()\r\n    # &lt;-- At this point, `foo` has no attribute `a`\r\n    foo.b = 4\r\n    assert foo.b == &quot;6&quot;  # Became a string\r\n",
+            "link": "https://stackoverflow.com/questions/50364173/python-class-decorator-self-seems-wrong",
+            "title": "Python class decorator &quot;self&quot; seems wrong",
+            "body": "<p>I am trying to work out how I can change functionality of <code>__setattr__</code> of a class using a decorator on the class, but I am running into issue when trying to access <code>self</code> inside the function that replaces <code>__setattr__</code>. If I change the problmatic line to not access <code>self</code>, e.g. replacing it with <code>val = str(val)</code>, I get the expected behaviour.</p>\n\n<p>I see similar problems in other questions here, but they use a different approach, where a class is used as a decorater. My approach below feels less complicated, so I'd love to keep it like that if possible.</p>\n\n<p>Why might <code>a</code> not be defined on <code>self</code>/<code>foo</code> where I expect it to be?</p>\n\n<pre><code># Define the function to be used as decorator\n# The decorator function accepts the relevant fieldname as argument\n# and returns the function that wraps the class\ndef field_proxied(field_name):\n\n    # wrapped accepts the class (type) and modifies the functionality of\n    # __setattr__ before returning the modified class (type)\n    def wrapped(wrapped_class):\n        super_setattr = wrapped_class.__setattr__\n\n        # The new __setattr__ implementation makes sure that given an int,\n        # the fieldname becomes a string of that int plus the int in the\n        # `a` attribute\n        def setattr(self, attrname, val):\n            if attrname == field_name and isinstance(val, int):\n                val = str(self.a + val)  # &lt;-- Crash. No attribute `a`\n                super_setattr(self, attrname, val)\n        wrapped_class.__setattr__ = setattr\n        return wrapped_class\n    return wrapped\n\n@field_proxied(\"b\")\nclass Foo(object):\n    def __init__(self):\n        self.a = 2\n        self.b = None\n\nfoo = Foo()\n# &lt;-- At this point, `foo` has no attribute `a`\nfoo.b = 4\nassert foo.b == \"6\"  # Became a string\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "mysql",
+                "sql"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 9483238,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-99qL9ucpKIM/AAAAAAAAAAI/AAAAAAAAAKc/a64v_YlJoPM/photo.jpg?sz=128",
+                "display_name": "Vish",
+                "link": "https://stackoverflow.com/users/9483238/vish"
+            },
+            "is_answered": true,
+            "view_count": 31,
+            "accepted_answer_id": 50362632,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1526454099,
+            "creation_date": 1526445990,
+            "question_id": 50362617,
+            "body_markdown": "I have created 2 tables as following\r\n\r\n    create table Room(\r\n    \troomID varchar(5),\r\n        roomName varchar(20),\r\n        price float,\r\n        size varchar(10),\r\n        beds varchar(15),\r\n        numOfRooms int,\r\n        numOfGuests int,\r\n        constraint pk_room primary key(roomID)\r\n    );\r\n\r\n    create table Additional_room_info(\r\n    \troomId varchar(5),\r\n        features varchar(20),\r\n        constraint fk_room_add_ftrs foreign key(roomID) references Room(roomID)\r\n    );\r\n\r\nAnd I want to make *roomId* in **Additional_room_info** the primary key of the table. I know that is not possible in this situation because the same *roomId* is repeatedly added to the table multiple times. Is there any other way to make a primary key without including *features* attribute?",
+            "link": "https://stackoverflow.com/questions/50362617/how-to-insert-values-to-multivalued-attribute-in-sql-with-a-primary-key-attribut",
+            "title": "how to insert values to multivalued attribute in sql with a primary key attribute in the table?",
+            "body": "<p>I have created 2 tables as following</p>\n\n<pre><code>create table Room(\n    roomID varchar(5),\n    roomName varchar(20),\n    price float,\n    size varchar(10),\n    beds varchar(15),\n    numOfRooms int,\n    numOfGuests int,\n    constraint pk_room primary key(roomID)\n);\n\ncreate table Additional_room_info(\n    roomId varchar(5),\n    features varchar(20),\n    constraint fk_room_add_ftrs foreign key(roomID) references Room(roomID)\n);\n</code></pre>\n\n<p>And I want to make <em>roomId</em> in <strong>Additional_room_info</strong> the primary key of the table. I know that is not possible in this situation because the same <em>roomId</em> is repeatedly added to the table multiple times. Is there any other way to make a primary key without including <em>features</em> attribute?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "outlook",
+                "calendar",
+                "javamail"
+            ],
+            "owner": {
+                "reputation": 91,
+                "user_id": 1584192,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/87548bb93a317be2676d6e6930686e1c?s=128&d=identicon&r=PG",
+                "display_name": "Rani",
+                "link": "https://stackoverflow.com/users/1584192/rani"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526454086,
+            "creation_date": 1526454086,
+            "question_id": 50364326,
+            "body_markdown": "\r\n    DateFormat iCalendarDateFormat = new SimpleDateFormat(&quot;yyyyMMdd&#39;T&#39;HHmmss&#39;Z&#39;&quot;);\r\n    \t\tDate dTstamp = new Date();\r\n    \t\tString start=iCalendarDateFormat.format(startDate);\r\n    \t\tString end=iCalendarDateFormat.format(endDate);\r\n    \t\tStringBuffer buffer = sb.append(\r\n    \t\t\t\t\t\t\t\t\t\t  &quot;BEGIN:VCALENDAR\\n&quot; +\r\n    \t\t\t\t\t\t\t\t\t\t  &quot;PRODID:-//Microsoft Corporation//Outlook 11.0 MIMEDIR//EN\\n&quot;\r\n    \t\t\t\t\t\t\t\t\t\t  + &quot;VERSION:2.0\\n&quot; \r\n    \t\t\t\t\t\t\t\t\t\t \r\n    \t\t\t\t/*&quot;BEGIN:VCALENDAR\\n&quot; + &quot;X-LOTUS-CHARSET:UTF-8\\n&quot;\r\n    \t\t\t\t\t\t+ &quot;PRODID:-//Lotus Development Corporation//NONSGML Notes 8.5//EN_C\\n&quot; + &quot;VERSION:2.0\\n&quot;*/\r\n    \t\t\t\t\t\t+ &quot;METHOD:REQUEST\\n&quot; + &quot;BEGIN:VEVENT\\n&quot; + &quot;DTSTAMP:&quot;+dTstamp+&quot;\\n&quot;\r\n    \t\t\t\t\t\t+&quot;DTSTART:&quot;+start+&quot;\\n&quot; + &quot;DTEND:&quot;+end+&quot;\\n&quot; + &quot;SUMMARY:&quot;+msg+&quot;\\n&quot;\r\n    \t\t\t\t\t\t+ &quot;UID:324\\n&quot;\r\n    \t\t\t\t\t\t+ &quot;ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:MAILTO:&quot;+emailAddress+&quot;\\n&quot;\r\n    \t\t\t\t\t\t+ &quot;ORGANIZER:MAILTO:&quot;+&quot;abc@xyz.com&quot;+&quot;\\n&quot; +\r\n    \t\t\t\t\t\t/*\r\n    \t\t\t\t\t\t * &quot;DTSTART:20051208T053000Z\\n&quot; +\r\n    \t\t\t\t\t\t * &quot;DTEND:20051208T060000Z\\n&quot; +\r\n    \t\t\t\t\t\t */\r\n    \t\t\t\t\t\t&quot;LOCATION:&quot;+location+&quot;\\n&quot; + &quot;TRANSP:OPAQUE\\n&quot; + &quot;SEQUENCE:0\\n&quot;\r\n    \t\t\t\t\t\t+ &quot;UID:040000008200E00074C5B7101A82E00800000000002FF466CE3AC5010000000000000000100\\n&quot;\r\n    \t\t\t\t\t\t+ &quot; 000004377FE5C37984842BF9440448399EB02\\n&quot; +\r\n    \t\t\t\t\t\t/* &quot;DTSTAMP:20051206T120102Z\\n&quot; + */\r\n    \t\t\t\t\t\t&quot;CATEGORIES:Meeting\\n&quot; + &quot;DESCRIPTION:&quot;+msg+&quot;.\\n\\n&quot;\r\n    \t\t\t\t\t\t+ &quot;SUMMARY:&quot;+subject+&quot;\\n&quot; + &quot;PRIORITY:5\\n&quot; + &quot;CLASS:PUBLIC\\n&quot; + &quot;BEGIN:VALARM\\n&quot;\r\n    \t\t\t\t\t\t+ &quot;TRIGGER:PT1440M\\n&quot; + &quot;ACTION:DISPLAY\\n&quot; + &quot;DESCRIPTION:Reminder\\n&quot; + &quot;END:VALARM\\n&quot;\r\n    \t\t\t\t\t\t+ &quot;END:VEVENT\\n&quot; + &quot;END:VCALENDAR&quot;);\r\n    \r\n    \t\tMultipart mp = new MimeMultipart();\r\n    \t\t// create and fill the body of the message\r\n    \t\tMimeBodyPart body = new MimeBodyPart();\r\n    \t\t// Fill the message\r\n    \t\tbody.setHeader(&quot;Content-Class&quot;, &quot;urn:content-  classes:calendarmessage&quot;);\r\n    \t\tbody.setHeader(&quot;Content-ID&quot;, &quot;calendar_message&quot;);\r\n\r\n\r\nI have created calendar service using java Mail API.is there any way that without sending the file as an attachment, the user directly views the calendar event, just the same way when someone creates the event and the user accepts/rejects it.?\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50364326/is-there-a-better-way-to-handle-calendar-event-files-ics-in-microsoft-outlook",
+            "title": "Is there a better way to handle calendar event files (.ics) in Microsoft Outlook?",
+            "body": "<pre><code>DateFormat iCalendarDateFormat = new SimpleDateFormat(\"yyyyMMdd'T'HHmmss'Z'\");\n        Date dTstamp = new Date();\n        String start=iCalendarDateFormat.format(startDate);\n        String end=iCalendarDateFormat.format(endDate);\n        StringBuffer buffer = sb.append(\n                                          \"BEGIN:VCALENDAR\\n\" +\n                                          \"PRODID:-//Microsoft Corporation//Outlook 11.0 MIMEDIR//EN\\n\"\n                                          + \"VERSION:2.0\\n\" \n\n                /*\"BEGIN:VCALENDAR\\n\" + \"X-LOTUS-CHARSET:UTF-8\\n\"\n                        + \"PRODID:-//Lotus Development Corporation//NONSGML Notes 8.5//EN_C\\n\" + \"VERSION:2.0\\n\"*/\n                        + \"METHOD:REQUEST\\n\" + \"BEGIN:VEVENT\\n\" + \"DTSTAMP:\"+dTstamp+\"\\n\"\n                        +\"DTSTART:\"+start+\"\\n\" + \"DTEND:\"+end+\"\\n\" + \"SUMMARY:\"+msg+\"\\n\"\n                        + \"UID:324\\n\"\n                        + \"ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:MAILTO:\"+emailAddress+\"\\n\"\n                        + \"ORGANIZER:MAILTO:\"+\"abc@xyz.com\"+\"\\n\" +\n                        /*\n                         * \"DTSTART:20051208T053000Z\\n\" +\n                         * \"DTEND:20051208T060000Z\\n\" +\n                         */\n                        \"LOCATION:\"+location+\"\\n\" + \"TRANSP:OPAQUE\\n\" + \"SEQUENCE:0\\n\"\n                        + \"UID:040000008200E00074C5B7101A82E00800000000002FF466CE3AC5010000000000000000100\\n\"\n                        + \" 000004377FE5C37984842BF9440448399EB02\\n\" +\n                        /* \"DTSTAMP:20051206T120102Z\\n\" + */\n                        \"CATEGORIES:Meeting\\n\" + \"DESCRIPTION:\"+msg+\".\\n\\n\"\n                        + \"SUMMARY:\"+subject+\"\\n\" + \"PRIORITY:5\\n\" + \"CLASS:PUBLIC\\n\" + \"BEGIN:VALARM\\n\"\n                        + \"TRIGGER:PT1440M\\n\" + \"ACTION:DISPLAY\\n\" + \"DESCRIPTION:Reminder\\n\" + \"END:VALARM\\n\"\n                        + \"END:VEVENT\\n\" + \"END:VCALENDAR\");\n\n        Multipart mp = new MimeMultipart();\n        // create and fill the body of the message\n        MimeBodyPart body = new MimeBodyPart();\n        // Fill the message\n        body.setHeader(\"Content-Class\", \"urn:content-  classes:calendarmessage\");\n        body.setHeader(\"Content-ID\", \"calendar_message\");\n</code></pre>\n\n<p>I have created calendar service using java Mail API.is there any way that without sending the file as an attachment, the user directly views the calendar event, just the same way when someone creates the event and the user accepts/rejects it.?</p>\n"
+        },
+        {
+            "tags": [
+                "excel",
+                "macos",
+                "vba"
+            ],
+            "owner": {
+                "reputation": 96,
+                "user_id": 7229377,
+                "user_type": "registered",
+                "accept_rate": 59,
+                "profile_image": "https://www.gravatar.com/avatar/805e74a482523cbba74d67f66f9cec41?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Jeeva",
+                "link": "https://stackoverflow.com/users/7229377/jeeva"
+            },
+            "is_answered": true,
+            "view_count": 226,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1526454070,
+            "creation_date": 1481169001,
+            "question_id": 41031457,
+            "body_markdown": "i&#39;m currently making an excel sheet that extracting MAC Address. I managed to extract Connected/Online MAC address by using the following code:\r\n\r\n    Dim objVMI As Object\r\n    Dim vAdptr As Variant\r\n    Dim objAdptr As Object\r\n    Dim adptrCnt As Long\r\n    \r\n\r\n    Set objVMI = GetObject(&quot;winmgmts:\\\\&quot; &amp; &quot;.&quot; &amp; &quot;\\root\\cimv2&quot;)\r\n    Set vAdptr = objVMI.ExecQuery(&quot;SELECT * FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled = True&quot;)\r\n    For Each objAdptr In vAdptr\r\n    If Not IsNull(objAdptr.MACAddress) And IsArray(objAdptr.IPAddress) Then\r\n    For adptrCnt = 0 To UBound(objAdptr.IPAddress)\r\n    If Not objAdptr.IPAddress(adptrCnt) = &quot;0.0.0.0&quot; Then\r\n    GetNetworkConnectionMACAddress = objAdptr.MACAddress\r\n    Exit For\r\n    End If\r\n    Next adptrCnt\r\n    End If\r\n    Next\r\n    \r\n    Range(&quot;A1&quot;).Value = GetNetworkConnectionMACAddress\r\n\r\nHowever, this code only extract the connected MAC. May I know how extract the offline MAC Address?\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/41031457/excel-vba-extracting-offline-mac-address",
+            "title": "Excel VBA - Extracting Offline MAC Address",
+            "body": "<p>i'm currently making an excel sheet that extracting MAC Address. I managed to extract Connected/Online MAC address by using the following code:</p>\n\n<pre><code>Dim objVMI As Object\nDim vAdptr As Variant\nDim objAdptr As Object\nDim adptrCnt As Long\n\n\nSet objVMI = GetObject(\"winmgmts:\\\\\" &amp; \".\" &amp; \"\\root\\cimv2\")\nSet vAdptr = objVMI.ExecQuery(\"SELECT * FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled = True\")\nFor Each objAdptr In vAdptr\nIf Not IsNull(objAdptr.MACAddress) And IsArray(objAdptr.IPAddress) Then\nFor adptrCnt = 0 To UBound(objAdptr.IPAddress)\nIf Not objAdptr.IPAddress(adptrCnt) = \"0.0.0.0\" Then\nGetNetworkConnectionMACAddress = objAdptr.MACAddress\nExit For\nEnd If\nNext adptrCnt\nEnd If\nNext\n\nRange(\"A1\").Value = GetNetworkConnectionMACAddress\n</code></pre>\n\n<p>However, this code only extract the connected MAC. May I know how extract the offline MAC Address?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "get"
+            ],
+            "owner": {
+                "reputation": 2183,
+                "user_id": 1967500,
+                "user_type": "registered",
+                "accept_rate": 81,
+                "profile_image": "https://i.stack.imgur.com/DaEjU.jpg?s=128&g=1",
+                "display_name": "PAC",
+                "link": "https://stackoverflow.com/users/1967500/pac"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526454063,
+            "creation_date": 1526454063,
+            "question_id": 50364318,
+            "body_markdown": "I try to run a GET request in Javascript but I&#39;ve got a &quot;network error&quot;\r\n\r\n\r\n    var whatlinkshere = new XMLHttpRequest();\r\n    whatlinkshere.open(&quot;GET&quot;, &quot;https://fr.wikipedia.org/w/api.php?action=query&amp;prop=linkshere&amp;titles=Notebook_(programmation)&amp;format=json&quot;, false) ;\r\n    whatlinkshere.send();\r\n\r\nI&#39;ve got the following error : \r\n\r\n    Error: A network error occurred.\r\n\r\nAny solution ?",
+            "link": "https://stackoverflow.com/questions/50364318/how-to-understand-error-network-in-javascript-get-request",
+            "title": "How to understand error network in Javascript Get request?",
+            "body": "<p>I try to run a GET request in Javascript but I've got a \"network error\"</p>\n\n<pre><code>var whatlinkshere = new XMLHttpRequest();\nwhatlinkshere.open(\"GET\", \"https://fr.wikipedia.org/w/api.php?action=query&amp;prop=linkshere&amp;titles=Notebook_(programmation)&amp;format=json\", false) ;\nwhatlinkshere.send();\n</code></pre>\n\n<p>I've got the following error : </p>\n\n<pre><code>Error: A network error occurred.\n</code></pre>\n\n<p>Any solution ?</p>\n"
+        },
+        {
+            "tags": [
+                "android"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 2781909,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3055ccd900164a1447e4ac8f71d5f6fd?s=128&d=identicon&r=PG&f=1",
+                "display_name": "jamshid",
+                "link": "https://stackoverflow.com/users/2781909/jamshid"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526454063,
+            "creation_date": 1526452963,
+            "last_edit_date": 1526454063,
+            "question_id": 50364021,
+            "body_markdown": "I want to access or edit voice call binary data on android, is it possible? If yes, How?\r\n\r\nFor example add some data to it and can receive it on receiver voice call.\r\n\r\n(I assume that I have root access.)",
+            "link": "https://stackoverflow.com/questions/50364021/how-can-i-access-to-data-are-sending-by-android-phone-in-a-voice-call",
+            "title": "How can I access to data are sending by android phone, in a voice call?",
+            "body": "<p>I want to access or edit voice call binary data on android, is it possible? If yes, How?</p>\n\n<p>For example add some data to it and can receive it on receiver voice call.</p>\n\n<p>(I assume that I have root access.)</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift",
+                "svg",
+                "uicollectionview",
+                "uicollectionviewcell"
+            ],
+            "owner": {
+                "reputation": 182,
+                "user_id": 4435963,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/8YbEu.jpg?s=128&g=1",
+                "display_name": "Sabyasachi Ghosh",
+                "link": "https://stackoverflow.com/users/4435963/sabyasachi-ghosh"
+            },
+            "is_answered": false,
+            "view_count": 28,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526454060,
+            "creation_date": 1526453472,
+            "last_edit_date": 1526454060,
+            "question_id": 50364161,
+            "body_markdown": "Can anyone give example of `UICollectionView` using `SwiftSVG` in `swift4`?\r\nI am using `SwiftSVG` in `UICollectionView`. But in some cell the SVG image does not appear. I guess it has something to do with `addSubView()`\r\n\r\n\r\n    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -&gt; UITableViewCell {\r\n        let cell  = tableView.dequeueReusableCell(withIdentifier: &quot;slotCell&quot;, for: indexPath) as! SlotTableViewCell\r\n        cell.groundName.text = self.slots[indexPath.row].ground_name\r\n        cell.sportName.text =  self.slots[indexPath.row].sport![0].sport_name\r\n        \r\n        let icon = UIView(SVGNamed: (self.slots[indexPath.row].sport![0].icon_name)!) { (svgLayer) in\r\n            svgLayer.fillColor = UIColor.init(red: 1, green: 1, blue: 1, alpha: 1.0).cgColor\r\n            svgLayer.resizeToFit(cell.sportIconView.bounds)\r\n        }\r\n        icon.backgroundColor = nil\r\n        \r\n        for view in cell.sportIconView.subviews {\r\n            view.removeFromSuperview()\r\n        }\r\n        cell.sportIconView.addSubview(icon)\r\n        return cell\r\n    }",
+            "link": "https://stackoverflow.com/questions/50364161/can-anyone-give-example-of-uicollectionview-using-swiftsvg-svg-image-in-swift-4",
+            "title": "Can anyone give example of UICollectionView using SwiftSVG svg image in swift 4?",
+            "body": "<p>Can anyone give example of <code>UICollectionView</code> using <code>SwiftSVG</code> in <code>swift4</code>?\nI am using <code>SwiftSVG</code> in <code>UICollectionView</code>. But in some cell the SVG image does not appear. I guess it has something to do with <code>addSubView()</code></p>\n\n<pre><code>func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -&gt; UITableViewCell {\n    let cell  = tableView.dequeueReusableCell(withIdentifier: \"slotCell\", for: indexPath) as! SlotTableViewCell\n    cell.groundName.text = self.slots[indexPath.row].ground_name\n    cell.sportName.text =  self.slots[indexPath.row].sport![0].sport_name\n\n    let icon = UIView(SVGNamed: (self.slots[indexPath.row].sport![0].icon_name)!) { (svgLayer) in\n        svgLayer.fillColor = UIColor.init(red: 1, green: 1, blue: 1, alpha: 1.0).cgColor\n        svgLayer.resizeToFit(cell.sportIconView.bounds)\n    }\n    icon.backgroundColor = nil\n\n    for view in cell.sportIconView.subviews {\n        view.removeFromSuperview()\n    }\n    cell.sportIconView.addSubview(icon)\n    return cell\n}\n</code></pre>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 243
+}

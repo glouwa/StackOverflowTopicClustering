@@ -6,8 +6,8 @@ nltk_stop_words = list(stopwords.words('english'))
 
 raw_stop_words = """
     user make run app application page new server page set method find add files image used line created 
-    item field user 
-    custon property size variables date parameter test cell statement difference program default
+    item field user column row api
+    custom property size variables date parameter test cell statement difference program default
     output call found version string text array type number object variable access inside input update key element loop failed adding    
     project create something getting running like code function list table via 
     trying problem understand please want working 

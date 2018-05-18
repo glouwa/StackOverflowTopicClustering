@@ -42,7 +42,14 @@ clustervis_pipelines = {
 
 featuredim = 40
 clustercount = 15
-cluster_pipelines = {    
+cluster_pipelines = {            
+    'Agglo': Pipeline([                                
+        ('sca', preprocessing.MaxAbsScaler()),
+        ('pca', decomposition.PCA(n_components=10)),
+        ('clu', cluster.AgglomerativeClustering(n_clusters=clustercount, linkage='ward')),
+    ]),    
+}
+"""
     'Kmeans': Pipeline([                
         ('sca', decomposition.TruncatedSVD(featuredim)),
         ('norm', preprocessing.MaxAbsScaler(copy=False)),
@@ -64,14 +71,7 @@ cluster_pipelines = {
         ('sca', preprocessing.MaxAbsScaler()),
         ('pca', decomposition.PCA(n_components=4)),
         ('clu', cluster.DBSCAN(eps=0.1, min_samples=20)),
-    ]),            
-    'Agglo': Pipeline([                                
-        ('sca', preprocessing.MaxAbsScaler()),
-        ('pca', decomposition.PCA(n_components=10)),
-        ('clu', cluster.AgglomerativeClustering(n_clusters=clustercount, linkage='ward')),
-    ]),    
-}
-"""
+    ]),        
     'AffPro': Pipeline([                                
         ('sca', preprocessing.MaxAbsScaler()),
         ('pca', decomposition.PCA(n_components=3)),

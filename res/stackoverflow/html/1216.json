@@ -1,0 +1,834 @@
+{
+    "items": [
+        {
+            "tags": [
+                "java",
+                "perl",
+                "file-io",
+                "performance"
+            ],
+            "owner": {
+                "reputation": 3715,
+                "user_id": 152404,
+                "user_type": "registered",
+                "accept_rate": 78,
+                "profile_image": "https://www.gravatar.com/avatar/14c539b862843d0b92504ec255cba43f?s=128&d=identicon&r=PG",
+                "display_name": "cons",
+                "link": "https://stackoverflow.com/users/152404/cons"
+            },
+            "is_answered": true,
+            "view_count": 7259,
+            "accepted_answer_id": 1251842,
+            "answer_count": 4,
+            "score": 6,
+            "last_activity_date": 1526462192,
+            "creation_date": 1249812074,
+            "last_edit_date": 1249897246,
+            "question_id": 1251062,
+            "body_markdown": "I understand that both Java and Perl try quite hard to find a one-size-fits all default buffer size when reading in files, but I find their choices to be increasingly antiquated, and am having a problem changing the default choice when it comes to Perl. \r\n\r\nIn the case of Perl, which I believe uses [8K](http://perl.plover.com/FAQs/Buffering.html) buffers by default, similar to Java&#39;s choice, I can&#39;t find a reference using the perldoc website search engine (really Google) on how to increase the default file input buffer size to say, 64K.\r\n\r\nFrom the above link, to show how 8K buffers don&#39;t scale:\r\n\r\n&gt;If lines typically have about 60 characters each, then the 10,000-line file has about 610,000 characters in it. Reading the file line-by-line with buffering only requires 75 system calls and 75 waits for the disk, instead of 10,001.\r\n \r\nSo for a 50,000,000 line file with 60 characters per line (including the newline at the end), with an 8K buffer, it&#39;s going to make 366211 system calls to read a 2.8GiB file. As an aside, you can confirm this behaviour by looking at the disk i/o read delta (in Windows at least, top in *nix shows the same thing somehow too I&#39;m sure) in the task manager process list as your Perl program takes 10 minutes to read in a text file :)\r\n\r\nSomeone asked the question about increasing the Perl input buffer size on perlmonks, someone replied [here](http://www.perlmonks.org/?node_id=580786) that you could increase the size of &quot;$/&quot;, and thus increase the buffer size, however from the perldoc:\r\n\r\n&gt;Setting $/  to a reference to an integer, scalar containing an integer, or scalar that&#39;s convertible to an integer will attempt to read records instead of lines, with the maximum record size being the referenced integer.\r\n\r\nSo I assume that this does not actually increase the buffer size that Perl uses to read ahead from the disk when using the typical:\r\n\r\n    while(&lt;&gt;) {\r\n        #do something with $_ here\r\n        ...\r\n    }\r\n\r\n&quot;line-by-line&quot; idiom. \r\n\r\nNow it could be that a different &quot;read a record at a time and then parse it into lines&quot; version of the above code would be faster in general, and bypass the underlying problem with the standard idiom and not being able to change the default buffer size (if that&#39;s indeed impossible), because you could set the &quot;record size&quot; to anything you wanted and then parse each record into individual lines, and *hope* that Perl does the right thing and ends up doing one system call per record, but it adds complexity, and all I really want to do is get an easy performance gain by increasing the buffer used in the above example to a reasonably large size, say 64K, or even tuning that buffer size to the optimal size for long reads using a test script on my system, without needing extra hassle.\r\n\r\n\r\n\r\nThings are much better in Java as far as straight-forward support for increasing the buffer size goes.\r\n\r\nIn Java, I believe the current default buffer size that java.io.BufferedReader uses is also 8192 bytes, although up-to-date references in the JDK docs are equivocal, e.g., the 1.5 docs say only: \r\n\r\n&gt;The buffer size may be specified, or the default size may be accepted. The default is large enough for most purposes.\r\n\r\nLuckily with Java you do not have to trust the JDK developers to have made the right decision for your application and can set your own buffer size (64K in this example):\r\n\r\n    import java.io.BufferedReader;\r\n    [...]\r\n    reader = new BufferedReader(new InputStreamReader(fileInputStream, &quot;UTF-8&quot;), 65536);\r\n    [...]\r\n    while (true) {\r\n                    String line = reader.readLine();\r\n                    if (line == null) {\r\n                        break;\r\n                    }\r\n                    /* do something with the line here */\r\n                    foo(line);\r\n    }\r\n\r\nThere&#39;s only so much performance you can squeeze out of parsing one line at a time, even with a huge buffer, and modern hardware, and I&#39;m sure there are ways to get every ounce of performance out of reading in a file by reading big many-line records and breaking each into tokens then doing stuff with those tokens once per record, but they add complexity and edge cases (although if there&#39;s an elegant solution in pure Java (only using the features present in JDK 1.5) that would be cool to know about). Increasing the buffer size in Perl would solve 80% of the performance problem for Perl at least, while keeping things straight-forward.\r\n\r\nMy question is:\r\n \r\nIs there a way to adjust that buffer size in Perl for the above typical &quot;line-by-line&quot; idiom, similar how the buffer size was increased in the Java example?",
+            "link": "https://stackoverflow.com/questions/1251062/how-can-i-set-the-file-read-buffer-size-in-perl-to-optimize-it-for-large-files",
+            "title": "How can I set the file-read buffer size in Perl to optimize it for large files?",
+            "body": "<p>I understand that both Java and Perl try quite hard to find a one-size-fits all default buffer size when reading in files, but I find their choices to be increasingly antiquated, and am having a problem changing the default choice when it comes to Perl. </p>\n\n<p>In the case of Perl, which I believe uses <a href=\"http://perl.plover.com/FAQs/Buffering.html\" rel=\"nofollow noreferrer\">8K</a> buffers by default, similar to Java's choice, I can't find a reference using the perldoc website search engine (really Google) on how to increase the default file input buffer size to say, 64K.</p>\n\n<p>From the above link, to show how 8K buffers don't scale:</p>\n\n<blockquote>\n  <p>If lines typically have about 60 characters each, then the 10,000-line file has about 610,000 characters in it. Reading the file line-by-line with buffering only requires 75 system calls and 75 waits for the disk, instead of 10,001.</p>\n</blockquote>\n\n<p>So for a 50,000,000 line file with 60 characters per line (including the newline at the end), with an 8K buffer, it's going to make 366211 system calls to read a 2.8GiB file. As an aside, you can confirm this behaviour by looking at the disk i/o read delta (in Windows at least, top in *nix shows the same thing somehow too I'm sure) in the task manager process list as your Perl program takes 10 minutes to read in a text file :)</p>\n\n<p>Someone asked the question about increasing the Perl input buffer size on perlmonks, someone replied <a href=\"http://www.perlmonks.org/?node_id=580786\" rel=\"nofollow noreferrer\">here</a> that you could increase the size of \"$/\", and thus increase the buffer size, however from the perldoc:</p>\n\n<blockquote>\n  <p>Setting $/  to a reference to an integer, scalar containing an integer, or scalar that's convertible to an integer will attempt to read records instead of lines, with the maximum record size being the referenced integer.</p>\n</blockquote>\n\n<p>So I assume that this does not actually increase the buffer size that Perl uses to read ahead from the disk when using the typical:</p>\n\n<pre><code>while(&lt;&gt;) {\n    #do something with $_ here\n    ...\n}\n</code></pre>\n\n<p>\"line-by-line\" idiom. </p>\n\n<p>Now it could be that a different \"read a record at a time and then parse it into lines\" version of the above code would be faster in general, and bypass the underlying problem with the standard idiom and not being able to change the default buffer size (if that's indeed impossible), because you could set the \"record size\" to anything you wanted and then parse each record into individual lines, and <em>hope</em> that Perl does the right thing and ends up doing one system call per record, but it adds complexity, and all I really want to do is get an easy performance gain by increasing the buffer used in the above example to a reasonably large size, say 64K, or even tuning that buffer size to the optimal size for long reads using a test script on my system, without needing extra hassle.</p>\n\n<p>Things are much better in Java as far as straight-forward support for increasing the buffer size goes.</p>\n\n<p>In Java, I believe the current default buffer size that java.io.BufferedReader uses is also 8192 bytes, although up-to-date references in the JDK docs are equivocal, e.g., the 1.5 docs say only: </p>\n\n<blockquote>\n  <p>The buffer size may be specified, or the default size may be accepted. The default is large enough for most purposes.</p>\n</blockquote>\n\n<p>Luckily with Java you do not have to trust the JDK developers to have made the right decision for your application and can set your own buffer size (64K in this example):</p>\n\n<pre><code>import java.io.BufferedReader;\n[...]\nreader = new BufferedReader(new InputStreamReader(fileInputStream, \"UTF-8\"), 65536);\n[...]\nwhile (true) {\n                String line = reader.readLine();\n                if (line == null) {\n                    break;\n                }\n                /* do something with the line here */\n                foo(line);\n}\n</code></pre>\n\n<p>There's only so much performance you can squeeze out of parsing one line at a time, even with a huge buffer, and modern hardware, and I'm sure there are ways to get every ounce of performance out of reading in a file by reading big many-line records and breaking each into tokens then doing stuff with those tokens once per record, but they add complexity and edge cases (although if there's an elegant solution in pure Java (only using the features present in JDK 1.5) that would be cool to know about). Increasing the buffer size in Perl would solve 80% of the performance problem for Perl at least, while keeping things straight-forward.</p>\n\n<p>My question is:</p>\n\n<p>Is there a way to adjust that buffer size in Perl for the above typical \"line-by-line\" idiom, similar how the buffer size was increased in the Java example?</p>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "sql-server"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 6445137,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-R3zBiEPlTy0/AAAAAAAAAAI/AAAAAAAAAYU/IOzoG-iXTuc/photo.jpg?sz=128",
+                "display_name": "siva narayana",
+                "link": "https://stackoverflow.com/users/6445137/siva-narayana"
+            },
+            "is_answered": true,
+            "view_count": 39,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526462192,
+            "creation_date": 1526455891,
+            "last_edit_date": 1526462106,
+            "question_id": 50364818,
+            "body_markdown": "When I am using `DENSE_RANK()` function, I have used the same column in the partition by clause and order by clause. The Dense_rank result for all rows is 1. Why it happened like this?\r\n\r\n**Table :**\r\n\r\n    orderid custid  \r\n    10643    1\r\n    10692    1\r\n    10702    1\r\n    10308    2\r\n    10625    2\r\n    10759    2\r\n    10926    2 \r\n    10365    3\r\n    10507    3\r\n    10535    3\r\n    10573    3\r\n\r\n**The query:**\r\n\r\n    SELECT orderid, custid ,\r\n           DENSE_RANK() OVER (Partition BY custid ORDER BY custid) as desnse_rank\r\n    FROM TABLE \r\n\r\n**The Result**                         \r\n\r\n    orderid custid  desnse_rank          \r\n    10643    1        1                  \r\n    10692    1        1                    \r\n    10702    1        1                     \r\n    10308    2        1                  \r\n    10625    2        1                  \r\n    10759    2        1                   \r\n    10926    2        1                    \r\n    10365    3        1                    \r\n    10507    3        1                  \r\n    10535    3        1                   \r\n    10573    3        1          \r\n\r\n\r\n **Expected Result** (as my understand of `dense_rank()`):\r\n\r\n\r\n \r\n\r\n    orderid custid  desnse_rank  \r\n    10643    1        1\r\n    10692    1        1   \r\n    10702    1        1  \r\n    10308    2        2\r\n    10625    2        2\r\n    10759    2        2\r\n    10926    2        2\r\n    10365    3        3 \r\n    10507    3        3\r\n    10535    3        3\r\n    10573    3        3\r\n",
+            "link": "https://stackoverflow.com/questions/50364818/using-the-same-column-in-partition-by-and-order-by-with-dense-rank",
+            "title": "Using the same column in partition by and order by with DENSE_RANK()",
+            "body": "<p>When I am using <code>DENSE_RANK()</code> function, I have used the same column in the partition by clause and order by clause. The Dense_rank result for all rows is 1. Why it happened like this?</p>\n\n<p><strong>Table :</strong></p>\n\n<pre><code>orderid custid  \n10643    1\n10692    1\n10702    1\n10308    2\n10625    2\n10759    2\n10926    2 \n10365    3\n10507    3\n10535    3\n10573    3\n</code></pre>\n\n<p><strong>The query:</strong></p>\n\n<pre><code>SELECT orderid, custid ,\n       DENSE_RANK() OVER (Partition BY custid ORDER BY custid) as desnse_rank\nFROM TABLE \n</code></pre>\n\n<p><strong>The Result</strong>                         </p>\n\n<pre><code>orderid custid  desnse_rank          \n10643    1        1                  \n10692    1        1                    \n10702    1        1                     \n10308    2        1                  \n10625    2        1                  \n10759    2        1                   \n10926    2        1                    \n10365    3        1                    \n10507    3        1                  \n10535    3        1                   \n10573    3        1          \n</code></pre>\n\n<p><strong>Expected Result</strong> (as my understand of <code>dense_rank()</code>):</p>\n\n<pre><code>orderid custid  desnse_rank  \n10643    1        1\n10692    1        1   \n10702    1        1  \n10308    2        2\n10625    2        2\n10759    2        2\n10926    2        2\n10365    3        3 \n10507    3        3\n10535    3        3\n10573    3        3\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net-mvc-4",
+                "iis",
+                "publish"
+            ],
+            "owner": {
+                "reputation": 4213,
+                "user_id": 4390133,
+                "user_type": "registered",
+                "accept_rate": 91,
+                "profile_image": "https://lh4.googleusercontent.com/-YZwjXTnmnbM/AAAAAAAAAAI/AAAAAAAAABI/r6zeVXO86EU/photo.jpg?sz=128",
+                "display_name": "Hakam Fostok",
+                "link": "https://stackoverflow.com/users/4390133/hakam-fostok"
+            },
+            "is_answered": true,
+            "view_count": 10044,
+            "accepted_answer_id": 35968313,
+            "answer_count": 2,
+            "score": 28,
+            "last_activity_date": 1526462191,
+            "creation_date": 1442568796,
+            "last_edit_date": 1526462191,
+            "question_id": 32648654,
+            "body_markdown": "Publishing ASP.NET MVC 4 application to IIS 8 on my machine giving the following error :\r\n\r\n&gt;This access control list is not in canonical form and therefore cannot be modified.\r\n\r\nI am under Windows 10 and using VS 2013 Ultimate.&lt;br/&gt;\r\nI installed web deploy 3.5 from web platform installer 5, and I made sure that the services are working \r\n\r\n[![enter image description here][1]][1]\r\n\r\n  [1]: http://i.stack.imgur.com/vHZHM.png",
+            "link": "https://stackoverflow.com/questions/32648654/web-deployment-task-failed-this-access-control-list-is-not-in-canonical-form-an",
+            "title": "Web deployment task failed (This access control list is not in canonical form and therefore cannot be modified)",
+            "body": "<p>Publishing ASP.NET MVC 4 application to IIS 8 on my machine giving the following error :</p>\n\n<blockquote>\n  <p>This access control list is not in canonical form and therefore cannot be modified.</p>\n</blockquote>\n\n<p>I am under Windows 10 and using VS 2013 Ultimate.<br/>\nI installed web deploy 3.5 from web platform installer 5, and I made sure that the services are working </p>\n\n<p><a href=\"https://i.stack.imgur.com/vHZHM.png\" rel=\"noreferrer\"><img src=\"https://i.stack.imgur.com/vHZHM.png\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "arraylist",
+                "move"
+            ],
+            "owner": {
+                "reputation": 17,
+                "user_id": 9080881,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10156183831483643/picture?type=large",
+                "display_name": "Peter Holdensgaard",
+                "link": "https://stackoverflow.com/users/9080881/peter-holdensgaard"
+            },
+            "is_answered": true,
+            "view_count": 71,
+            "answer_count": 6,
+            "score": -2,
+            "last_activity_date": 1526462189,
+            "creation_date": 1526460060,
+            "question_id": 50366145,
+            "body_markdown": "i have a problem\r\n\r\nI have two lists\r\n    \r\n    List&lt;SellableItems&gt; table1 = new ArrayList();\r\n    List&lt;SellableItems&gt; table2 = new Arraylist();\r\n\r\nIn my sellable items class, i have a name and a price.\r\n\r\nNow I wish to move elements from table1 to table2. So if i my list contains a beer with the price 20, i can move it from table1 to table2",
+            "link": "https://stackoverflow.com/questions/50366145/move-element-from-one-array-list-to-another-java",
+            "title": "Move element from one array list to another java",
+            "body": "<p>i have a problem</p>\n\n<p>I have two lists</p>\n\n<pre><code>List&lt;SellableItems&gt; table1 = new ArrayList();\nList&lt;SellableItems&gt; table2 = new Arraylist();\n</code></pre>\n\n<p>In my sellable items class, i have a name and a price.</p>\n\n<p>Now I wish to move elements from table1 to table2. So if i my list contains a beer with the price 20, i can move it from table1 to table2</p>\n"
+        },
+        {
+            "tags": [
+                "gcc",
+                "linker",
+                "arm",
+                "cross-platform",
+                "cross-compiling"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8595147,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/813cccc94f727915f8d7e64d44e9f6db?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Abhinav440",
+                "link": "https://stackoverflow.com/users/8595147/abhinav440"
+            },
+            "is_answered": false,
+            "view_count": 9,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526462189,
+            "creation_date": 1526462189,
+            "question_id": 50366841,
+            "body_markdown": "I have pre-compiled binaries of the arm-linux-gnueabihf GCC toolchain. Host is x86_64 while the intended target is  arm7 architecture. I am able to cross compile a sample program using this cross-compiler but it is not able to link with dynamic libraries. On the host, I use:\r\n\r\n    arm-linux-gnueabihf -c -o test test.c\r\nThe compiled executable with ldd command shows following output on host as well as target:\r\n\r\n    ldd ./test\r\n         not a dynamic executable\r\n\r\nHowever, I use the same source code and compile natively on the target, I observe:\r\n\r\n    ldd ./test\r\n        libc.so.6 =&gt; /lib/arm-linux-gnueabihf/libc.so.6 (0xb6e29000)\r\n        /lib/ld-linux-armhf.so.3 (0xb6f18000)\r\n\r\nThe whole concept of linker seems tricky in case of cross-compilation. Is there a standard way to link shared dynamic libraries while cross compiling?\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50366841/arm-linux-gnueabihf-cross-compilation-linking-dynamic-libraries",
+            "title": "arm-linux-gnueabihf cross compilation linking dynamic libraries",
+            "body": "<p>I have pre-compiled binaries of the arm-linux-gnueabihf GCC toolchain. Host is x86_64 while the intended target is  arm7 architecture. I am able to cross compile a sample program using this cross-compiler but it is not able to link with dynamic libraries. On the host, I use:</p>\n\n<pre><code>arm-linux-gnueabihf -c -o test test.c\n</code></pre>\n\n<p>The compiled executable with ldd command shows following output on host as well as target:</p>\n\n<pre><code>ldd ./test\n     not a dynamic executable\n</code></pre>\n\n<p>However, I use the same source code and compile natively on the target, I observe:</p>\n\n<pre><code>ldd ./test\n    libc.so.6 =&gt; /lib/arm-linux-gnueabihf/libc.so.6 (0xb6e29000)\n    /lib/ld-linux-armhf.so.3 (0xb6f18000)\n</code></pre>\n\n<p>The whole concept of linker seems tricky in case of cross-compilation. Is there a standard way to link shared dynamic libraries while cross compiling?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "properties",
+                "internationalization",
+                "escaping"
+            ],
+            "owner": {
+                "reputation": 86290,
+                "user_id": 63051,
+                "user_type": "registered",
+                "accept_rate": 95,
+                "profile_image": "https://www.gravatar.com/avatar/b4b87a82355f286bb410cc1854389226?s=128&d=identicon&r=PG",
+                "display_name": "flybywire",
+                "link": "https://stackoverflow.com/users/63051/flybywire"
+            },
+            "is_answered": true,
+            "view_count": 7229,
+            "answer_count": 3,
+            "score": 9,
+            "last_activity_date": 1526462187,
+            "creation_date": 1367059033,
+            "last_edit_date": 1367059377,
+            "question_id": 16251073,
+            "body_markdown": "How do I escape the hash sign (`#`) in Java properties files.\r\n\r\nWe have an internationalization framework that uses Java properties files.\r\n\r\nThere is a column called number and we want its header to be `#`. This ...\r\n\r\n    number=#\r\n\r\n... doesn&#39;t work.\r\n",
+            "link": "https://stackoverflow.com/questions/16251073/java-properties-how-to-escape-hash",
+            "title": "Java Properties: how to escape # (hash)",
+            "body": "<p>How do I escape the hash sign (<code>#</code>) in Java properties files.</p>\n\n<p>We have an internationalization framework that uses Java properties files.</p>\n\n<p>There is a column called number and we want its header to be <code>#</code>. This ...</p>\n\n<pre><code>number=#\n</code></pre>\n\n<p>... doesn't work.</p>\n"
+        },
+        {
+            "tags": [
+                "django",
+                "web-applications",
+                "flask"
+            ],
+            "owner": {
+                "reputation": 2348,
+                "user_id": 1248779,
+                "user_type": "registered",
+                "accept_rate": 82,
+                "profile_image": "https://www.gravatar.com/avatar/8a7f90eda5da78d84bc374fdc5000d55?s=128&d=identicon&r=PG",
+                "display_name": "Kam",
+                "link": "https://stackoverflow.com/users/1248779/kam"
+            },
+            "is_answered": true,
+            "view_count": 519,
+            "accepted_answer_id": 27427762,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526462186,
+            "creation_date": 1418314989,
+            "last_edit_date": 1418315299,
+            "question_id": 27427636,
+            "body_markdown": "I have been reading on their respective website (Django and Flask) about what do they do and what they offer .\r\n\r\nI realized the following:\r\n\r\n 1. Both are web application frameworks: They help and speed up the application dev time. \r\n\r\n 2. They provide rendering to html from python/html templates (please correct me if I&#39;m wrong)\r\n\r\n 3. I was able to see that with a minimalist Flask hello world application, the user \r\n       was able to select the local host port and view the html from browser.\r\n\r\nPoint 3 led me to believe that Flask comes with its integrated webserver that renders html. Is this capability available in Django? Or does Django require a separate server (Apache for instance) running?\r\n\r\nPlease help me clarify this confusion. I am trying to understand the difference in the word &quot;web framework&quot;\r\n",
+            "link": "https://stackoverflow.com/questions/27427636/do-django-and-flask-need-separate-web-servers-to-run-a-web-application",
+            "title": "Do Django and Flask need separate web-servers to run a web application?",
+            "body": "<p>I have been reading on their respective website (Django and Flask) about what do they do and what they offer .</p>\n\n<p>I realized the following:</p>\n\n<ol>\n<li><p>Both are web application frameworks: They help and speed up the application dev time. </p></li>\n<li><p>They provide rendering to html from python/html templates (please correct me if I'm wrong)</p></li>\n<li><p>I was able to see that with a minimalist Flask hello world application, the user \n   was able to select the local host port and view the html from browser.</p></li>\n</ol>\n\n<p>Point 3 led me to believe that Flask comes with its integrated webserver that renders html. Is this capability available in Django? Or does Django require a separate server (Apache for instance) running?</p>\n\n<p>Please help me clarify this confusion. I am trying to understand the difference in the word \"web framework\"</p>\n"
+        },
+        {
+            "tags": [
+                "wpf",
+                "prism",
+                "prism-6"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8873083,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9695d8f83a8e9c2c534d7acff9a5a7c5?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user8873083",
+                "link": "https://stackoverflow.com/users/8873083/user8873083"
+            },
+            "is_answered": false,
+            "view_count": 36,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1526462174,
+            "creation_date": 1525247331,
+            "question_id": 50129535,
+            "body_markdown": "I have just started looking in Prism 6/7 by Brian for WPF, and I was just curious if we have any sample application, a complete application for WPF like we have for Xamarin on GitHub. I can see there are samples for different features of PRISM, but I would like to see if there is a complete sample app with all features integrated which I can use as a motivation for my learning.",
+            "link": "https://stackoverflow.com/questions/50129535/prism-6-7-sample-application-like-xamarins",
+            "title": "Prism 6/7 Sample Application like Xamarin&#39;s",
+            "body": "<p>I have just started looking in Prism 6/7 by Brian for WPF, and I was just curious if we have any sample application, a complete application for WPF like we have for Xamarin on GitHub. I can see there are samples for different features of PRISM, but I would like to see if there is a complete sample app with all features integrated which I can use as a motivation for my learning.</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift3",
+                "uiimagepickercontroller",
+                "photo-gallery",
+                "xcode9.1"
+            ],
+            "owner": {
+                "reputation": 100,
+                "user_id": 928622,
+                "user_type": "registered",
+                "accept_rate": 69,
+                "profile_image": "https://www.gravatar.com/avatar/f19902ccae074e587b03d5c7da437afc?s=128&d=identicon&r=PG",
+                "display_name": "user928622",
+                "link": "https://stackoverflow.com/users/928622/user928622"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526462173,
+            "creation_date": 1526462173,
+            "question_id": 50366834,
+            "body_markdown": "I have implemented functionality to select image from Galley. When I am presenting UIImagePickerController, Its shows album listing with grey background. I tried with demo app but it shows proper white background.No getting why its showing Grey in my app as code is same in both.Please refer attached image.[![enter image description here][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/ugqiv.png",
+            "link": "https://stackoverflow.com/questions/50366834/uiimagepickercontroller-shows-album-listing-rows-with-gray-background",
+            "title": "UIImagePickerController shows album listing rows with gray background",
+            "body": "<p>I have implemented functionality to select image from Galley. When I am presenting UIImagePickerController, Its shows album listing with grey background. I tried with demo app but it shows proper white background.No getting why its showing Grey in my app as code is same in both.Please refer attached image.<a href=\"https://i.stack.imgur.com/ugqiv.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/ugqiv.png\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "boost"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 5635389,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/636a6c4b4a8bd04ac4ee450bd001177b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user5635389",
+                "link": "https://stackoverflow.com/users/5635389/user5635389"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "closed_date": 1526484495,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526462173,
+            "creation_date": 1526462173,
+            "question_id": 50366833,
+            "body_markdown": "  for example,  how to using boost asio with boost coroutine***2***,\r\nofficial doc just give a example boost coroutine1.\r\n  Anybody can give a example,  or thought path.",
+            "link": "https://stackoverflow.com/questions/50366833/how-to-use-boost-asio-with-coroutine2-official-document-doesnt-give-a-example",
+            "closed_reason": "too broad",
+            "title": "How to use boost asio with coroutine2 , official document doesn&#39;t give a example",
+            "body": "<p>for example,  how to using boost asio with boost coroutine***2***,\nofficial doc just give a example boost coroutine1.\n  Anybody can give a example,  or thought path.</p>\n"
+        },
+        {
+            "tags": [
+                "ruby",
+                "grep"
+            ],
+            "owner": {
+                "reputation": 7579,
+                "user_id": 231842,
+                "user_type": "registered",
+                "accept_rate": 87,
+                "profile_image": "https://www.gravatar.com/avatar/2e9fedaf01e874c630ae7f635ae584ca?s=128&d=identicon&r=PG",
+                "display_name": "intellidiot",
+                "link": "https://stackoverflow.com/users/231842/intellidiot"
+            },
+            "is_answered": true,
+            "view_count": 3678,
+            "accepted_answer_id": 5761614,
+            "answer_count": 9,
+            "score": 10,
+            "last_activity_date": 1526462162,
+            "creation_date": 1303519559,
+            "last_edit_date": 1303522920,
+            "question_id": 5761348,
+            "body_markdown": "What could be the best way of getting the matching lines **with the line numbers** using Ruby&#39;s `Enumerable#grep` method. (as we use `-n` or `--line-number` switch with grep command).\r\n",
+            "link": "https://stackoverflow.com/questions/5761348/ruby-grep-with-line-number",
+            "title": "Ruby grep with line number",
+            "body": "<p>What could be the best way of getting the matching lines <strong>with the line numbers</strong> using Ruby's <code>Enumerable#grep</code> method. (as we use <code>-n</code> or <code>--line-number</code> switch with grep command).</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "combinations"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9678093,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/0f5626ad528e0c6b96df52ce0b8fb089?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user9678093",
+                "link": "https://stackoverflow.com/users/9678093/user9678093"
+            },
+            "is_answered": false,
+            "view_count": 35,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1526462155,
+            "creation_date": 1526462155,
+            "question_id": 50366825,
+            "body_markdown": "I have a problem. I want select 15 thing of some diffrent set. I have 3 set of string :Food, Drink, Dessert. Each set contains some name of his Type. For example for Food I have :\r\n\r\nFood ={American fried rice, bread, cheese fries, chicken french, chili dog, eggo, Steak, toaster strudel} \r\n\r\n. etc for another set. \r\n\r\nActualley Food has 8 member, Drink has 12 member and Dessert has 6 member. \r\n\r\nI want select 4 Food of 8 Food, 7 Drink of 12 Drink and 4 Dessert of 6 Dessert. In another Word, I want compute combination for each set and then select my 15 thing from this sets that at finally I select 4 Food, 7Drink and 4 Dessert. \r\n\r\nMy goal is compute all diffrent possible Case that can choose these member of sets and then store all my 15 selected thing in new set.\r\n\r\nRather I want implement this code in java.\r\n\r\nWhat Shoud I do? \r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50366825/combination-k-thing-of-n-thing-in-java",
+            "title": "Combination k thing of n thing in java",
+            "body": "<p>I have a problem. I want select 15 thing of some diffrent set. I have 3 set of string :Food, Drink, Dessert. Each set contains some name of his Type. For example for Food I have :</p>\n\n<p>Food ={American fried rice, bread, cheese fries, chicken french, chili dog, eggo, Steak, toaster strudel} </p>\n\n<p>. etc for another set. </p>\n\n<p>Actualley Food has 8 member, Drink has 12 member and Dessert has 6 member. </p>\n\n<p>I want select 4 Food of 8 Food, 7 Drink of 12 Drink and 4 Dessert of 6 Dessert. In another Word, I want compute combination for each set and then select my 15 thing from this sets that at finally I select 4 Food, 7Drink and 4 Dessert. </p>\n\n<p>My goal is compute all diffrent possible Case that can choose these member of sets and then store all my 15 selected thing in new set.</p>\n\n<p>Rather I want implement this code in java.</p>\n\n<p>What Shoud I do? </p>\n"
+        },
+        {
+            "tags": [
+                "filter",
+                "curve-fitting"
+            ],
+            "owner": {
+                "reputation": 7,
+                "user_id": 8590233,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ba9bc4a5d2df8bed684b7a0d62611ac8?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Rolly",
+                "link": "https://stackoverflow.com/users/8590233/rolly"
+            },
+            "is_answered": true,
+            "view_count": 34,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1526462141,
+            "creation_date": 1524980806,
+            "last_edit_date": 1524980866,
+            "question_id": 50083763,
+            "body_markdown": "I&#39;m looking for a way/method to fit my response data (Image is shown below). So using `f(t) = (square(2*pi*f*t)+1)` to filter my raw data. However, cftool don&#39;t recognize this kind of function. So please help me thanks!\r\n\r\n\r\n![enter image description here][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/tWpK7.png",
+            "link": "https://stackoverflow.com/questions/50083763/how-to-fit-response-plot-using-square-wave",
+            "title": "How to fit response plot using square wave",
+            "body": "<p>I'm looking for a way/method to fit my response data (Image is shown below). So using <code>f(t) = (square(2*pi*f*t)+1)</code> to filter my raw data. However, cftool don't recognize this kind of function. So please help me thanks!</p>\n\n<p><img src=\"https://i.stack.imgur.com/tWpK7.png\" alt=\"enter image description here\"></p>\n"
+        },
+        {
+            "tags": [
+                "postgresql",
+                "backup",
+                "pgadmin"
+            ],
+            "owner": {
+                "reputation": 163,
+                "user_id": 9305895,
+                "user_type": "registered",
+                "accept_rate": 94,
+                "profile_image": "https://www.gravatar.com/avatar/38996b0d259a21c171ab098e6bd70721?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Kajbo",
+                "link": "https://stackoverflow.com/users/9305895/kajbo"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526462136,
+            "creation_date": 1526462136,
+            "question_id": 50366821,
+            "body_markdown": "I opened pgAdmin, found which table I need to backup, right click -&gt; backup... -&gt; ok, but it allways returns error code 1. Does anyone know where should I looks for problem?[![enter image description here][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/9hSBz.png",
+            "link": "https://stackoverflow.com/questions/50366821/pgadmin-3-creating-backup-returns-error-code-1",
+            "title": "pgAdmin 3 creating backup returns error code 1",
+            "body": "<p>I opened pgAdmin, found which table I need to backup, right click -> backup... -> ok, but it allways returns error code 1. Does anyone know where should I looks for problem?<a href=\"https://i.stack.imgur.com/9hSBz.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/9hSBz.png\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "fortran"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9798720,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5bcfa634b4d720d301c44ca002180ce1?s=128&d=identicon&r=PG",
+                "display_name": "Muhammad Farras",
+                "link": "https://stackoverflow.com/users/9798720/muhammad-farras"
+            },
+            "is_answered": false,
+            "view_count": 34,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1526462134,
+            "creation_date": 1526458578,
+            "last_edit_date": 1526462134,
+            "question_id": 50365648,
+            "body_markdown": "I have this problem for homework. I need to design net flow program in Fortran. Would you mind to give me some hints and headstart how to write the program? especially considering the boundaries in the question. There are two questions:\r\n\r\n1. ![Homework 1][1]\r\n\r\n\r\n2. ![Homework 2][2]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/5IUhS.png\r\n  [2]: https://i.stack.imgur.com/S0INi.png",
+            "link": "https://stackoverflow.com/questions/50365648/geotechnical-net-flow",
+            "title": "Geotechnical Net Flow",
+            "body": "<p>I have this problem for homework. I need to design net flow program in Fortran. Would you mind to give me some hints and headstart how to write the program? especially considering the boundaries in the question. There are two questions:</p>\n\n<ol>\n<li><p><img src=\"https://i.stack.imgur.com/5IUhS.png\" alt=\"Homework 1\"></p></li>\n<li><p><img src=\"https://i.stack.imgur.com/S0INi.png\" alt=\"Homework 2\"></p></li>\n</ol>\n"
+        },
+        {
+            "tags": [
+                "mysql",
+                "plugins",
+                "cmake"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 6248197,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/705966d8aea5413740ec6fb32fe31767?s=128&d=identicon&r=PG&f=1",
+                "display_name": "chang letian",
+                "link": "https://stackoverflow.com/users/6248197/chang-letian"
+            },
+            "is_answered": false,
+            "view_count": 9,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526462133,
+            "creation_date": 1526460978,
+            "last_edit_date": 1526462133,
+            "question_id": 50366446,
+            "body_markdown": "I want to write a information schema plugin for mysql,and first Im trying to compile the example plugins and have some errors.\r\nThe CmakeList.txt is this:\r\n\r\n    MYSQL_ADD_PLUGIN(daemon_example daemon_example.cc\r\n    MODULE_ONLY TEST_ONLY MODULE_OUTPUT_NAME &quot;libdaemon_example&quot;)\r\n\r\n    INSTALL(FILES daemon_example.ini DESTINATION ${INSTALL_PLUGINDIR} COMPONENT Test)\r\n\r\nIt is said Unknown Cmake command &quot;MYSQL_ADD_PLUGIN&quot;,\r\n\r\n    Selecting Windows SDK version 10.0.16299.0 to target Windows 6.1.7601.\r\n    The C compiler identification is MSVC 19.11.25547.0\r\n    The CXX compiler identification is MSVC 19.11.25547.0\r\n    Check for working C compiler: E:/visual studio/VC/Tools/MSVC/14.11.25503/bin/Hostx86/x86/cl.exe\r\n    Check for working C compiler: E:/visual studio/VC/Tools/MSVC/14.11.25503/bin/Hostx86/x86/cl.exe -- works\r\n    Detecting C compiler ABI info\r\n    Detecting C compiler ABI info - done\r\n    Check for working CXX compiler: E:/visual studio/VC/Tools/MSVC/14.11.25503/bin/Hostx86/x86/cl.exe\r\n    Check for working CXX compiler: E:/visual studio/VC/Tools/MSVC/14.11.25503/bin/Hostx86/x86/cl.exe -- works\r\n    Detecting CXX compiler ABI info\r\n    Detecting CXX compiler ABI info - done\r\n    Detecting CXX compile features\r\n    Detecting CXX compile features - done\r\n    CMake Error at CMakeLists.txt:16 (MYSQL_ADD_PLUGIN):\r\n      Unknown CMake command &quot;MYSQL_ADD_PLUGIN&quot;.\r\n\r\n\r\n    CMake Warning (dev) in CMakeLists.txt:\r\n      No cmake_minimum_required command is present.  A line of code such as\r\n\r\n        cmake_minimum_required(VERSION 3.11)\r\n\r\n      should be added at the top of the file.  The version specified may be lower\r\n      if you wish to support older CMake versions for this project.  For more\r\n      information run &quot;cmake --help-policy CMP0000&quot;.\r\nThis warning is for project developers.  Use -Wno-dev to suppress it.\r\n\r\n    Configuring incomplete, errors occurred!\r\n    See also &quot;C:/Program Files/CMake/bin/CMakeFiles/CMakeOutput.log&quot;.\r\n\r\n\r\nI found this function is in mysql-server\\cmake file,\r\n\r\n    MACRO(MYSQL_ADD_PLUGIN)\r\n    MYSQL_PARSE_ARGUMENTS(ARG\r\n    &quot;LINK_LIBRARIES;DEPENDENCIES;MODULE_OUTPUT_NAME;STATIC_OUTPUT_NAME&quot;\r\n    &quot;STORAGE_ENGINE;STATIC_ONLY;MODULE_ONLY;CLIENT_ONLY;MANDATORY;DEFAULT;DISABLED;NOT_FOR_EMBEDDED;RECOMPILE_FOR_EMBEDDED;TEST_ONLY&quot;\r\n    ${ARGN}\r\n    )\r\n    \r\n\r\nI wonder how to fix it and make the compile success?\r\n[error image][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/N7Ran.png",
+            "link": "https://stackoverflow.com/questions/50366446/how-to-compile-mysql-server-example-plugins",
+            "title": "How to compile mysql-server example plugins",
+            "body": "<p>I want to write a information schema plugin for mysql,and first Im trying to compile the example plugins and have some errors.\nThe CmakeList.txt is this:</p>\n\n<pre><code>MYSQL_ADD_PLUGIN(daemon_example daemon_example.cc\nMODULE_ONLY TEST_ONLY MODULE_OUTPUT_NAME \"libdaemon_example\")\n\nINSTALL(FILES daemon_example.ini DESTINATION ${INSTALL_PLUGINDIR} COMPONENT Test)\n</code></pre>\n\n<p>It is said Unknown Cmake command \"MYSQL_ADD_PLUGIN\",</p>\n\n<pre><code>Selecting Windows SDK version 10.0.16299.0 to target Windows 6.1.7601.\nThe C compiler identification is MSVC 19.11.25547.0\nThe CXX compiler identification is MSVC 19.11.25547.0\nCheck for working C compiler: E:/visual studio/VC/Tools/MSVC/14.11.25503/bin/Hostx86/x86/cl.exe\nCheck for working C compiler: E:/visual studio/VC/Tools/MSVC/14.11.25503/bin/Hostx86/x86/cl.exe -- works\nDetecting C compiler ABI info\nDetecting C compiler ABI info - done\nCheck for working CXX compiler: E:/visual studio/VC/Tools/MSVC/14.11.25503/bin/Hostx86/x86/cl.exe\nCheck for working CXX compiler: E:/visual studio/VC/Tools/MSVC/14.11.25503/bin/Hostx86/x86/cl.exe -- works\nDetecting CXX compiler ABI info\nDetecting CXX compiler ABI info - done\nDetecting CXX compile features\nDetecting CXX compile features - done\nCMake Error at CMakeLists.txt:16 (MYSQL_ADD_PLUGIN):\n  Unknown CMake command \"MYSQL_ADD_PLUGIN\".\n\n\nCMake Warning (dev) in CMakeLists.txt:\n  No cmake_minimum_required command is present.  A line of code such as\n\n    cmake_minimum_required(VERSION 3.11)\n\n  should be added at the top of the file.  The version specified may be lower\n  if you wish to support older CMake versions for this project.  For more\n  information run \"cmake --help-policy CMP0000\".\n</code></pre>\n\n<p>This warning is for project developers.  Use -Wno-dev to suppress it.</p>\n\n<pre><code>Configuring incomplete, errors occurred!\nSee also \"C:/Program Files/CMake/bin/CMakeFiles/CMakeOutput.log\".\n</code></pre>\n\n<p>I found this function is in mysql-server\\cmake file,</p>\n\n<pre><code>MACRO(MYSQL_ADD_PLUGIN)\nMYSQL_PARSE_ARGUMENTS(ARG\n\"LINK_LIBRARIES;DEPENDENCIES;MODULE_OUTPUT_NAME;STATIC_OUTPUT_NAME\"\n\"STORAGE_ENGINE;STATIC_ONLY;MODULE_ONLY;CLIENT_ONLY;MANDATORY;DEFAULT;DISABLED;NOT_FOR_EMBEDDED;RECOMPILE_FOR_EMBEDDED;TEST_ONLY\"\n${ARGN}\n)\n</code></pre>\n\n<p>I wonder how to fix it and make the compile success?\n<a href=\"https://i.stack.imgur.com/N7Ran.png\" rel=\"nofollow noreferrer\">error image</a></p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "git",
+                "android-studio"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9781881,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-q8ywIx5I_Xc/AAAAAAAAAAI/AAAAAAAAAiU/B04LdVfbXJM/photo.jpg?sz=128",
+                "display_name": "Galn_",
+                "link": "https://stackoverflow.com/users/9781881/galn"
+            },
+            "is_answered": true,
+            "view_count": 38,
+            "accepted_answer_id": 50366546,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526462133,
+            "creation_date": 1526461080,
+            "last_edit_date": 1526462133,
+            "question_id": 50366485,
+            "body_markdown": "Currently, I&#39;m trying to work with a git server hosted at my company. When I&#39;m initiating the git inside my Android projet root directory, there&#39;s some files automaticaly ignored, why ?\r\n\r\nNext, when I clone my project in another computer (with a different OS and a different SDK installation path) and when I try to import the cloned project, Android Studio seems to not find a proper existing project : I see the gradle icon instead of the Android Studio icon :\r\n\r\n**Project import screenshot**\r\n\r\n![Project import screenshot][1]\r\n\r\nHow can I make a proper import ?\r\n\r\nThanks for your answers.\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/gYWgV.png",
+            "link": "https://stackoverflow.com/questions/50366485/why-android-studio-is-ignoring-files-in-git-repo-and-how-to-import-a-project-fro",
+            "title": "Why Android Studio is ignoring files in git repo and how to import a project from git?",
+            "body": "<p>Currently, I'm trying to work with a git server hosted at my company. When I'm initiating the git inside my Android projet root directory, there's some files automaticaly ignored, why ?</p>\n\n<p>Next, when I clone my project in another computer (with a different OS and a different SDK installation path) and when I try to import the cloned project, Android Studio seems to not find a proper existing project : I see the gradle icon instead of the Android Studio icon :</p>\n\n<p><strong>Project import screenshot</strong></p>\n\n<p><img src=\"https://i.stack.imgur.com/gYWgV.png\" alt=\"Project import screenshot\"></p>\n\n<p>How can I make a proper import ?</p>\n\n<p>Thanks for your answers.</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "laravel",
+                "laravel-5"
+            ],
+            "owner": {
+                "reputation": 329,
+                "user_id": 2007826,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://www.gravatar.com/avatar/c9d70e291b52e9b65a915be1fd4ece69?s=128&d=identicon&r=PG",
+                "display_name": "Redzwan Latif",
+                "link": "https://stackoverflow.com/users/2007826/redzwan-latif"
+            },
+            "is_answered": false,
+            "view_count": 27,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526462127,
+            "creation_date": 1526461563,
+            "question_id": 50366643,
+            "body_markdown": "is there any ways to handle error event (etc. send email, notification to webmaster) whenever a person encounter the error page (Whoops, looks like something wrong) in the system? Thanks",
+            "link": "https://stackoverflow.com/questions/50366643/laravel-error-send-notification",
+            "title": "Laravel Error - Send notification",
+            "body": "<p>is there any ways to handle error event (etc. send email, notification to webmaster) whenever a person encounter the error page (Whoops, looks like something wrong) in the system? Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "shinydashboard"
+            ],
+            "owner": {
+                "reputation": 181,
+                "user_id": 6534346,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/5fedd2b22f1f91231e9794a2e058062f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "User247365",
+                "link": "https://stackoverflow.com/users/6534346/user247365"
+            },
+            "is_answered": true,
+            "view_count": 10,
+            "accepted_answer_id": 50366816,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526462127,
+            "creation_date": 1526428973,
+            "question_id": 50360709,
+            "body_markdown": "I cannot figure out why the background color is not working for my shinydashboard app.  Each box should contain just the title, description, and button to go to a link, but despite following the github page (https://rstudio.github.io/shinydashboard/structure.html#boxes) example exactly, my page is not displaying colors.  Any help with why is much appreciated.  Sample code below.\r\n\r\n        {\r\n          library(&#39;shiny&#39;)\r\n          library(&#39;shinydashboard&#39;)\r\n        }\r\n        \r\n        # UI\r\n        \r\n        ui&lt;-fluidPage(\r\n          titlePanel(&quot;Sample Code&quot;),\r\n          fluidRow(\r\n            column(6,\r\n                   h1(&quot;Sample 1&quot;),\r\n\r\n                   shinydashboard::box(title = &quot;Google&quot;, &quot;Description for Google&quot;, solidHeader = TRUE, background = &quot;green&quot;,\r\n                                       br(),\r\n                                       shiny::actionButton(inputId=&#39;link1&#39;, label=&quot;Go To Google&quot;, \r\n                                                           onclick =&quot;window.open(&#39;https://google.com&#39;, &#39;_blank&#39;)&quot;)\r\n                   ),\r\n                   \r\n                   \r\n                   \r\n                   shinydashboard::box(title = &quot;Stack Overflow&quot;, &quot;Description for Stack Overflow&quot;, solidHeader = TRUE, background = &quot;blue&quot;,\r\n                                       br(),\r\n                                       shiny::actionButton(inputId=&#39;link2&#39;, label=&quot;Go To Stack&quot;, \r\n                                                           onclick =&quot;window.open(&#39;https://stackoverflow.com/&#39;, &#39;_blank&#39;)&quot;)\r\n                   )\r\n    \r\n            )\r\n          ))\r\n        \r\n\r\n        #SERVER\r\n        server&lt;-function(input,output,session)\r\n        {\r\n        }\r\n        \r\n        #Run the Shiny App to Display Webpage\r\n        shinyApp(ui=ui, server=server)",
+            "link": "https://stackoverflow.com/questions/50360709/shinydashboard-box-background",
+            "title": "shinydashboard box background",
+            "body": "<p>I cannot figure out why the background color is not working for my shinydashboard app.  Each box should contain just the title, description, and button to go to a link, but despite following the github page (<a href=\"https://rstudio.github.io/shinydashboard/structure.html#boxes\" rel=\"nofollow noreferrer\">https://rstudio.github.io/shinydashboard/structure.html#boxes</a>) example exactly, my page is not displaying colors.  Any help with why is much appreciated.  Sample code below.</p>\n\n<pre><code>    {\n      library('shiny')\n      library('shinydashboard')\n    }\n\n    # UI\n\n    ui&lt;-fluidPage(\n      titlePanel(\"Sample Code\"),\n      fluidRow(\n        column(6,\n               h1(\"Sample 1\"),\n\n               shinydashboard::box(title = \"Google\", \"Description for Google\", solidHeader = TRUE, background = \"green\",\n                                   br(),\n                                   shiny::actionButton(inputId='link1', label=\"Go To Google\", \n                                                       onclick =\"window.open('https://google.com', '_blank')\")\n               ),\n\n\n\n               shinydashboard::box(title = \"Stack Overflow\", \"Description for Stack Overflow\", solidHeader = TRUE, background = \"blue\",\n                                   br(),\n                                   shiny::actionButton(inputId='link2', label=\"Go To Stack\", \n                                                       onclick =\"window.open('https://stackoverflow.com/', '_blank')\")\n               )\n\n        )\n      ))\n\n\n    #SERVER\n    server&lt;-function(input,output,session)\n    {\n    }\n\n    #Run the Shiny App to Display Webpage\n    shinyApp(ui=ui, server=server)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "android-layout"
+            ],
+            "owner": {
+                "reputation": 62,
+                "user_id": 1542479,
+                "user_type": "registered",
+                "accept_rate": 25,
+                "profile_image": "https://www.gravatar.com/avatar/af55e0f4bd8c308d85b31fdff607cbe7?s=128&d=identicon&r=PG",
+                "display_name": "Pragnesh Soni",
+                "link": "https://stackoverflow.com/users/1542479/pragnesh-soni"
+            },
+            "is_answered": false,
+            "view_count": 42,
+            "closed_date": 1526463233,
+            "answer_count": 1,
+            "score": -4,
+            "last_activity_date": 1526462126,
+            "creation_date": 1526461408,
+            "last_edit_date": 1526461922,
+            "question_id": 50366584,
+            "body_markdown": "I want to create an xml layout like the following image. \r\n\r\nI am confused, how can i achieve this?\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/03jrp.jpg",
+            "link": "https://stackoverflow.com/questions/50366584/how-to-create-an-xml-layout-like-has-in-attached-image",
+            "closed_reason": "too broad",
+            "title": "How to create an xml layout like has in attached image?",
+            "body": "<p>I want to create an xml layout like the following image. </p>\n\n<p>I am confused, how can i achieve this?</p>\n\n<p><a href=\"https://i.stack.imgur.com/03jrp.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/03jrp.jpg\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "yii2"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9798731,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e7a1c190896d9830f8a6ef70bab0ab87?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Asad",
+                "link": "https://stackoverflow.com/users/9798731/asad"
+            },
+            "is_answered": false,
+            "view_count": 30,
+            "closed_date": 1526459966,
+            "answer_count": 0,
+            "score": -6,
+            "last_activity_date": 1526462121,
+            "creation_date": 1526458531,
+            "last_edit_date": 1526462121,
+            "question_id": 50365628,
+            "body_markdown": "How I can customize our controller only post owner can view  through id.` if (!(\\Yii::$app-&gt;user-&gt;id))`",
+            "link": "https://stackoverflow.com/questions/50365628/how-only-owner-user-can-view-and-edit-in-yii2",
+            "closed_reason": "too broad",
+            "title": "How only owner user can view and edit in yii2",
+            "body": "<p>How I can customize our controller only post owner can view  through id.<code>if (!(\\Yii::$app-&gt;user-&gt;id))</code></p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift",
+                "fonts",
+                "ios9"
+            ],
+            "owner": {
+                "reputation": 70,
+                "user_id": 4132956,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/nKvbx.jpg?s=128&g=1",
+                "display_name": "SebThePalm",
+                "link": "https://stackoverflow.com/users/4132956/sebthepalm"
+            },
+            "is_answered": true,
+            "view_count": 9534,
+            "accepted_answer_id": 33465558,
+            "answer_count": 2,
+            "score": 10,
+            "last_activity_date": 1526462118,
+            "creation_date": 1446368389,
+            "last_edit_date": 1501770838,
+            "question_id": 33460612,
+            "body_markdown": "I have a problem with setting the font of my label to SF UI Display Bold.\r\n\r\nI don&#39;t wanna set this durable, only if a boolean is false.\r\n\r\n    if (value.messageReaded == false) {\r\n        cell.subjectLabel?.font = UIFont(name:&quot;SF UI Display Bold&quot;, size: 17.0)\r\n    }\r\n\r\nUnfortunately, my approach isn&#39;t working with this font.\r\n\r\nDoes somebody of you know the correct title of the &quot;SF UI Display Bold&quot; font in swift? \r\n\r\nThanks!\r\n",
+            "link": "https://stackoverflow.com/questions/33460612/set-sf-ui-display-bold-as-label-font",
+            "title": "Set &quot;SF UI Display Bold&quot; as label font",
+            "body": "<p>I have a problem with setting the font of my label to SF UI Display Bold.</p>\n\n<p>I don't wanna set this durable, only if a boolean is false.</p>\n\n<pre><code>if (value.messageReaded == false) {\n    cell.subjectLabel?.font = UIFont(name:\"SF UI Display Bold\", size: 17.0)\n}\n</code></pre>\n\n<p>Unfortunately, my approach isn't working with this font.</p>\n\n<p>Does somebody of you know the correct title of the \"SF UI Display Bold\" font in swift? </p>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pycharm"
+            ],
+            "owner": {
+                "reputation": 2326,
+                "user_id": 1695437,
+                "user_type": "registered",
+                "accept_rate": 78,
+                "profile_image": "https://i.stack.imgur.com/buiqY.jpg?s=128&g=1",
+                "display_name": "Darkstarone",
+                "link": "https://stackoverflow.com/users/1695437/darkstarone"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526462105,
+            "creation_date": 1526462105,
+            "question_id": 50366812,
+            "body_markdown": "So currently I&#39;m getting:\r\n\r\n`Python 3.5 does not support variable type annotations`\r\n\r\nWhile using Python 3.6. Python 3.5 is installed on my system, but my Pytho interpreter is set to 3.6, and my Django console displays:\r\n\r\n`Python 3.6.3 (default, Mar  7 2018, 09:30:28)`\r\n\r\nAdditionally, I&#39;ve even turned off `Python -&gt; Code` compatibility inspection in both my default and project specific settings. \r\n\r\nAny ideas why I might still be getting the errors?",
+            "link": "https://stackoverflow.com/questions/50366812/pycharm-gives-code-compatibility-errors-when-inspection-is-unchecked",
+            "title": "PyCharm gives code compatibility errors when inspection is unchecked",
+            "body": "<p>So currently I'm getting:</p>\n\n<p><code>Python 3.5 does not support variable type annotations</code></p>\n\n<p>While using Python 3.6. Python 3.5 is installed on my system, but my Pytho interpreter is set to 3.6, and my Django console displays:</p>\n\n<p><code>Python 3.6.3 (default, Mar  7 2018, 09:30:28)</code></p>\n\n<p>Additionally, I've even turned off <code>Python -&gt; Code</code> compatibility inspection in both my default and project specific settings. </p>\n\n<p>Any ideas why I might still be getting the errors?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "jquery",
+                "hyperlink",
+                "popup",
+                "onbeforeunload"
+            ],
+            "owner": {
+                "reputation": 1291,
+                "user_id": 1770199,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://i.stack.imgur.com/DnNPv.jpg?s=128&g=1",
+                "display_name": "Techy",
+                "link": "https://stackoverflow.com/users/1770199/techy"
+            },
+            "is_answered": true,
+            "view_count": 15,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526462102,
+            "creation_date": 1526459184,
+            "last_edit_date": 1526459464,
+            "question_id": 50365841,
+            "body_markdown": "I have a parent div `content_div` which contain form elements inside a table where user selects multiple row elements(clickable rows),`download link elements` etc.\r\n\r\nI have a warning pop up for the user changes done and then try to refresh without clicking save button. \r\n\r\nWhen I select a row and tried to click a download link inside that row,I dont need to show the warning popup.I have the following code but its not working.\r\n\r\nIf I dont select any rows and tried to click any download links,its not showing any popup,means thats fine.\r\n\r\nIf I select any rows and then try to click any download links,its showing me the popup which is wrong in my case.\r\n\r\nIf a user clicks on some other links outside my #content_div,its showing the popup which is true for me.\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    $(function() {\r\n      var formmodified = 0;\r\n\r\n      //click event for each row inside the table\r\n      $(&quot;.course_row&quot;).click(function(e) {\r\n        -- -- -\r\n        formmodified = 1; //setting the variable to 1 means user \r\n        has changed something inside the page\r\n      });\r\n      //when form submits \r\n      $(&quot;#submit&quot;).click(function() {\r\n        formmodified = 0; //assuming that form is saved after form change\r\n      });\r\n      //function for warning popup\r\n      window.onbeforeunload = confirmExit;\r\n\r\n      function confirmExit() {\r\n        var element_clicked = 0;\r\n        //#content_div is the main parent which contain the entire\r\n        contents.\r\n\r\n        $(&#39;#content_div&#39;).children().on(&#39;click&#39;, function(e) {\r\n          console.log(&#39;clicked&#39;);\r\n          element_clicked = 1; //means the clicked element is inside the #content_div which can be a link or other things\r\n\r\n        });\r\n        console.log(element_clicked);\r\n        EDIT: I am always getting element_clicked value as 0 when I click any element inside the div.The value &#39;clicked&#39;\r\n        is showing.I dont know why the value\r\n        for the variable is not setting to 1\r\n\r\n\r\n        if (element_clicked) {\r\n          //element_clicked = false;  \r\n          return; // abort beforeunload\r\n        } else {\r\n          if ((!element_clicked) &amp;&amp; (formmodified == 1)) {\r\n            return &quot;The selected courses are not saved.\r\n            Do you wish to leave the page ? &quot;;\r\n          }\r\n\r\n        }\r\n\r\n      }\r\n    });\r\n\r\n Please help me in this case.Thanks in advance",
+            "link": "https://stackoverflow.com/questions/50365841/issue-in-clicking-links-with-window-onbeforeunload",
+            "title": "Issue in clicking links with window.onbeforeunload",
+            "body": "<p>I have a parent div <code>content_div</code> which contain form elements inside a table where user selects multiple row elements(clickable rows),<code>download link elements</code> etc.</p>\n\n<p>I have a warning pop up for the user changes done and then try to refresh without clicking save button. </p>\n\n<p>When I select a row and tried to click a download link inside that row,I dont need to show the warning popup.I have the following code but its not working.</p>\n\n<p>If I dont select any rows and tried to click any download links,its not showing any popup,means thats fine.</p>\n\n<p>If I select any rows and then try to click any download links,its showing me the popup which is wrong in my case.</p>\n\n<p>If a user clicks on some other links outside my #content_div,its showing the popup which is true for me.</p>\n\n<pre class=\"lang-js prettyprint-override\"><code>$(function() {\n  var formmodified = 0;\n\n  //click event for each row inside the table\n  $(\".course_row\").click(function(e) {\n    -- -- -\n    formmodified = 1; //setting the variable to 1 means user \n    has changed something inside the page\n  });\n  //when form submits \n  $(\"#submit\").click(function() {\n    formmodified = 0; //assuming that form is saved after form change\n  });\n  //function for warning popup\n  window.onbeforeunload = confirmExit;\n\n  function confirmExit() {\n    var element_clicked = 0;\n    //#content_div is the main parent which contain the entire\n    contents.\n\n    $('#content_div').children().on('click', function(e) {\n      console.log('clicked');\n      element_clicked = 1; //means the clicked element is inside the #content_div which can be a link or other things\n\n    });\n    console.log(element_clicked);\n    EDIT: I am always getting element_clicked value as 0 when I click any element inside the div.The value 'clicked'\n    is showing.I dont know why the value\n    for the variable is not setting to 1\n\n\n    if (element_clicked) {\n      //element_clicked = false;  \n      return; // abort beforeunload\n    } else {\n      if ((!element_clicked) &amp;&amp; (formmodified == 1)) {\n        return \"The selected courses are not saved.\n        Do you wish to leave the page ? \";\n      }\n\n    }\n\n  }\n});\n</code></pre>\n\n<p>Please help me in this case.Thanks in advance</p>\n"
+        },
+        {
+            "tags": [
+                "excel",
+                "excel-formula"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9797864,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/b4afe979a846ce6c069ffa343edac085?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Irfan",
+                "link": "https://stackoverflow.com/users/9797864/irfan"
+            },
+            "is_answered": false,
+            "view_count": 47,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526462102,
+            "creation_date": 1526446261,
+            "last_edit_date": 1526462102,
+            "question_id": 50362655,
+            "body_markdown": "Currently, I have the following data :\r\n\r\n[![data][1]][1]\r\n\r\nBasically what I want to do is to fill the `&#39;YTD&#39; for FOB Target` with the weighted average between FOB Target and Sales Volume Target but only to the month in which FOB Actual is available (in this case, April) i.e Weighted Average of FOB Target with Sales Volume Target from Jan-Apr&#39;18.\r\n\r\nI want it so that when I fill the May&#39;18 FOB Actual, the formula will take it into consideration and then recalculate the Weighted Average to FOB Target with Sales Volume Target from Jan-May&#39;18.\r\n\r\n  [1]: https://i.stack.imgur.com/GH205.png",
+            "link": "https://stackoverflow.com/questions/50362655/weighted-average-only-when-other-range-is-not-blank",
+            "title": "Weighted Average only when other range is not blank",
+            "body": "<p>Currently, I have the following data :</p>\n\n<p><a href=\"https://i.stack.imgur.com/GH205.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/GH205.png\" alt=\"data\"></a></p>\n\n<p>Basically what I want to do is to fill the <code>'YTD' for FOB Target</code> with the weighted average between FOB Target and Sales Volume Target but only to the month in which FOB Actual is available (in this case, April) i.e Weighted Average of FOB Target with Sales Volume Target from Jan-Apr'18.</p>\n\n<p>I want it so that when I fill the May'18 FOB Actual, the formula will take it into consideration and then recalculate the Weighted Average to FOB Target with Sales Volume Target from Jan-May'18.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "jquery",
+                "css",
+                "asp.net-mvc",
+                "c3.js"
+            ],
+            "owner": {
+                "reputation": 9,
+                "user_id": 7738003,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e3fbadddbde7171743f9590d3a35bca9?s=128&d=identicon&r=PG&f=1",
+                "display_name": "AbhiJeet",
+                "link": "https://stackoverflow.com/users/7738003/abhijeet"
+            },
+            "is_answered": false,
+            "view_count": 35,
+            "closed_date": 1526460651,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1526462101,
+            "creation_date": 1526460476,
+            "last_edit_date": 1526462101,
+            "question_id": 50366265,
+            "body_markdown": "\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;link href=&quot;https://cdnjs.cloudflare.com/ajax/libs/c3/0.6.0/c3.css&quot; rel=&quot;stylesheet&quot;&gt;\r\n    &lt;script src=&quot;https://d3js.org/d3.v5.min.js&quot; charset=&quot;utf-8&quot;&gt;&lt;/script&gt;\r\n    &lt;script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/c3/0.6.0/c3.min.js&quot;&gt;&lt;/script&gt;\r\n    &lt;div id=&quot;chart&quot;&gt;&lt;/div&gt;\r\n    &lt;script&gt;\r\n    var chart = c3.generate({\r\n        data: {\r\n            columns: [\r\n                [&#39;data1&#39;, 30, 200, 100, 400, 150, 250],\r\n                [&#39;data2&#39;, 50, 20, 10, 40, 15, 25]\r\n            ],type: &#39;bar&#39;\r\n        },bindto:&#39;#chart&#39;,\r\n       \r\n    });\r\n    &lt;/script&gt;\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\nI need data to be displayed below the graphs created using C3.js\r\n\r\n![image][1]\r\n\r\n\r\n\r\n\r\nI need code which can display the data in tabular format below the chart.\r\nI tried searching one but couldn&#39;t get the solution. \r\n\r\n\r\n  \r\n\r\n\r\n  [1]: https://i.stack.imgur.com/i3iS2.png",
+            "link": "https://stackoverflow.com/questions/50366265/bar-chart-with-a-data-table-below-the-graph-using-c3-js",
+            "closed_reason": "unclear what you&#39;re asking",
+            "title": "Bar chart with a data table below the graph using c3.js",
+            "body": "<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>&lt;link href=\"https://cdnjs.cloudflare.com/ajax/libs/c3/0.6.0/c3.css\" rel=\"stylesheet\"&gt;\r\n&lt;script src=\"https://d3js.org/d3.v5.min.js\" charset=\"utf-8\"&gt;&lt;/script&gt;\r\n&lt;script src=\"https://cdnjs.cloudflare.com/ajax/libs/c3/0.6.0/c3.min.js\"&gt;&lt;/script&gt;\r\n&lt;div id=\"chart\"&gt;&lt;/div&gt;\r\n&lt;script&gt;\r\nvar chart = c3.generate({\r\n    data: {\r\n        columns: [\r\n            ['data1', 30, 200, 100, 400, 150, 250],\r\n            ['data2', 50, 20, 10, 40, 15, 25]\r\n        ],type: 'bar'\r\n    },bindto:'#chart',\r\n   \r\n});\r\n&lt;/script&gt;</code></pre>\r\n</div>\r\n</div>\r\n</p>\n\n<p>I need data to be displayed below the graphs created using C3.js</p>\n\n<p><img src=\"https://i.stack.imgur.com/i3iS2.png\" alt=\"image\"></p>\n\n<p>I need code which can display the data in tabular format below the chart.\nI tried searching one but couldn't get the solution. </p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "opencv",
+                "android-studio"
+            ],
+            "owner": {
+                "reputation": 100,
+                "user_id": 4121987,
+                "user_type": "registered",
+                "accept_rate": 70,
+                "profile_image": "https://www.gravatar.com/avatar/0876d3eb47c9911fea3f3b9ec4f652d1?s=128&d=identicon&r=PG&f=1",
+                "display_name": "MichaelAndroidNewbie",
+                "link": "https://stackoverflow.com/users/4121987/michaelandroidnewbie"
+            },
+            "is_answered": true,
+            "view_count": 7741,
+            "accepted_answer_id": 28537870,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526462100,
+            "creation_date": 1424043663,
+            "question_id": 28532575,
+            "body_markdown": "Just as the title says. I tried &quot;Import Project&quot; then selected this file:\r\n\r\nC:\\...\\OpenCV-2.4.10-android-sdk\\samples\\tutorial-1-camerapreview\r\n\r\nThen selected this folder as the location for the full copy of the project:\r\n\r\nC:\\...\\AndroidStudioProjects\\tutorial-1-camerapreview4\r\n\r\nI then get the following warnings:\r\n\r\n * Project OpenCV Tutorial 1 - Camera Preview:C:\\Users\\Michael\\OpenCV-2.4.10-android-sdk\\samples\\tutorial-1-camerapreview\\project.properties:\r\nLibrary reference ..\\..\\sdk\\java could not be found\r\nPath is C:\\Users\\Michael\\OpenCV-2.4.10-android-sdk\\samples\\tutorial-1-camerapreview\\..\\..\\sdk\\java which resolves to C:\\Users\\Michael\\OpenCV-2.4.10-android-sdk\\sdk\\java\r\n\r\nCan anyone help please? searches for answers so far have not been fruitful.",
+            "link": "https://stackoverflow.com/questions/28532575/how-to-import-opencv-samples-into-android-studio",
+            "title": "How to import openCV samples into Android Studio",
+            "body": "<p>Just as the title says. I tried \"Import Project\" then selected this file:</p>\n\n<p>C:...\\OpenCV-2.4.10-android-sdk\\samples\\tutorial-1-camerapreview</p>\n\n<p>Then selected this folder as the location for the full copy of the project:</p>\n\n<p>C:...\\AndroidStudioProjects\\tutorial-1-camerapreview4</p>\n\n<p>I then get the following warnings:</p>\n\n<ul>\n<li>Project OpenCV Tutorial 1 - Camera Preview:C:\\Users\\Michael\\OpenCV-2.4.10-android-sdk\\samples\\tutorial-1-camerapreview\\project.properties:\nLibrary reference ....\\sdk\\java could not be found\nPath is C:\\Users\\Michael\\OpenCV-2.4.10-android-sdk\\samples\\tutorial-1-camerapreview....\\sdk\\java which resolves to C:\\Users\\Michael\\OpenCV-2.4.10-android-sdk\\sdk\\java</li>\n</ul>\n\n<p>Can anyone help please? searches for answers so far have not been fruitful.</p>\n"
+        },
+        {
+            "tags": [
+                "ruby-on-rails",
+                "amazon-s3"
+            ],
+            "owner": {
+                "reputation": 73,
+                "user_id": 9362920,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/4cf567bcb7a4eec1464216e6abfdedcc?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Yuka Langbuana",
+                "link": "https://stackoverflow.com/users/9362920/yuka-langbuana"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526462099,
+            "creation_date": 1526462099,
+            "question_id": 50366810,
+            "body_markdown": "I got a *Errno::ENETUNREACH in UploadsController#create* when I tried to connect to Amazon S3. I can&#39;t figure out why this happen. \r\n\r\nHere is my *uploads_controller.rb*\r\n\r\n\r\n    class UploadsController &lt; ApplicationController\r\n     def new\r\n     end\r\n\r\n     def create\r\n      # Make an object in your bucket for your upload\r\n      obj = S3_BUCKET.objects[params[:file].original_filename]\r\n    \r\n      # Upload the file\r\n      obj.write(\r\n        file: params[:file],\r\n        acl: :public_read\r\n      )\r\n    \r\n      # Create an object for the upload\r\n      @upload = Upload.new(\r\n\t\t\turl: obj.public_url,\r\n\t\t\tname: obj.key\r\n\t  )\r\n    \r\n      # Save the upload\r\n      if @upload.save\r\n        redirect_to uploads_path, success: &#39;File successfully uploaded&#39;\r\n      else\r\n        flash.now[:notice] = &#39;There was an error&#39;\r\n      render :new\r\n      end\r\n     end\r\n  \r\n     def index\r\n       @Upload = Upload.all\r\n     end end",
+            "link": "https://stackoverflow.com/questions/50366810/errnoenetunreach-error-on-rails",
+            "title": "Errno::ENETUNREACH Error on Rails",
+            "body": "<p>I got a <em>Errno::ENETUNREACH in UploadsController#create</em> when I tried to connect to Amazon S3. I can't figure out why this happen. </p>\n\n<p>Here is my <em>uploads_controller.rb</em></p>\n\n<pre><code>class UploadsController &lt; ApplicationController\n def new\n end\n\n def create\n  # Make an object in your bucket for your upload\n  obj = S3_BUCKET.objects[params[:file].original_filename]\n\n  # Upload the file\n  obj.write(\n    file: params[:file],\n    acl: :public_read\n  )\n\n  # Create an object for the upload\n  @upload = Upload.new(\n        url: obj.public_url,\n        name: obj.key\n  )\n\n  # Save the upload\n  if @upload.save\n    redirect_to uploads_path, success: 'File successfully uploaded'\n  else\n    flash.now[:notice] = 'There was an error'\n  render :new\n  end\n end\n\n def index\n   @Upload = Upload.all\n end end\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "ruby-on-rails"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 7893667,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/1c1d389bca1dab545c2cbb9212793ce2?s=128&d=identicon&r=PG&f=1",
+                "display_name": "saran",
+                "link": "https://stackoverflow.com/users/7893667/saran"
+            },
+            "is_answered": true,
+            "view_count": 32,
+            "accepted_answer_id": 50366809,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526462096,
+            "creation_date": 1526457946,
+            "last_edit_date": 1526458284,
+            "question_id": 50365474,
+            "body_markdown": "I need help creating the following query in rails 5 controller. Could you please help me resolve this?\r\n\r\nQuery:\r\n\r\n    CREATE TABLE test(ID INT NOT NULL,PRIMARY KEY (ID))",
+            "link": "https://stackoverflow.com/questions/50365474/sql-query-in-rails-5-controller",
+            "title": "SQL Query in Rails 5 controller",
+            "body": "<p>I need help creating the following query in rails 5 controller. Could you please help me resolve this?</p>\n\n<p>Query:</p>\n\n<pre><code>CREATE TABLE test(ID INT NOT NULL,PRIMARY KEY (ID))\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "pdf",
+                "svg",
+                "fabricjs",
+                "vector-graphics"
+            ],
+            "owner": {
+                "reputation": 63,
+                "user_id": 4896884,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://graph.facebook.com/10204132160453531/picture?type=large",
+                "display_name": "Ricardo Carvalho",
+                "link": "https://stackoverflow.com/users/4896884/ricardo-carvalho"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526462093,
+            "creation_date": 1526462093,
+            "question_id": 50366807,
+            "body_markdown": "We are building a web app where the user can make a design by using fabric.js and at the end he should receive a pdf file with his work.\r\n\r\nAt first, we tried to use JSPDF because it was prefered to have a cliente-side solution. However by doing pdf.addImage(canvas.toDataURL(),...) we are rasterizing the design.\r\n\r\nIn second place, we tried server side solution using WKHTMLTOPDF, sending canvas.toSVG(), but there are some issues with fonts and shapes rendering.\r\n\r\nThe designs are complex as they can have text, shapes, images and svg.\r\n\r\nWe also tried INKSCAPE (inkscape --without-gui --export-pdf ...), MPDF and MUPDF without good results. IMAGEMAGICK is not a solution has it also rasterize the design.\r\n\r\nThe main goal is to get a vector pdf, where it&#39;s possible to increase size and where the elements of the design are selectable, and if possible that pdf should be ready to print (300 dpi and cmyk)\r\n",
+            "link": "https://stackoverflow.com/questions/50366807/is-it-possible-to-convert-fabricjs-svg-output-to-pdf-without-rasterizing",
+            "title": "Is it possible to convert fabricjs svg output to pdf without rasterizing?",
+            "body": "<p>We are building a web app where the user can make a design by using fabric.js and at the end he should receive a pdf file with his work.</p>\n\n<p>At first, we tried to use JSPDF because it was prefered to have a cliente-side solution. However by doing pdf.addImage(canvas.toDataURL(),...) we are rasterizing the design.</p>\n\n<p>In second place, we tried server side solution using WKHTMLTOPDF, sending canvas.toSVG(), but there are some issues with fonts and shapes rendering.</p>\n\n<p>The designs are complex as they can have text, shapes, images and svg.</p>\n\n<p>We also tried INKSCAPE (inkscape --without-gui --export-pdf ...), MPDF and MUPDF without good results. IMAGEMAGICK is not a solution has it also rasterize the design.</p>\n\n<p>The main goal is to get a vector pdf, where it's possible to increase size and where the elements of the design are selectable, and if possible that pdf should be ready to print (300 dpi and cmyk)</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 63
+}

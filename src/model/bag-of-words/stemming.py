@@ -4,6 +4,7 @@ from nltk.tokenize import word_tokenize
 from nltk.stem.snowball import SnowballStemmer
 from nltk.corpus import wordnet
 
+from wordfilter import whitelist
 from wordfilter import filterraw
 from wordfilter import filterstem
 from wordfilter import featurefilter 
@@ -21,7 +22,9 @@ def splitone(result, qkey, tkey, sentence):
         if featurefilter(tkey):   
             fterms = []
             for pair in nltk.pos_tag(terms, tagset='universal'):                
-                if filterraw(pair[0]):                                 
+                if pair[0] in whitelist:
+                    fterms.append(pair[0])
+                elif filterraw(pair[0]):                                 
                     if pair[1] == 'NOUN':
                         stemmed = snow_stemmer.stem(pair[0]).lower()
                         if filterstem(stemmed):

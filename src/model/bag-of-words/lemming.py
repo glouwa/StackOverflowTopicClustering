@@ -5,6 +5,7 @@ from nltk.stem import WordNetLemmatizer
 from nltk.corpus import wordnet
 from nltk.tag import pos_tag
 
+from wordfilter import whitelist
 from wordfilter import filterraw
 from wordfilter import filterlemmed 
 from wordfilter import featurefilter 
@@ -24,14 +25,16 @@ def splitone(result, qkey, tkey, sentence):
         if featurefilter(tkey):   
             fterms = []
             for pair in nltk.pos_tag(terms, tagset='universal'):                
-                if filterraw(pair[0]):
+                if pair[0] in whitelist:
+                    fterms.append(pair[0])
+                elif filterraw(pair[0]):
                     """
                     postag = convert_tagset3(pair[1])                    
                         if postag.startswith('n'):
                         fterms.append(pair[0])
                     """
                     u[pair[1]] = True
-                    postag = convert_tagset3(pair[1])                    
+                    postag = convert_tagset3(pair[1])                                        
                     if pair[1] == 'NOUN':
                         lemterm = lemmatizer.lemmatize(pair[0], postag).lower()
                         if filterlemmed(lemterm):

@@ -1,0 +1,834 @@
+{
+    "items": [
+        {
+            "tags": [
+                "php",
+                "ajax",
+                "wordpress",
+                "plugins",
+                "load"
+            ],
+            "owner": {
+                "reputation": 63,
+                "user_id": 4334118,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/3fd83480627e66219c2a3871f88ceeb3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "BlueHelmet",
+                "link": "https://stackoverflow.com/users/4334118/bluehelmet"
+            },
+            "is_answered": true,
+            "view_count": 27,
+            "accepted_answer_id": 50341005,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526431926,
+            "creation_date": 1526346541,
+            "last_edit_date": 1526431926,
+            "question_id": 50340973,
+            "body_markdown": "I am using the Pro Blog Design plugin found [here][1]. It&#39;s adds a button to load more content. It is working well on my archive and search page, but does not work at all on a custom page (ex: &quot;page-customname.php&quot;).\r\n\r\nThe custom page also has a custom query loop with pagination:\r\n\r\n    &lt;?php $the_query = array(&#39;post_type&#39; =&gt; &#39;post&#39;, &#39;post_status&#39; =&gt; &#39;publish&#39;, &#39;category_name&#39; =&gt; &#39;stories&#39;);\r\n    \r\n    // Get current page and append to custom query parameters array\r\n    $the_query[&#39;paged&#39;] = get_query_var( &#39;paged&#39; ) ? get_query_var( &#39;paged&#39; ) : 1;\r\n    \r\n    // Instantiate custom query\r\n    $custom_query = new WP_Query( $the_query );\r\n    \r\n    // Pagination fix\r\n    $temp_query = $wp_query;\r\n    $wp_query   = NULL;\r\n    $wp_query   = $custom_query;\r\n    \r\n    // Output custom query loop\r\n    if ( $custom_query-&gt;have_posts() ) :\r\n        while ( $custom_query-&gt;have_posts() ) :\r\n            $custom_query-&gt;the_post();\r\n        \r\n       echo &#39;loop items go here&#39;;   \r\n        \r\n    endwhile;\r\n    endif; \r\n    wp_reset_postdata();\r\n    $wp_query = NULL;\r\n    $wp_query = $temp_query;\r\n      ?&gt;  \r\n\r\n \r\n\r\nAt the end of this loop is the plugin pagination, again, working well on archive and search, but not on the custom query page.\r\n\r\nI can tell that the script and style do not get enqueued, because the plugin css style is not working (on this page only). \r\n\r\nIs there any reason why this might be?\r\n\r\nHere is the plugin function:\r\n\r\n    function pbd_alp_init() {\r\n     \tglobal $wp_query;\r\n     \r\n     \t// Add code to index pages.\r\n     \tif( !is_singular() ) {\t\r\n     \t\t// Queue JS and CSS\r\n     \t\twp_enqueue_script(\r\n     \t\t\t&#39;pbd-alp-load-posts&#39;,\r\n     \t\t\tplugin_dir_url( __FILE__ ) . &#39;js/load-posts.js&#39;,\r\n     \t\t\tarray(&#39;jquery&#39;),\r\n     \t\t\t&#39;1.0&#39;,\r\n     \t\t\ttrue\r\n     \t\t);\r\n     \r\n     \t\twp_enqueue_style(\r\n     \t\t\t&#39;pbd-alp-style&#39;,\r\n     \t\t\tplugin_dir_url( __FILE__ ) . &#39;css/style.css&#39;,\r\n     \t\t\tfalse,\r\n     \t\t\t&#39;1.0&#39;,\r\n     \t\t\t&#39;all&#39;\r\n     \t\t);\r\n            \r\n            // What page are we on? And what is the pages limit?\r\n    $max = $wp_query-&gt;max_num_pages;\r\n    $paged = ( get_query_var(&#39;paged&#39;) &gt; 1 ) ? get_query_var(&#39;paged&#39;) : 1;\r\n     \r\n    // Add some parameters for the JS.\r\n    wp_localize_script(\r\n    \t&#39;pbd-alp-load-posts&#39;,\r\n    \t&#39;pbd_alp&#39;,\r\n    \tarray(\r\n    \t\t&#39;startPage&#39; =&gt; $paged,\r\n    \t\t&#39;maxPages&#39; =&gt; $max,\r\n    \t\t&#39;nextLink&#39; =&gt; next_posts($max, false)\r\n    \t)\r\n    );\r\n            }\r\n     }\r\n     add_action(&#39;template_redirect&#39;, &#39;pbd_alp_init&#39;);\r\n\r\n  [1]: https://www.problogdesign.com/wordpress/load-next-wordpress-posts-with-ajax/\r\n\r\n\r\n**EDIT:** Updated custom query, much simpler, no `null`\r\n\r\n    &lt;?php  \r\n    // Define custom query parameters\r\n    $the_query = new WP_Query( array(\r\n        &#39;post_type&#39; =&gt; &#39;post&#39;,\r\n        &#39;post_status&#39; =&gt; &#39;publish&#39;,\r\n        &#39;category_name&#39; =&gt; &#39;stories&#39;,\r\n        &#39;paged&#39; =&gt; get_query_var(&#39;paged&#39;)));\r\n    \r\n    while ( $the_query-&gt;have_posts() ) : $the_query-&gt;the_post();    \r\n              \r\n    echo &#39;loop stuff&#39;;  \r\n        \r\n    endwhile;\r\n    wp_reset_postdata();?&gt;\r\n\r\n\r\n**EDIT: Working Solution!**\r\n\r\nThe problem was in the javascript. `!is_singular()` needed to change to something that wouldn&#39;t negate the custom page, ex: `!is_home();`\r\n\r\nAlso, the javascript wouldn&#39;t recognize the query or its associated page numbers, so I had to change `$global wp_query` to `$wp_query = new WP_Query( array(&#39;post_type&#39; =&gt; &#39;post&#39;, &#39;post_status&#39; =&gt; &#39;publish&#39;));` which might not be the best solution, but it seems to work across all pages.",
+            "link": "https://stackoverflow.com/questions/50340973/plugin-doesnt-enqueue-script-or-style-custom-query",
+            "title": "Plugin Doesn&#39;t Enqueue Script or Style - Custom Query",
+            "body": "<p>I am using the Pro Blog Design plugin found <a href=\"https://www.problogdesign.com/wordpress/load-next-wordpress-posts-with-ajax/\" rel=\"nofollow noreferrer\">here</a>. It's adds a button to load more content. It is working well on my archive and search page, but does not work at all on a custom page (ex: \"page-customname.php\").</p>\n\n<p>The custom page also has a custom query loop with pagination:</p>\n\n<pre><code>&lt;?php $the_query = array('post_type' =&gt; 'post', 'post_status' =&gt; 'publish', 'category_name' =&gt; 'stories');\n\n// Get current page and append to custom query parameters array\n$the_query['paged'] = get_query_var( 'paged' ) ? get_query_var( 'paged' ) : 1;\n\n// Instantiate custom query\n$custom_query = new WP_Query( $the_query );\n\n// Pagination fix\n$temp_query = $wp_query;\n$wp_query   = NULL;\n$wp_query   = $custom_query;\n\n// Output custom query loop\nif ( $custom_query-&gt;have_posts() ) :\n    while ( $custom_query-&gt;have_posts() ) :\n        $custom_query-&gt;the_post();\n\n   echo 'loop items go here';   \n\nendwhile;\nendif; \nwp_reset_postdata();\n$wp_query = NULL;\n$wp_query = $temp_query;\n  ?&gt;  \n</code></pre>\n\n<p>At the end of this loop is the plugin pagination, again, working well on archive and search, but not on the custom query page.</p>\n\n<p>I can tell that the script and style do not get enqueued, because the plugin css style is not working (on this page only). </p>\n\n<p>Is there any reason why this might be?</p>\n\n<p>Here is the plugin function:</p>\n\n<pre><code>function pbd_alp_init() {\n    global $wp_query;\n\n    // Add code to index pages.\n    if( !is_singular() ) {  \n        // Queue JS and CSS\n        wp_enqueue_script(\n            'pbd-alp-load-posts',\n            plugin_dir_url( __FILE__ ) . 'js/load-posts.js',\n            array('jquery'),\n            '1.0',\n            true\n        );\n\n        wp_enqueue_style(\n            'pbd-alp-style',\n            plugin_dir_url( __FILE__ ) . 'css/style.css',\n            false,\n            '1.0',\n            'all'\n        );\n\n        // What page are we on? And what is the pages limit?\n$max = $wp_query-&gt;max_num_pages;\n$paged = ( get_query_var('paged') &gt; 1 ) ? get_query_var('paged') : 1;\n\n// Add some parameters for the JS.\nwp_localize_script(\n    'pbd-alp-load-posts',\n    'pbd_alp',\n    array(\n        'startPage' =&gt; $paged,\n        'maxPages' =&gt; $max,\n        'nextLink' =&gt; next_posts($max, false)\n    )\n);\n        }\n }\n add_action('template_redirect', 'pbd_alp_init');\n</code></pre>\n\n<p><strong>EDIT:</strong> Updated custom query, much simpler, no <code>null</code></p>\n\n<pre><code>&lt;?php  \n// Define custom query parameters\n$the_query = new WP_Query( array(\n    'post_type' =&gt; 'post',\n    'post_status' =&gt; 'publish',\n    'category_name' =&gt; 'stories',\n    'paged' =&gt; get_query_var('paged')));\n\nwhile ( $the_query-&gt;have_posts() ) : $the_query-&gt;the_post();    \n\necho 'loop stuff';  \n\nendwhile;\nwp_reset_postdata();?&gt;\n</code></pre>\n\n<p><strong>EDIT: Working Solution!</strong></p>\n\n<p>The problem was in the javascript. <code>!is_singular()</code> needed to change to something that wouldn't negate the custom page, ex: <code>!is_home();</code></p>\n\n<p>Also, the javascript wouldn't recognize the query or its associated page numbers, so I had to change <code>$global wp_query</code> to <code>$wp_query = new WP_Query( array('post_type' =&gt; 'post', 'post_status' =&gt; 'publish'));</code> which might not be the best solution, but it seems to work across all pages.</p>\n"
+        },
+        {
+            "tags": [
+                "special-characters",
+                "wrap",
+                "wrapping",
+                "japanese"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9650844,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Kyl San Antonio",
+                "link": "https://stackoverflow.com/users/9650844/kyl-san-antonio"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526431890,
+            "creation_date": 1526430800,
+            "last_edit_date": 1526431890,
+            "question_id": 50360883,
+            "body_markdown": "I already wrapped the Japanese characters using these css properties:\r\n\r\n    overflow-wrap: break-word;\r\n    word-wrap: break-word;\r\n    word-break: break-word;\r\n    -ms-word-break: break-word;\r\n    -ms-hyphens: auto;\r\n    -moz-hyphens: auto;\r\n    -webkit-hyphens: auto; \r\n    hyphens: auto;\r\n\r\nCan you please explain why are there inconsistencies of wrapping here in this link (since I&#39;m not allowed yet to include it in my post directly):\r\n[sidebar screenshot][1]\r\n\r\nFor example (see sidebar screenshot for reference):\r\n&lt;br&gt;&lt;br&gt;\r\n\r\n - The first row, 門部‍‍‍‍‍‍！！ありがとう！！！, I think the line break should be before and after ありがとう ?\r\n&lt;br&gt;\r\n - The fourth row (！！部門！！！！！！！！！！！！！！！！！！！！), there&#39;s a line break between 部 and 門. I think the line break should be before 部 or after 門 ?\r\n\r\n&lt;br&gt;\r\nHow come those Japanese characters are not wrapped properly? Based on my understanding, it may be broken at arbitrary points. How may I know those arbitrary points?\r\n\r\n  [1]: https://i.stack.imgur.com/ht1ti.png",
+            "link": "https://stackoverflow.com/questions/50360883/understanding-how-japanese-characters-are-wrapped-using-css",
+            "title": "Understanding how Japanese characters are wrapped using CSS",
+            "body": "<p>I already wrapped the Japanese characters using these css properties:</p>\n\n<pre><code>overflow-wrap: break-word;\nword-wrap: break-word;\nword-break: break-word;\n-ms-word-break: break-word;\n-ms-hyphens: auto;\n-moz-hyphens: auto;\n-webkit-hyphens: auto; \nhyphens: auto;\n</code></pre>\n\n<p>Can you please explain why are there inconsistencies of wrapping here in this link (since I'm not allowed yet to include it in my post directly):\n<a href=\"https://i.stack.imgur.com/ht1ti.png\" rel=\"nofollow noreferrer\">sidebar screenshot</a></p>\n\n<p>For example (see sidebar screenshot for reference):\n<br><br></p>\n\n<ul>\n<li>The first row, 門部‍‍‍‍‍‍！！ありがとう！！！, I think the line break should be before and after ありがとう ?\n<br></li>\n<li>The fourth row (！！部門！！！！！！！！！！！！！！！！！！！！), there's a line break between 部 and 門. I think the line break should be before 部 or after 門 ?</li>\n</ul>\n\n<p><br>\nHow come those Japanese characters are not wrapped properly? Based on my understanding, it may be broken at arbitrary points. How may I know those arbitrary points?</p>\n"
+        },
+        {
+            "tags": [
+                "matlab",
+                "plot"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9792856,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/89730d9aa06872b99caab4b1cdf76d14?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Jalapeno Nachos",
+                "link": "https://stackoverflow.com/users/9792856/jalapeno-nachos"
+            },
+            "is_answered": false,
+            "view_count": 32,
+            "closed_date": 1526461702,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526431889,
+            "creation_date": 1526431889,
+            "question_id": 50361014,
+            "body_markdown": "Let&#39;s say that I am plotting solutions to differential equations in Matlab, and I am coding up a bunch of rectangles with the x-y solutions inside each rectangle. So, I&#39;m analyzing the trajectory of a rectangle through time t.  Now, this rectangle has a specific size - very small - to correspond to a real-life physical object, and this rectangle also has a center of mass that can be shifted, depending on its trajectory.  I&#39;ve used a filled dot for each rectangle to show the location of its center of mass.\r\n\r\nHere&#39;s the problem: the data plots look horrible - the rectangles are really, really small.  But, if in my plotting code, I scale everything up by a factor of, say, 10, then the x-y axes also get scaled, which I don&#39;t want.  For example, if I am dropping this rectangle in air, from say, 50 meters above ground, if I scaled my data plots to make them more clear, then the data plots would suggest that I am dropping the rectangle from 500 feet above ground.\r\n\r\nSo, how could I scale everything up - the rectangle, the x-y solutions inside of it, the centers of mass, while still keeping the original x-y axes, so that the plots show the rectangle falling from 50 meters and moving in some trajectory that is governed by the differential equations?\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50361014/how-to-increase-the-size-of-my-data-plots-in-matlab-without-increasing-the-x-and",
+            "closed_reason": "unclear what you&#39;re asking",
+            "title": "How to increase the size of my data plots in Matlab without increasing the x and y axes?",
+            "body": "<p>Let's say that I am plotting solutions to differential equations in Matlab, and I am coding up a bunch of rectangles with the x-y solutions inside each rectangle. So, I'm analyzing the trajectory of a rectangle through time t.  Now, this rectangle has a specific size - very small - to correspond to a real-life physical object, and this rectangle also has a center of mass that can be shifted, depending on its trajectory.  I've used a filled dot for each rectangle to show the location of its center of mass.</p>\n\n<p>Here's the problem: the data plots look horrible - the rectangles are really, really small.  But, if in my plotting code, I scale everything up by a factor of, say, 10, then the x-y axes also get scaled, which I don't want.  For example, if I am dropping this rectangle in air, from say, 50 meters above ground, if I scaled my data plots to make them more clear, then the data plots would suggest that I am dropping the rectangle from 500 feet above ground.</p>\n\n<p>So, how could I scale everything up - the rectangle, the x-y solutions inside of it, the centers of mass, while still keeping the original x-y axes, so that the plots show the rectangle falling from 50 meters and moving in some trajectory that is governed by the differential equations?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "discord"
+            ],
+            "owner": {
+                "reputation": 14,
+                "user_id": 7909763,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/512a1b7c59c2cf0738e23133f7193379?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Bablup",
+                "link": "https://stackoverflow.com/users/7909763/bablup"
+            },
+            "is_answered": false,
+            "view_count": 609,
+            "answer_count": 2,
+            "score": 3,
+            "last_activity_date": 1526431868,
+            "creation_date": 1492963539,
+            "question_id": 43573440,
+            "body_markdown": "I&#39;m making a bot with Discord.py and I&#39;ve some question how to use the function `create_custom_emojis()` because whatever I do, I keep getting the HTTP Error 400.\r\n\r\nHere&#39;s my code to create the emoji:\r\n\r\n    with open(&quot;data/emojis/image.png&quot;, &quot;rb&quot;) as image:\r\n        image_byte = image.read()\r\n        emoji = await self.bot.create_custom_emoji(server, name=&quot;emo&quot;, image=image_byte)\r\n\r\nAnd the error I get: \r\n\r\n    Traceback (most recent call last):\r\n      File &quot;C:\\Program Files (x86)\\Python35\\lib\\asyncio\\tasks.py&quot;, line 239, in _step\r\n        result = coro.send(None)\r\n      File &quot;C:\\Users\\armel\\Downloads\\Discord bot\\Red-DiscordBot\\cogs\\moga.py&quot;, line 385, in read_feeds\r\n        message = await self._feed_check(server, chan_id, name, infos)\r\n      File &quot;C:\\Users\\armel\\Downloads\\Discord bot\\Red-DiscordBot\\cogs\\moga.py&quot;, line 198, in _feed_check\r\n        await self.create_custom_emojis(server)\r\n      File &quot;C:\\Users\\armel\\Downloads\\Discord bot\\Red-DiscordBot\\cogs\\moga.py&quot;, line 189, in create_custom_emojis\r\n        emoji = await self.bot.create_custom_emoji(server, name=name, image=image_byte)\r\n      File &quot;lib\\discord\\client.py&quot;, line 2519, in create_custom_emoji\r\n        data = yield from self.http.create_custom_emoji(server.id, name, img)\r\n      File &quot;lib\\discord\\http.py&quot;, line 202, in request\r\n        raise HTTPException(r, data)\r\n    discord.errors.HTTPException: BAD REQUEST (status code: 400)\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/43573440/discord-py-create-custom-emojis-usage",
+            "title": "Discord.py create_custom_emojis usage",
+            "body": "<p>I'm making a bot with Discord.py and I've some question how to use the function <code>create_custom_emojis()</code> because whatever I do, I keep getting the HTTP Error 400.</p>\n\n<p>Here's my code to create the emoji:</p>\n\n<pre><code>with open(\"data/emojis/image.png\", \"rb\") as image:\n    image_byte = image.read()\n    emoji = await self.bot.create_custom_emoji(server, name=\"emo\", image=image_byte)\n</code></pre>\n\n<p>And the error I get: </p>\n\n<pre><code>Traceback (most recent call last):\n  File \"C:\\Program Files (x86)\\Python35\\lib\\asyncio\\tasks.py\", line 239, in _step\n    result = coro.send(None)\n  File \"C:\\Users\\armel\\Downloads\\Discord bot\\Red-DiscordBot\\cogs\\moga.py\", line 385, in read_feeds\n    message = await self._feed_check(server, chan_id, name, infos)\n  File \"C:\\Users\\armel\\Downloads\\Discord bot\\Red-DiscordBot\\cogs\\moga.py\", line 198, in _feed_check\n    await self.create_custom_emojis(server)\n  File \"C:\\Users\\armel\\Downloads\\Discord bot\\Red-DiscordBot\\cogs\\moga.py\", line 189, in create_custom_emojis\n    emoji = await self.bot.create_custom_emoji(server, name=name, image=image_byte)\n  File \"lib\\discord\\client.py\", line 2519, in create_custom_emoji\n    data = yield from self.http.create_custom_emoji(server.id, name, img)\n  File \"lib\\discord\\http.py\", line 202, in request\n    raise HTTPException(r, data)\ndiscord.errors.HTTPException: BAD REQUEST (status code: 400)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "swift",
+                "post",
+                "oauth",
+                "alamofire",
+                "reddit"
+            ],
+            "owner": {
+                "reputation": 14,
+                "user_id": 7492423,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/551429536e6ceba3b09a177f18801d9c?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Garret Koontz",
+                "link": "https://stackoverflow.com/users/7492423/garret-koontz"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526431848,
+            "creation_date": 1526431848,
+            "question_id": 50361008,
+            "body_markdown": "I am integrating Reddit&#39;s API into my iOS app, however I am running into some query problems. I am using Alamofire to make POST requests. When you are using Reddit&#39;s API on installed apps, you have to follow their [Application Only grant flow](https://github.com/reddit-archive/reddit/wiki/OAuth2#application-only-oauth). Everything is working except I am getting back an `unsupported_grant_type` error. \r\n\r\nThis is my POST request.\r\n\r\n    guard let url = URL(string: &quot;https://www.reddit.com/api/v1/access_token&quot;) else { return false }\r\n                let params: Parameters = [\r\n                    &quot;grant_type&quot; : &quot;https://oauth.reddit.com/grants/installed_client&quot;,\r\n                    &quot;device_id&quot; : &quot;\\(UUID().uuidString)&quot;]\r\n                \r\n                let username = &quot;MY_CLIENT_ID&quot;\r\n                let password = &quot;&quot;\r\n                let loginString = String(format: &quot;%@:%@&quot;, username, password)\r\n                let loginData = loginString.data(using: String.Encoding.utf8)! as NSData\r\n                let base64EncodedString = loginData.base64EncodedString()\r\n                \r\n                let headers = [&quot;Content-Type&quot; : &quot;application/x-www-form-urlencoded&quot;,\r\n                               &quot;Authorization&quot; : &quot;Basic \\(base64EncodedString)&quot;]\r\n                \r\n                Alamofire.request(url, method: .post , parameters: params, encoding: JSONEncoding.default, headers: headers).responseJSON { (response) in\r\n                    print(response)\r\n                    \r\n                }\r\n\r\nMy `grant_type` parameter is correct though? As I believe because the documentation tells me to use `https://oauth.reddit.com/grants/installed_client` as a grant type for installed apps.",
+            "link": "https://stackoverflow.com/questions/50361008/oauth2-error-with-reddit-api-swift",
+            "title": "OAuth2 error with Reddit API - Swift",
+            "body": "<p>I am integrating Reddit's API into my iOS app, however I am running into some query problems. I am using Alamofire to make POST requests. When you are using Reddit's API on installed apps, you have to follow their <a href=\"https://github.com/reddit-archive/reddit/wiki/OAuth2#application-only-oauth\" rel=\"nofollow noreferrer\">Application Only grant flow</a>. Everything is working except I am getting back an <code>unsupported_grant_type</code> error. </p>\n\n<p>This is my POST request.</p>\n\n<pre><code>guard let url = URL(string: \"https://www.reddit.com/api/v1/access_token\") else { return false }\n            let params: Parameters = [\n                \"grant_type\" : \"https://oauth.reddit.com/grants/installed_client\",\n                \"device_id\" : \"\\(UUID().uuidString)\"]\n\n            let username = \"MY_CLIENT_ID\"\n            let password = \"\"\n            let loginString = String(format: \"%@:%@\", username, password)\n            let loginData = loginString.data(using: String.Encoding.utf8)! as NSData\n            let base64EncodedString = loginData.base64EncodedString()\n\n            let headers = [\"Content-Type\" : \"application/x-www-form-urlencoded\",\n                           \"Authorization\" : \"Basic \\(base64EncodedString)\"]\n\n            Alamofire.request(url, method: .post , parameters: params, encoding: JSONEncoding.default, headers: headers).responseJSON { (response) in\n                print(response)\n\n            }\n</code></pre>\n\n<p>My <code>grant_type</code> parameter is correct though? As I believe because the documentation tells me to use <code>https://oauth.reddit.com/grants/installed_client</code> as a grant type for installed apps.</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "app-inventor"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9796845,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-jicSAY0lVwU/AAAAAAAAAAI/AAAAAAAAAuA/4UlaaYrkc9s/photo.jpg?sz=128",
+                "display_name": "Alex Vieira",
+                "link": "https://stackoverflow.com/users/9796845/alex-vieira"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1526431845,
+            "creation_date": 1526420723,
+            "last_edit_date": 1526431845,
+            "question_id": 50359588,
+            "body_markdown": "I&#39;m making this app so I can turn LED&#39;s on and off on my arduino board. (It&#39;s a school project).\r\n\r\nI saw on YouTube how to do it but I don&#39;t want it to open the browser.\r\nI want to click on the button so that it opens a link but doesn&#39;t show anything else. Just simple clicks. One button to click On and another to click Off.\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/C4uSr.png",
+            "link": "https://stackoverflow.com/questions/50359588/button-in-app-inventor",
+            "title": "Button in App Inventor",
+            "body": "<p>I'm making this app so I can turn LED's on and off on my arduino board. (It's a school project).</p>\n\n<p>I saw on YouTube how to do it but I don't want it to open the browser.\nI want to click on the button so that it opens a link but doesn't show anything else. Just simple clicks. One button to click On and another to click Off.</p>\n\n<p><a href=\"https://i.stack.imgur.com/C4uSr.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/C4uSr.png\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "wpf"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 8883649,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3cb2950d4ba0b97f7c12ff558c3150c0?s=128&d=identicon&r=PG&f=1",
+                "display_name": "amit",
+                "link": "https://stackoverflow.com/users/8883649/amit"
+            },
+            "is_answered": false,
+            "view_count": 41,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526431838,
+            "creation_date": 1526430793,
+            "last_edit_date": 1526431838,
+            "question_id": 50360880,
+            "body_markdown": "I have user control with group of buttons and button style is override with Path class. Now Every button has different design.\r\n\r\nQuery:\r\n1. click on single button will change path fill color for 5 seconds and then back to previous state. \r\n2. Outside this group of buttons, I have common button which will change color on all buttons for 5 seconds and back to normal.\r\n3. I have another common button to cancel color change time. i.e. As soon i click cancel button, it should cancel timer.\r\n\r\n    &lt;Style x:Key=&quot;ConfigureInstButton&quot; TargetType=&quot;Button&quot;&gt;\r\n            &lt;Setter Property=&quot;SnapsToDevicePixels&quot; Value=&quot;True&quot; /&gt;\r\n            &lt;Setter Property=&quot;Template&quot;&gt;\r\n                &lt;Setter.Value&gt;\r\n                    &lt;ControlTemplate TargetType=&quot;{x:Type Button}&quot;&gt;\r\n                        &lt;Canvas x:Name=&quot;cnv&quot; Width=&quot;{TemplateBinding ActualWidth}&quot; Height=&quot;{TemplateBinding Height}&quot;&gt;\r\n                            &lt;Grid Width=&quot;{Binding ActualWidth, ElementName=cnv}&quot; Height=&quot;{Binding ActualHeight, ElementName=cnv}&quot;&gt;\r\n                                &lt;Border x:Name=&quot;borderRect&quot; Background=&quot;{TemplateBinding Background}&quot; BorderThickness=&quot;0&quot; BorderBrush=&quot;{StaticResource solidBrush_LightGray_0.75_darker}&quot;\r\n                                        CornerRadius=&quot;2&quot;&gt;\r\n                                    &lt;Path x:Name=&quot;pathInstrumentType&quot; Tag=&quot;{TemplateBinding Tag}&quot; Margin=&quot;5&quot;&gt;\r\n                                        &lt;Path.Style&gt;\r\n                                            &lt;Style TargetType=&quot;Path&quot;&gt;\r\n                                                &lt;Setter Property=&quot;Stretch&quot; Value=&quot;Uniform&quot; /&gt;\r\n                                                &lt;Setter Property=&quot;Fill&quot; Value=&quot;{StaticResource solidBrush_LightGray_0.75_darker}&quot; /&gt;\r\n                                            &lt;/Style&gt;\r\n                                        &lt;/Path.Style&gt;\r\n                                    &lt;/Path&gt;\r\n                                &lt;/Border&gt;\r\n                                &lt;Button x:Name=&quot;LoadingImage&quot; Tag=&quot;{TemplateBinding Tag}&quot; Style=&quot;{DynamicResource Loading}&quot; Visibility=&quot;Collapsed&quot; Margin=&quot;0,2,0,0&quot; /&gt;\r\n\r\n                                &lt;Border  x:Name=&quot;borderConfigure&quot; BorderThickness=&quot;1&quot; BorderBrush=&quot;{StaticResource solidBrush_LightGray_0.75_darker}&quot; Visibility=&quot;Collapsed&quot; Tag=&quot;{TemplateBinding Content}&quot;\r\n                                        Background=&quot;{StaticResource solidBrush_Highlight}&quot; Opacity=&quot;0.6&quot; Panel.ZIndex=&quot;2&quot; CornerRadius=&quot;2&quot;&gt;\r\n                                    &lt;Path x:Name=&quot;pathConfigure&quot; Margin=&quot;5&quot; Height=&quot;18&quot;&gt;\r\n                                        &lt;Path.Style&gt;\r\n                                            &lt;Style TargetType=&quot;Path&quot;&gt;\r\n                                                &lt;Setter Property=&quot;Data&quot; Value=&quot;{StaticResource geoData_ConfigureInstrument}&quot; /&gt;\r\n                                                &lt;Setter Property=&quot;Stretch&quot; Value=&quot;Uniform&quot; /&gt;\r\n                                                &lt;Setter Property=&quot;Fill&quot; Value=&quot;{StaticResource solidBrush_White_0.05_darker}&quot; /&gt;\r\n                                            &lt;/Style&gt;\r\n                                        &lt;/Path.Style&gt;\r\n                                    &lt;/Path&gt;\r\n                                &lt;/Border&gt;\r\n                            &lt;/Grid&gt;\r\n                        &lt;/Canvas&gt;\r\n                        &lt;ControlTemplate.Triggers&gt;\r\n                            &lt;Trigger Property=&quot;IsMouseOver&quot; Value=&quot;True&quot;&gt;\r\n                                &lt;Setter TargetName=&quot;borderConfigure&quot; Property=&quot;Visibility&quot; Value=&quot;Visible&quot;/&gt;\r\n                                &lt;Setter TargetName=&quot;borderRect&quot; Property=&quot;Opacity&quot; Value=&quot;0.2&quot; /&gt;\r\n                                &lt;Setter Property=&quot;Cursor&quot; Value=&quot;Hand&quot; /&gt;\r\n                            &lt;/Trigger&gt;\r\n                            \r\n                        &lt;/ControlTemplate.Triggers&gt;\r\n                    &lt;/ControlTemplate&gt;\r\n                &lt;/Setter.Value&gt;\r\n            &lt;/Setter&gt;\r\n        &lt;/Style&gt;",
+            "link": "https://stackoverflow.com/questions/50360880/show-green-color-on-path-fill-for-5-seconds-wpf",
+            "title": "Show Green color on Path Fill for 5 seconds wpf",
+            "body": "<p>I have user control with group of buttons and button style is override with Path class. Now Every button has different design.</p>\n\n<p>Query:\n1. click on single button will change path fill color for 5 seconds and then back to previous state. \n2. Outside this group of buttons, I have common button which will change color on all buttons for 5 seconds and back to normal.\n3. I have another common button to cancel color change time. i.e. As soon i click cancel button, it should cancel timer.</p>\n\n<pre><code>&lt;Style x:Key=\"ConfigureInstButton\" TargetType=\"Button\"&gt;\n        &lt;Setter Property=\"SnapsToDevicePixels\" Value=\"True\" /&gt;\n        &lt;Setter Property=\"Template\"&gt;\n            &lt;Setter.Value&gt;\n                &lt;ControlTemplate TargetType=\"{x:Type Button}\"&gt;\n                    &lt;Canvas x:Name=\"cnv\" Width=\"{TemplateBinding ActualWidth}\" Height=\"{TemplateBinding Height}\"&gt;\n                        &lt;Grid Width=\"{Binding ActualWidth, ElementName=cnv}\" Height=\"{Binding ActualHeight, ElementName=cnv}\"&gt;\n                            &lt;Border x:Name=\"borderRect\" Background=\"{TemplateBinding Background}\" BorderThickness=\"0\" BorderBrush=\"{StaticResource solidBrush_LightGray_0.75_darker}\"\n                                    CornerRadius=\"2\"&gt;\n                                &lt;Path x:Name=\"pathInstrumentType\" Tag=\"{TemplateBinding Tag}\" Margin=\"5\"&gt;\n                                    &lt;Path.Style&gt;\n                                        &lt;Style TargetType=\"Path\"&gt;\n                                            &lt;Setter Property=\"Stretch\" Value=\"Uniform\" /&gt;\n                                            &lt;Setter Property=\"Fill\" Value=\"{StaticResource solidBrush_LightGray_0.75_darker}\" /&gt;\n                                        &lt;/Style&gt;\n                                    &lt;/Path.Style&gt;\n                                &lt;/Path&gt;\n                            &lt;/Border&gt;\n                            &lt;Button x:Name=\"LoadingImage\" Tag=\"{TemplateBinding Tag}\" Style=\"{DynamicResource Loading}\" Visibility=\"Collapsed\" Margin=\"0,2,0,0\" /&gt;\n\n                            &lt;Border  x:Name=\"borderConfigure\" BorderThickness=\"1\" BorderBrush=\"{StaticResource solidBrush_LightGray_0.75_darker}\" Visibility=\"Collapsed\" Tag=\"{TemplateBinding Content}\"\n                                    Background=\"{StaticResource solidBrush_Highlight}\" Opacity=\"0.6\" Panel.ZIndex=\"2\" CornerRadius=\"2\"&gt;\n                                &lt;Path x:Name=\"pathConfigure\" Margin=\"5\" Height=\"18\"&gt;\n                                    &lt;Path.Style&gt;\n                                        &lt;Style TargetType=\"Path\"&gt;\n                                            &lt;Setter Property=\"Data\" Value=\"{StaticResource geoData_ConfigureInstrument}\" /&gt;\n                                            &lt;Setter Property=\"Stretch\" Value=\"Uniform\" /&gt;\n                                            &lt;Setter Property=\"Fill\" Value=\"{StaticResource solidBrush_White_0.05_darker}\" /&gt;\n                                        &lt;/Style&gt;\n                                    &lt;/Path.Style&gt;\n                                &lt;/Path&gt;\n                            &lt;/Border&gt;\n                        &lt;/Grid&gt;\n                    &lt;/Canvas&gt;\n                    &lt;ControlTemplate.Triggers&gt;\n                        &lt;Trigger Property=\"IsMouseOver\" Value=\"True\"&gt;\n                            &lt;Setter TargetName=\"borderConfigure\" Property=\"Visibility\" Value=\"Visible\"/&gt;\n                            &lt;Setter TargetName=\"borderRect\" Property=\"Opacity\" Value=\"0.2\" /&gt;\n                            &lt;Setter Property=\"Cursor\" Value=\"Hand\" /&gt;\n                        &lt;/Trigger&gt;\n\n                    &lt;/ControlTemplate.Triggers&gt;\n                &lt;/ControlTemplate&gt;\n            &lt;/Setter.Value&gt;\n        &lt;/Setter&gt;\n    &lt;/Style&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "haskell"
+            ],
+            "owner": {
+                "reputation": 2229,
+                "user_id": 2266261,
+                "user_type": "registered",
+                "accept_rate": 76,
+                "profile_image": "https://i.stack.imgur.com/syTtz.jpg?s=128&g=1",
+                "display_name": "Dunno",
+                "link": "https://stackoverflow.com/users/2266261/dunno"
+            },
+            "is_answered": true,
+            "view_count": 107,
+            "accepted_answer_id": 50350014,
+            "answer_count": 4,
+            "score": 2,
+            "last_activity_date": 1526431828,
+            "creation_date": 1526386323,
+            "question_id": 50349892,
+            "body_markdown": "I have a data type\r\n\r\n    data MyType = Any | A | B | C ...\r\n\r\nand the semantics of &quot;Any&quot; is that it should be equivalent to all other cases. I thought that the most elegant way is to implement my own Eq instance, starting with\r\n\r\n    instance Eq MyType where\r\n        Any == _ = True\r\n        _ == Any = True\r\n\r\nBut now I don&#39;t see a way of avoiding repetitive and silly code like\r\n        \r\n        A == A = True\r\n        B == B = True\r\n        ...\r\n\r\nI though of &quot;abusing&quot; the show function and just do `x == y = (show x) == (show y)` but is there a cleaner way? ",
+            "link": "https://stackoverflow.com/questions/50349892/override-just-a-few-cases-of-data-in-eq-instance-implementation",
+            "title": "Override just a few cases of data in Eq instance implementation",
+            "body": "<p>I have a data type</p>\n\n<pre><code>data MyType = Any | A | B | C ...\n</code></pre>\n\n<p>and the semantics of \"Any\" is that it should be equivalent to all other cases. I thought that the most elegant way is to implement my own Eq instance, starting with</p>\n\n<pre><code>instance Eq MyType where\n    Any == _ = True\n    _ == Any = True\n</code></pre>\n\n<p>But now I don't see a way of avoiding repetitive and silly code like</p>\n\n<pre><code>    A == A = True\n    B == B = True\n    ...\n</code></pre>\n\n<p>I though of \"abusing\" the show function and just do <code>x == y = (show x) == (show y)</code> but is there a cleaner way? </p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "sqlite",
+                "date",
+                "lubridate"
+            ],
+            "owner": {
+                "reputation": 420,
+                "user_id": 3775577,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://www.gravatar.com/avatar/2804dff0ffa1f7887e4d69355407a8bd?s=128&d=identicon&r=PG&f=1",
+                "display_name": "mickkk",
+                "link": "https://stackoverflow.com/users/3775577/mickkk"
+            },
+            "is_answered": true,
+            "view_count": 18,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526431828,
+            "creation_date": 1526423220,
+            "question_id": 50359997,
+            "body_markdown": "Suppose you are storing a dataframe that contains dates in a sqlite database using the following code:\r\n\r\n    df &lt;- data.frame(d = lubridate::as_date(1:30))\r\n    mydb &lt;- DBI::dbConnect(RSQLite::SQLite(), &quot;database.db&quot;)\r\n    DBI::dbWriteTable(mydb, &quot;mytable&quot;, df)\r\n    DBI::dbDisconnect(mydb)\r\n\r\nmy understanding is that a conversion such as\r\n\r\n    as.numeric(df$d)\r\n\r\nis performed before saving the data into the sqlite database. Is this correct? Why is the numeric conversion instead of the string conversion preferred?",
+            "link": "https://stackoverflow.com/questions/50359997/how-is-a-lubridate-date-object-converted-when-storing-a-dataframe-into-a-sqlite",
+            "title": "How is a lubridate date object converted when storing a dataframe into a SQLite database in R?",
+            "body": "<p>Suppose you are storing a dataframe that contains dates in a sqlite database using the following code:</p>\n\n<pre><code>df &lt;- data.frame(d = lubridate::as_date(1:30))\nmydb &lt;- DBI::dbConnect(RSQLite::SQLite(), \"database.db\")\nDBI::dbWriteTable(mydb, \"mytable\", df)\nDBI::dbDisconnect(mydb)\n</code></pre>\n\n<p>my understanding is that a conversion such as</p>\n\n<pre><code>as.numeric(df$d)\n</code></pre>\n\n<p>is performed before saving the data into the sqlite database. Is this correct? Why is the numeric conversion instead of the string conversion preferred?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "arrays",
+                "multidimensional-array",
+                "syntax"
+            ],
+            "owner": {
+                "reputation": 21,
+                "user_id": 9715217,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2456ba6875599c1c8998663a4d23ec58?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Paul",
+                "link": "https://stackoverflow.com/users/9715217/paul"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526431812,
+            "creation_date": 1526431221,
+            "question_id": 50360943,
+            "body_markdown": "## Background ##\nThis is a 2d array.-\n\n`String[][] names = { {&quot;Sam&quot;, &quot;Smith&quot;}, {&quot;Robert&quot;, &quot;Delgro&quot;}, {&quot;James&quot;, &quot;Gosling&quot;}, }; `\n\nI can access the rows by calling this:\n`names[n]`\nWhere n is any integer between the bounds and in this case **0&lt;=`n`&lt;=names.length-1**.\n*Likewise*\nI can call this\n`String [] rowOne = names[0];`\n\n\n----------\n##Inquiry ##\nThe question now remains,instead of rows, is there a way to access a *specific* column in the same way a *specific* row is accessed.\n\n\n----------\n## Feedback ##\nI would like feedback on this suggestion. \nIn the particular case of accessing a column in a **2d array**,`names[][x]`would be the declaration to call a specific column,where **0&lt;=`x`&lt;=names[0].length-1**.\n\n`String[] columnOne = names[][0]`\n\nThis would mean that `names.length` would be *equivalent* to calling `names[][x].length`\n\nThis could also work for arrays **greater** than a *2d array*.\n\n`String[][][]names = { {{&quot;Sam&quot;, &quot;Smith&quot;}, {&quot;Robert&quot;, &quot;Delgro&quot;}}, {{&quot;James&quot;, &quot;Gosling&quot;}}}; `\n\nJust add extra square brackets.\n\n*For example* In a 3d array, to access an **aisle**, which is what I will refer to the **3rd dimension**.\n`names[][][z]`, where **0&lt;=`z`&lt;= names[0][1].length-1**\n\n\nOne dimensional arrays from multi-dimensional arrays.\n   ",
+            "link": "https://stackoverflow.com/questions/50360943/why-can-i-not-get-a-one-dimensional-array-of-a-column-as-easy-as-a-row",
+            "title": "Why can I not get a one dimensional array of a column as easy as a row?",
+            "body": "<h2>Background</h2>\n\n<p>This is a 2d array.-</p>\n\n<p><code>String[][] names = { {\"Sam\", \"Smith\"}, {\"Robert\", \"Delgro\"}, {\"James\", \"Gosling\"}, };</code></p>\n\n<p>I can access the rows by calling this:\n<code>names[n]</code>\nWhere n is any integer between the bounds and in this case <strong>0&lt;=<code>n</code>&lt;=names.length-1</strong>.\n<em>Likewise</em>\nI can call this\n<code>String [] rowOne = names[0];</code></p>\n\n<hr>\n\n<h2>Inquiry</h2>\n\n<p>The question now remains,instead of rows, is there a way to access a <em>specific</em> column in the same way a <em>specific</em> row is accessed.</p>\n\n<hr>\n\n<h2>Feedback</h2>\n\n<p>I would like feedback on this suggestion. \nIn the particular case of accessing a column in a <strong>2d array</strong>,<code>names[][x]</code>would be the declaration to call a specific column,where <strong>0&lt;=<code>x</code>&lt;=names[0].length-1</strong>.</p>\n\n<p><code>String[] columnOne = names[][0]</code></p>\n\n<p>This would mean that <code>names.length</code> would be <em>equivalent</em> to calling <code>names[][x].length</code></p>\n\n<p>This could also work for arrays <strong>greater</strong> than a <em>2d array</em>.</p>\n\n<p><code>String[][][]names = { {{\"Sam\", \"Smith\"}, {\"Robert\", \"Delgro\"}}, {{\"James\", \"Gosling\"}}};</code></p>\n\n<p>Just add extra square brackets.</p>\n\n<p><em>For example</em> In a 3d array, to access an <strong>aisle</strong>, which is what I will refer to the <strong>3rd dimension</strong>.\n<code>names[][][z]</code>, where <strong>0&lt;=<code>z</code>&lt;= names[0][1].length-1</strong></p>\n\n<p>One dimensional arrays from multi-dimensional arrays.</p>\n"
+        },
+        {
+            "tags": [
+                "chef",
+                "chef-recipe",
+                "cookbook"
+            ],
+            "owner": {
+                "reputation": 26,
+                "user_id": 7387029,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/c97ae40b1e69f860fa2d85f6ee0f4aa5?s=128&d=identicon&r=PG&f=1",
+                "display_name": "anish anil",
+                "link": "https://stackoverflow.com/users/7387029/anish-anil"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526431800,
+            "creation_date": 1525284531,
+            "last_edit_date": 1525291118,
+            "question_id": 50140991,
+            "body_markdown": "I have the below recipe which executes a power shell command:\r\n\r\n    powershell_script &#39;Install&#39; do\r\n\t\tcwd &#39;C:\\scripts&#39;\r\n\t    code &lt;&lt;-EOH\r\n\t    powershell C:\\\\scripts\\\\pair.ps1 -repo-host #{repohost} -repo-dir #{repodir} -repo-https-port #{repohttpsport} -management-server #{managementserver} -activation-code #{activationcode} -env #{env} -loc #{loc} -role #{role} -app #{app}; Set-ExecutionPolicy -Scope process undefined -Force;\r\n\t    EOH\r\n\tend\r\n\r\nThe recipe basically downloads a pair.sh file from the internet and stores it in the c:\\scripts directory.\r\nThis is achieved in the first part of the cookbook.\r\n\r\nDuring the bootstrap it is added to the node and post bootstrap it runs the chef-client as part of the botstrap and it fails with the below errors:\r\n\r\n    ec2-13-232-54-174.ap-south-1.compute.amazonaws.com     Error executing action `run` on resource &#39;powershell_script[Insta\r\n    ll]&#39;\r\n    ec2-13-232-54-174.ap-south-1.compute.amazonaws.com     =================================================================\r\n    ===============\r\n    ec2-13-232-54-174.ap-south-1.compute.amazonaws.com\r\n    ec2-13-232-54-174.ap-south-1.compute.amazonaws.com     **\r\n    \r\n     - Mixlib::ShellOut::ShellCommandFailed\r\n    \r\n    **\r\n    ec2-13-232-54-174.ap-south-1.compute.amazonaws.com     ------------------------------------\r\n    ec2-13-232-54-174.ap-south-1.compute.amazonaws.com     Expected process to exit with [0], but received &#39;1&#39;\r\n    ec2-13-232-54-174.ap-south-1.compute.amazonaws.com     ---- Begin output of &quot;powershell.exe&quot; -NoLogo -NonInteractive -No\r\n    Profile -ExecutionPolicy Bypass -InputFormat None -Command &quot;. &#39;C:/Users/ADMINI~1/AppData/Local/Temp/chef_powershell_scri\r\n    pt-user-code20180502-2840-7o4rwn.ps1&#39;&quot; ----\r\n    ec2-13-232-54-174.ap-south-1.compute.amazonaws.com     STDOUT:\r\n    ec2-13-232-54-174.ap-south-1.compute.amazonaws.com     STDERR: Thread failed to start.\r\n    ec2-13-232-54-174.ap-south-1.compute.amazonaws.com     ---- End output of &quot;powershell.exe&quot; -NoLogo -NonInteractive -NoPr\r\n    ofile -ExecutionPolicy Bypass -InputFormat None -Command &quot;. &#39;C:/Users/ADMINI~1/AppData/Local/Temp/chef_powershell_script\r\n    -user-code20180502-2840-7o4rwn.ps1&#39;&quot; ----\r\n    ec2-13-232-54-174.ap-south-1.compute.amazonaws.com     Ran &quot;powershell.exe&quot; -NoLogo -NonInteractive -NoProfile -Executio\r\n    nPolicy Bypass -InputFormat None -Command &quot;. &#39;C:/Users/ADMINI~1/AppData/Local/Temp/chef_powershell_script-user-code20180\r\n    502-2840-7o4rwn.ps1&#39;&quot; returned 1\r\n    ec2-13-232-54-174.ap-south-1.compute.amazonaws.com [2018-05-02T17:49:46+00:00] FATAL: Mixlib::ShellOut::ShellCommandFail\r\n    ed: powershell_script[Install] (illumio2::default line 39) had an error: Mixlib::ShellOut::ShellCommandFailed: Expected\r\n    process to exit with [0], but received &#39;1&#39;\r\n    ERROR: Failed to execute command on ec2-13-232-54-174.ap-south-1.compute.amazonaws.com return code 1\r\n    ERROR: Bootstrap command returned 1 \r\n\r\nOnce the bootstrap fails, when i manually run the chef-clinet run on this node this completes successfully.\r\n\r\nIt is a strange behavior that it fails during bootstrap but the same command works on the first chef-client run\r\n\r\nAny leads on fixing this error is greatly appreciated\r\n\r\nThank you\r\n",
+            "link": "https://stackoverflow.com/questions/50140991/powershell-scripts-fails-during-bootstrap-but-works-post-first-chef-client-run",
+            "title": "Powershell scripts fails during bootstrap but works post first chef-client run",
+            "body": "<p>I have the below recipe which executes a power shell command:</p>\n\n<pre><code>powershell_script 'Install' do\n    cwd 'C:\\scripts'\n    code &lt;&lt;-EOH\n    powershell C:\\\\scripts\\\\pair.ps1 -repo-host #{repohost} -repo-dir #{repodir} -repo-https-port #{repohttpsport} -management-server #{managementserver} -activation-code #{activationcode} -env #{env} -loc #{loc} -role #{role} -app #{app}; Set-ExecutionPolicy -Scope process undefined -Force;\n    EOH\nend\n</code></pre>\n\n<p>The recipe basically downloads a pair.sh file from the internet and stores it in the c:\\scripts directory.\nThis is achieved in the first part of the cookbook.</p>\n\n<p>During the bootstrap it is added to the node and post bootstrap it runs the chef-client as part of the botstrap and it fails with the below errors:</p>\n\n<pre><code>ec2-13-232-54-174.ap-south-1.compute.amazonaws.com     Error executing action `run` on resource 'powershell_script[Insta\nll]'\nec2-13-232-54-174.ap-south-1.compute.amazonaws.com     =================================================================\n===============\nec2-13-232-54-174.ap-south-1.compute.amazonaws.com\nec2-13-232-54-174.ap-south-1.compute.amazonaws.com     **\n\n - Mixlib::ShellOut::ShellCommandFailed\n\n**\nec2-13-232-54-174.ap-south-1.compute.amazonaws.com     ------------------------------------\nec2-13-232-54-174.ap-south-1.compute.amazonaws.com     Expected process to exit with [0], but received '1'\nec2-13-232-54-174.ap-south-1.compute.amazonaws.com     ---- Begin output of \"powershell.exe\" -NoLogo -NonInteractive -No\nProfile -ExecutionPolicy Bypass -InputFormat None -Command \". 'C:/Users/ADMINI~1/AppData/Local/Temp/chef_powershell_scri\npt-user-code20180502-2840-7o4rwn.ps1'\" ----\nec2-13-232-54-174.ap-south-1.compute.amazonaws.com     STDOUT:\nec2-13-232-54-174.ap-south-1.compute.amazonaws.com     STDERR: Thread failed to start.\nec2-13-232-54-174.ap-south-1.compute.amazonaws.com     ---- End output of \"powershell.exe\" -NoLogo -NonInteractive -NoPr\nofile -ExecutionPolicy Bypass -InputFormat None -Command \". 'C:/Users/ADMINI~1/AppData/Local/Temp/chef_powershell_script\n-user-code20180502-2840-7o4rwn.ps1'\" ----\nec2-13-232-54-174.ap-south-1.compute.amazonaws.com     Ran \"powershell.exe\" -NoLogo -NonInteractive -NoProfile -Executio\nnPolicy Bypass -InputFormat None -Command \". 'C:/Users/ADMINI~1/AppData/Local/Temp/chef_powershell_script-user-code20180\n502-2840-7o4rwn.ps1'\" returned 1\nec2-13-232-54-174.ap-south-1.compute.amazonaws.com [2018-05-02T17:49:46+00:00] FATAL: Mixlib::ShellOut::ShellCommandFail\ned: powershell_script[Install] (illumio2::default line 39) had an error: Mixlib::ShellOut::ShellCommandFailed: Expected\nprocess to exit with [0], but received '1'\nERROR: Failed to execute command on ec2-13-232-54-174.ap-south-1.compute.amazonaws.com return code 1\nERROR: Bootstrap command returned 1 \n</code></pre>\n\n<p>Once the bootstrap fails, when i manually run the chef-clinet run on this node this completes successfully.</p>\n\n<p>It is a strange behavior that it fails during bootstrap but the same command works on the first chef-client run</p>\n\n<p>Any leads on fixing this error is greatly appreciated</p>\n\n<p>Thank you</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "python",
+                "django",
+                "django-forms",
+                "django-templates"
+            ],
+            "owner": {
+                "reputation": 42,
+                "user_id": 2533293,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/62c4dd7aaf4f2cb3852394feffa2106e?s=128&d=identicon&r=PG",
+                "display_name": "Ayush Srivastava",
+                "link": "https://stackoverflow.com/users/2533293/ayush-srivastava"
+            },
+            "is_answered": false,
+            "view_count": 325,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526431786,
+            "creation_date": 1469873171,
+            "last_edit_date": 1469873850,
+            "question_id": 38672675,
+            "body_markdown": "I am using the following code to &#39;select all&#39; and &#39;clear&#39; the checkboxes of my django form in the django template. \r\n\r\n     &lt;form id=&quot;inv_form&quot; method=&quot;post&quot; action=&quot;{% url &#39;inventory:create_inventory&#39; %}&quot;&gt;\r\n         {% csrf_token %}\r\n         {{ form.as_p }}\r\n         &lt;input type=&quot;submit&quot; name=&quot;submit&quot; value=&quot;Create Inventory&quot; /&gt;\r\n         &lt;a href=&quot;{% url &#39;user:dashboard&#39; %}&quot;&gt;Cancel&lt;/a&gt;\r\n         &lt;button onclick=&quot;select_all()&quot;&gt;Select All&lt;/button&gt;\r\n         &lt;button onclick=&quot;deselect_all()&quot;&gt;Clear&lt;/button&gt;\r\n      &lt;/form&gt;\r\n\r\n      function select_all()  {\r\n         $(&#39;input[type=checkbox]&#39;).prop(&#39;checked&#39;, true);\r\n      }\r\n\r\n      function deselect_all()  {\r\n         $(&#39;input[type=checkbox]&#39;).prop(&#39;checked&#39;, false);\r\n      }\r\n\r\nThe problem is the form is getting automatically posted if I press &#39;check all&#39; button. Same in case of &#39;clear&#39; button.  \r\n\r\nSo I tried adding preventDefault() to my form submit event.\r\n\r\n      $(&quot;#inv_form&quot;).submit(function(event){\r\n         event.preventDefault();\r\n      });\r\n\r\nNow the original problem has been solved, but the submit doesn&#39;t works even on clicking at all.\r\n\r\nHow to make the check all button work without auto posting the django form \r\n  \r\n",
+            "link": "https://stackoverflow.com/questions/38672675/select-all-checkboxes-in-django-template",
+            "title": "Select all checkboxes in django template",
+            "body": "<p>I am using the following code to 'select all' and 'clear' the checkboxes of my django form in the django template. </p>\n\n<pre><code> &lt;form id=\"inv_form\" method=\"post\" action=\"{% url 'inventory:create_inventory' %}\"&gt;\n     {% csrf_token %}\n     {{ form.as_p }}\n     &lt;input type=\"submit\" name=\"submit\" value=\"Create Inventory\" /&gt;\n     &lt;a href=\"{% url 'user:dashboard' %}\"&gt;Cancel&lt;/a&gt;\n     &lt;button onclick=\"select_all()\"&gt;Select All&lt;/button&gt;\n     &lt;button onclick=\"deselect_all()\"&gt;Clear&lt;/button&gt;\n  &lt;/form&gt;\n\n  function select_all()  {\n     $('input[type=checkbox]').prop('checked', true);\n  }\n\n  function deselect_all()  {\n     $('input[type=checkbox]').prop('checked', false);\n  }\n</code></pre>\n\n<p>The problem is the form is getting automatically posted if I press 'check all' button. Same in case of 'clear' button.  </p>\n\n<p>So I tried adding preventDefault() to my form submit event.</p>\n\n<pre><code>  $(\"#inv_form\").submit(function(event){\n     event.preventDefault();\n  });\n</code></pre>\n\n<p>Now the original problem has been solved, but the submit doesn't works even on clicking at all.</p>\n\n<p>How to make the check all button work without auto posting the django form </p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "datetime"
+            ],
+            "owner": {
+                "reputation": 84,
+                "user_id": 5105773,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://graph.facebook.com/10155726797595231/picture?type=large",
+                "display_name": "Will Dutcher",
+                "link": "https://stackoverflow.com/users/5105773/will-dutcher"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": 3,
+            "last_activity_date": 1526431781,
+            "creation_date": 1526431331,
+            "last_edit_date": 1526431781,
+            "question_id": 50360954,
+            "body_markdown": "Can anyone tell me why I&#39;m having problems with Python programs showing the incorrect time (it&#39;s giving me +5 hrs).\r\n\r\nMy computer is set correctly for EST. For example, if I went into cygdrive or cmd or powershell and then open up a python command line and do the following, I get the correct time:\r\n\r\n    &gt;&gt;&gt; from datetime import datetime\r\n    &gt;&gt;&gt; print(datetime.now())\r\n    2018-05-15 20:29:28.360810\r\n\r\nHowever, if I try to run that same line of code within a .py file and from cygdrive, cmd, or powershell run the below code, I get the wrong date/time:\r\n\r\n---In the &#39;test.py&#39; file---\r\n\r\n    from datetime import datetime\r\n    print(datetime.now())\r\n\r\n\r\n**python test.py**\r\n\r\n2018-05-16 01:29:49.636899\r\n\r\nAny clues what&#39;s going on? \r\n\r\nBTW, I&#39;m also getting an error trying to import **pytz**, however when I try a pip install, I get &#39;requirement already satisfied&#39; with the filepath showing where it is located. Just an FYI, more than anything.\r\n\r\nThank you!\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50360954/time-zone-difference-between-running-py-file-and-directly-interacting-with-pyth",
+            "title": "Time Zone difference between running .py file and directly interacting with Python",
+            "body": "<p>Can anyone tell me why I'm having problems with Python programs showing the incorrect time (it's giving me +5 hrs).</p>\n\n<p>My computer is set correctly for EST. For example, if I went into cygdrive or cmd or powershell and then open up a python command line and do the following, I get the correct time:</p>\n\n<pre><code>&gt;&gt;&gt; from datetime import datetime\n&gt;&gt;&gt; print(datetime.now())\n2018-05-15 20:29:28.360810\n</code></pre>\n\n<p>However, if I try to run that same line of code within a .py file and from cygdrive, cmd, or powershell run the below code, I get the wrong date/time:</p>\n\n<p>---In the 'test.py' file---</p>\n\n<pre><code>from datetime import datetime\nprint(datetime.now())\n</code></pre>\n\n<p><strong>python test.py</strong></p>\n\n<p>2018-05-16 01:29:49.636899</p>\n\n<p>Any clues what's going on? </p>\n\n<p>BTW, I'm also getting an error trying to import <strong>pytz</strong>, however when I try a pip install, I get 'requirement already satisfied' with the filepath showing where it is located. Just an FYI, more than anything.</p>\n\n<p>Thank you!</p>\n"
+        },
+        {
+            "tags": [
+                "amazon-web-services",
+                "ip",
+                "amazon-rds"
+            ],
+            "owner": {
+                "reputation": 1264,
+                "user_id": 2859248,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/Bb6z1.jpg?s=128&g=1",
+                "display_name": "Yaki Klein",
+                "link": "https://stackoverflow.com/users/2859248/yaki-klein"
+            },
+            "is_answered": true,
+            "view_count": 3698,
+            "accepted_answer_id": 27898832,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1526431755,
+            "creation_date": 1421053711,
+            "last_edit_date": 1429470836,
+            "question_id": 27898456,
+            "body_markdown": "I have an RDS instance with a URL that was provided by Amazon. (This URL has an IP that&#39;s associated with (of course)).\r\n\r\nTo make connecting to the DB easier I made a redirect from my domain like this: &quot;**db.myDomain.com**&quot; to the IP of the DB Instance.\r\n\r\nFor a week it all worked fine, but then, suddenly, it stopped working. After searching for a few hours, I have realized that the IP I was redirecting to was not the same as the IP of the instance.\r\n\r\nThis made me think that maybe the IPs on RDS are dynamic and the only way to access the DB is with the URL provided by Amazon. \r\n\r\nIs this correct? If so, is there away to redirect from one URL to another? ",
+            "link": "https://stackoverflow.com/questions/27898456/aws-rds-ip-static-or-dynamic",
+            "title": "AWS RDS IP static or dynamic?",
+            "body": "<p>I have an RDS instance with a URL that was provided by Amazon. (This URL has an IP that's associated with (of course)).</p>\n\n<p>To make connecting to the DB easier I made a redirect from my domain like this: \"<strong>db.myDomain.com</strong>\" to the IP of the DB Instance.</p>\n\n<p>For a week it all worked fine, but then, suddenly, it stopped working. After searching for a few hours, I have realized that the IP I was redirecting to was not the same as the IP of the instance.</p>\n\n<p>This made me think that maybe the IPs on RDS are dynamic and the only way to access the DB is with the URL provided by Amazon. </p>\n\n<p>Is this correct? If so, is there away to redirect from one URL to another? </p>\n"
+        },
+        {
+            "tags": [
+                "scala",
+                "playframework",
+                "reactivemongo"
+            ],
+            "owner": {
+                "reputation": 435,
+                "user_id": 979457,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://www.gravatar.com/avatar/5f269d8aefa0560682be6d8910c166ad?s=128&d=identicon&r=PG",
+                "display_name": "schub",
+                "link": "https://stackoverflow.com/users/979457/schub"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526431740,
+            "creation_date": 1526391697,
+            "question_id": 50351807,
+            "body_markdown": "I&#39;m using reactivemongo with play framework. I used to have a query which uses the aggregation framework and it worked as expected. Since updated to version 0.13.0 I get errors executing the query.\r\n\r\nThe class looks like this:\r\n\r\n    class Foo(\r\n      id: Option[UUID],\r\n      obj: UUID,\r\n      lm: Date\r\n    )\r\n\r\nI want to give the query a list of UUIDs which match the `obj` property but only the latest according to `lm` property.\r\n\r\nThe result of that query should be mapped to a list of class `Bar` which looks like this:\r\n\r\n    class Bar(\r\n      obj: UUID,\r\n      ts: Date\r\n    )\r\n\r\nThe query looks like this (assuming `col` is a `JSONCollection` of the entity `Foo` and `ids` is a list of UUIDs.\r\n\r\n    import col.BatchCommands.AggregationFramework._\r\n    \r\n    col\r\n        .aggregate(\r\n          Match(Json.obj(&quot;obj&quot; -&gt; Json.obj(&quot;$in&quot; -&gt; ids.map(_.toString)))),\r\n          List(\r\n            Sort(Descending(&quot;lm&quot;)),\r\n            Group(JsString(&quot;$obj&quot;))(&quot;obj&quot; -&gt; FirstField(&quot;obj&quot;), &quot;ts&quot; -&gt; FirstField(&quot;lm&quot;)),\r\n            Project(Json.obj(&quot;_id&quot; -&gt; 0, &quot;obj&quot; -&gt; &quot;$obj&quot;, &quot;ts&quot; -&gt; &quot;$ts&quot;))\r\n          )\r\n        )\r\n        .map(_.head[Bar])\r\n\r\nThis worked as expected until the upgrade to 0.13.0. To be more precise I use the reactivemongo play plugin `0.13.0-play26`\r\n\r\nThe error now looks like this:\r\n\r\n`play.api.http.HttpErrorHandlerExceptions$$anon$1: Execution exception[[DefaultJSONCommandError: CommandError[code=&lt;unknown&gt;, errmsg=&lt;unknown&gt;, doc: {&quot;obj&quot;:&quot;a797ec90-80d7-4b5e-b144-2454436f2b16&quot;,&quot;ts&quot;:1526390247074}]]]`\r\n\r\nUnfortunately, I could not find documentation on the reactivemongo website, it seems the docs have not been updated since 0.11.x\r\n\r\nUsing the mongo cli the query looks like this:\r\n\r\n`db.Foo.aggregate([{ $match: { obj: { $in: [&quot;&lt;uuid&gt;&quot;, &quot;&lt;uuid&gt;&quot;] } } },{ $sort: { lm: -1 } },{ $group: { _id: &quot;$obj&quot;, ts: { $first: &quot;$ts&quot; } } }]);` and it gives me the correct result.\r\n\r\nCan someone give me a hint, what I&#39;m doing wrong here?",
+            "link": "https://stackoverflow.com/questions/50351807/problems-executing-reactivemongo-aggregation-framework-query-getting-a-defaultjs",
+            "title": "Problems executing reactivemongo aggregation framework query getting a DefaultJSONCommandError",
+            "body": "<p>I'm using reactivemongo with play framework. I used to have a query which uses the aggregation framework and it worked as expected. Since updated to version 0.13.0 I get errors executing the query.</p>\n\n<p>The class looks like this:</p>\n\n<pre><code>class Foo(\n  id: Option[UUID],\n  obj: UUID,\n  lm: Date\n)\n</code></pre>\n\n<p>I want to give the query a list of UUIDs which match the <code>obj</code> property but only the latest according to <code>lm</code> property.</p>\n\n<p>The result of that query should be mapped to a list of class <code>Bar</code> which looks like this:</p>\n\n<pre><code>class Bar(\n  obj: UUID,\n  ts: Date\n)\n</code></pre>\n\n<p>The query looks like this (assuming <code>col</code> is a <code>JSONCollection</code> of the entity <code>Foo</code> and <code>ids</code> is a list of UUIDs.</p>\n\n<pre><code>import col.BatchCommands.AggregationFramework._\n\ncol\n    .aggregate(\n      Match(Json.obj(\"obj\" -&gt; Json.obj(\"$in\" -&gt; ids.map(_.toString)))),\n      List(\n        Sort(Descending(\"lm\")),\n        Group(JsString(\"$obj\"))(\"obj\" -&gt; FirstField(\"obj\"), \"ts\" -&gt; FirstField(\"lm\")),\n        Project(Json.obj(\"_id\" -&gt; 0, \"obj\" -&gt; \"$obj\", \"ts\" -&gt; \"$ts\"))\n      )\n    )\n    .map(_.head[Bar])\n</code></pre>\n\n<p>This worked as expected until the upgrade to 0.13.0. To be more precise I use the reactivemongo play plugin <code>0.13.0-play26</code></p>\n\n<p>The error now looks like this:</p>\n\n<p><code>play.api.http.HttpErrorHandlerExceptions$$anon$1: Execution exception[[DefaultJSONCommandError: CommandError[code=&lt;unknown&gt;, errmsg=&lt;unknown&gt;, doc: {\"obj\":\"a797ec90-80d7-4b5e-b144-2454436f2b16\",\"ts\":1526390247074}]]]</code></p>\n\n<p>Unfortunately, I could not find documentation on the reactivemongo website, it seems the docs have not been updated since 0.11.x</p>\n\n<p>Using the mongo cli the query looks like this:</p>\n\n<p><code>db.Foo.aggregate([{ $match: { obj: { $in: [\"&lt;uuid&gt;\", \"&lt;uuid&gt;\"] } } },{ $sort: { lm: -1 } },{ $group: { _id: \"$obj\", ts: { $first: \"$ts\" } } }]);</code> and it gives me the correct result.</p>\n\n<p>Can someone give me a hint, what I'm doing wrong here?</p>\n"
+        },
+        {
+            "tags": [
+                "amazon-s3",
+                "circleci"
+            ],
+            "owner": {
+                "reputation": 968,
+                "user_id": 2631086,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://i.stack.imgur.com/HQyBw.png?s=128&g=1",
+                "display_name": "LiranC",
+                "link": "https://stackoverflow.com/users/2631086/liranc"
+            },
+            "is_answered": true,
+            "view_count": 17,
+            "accepted_answer_id": 50360996,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526431732,
+            "creation_date": 1526253660,
+            "question_id": 50321449,
+            "body_markdown": "I need to continually build a [`create-react-app`][1] application and deploy it to Amazon S3 bucket.\r\n\r\nI have written the following CircleCi `config.yml`: \r\n\r\n    version: 2\r\n    jobs:\r\n      build:\r\n        docker:\r\n          - image: circleci/node:7.10\r\n        steps:\r\n          - checkout\r\n          - run: npm install\r\n          - run: npm run build\r\n    deployment:\r\n      prod:\r\n        branch: circle-config-test\r\n        commands: \r\n          - aws s3 sync build/ s3://http://www.typing-coacher.net.s3-website.eu-central-1.amazonaws.com/ --delete\r\n\r\n*What I think should happens:*\r\n\r\n 1. I have a docker container, I install the application, build it and the files are resting ready in `build` folder.\r\n 2. I am [running the command][2] listed in CircleCi docs and the build files are moving from the docker machine to s3 bucket. \r\n\r\n&gt; To deploy a project to S3, you can use the following command in the\r\n&gt; deployment section of circle.yml:\r\n&gt; \r\n&gt; `aws s3 sync &lt;path-to-files&gt; s3://&lt;bucket-URL&gt; --delete`\r\n\r\n\r\n*What actually happens:* \r\n\r\nApplication is being install and build files are being created, but nothing happen with deployment. it doesn&#39;t even appear on the builds console.\r\n\r\nWhat Am i missing?\r\n\r\n\r\n  [1]: https://github.com/facebook/create-react-app\r\n  [2]: https://circleci.com/docs/1.0/continuous-deployment-with-amazon-s3/",
+            "link": "https://stackoverflow.com/questions/50321449/continuous-deployment-not-working",
+            "title": "Continuous Deployment not working",
+            "body": "<p>I need to continually build a <a href=\"https://github.com/facebook/create-react-app\" rel=\"nofollow noreferrer\"><code>create-react-app</code></a> application and deploy it to Amazon S3 bucket.</p>\n\n<p>I have written the following CircleCi <code>config.yml</code>: </p>\n\n<pre><code>version: 2\njobs:\n  build:\n    docker:\n      - image: circleci/node:7.10\n    steps:\n      - checkout\n      - run: npm install\n      - run: npm run build\ndeployment:\n  prod:\n    branch: circle-config-test\n    commands: \n      - aws s3 sync build/ s3://http://www.typing-coacher.net.s3-website.eu-central-1.amazonaws.com/ --delete\n</code></pre>\n\n<p><em>What I think should happens:</em></p>\n\n<ol>\n<li>I have a docker container, I install the application, build it and the files are resting ready in <code>build</code> folder.</li>\n<li>I am <a href=\"https://circleci.com/docs/1.0/continuous-deployment-with-amazon-s3/\" rel=\"nofollow noreferrer\">running the command</a> listed in CircleCi docs and the build files are moving from the docker machine to s3 bucket. </li>\n</ol>\n\n<blockquote>\n  <p>To deploy a project to S3, you can use the following command in the\n  deployment section of circle.yml:</p>\n  \n  <p><code>aws s3 sync &lt;path-to-files&gt; s3://&lt;bucket-URL&gt; --delete</code></p>\n</blockquote>\n\n<p><em>What actually happens:</em> </p>\n\n<p>Application is being install and build files are being created, but nothing happen with deployment. it doesn't even appear on the builds console.</p>\n\n<p>What Am i missing?</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "android-fragments"
+            ],
+            "owner": {
+                "reputation": 2558,
+                "user_id": 778158,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/ba1d026be595f3cc9f9a306a4e635c65?s=128&d=identicon&r=PG",
+                "display_name": "Maurycy",
+                "link": "https://stackoverflow.com/users/778158/maurycy"
+            },
+            "is_answered": true,
+            "view_count": 93959,
+            "accepted_answer_id": 9745935,
+            "answer_count": 12,
+            "score": 97,
+            "last_activity_date": 1526431729,
+            "creation_date": 1331841286,
+            "last_edit_date": 1331929609,
+            "question_id": 9727173,
+            "body_markdown": "LATEST INFO:\r\n\r\ni have narrowed my problem down to being a problem with the fragmentManager retaining instances of old fragments and my viewpager being out of sync with my FragmentManager. See this issue... http://code.google.com/p/android/issues/detail?id=19211#makechanges . I still have no clue how to solve this. Any suggestions...\r\n\r\nI have tried to debug this for a long time and any help would be greatly appreciated. I am using a FragmentPagerAdapter which accepts a list of fragments like so:\r\n   \r\n    List&lt;Fragment&gt; fragments = new Vector&lt;Fragment&gt;();\r\n    fragments.add(Fragment.instantiate(this, Fragment1.class.getName())); \r\n    ...\r\n    new PagerAdapter(getSupportFragmentManager(), fragments);\r\n\r\nThe implementation is standard. I am using ActionBarSherlock and v4 computability library for Fragments.\r\n\r\nMy problem is that after leaving the app and opening several other applications and coming back, the fragments lose their reference back to the FragmentActivity (ie. `getActivity() == null`). I can not figure out why this is happening. I tried to manually set `setRetainInstance(true);` but this does not help. I figured that this happens when my FragmentActivity gets destroyed, however this still happens if I open the app before I get the log message. Are there any ideas?\r\n\r\n    @Override\r\n\tprotected void onDestroy(){\r\n\t\tLog.w(TAG, &quot;DESTROYDESTROYDESTROYDESTROYDESTROYDESTROYDESTROY&quot;);\r\n\t\tsuper.onDestroy();\r\n\t}\r\n\r\nThe adapter:\r\n\r\n    public class PagerAdapter extends FragmentPagerAdapter {\r\n\t\tprivate List&lt;Fragment&gt; fragments;\r\n\r\n\t\tpublic PagerAdapter(FragmentManager fm, List&lt;Fragment&gt; fragments) {\r\n\t\t\tsuper(fm);\r\n\r\n\t\t\tthis.fragments = fragments;\r\n\r\n\t\t}\r\n\r\n\t\t@Override\r\n\t\tpublic Fragment getItem(int position) {\r\n\r\n\t\t\treturn this.fragments.get(position);\r\n\r\n\t\t}\r\n\r\n\t\t@Override\r\n\t\tpublic int getCount() {\r\n\r\n\t\t\treturn this.fragments.size();\r\n\r\n\t\t}\r\n\r\n\t}\r\n\r\nOne of my Fragments stripped but i commetned everyhting out thats stripped and still doesnt work...\r\n \r\n    \r\n    public class MyFragment extends Fragment implements MyFragmentInterface, OnScrollListener {\r\n\t...\r\n\t\r\n\t@Override\r\n\tpublic void onCreate(Bundle savedInstanceState){\r\n\t\tsuper.onCreate(savedInstanceState);\r\n\t    handler = new Handler();\t\r\n\t\tsetHasOptionsMenu(true);\r\n\t}\r\n\t\r\n\t@Override\r\n    public void onAttach(Activity activity) {\r\n        super.onAttach(activity);\r\n        Log.w(TAG,&quot;ATTACHATTACHATTACHATTACHATTACH&quot;);\r\n        context = activity;\r\n        if(context== null){\r\n\t\t\tLog.e(&quot;IS NULL&quot;, &quot;NULLNULLNULLNULLNULLNULLNULLNULLNULLNULLNULL&quot;);\r\n\t\t}else{\r\n\t\t\tLog.d(&quot;IS NOT NULL&quot;, &quot;NOTNOTNOTNOTNOTNOTNOTNOT&quot;);\r\n\t\t}\r\n\r\n    }\r\n\t\r\n\t@Override\r\n\tpublic void onActivityCreated(Bundle savedState) {\r\n\t\tsuper.onActivityCreated(savedState);\r\n\t}\r\n\r\n\t@Override\r\n    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {\r\n    \tView v = inflater.inflate(R.layout.my_fragment,container, false);\r\n\r\n    \treturn v;\r\n    }\r\n\t\r\n\t\r\n\t@Override\r\n\tpublic void onResume(){\r\n\t\tsuper.onResume();\r\n\t}\r\n\t\r\n\tprivate void callService(){\r\n\t\t// do not call another service is already running\r\n\t\tif(startLoad || !canSet) return;\r\n\t\t// set flag\r\n\t\tstartLoad = true;\r\n\t\tcanSet = false;\r\n\t\t// show the bottom spinner\r\n\t\taddFooter();\r\n\t\tIntent intent = new Intent(context, MyService.class);\r\n\t\tintent.putExtra(MyService.STATUS_RECEIVER, resultReceiver);\r\n\t\tcontext.startService(intent);\r\n\t}\r\n\t\r\n\tprivate ResultReceiver resultReceiver = new ResultReceiver(null) {\r\n        @Override\r\n        protected void onReceiveResult(int resultCode, final Bundle resultData) {\r\n        \tboolean isSet = false;\r\n        \tif(resultData!=null)\r\n        \tif(resultData.containsKey(MyService.STATUS_FINISHED_GET)){\r\n        \t\tif(resultData.getBoolean(MyService.STATUS_FINISHED_GET)){\r\n        \t\t\tremoveFooter();\r\n        \t\t\tstartLoad = false;\r\n        \t\t\tisSet = true;\r\n        \t\t}\r\n        \t}\r\n\r\n        \tswitch(resultCode){\r\n        \tcase MyService.STATUS_FINISHED: \r\n        \t\tstopSpinning();\r\n        \t\tbreak;\r\n        \tcase SyncService.STATUS_RUNNING:\r\n        \t\tbreak;\r\n        \tcase SyncService.STATUS_ERROR:\r\n        \t\tbreak;\r\n        \t}\r\n        }\r\n    };\r\n    \r\n\tpublic void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {\r\n\t\tmenu.clear();\r\n\t\tinflater.inflate(R.menu.activity, menu);\r\n    }\r\n\t\r\n\t@Override\r\n\tpublic void onPause(){\r\n\t\tsuper.onPause();\r\n\t}\r\n\t\r\n\tpublic void onScroll(AbsListView arg0, int firstVisible, int visibleCount, int totalCount) {\r\n        boolean loadMore = /* maybe add a padding */\r\n            firstVisible + visibleCount &gt;= totalCount;\r\n            \r\n        boolean away = firstVisible+ visibleCount &lt;= totalCount - visibleCount;\r\n            \r\n        if(away){\r\n        \t// startLoad can now be set again\r\n        \tcanSet = true;\r\n        }\r\n            \r\n        if(loadMore) \r\n        \t\r\n\t}\r\n\t\r\n\tpublic void onScrollStateChanged(AbsListView arg0, int state) {\r\n\t\tswitch(state){\r\n\t\tcase OnScrollListener.SCROLL_STATE_FLING: \r\n\t\t\tadapter.setLoad(false); \r\n\t\t\tlastState = OnScrollListener.SCROLL_STATE_FLING;\r\n\t\t\tbreak;\r\n\t\tcase OnScrollListener.SCROLL_STATE_IDLE: \r\n\t\t\tadapter.setLoad(true);\r\n\t\t\tif(lastState == SCROLL_STATE_FLING){\r\n\t\t\t\t// load the images on screen\r\n\t\t\t}\r\n\t\t\t\r\n\t\t\tlastState = OnScrollListener.SCROLL_STATE_IDLE;\r\n\t\t\tbreak;\r\n\t\tcase OnScrollListener.SCROLL_STATE_TOUCH_SCROLL:\r\n\t\t\tadapter.setLoad(true);\r\n\t\t\tif(lastState == SCROLL_STATE_FLING){\r\n\t\t\t\t// load the images on screen\r\n\t\t\t}\r\n\t\t\t\r\n\t\t\tlastState = OnScrollListener.SCROLL_STATE_TOUCH_SCROLL;\r\n\t\t\tbreak;\r\n\t\t}\r\n\t}\r\n\t\r\n\t@Override\r\n\tpublic void onDetach(){\r\n\t\tsuper.onDetach();\r\n\t\tif(this.adapter!=null)\r\n\t\t\tthis.adapter.clearContext();\r\n\t\t\r\n\t\tLog.w(TAG, &quot;DETACHEDDETACHEDDETACHEDDETACHEDDETACHEDDETACHED&quot;);\r\n\t}\r\n\t\r\n\tpublic void update(final int id, String name) {\r\n\t\tif(name!=null){\r\n\t\t\tgetActivity().getSupportActionBar().setTitle(name);\r\n\t\t}\r\n\t\t\r\n\t}\r\n}\r\n\r\nThe update method is called when a user interacts with a different fragment and the getActivity is returning null. Here is the method the other fragment is calling...\r\n\r\n    ((MyFragment) pagerAdapter.getItem(1)).update(id, name);\r\n\r\nI believe that when the app is destroyed then created again instead of just starting the app up to the default fragment the app starts up and then viewpager navigates to the last known page. This seems strange, shouldn&#39;t the app just load to the default fragment? ",
+            "link": "https://stackoverflow.com/questions/9727173/support-fragmentpageradapter-holds-reference-to-old-fragments",
+            "title": "support FragmentPagerAdapter holds reference to old fragments",
+            "body": "<p>LATEST INFO:</p>\n\n<p>i have narrowed my problem down to being a problem with the fragmentManager retaining instances of old fragments and my viewpager being out of sync with my FragmentManager. See this issue... <a href=\"http://code.google.com/p/android/issues/detail?id=19211#makechanges\" rel=\"noreferrer\">http://code.google.com/p/android/issues/detail?id=19211#makechanges</a> . I still have no clue how to solve this. Any suggestions...</p>\n\n<p>I have tried to debug this for a long time and any help would be greatly appreciated. I am using a FragmentPagerAdapter which accepts a list of fragments like so:</p>\n\n<pre><code>List&lt;Fragment&gt; fragments = new Vector&lt;Fragment&gt;();\nfragments.add(Fragment.instantiate(this, Fragment1.class.getName())); \n...\nnew PagerAdapter(getSupportFragmentManager(), fragments);\n</code></pre>\n\n<p>The implementation is standard. I am using ActionBarSherlock and v4 computability library for Fragments.</p>\n\n<p>My problem is that after leaving the app and opening several other applications and coming back, the fragments lose their reference back to the FragmentActivity (ie. <code>getActivity() == null</code>). I can not figure out why this is happening. I tried to manually set <code>setRetainInstance(true);</code> but this does not help. I figured that this happens when my FragmentActivity gets destroyed, however this still happens if I open the app before I get the log message. Are there any ideas?</p>\n\n<pre><code>@Override\nprotected void onDestroy(){\n    Log.w(TAG, \"DESTROYDESTROYDESTROYDESTROYDESTROYDESTROYDESTROY\");\n    super.onDestroy();\n}\n</code></pre>\n\n<p>The adapter:</p>\n\n<pre><code>public class PagerAdapter extends FragmentPagerAdapter {\n    private List&lt;Fragment&gt; fragments;\n\n    public PagerAdapter(FragmentManager fm, List&lt;Fragment&gt; fragments) {\n        super(fm);\n\n        this.fragments = fragments;\n\n    }\n\n    @Override\n    public Fragment getItem(int position) {\n\n        return this.fragments.get(position);\n\n    }\n\n    @Override\n    public int getCount() {\n\n        return this.fragments.size();\n\n    }\n\n}\n</code></pre>\n\n<p>One of my Fragments stripped but i commetned everyhting out thats stripped and still doesnt work...</p>\n\n<pre><code>public class MyFragment extends Fragment implements MyFragmentInterface, OnScrollListener {\n...\n\n@Override\npublic void onCreate(Bundle savedInstanceState){\n    super.onCreate(savedInstanceState);\n    handler = new Handler();    \n    setHasOptionsMenu(true);\n}\n\n@Override\npublic void onAttach(Activity activity) {\n    super.onAttach(activity);\n    Log.w(TAG,\"ATTACHATTACHATTACHATTACHATTACH\");\n    context = activity;\n    if(context== null){\n        Log.e(\"IS NULL\", \"NULLNULLNULLNULLNULLNULLNULLNULLNULLNULLNULL\");\n    }else{\n        Log.d(\"IS NOT NULL\", \"NOTNOTNOTNOTNOTNOTNOTNOT\");\n    }\n\n}\n\n@Override\npublic void onActivityCreated(Bundle savedState) {\n    super.onActivityCreated(savedState);\n}\n\n@Override\npublic View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {\n    View v = inflater.inflate(R.layout.my_fragment,container, false);\n\n    return v;\n}\n\n\n@Override\npublic void onResume(){\n    super.onResume();\n}\n\nprivate void callService(){\n    // do not call another service is already running\n    if(startLoad || !canSet) return;\n    // set flag\n    startLoad = true;\n    canSet = false;\n    // show the bottom spinner\n    addFooter();\n    Intent intent = new Intent(context, MyService.class);\n    intent.putExtra(MyService.STATUS_RECEIVER, resultReceiver);\n    context.startService(intent);\n}\n\nprivate ResultReceiver resultReceiver = new ResultReceiver(null) {\n    @Override\n    protected void onReceiveResult(int resultCode, final Bundle resultData) {\n        boolean isSet = false;\n        if(resultData!=null)\n        if(resultData.containsKey(MyService.STATUS_FINISHED_GET)){\n            if(resultData.getBoolean(MyService.STATUS_FINISHED_GET)){\n                removeFooter();\n                startLoad = false;\n                isSet = true;\n            }\n        }\n\n        switch(resultCode){\n        case MyService.STATUS_FINISHED: \n            stopSpinning();\n            break;\n        case SyncService.STATUS_RUNNING:\n            break;\n        case SyncService.STATUS_ERROR:\n            break;\n        }\n    }\n};\n\npublic void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {\n    menu.clear();\n    inflater.inflate(R.menu.activity, menu);\n}\n\n@Override\npublic void onPause(){\n    super.onPause();\n}\n\npublic void onScroll(AbsListView arg0, int firstVisible, int visibleCount, int totalCount) {\n    boolean loadMore = /* maybe add a padding */\n        firstVisible + visibleCount &gt;= totalCount;\n\n    boolean away = firstVisible+ visibleCount &lt;= totalCount - visibleCount;\n\n    if(away){\n        // startLoad can now be set again\n        canSet = true;\n    }\n\n    if(loadMore) \n\n}\n\npublic void onScrollStateChanged(AbsListView arg0, int state) {\n    switch(state){\n    case OnScrollListener.SCROLL_STATE_FLING: \n        adapter.setLoad(false); \n        lastState = OnScrollListener.SCROLL_STATE_FLING;\n        break;\n    case OnScrollListener.SCROLL_STATE_IDLE: \n        adapter.setLoad(true);\n        if(lastState == SCROLL_STATE_FLING){\n            // load the images on screen\n        }\n\n        lastState = OnScrollListener.SCROLL_STATE_IDLE;\n        break;\n    case OnScrollListener.SCROLL_STATE_TOUCH_SCROLL:\n        adapter.setLoad(true);\n        if(lastState == SCROLL_STATE_FLING){\n            // load the images on screen\n        }\n\n        lastState = OnScrollListener.SCROLL_STATE_TOUCH_SCROLL;\n        break;\n    }\n}\n\n@Override\npublic void onDetach(){\n    super.onDetach();\n    if(this.adapter!=null)\n        this.adapter.clearContext();\n\n    Log.w(TAG, \"DETACHEDDETACHEDDETACHEDDETACHEDDETACHEDDETACHED\");\n}\n\npublic void update(final int id, String name) {\n    if(name!=null){\n        getActivity().getSupportActionBar().setTitle(name);\n    }\n\n}\n</code></pre>\n\n<p>}</p>\n\n<p>The update method is called when a user interacts with a different fragment and the getActivity is returning null. Here is the method the other fragment is calling...</p>\n\n<pre><code>((MyFragment) pagerAdapter.getItem(1)).update(id, name);\n</code></pre>\n\n<p>I believe that when the app is destroyed then created again instead of just starting the app up to the default fragment the app starts up and then viewpager navigates to the last known page. This seems strange, shouldn't the app just load to the default fragment? </p>\n"
+        },
+        {
+            "tags": [
+                "vbscript",
+                "barcode-printing"
+            ],
+            "owner": {
+                "reputation": 104,
+                "user_id": 2174943,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/890ff89107fa39772acbac71405d51ea?s=128&d=identicon&r=PG",
+                "display_name": "arana",
+                "link": "https://stackoverflow.com/users/2174943/arana"
+            },
+            "is_answered": true,
+            "view_count": 30,
+            "accepted_answer_id": 50360992,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1526431704,
+            "creation_date": 1525366132,
+            "question_id": 50160160,
+            "body_markdown": "I have a requirement for a container label, that will have a QR code, part of the code will be a **&quot;3-digit date index starting from 1/1/2017. For example, 1/1/2017 is 000 and 1/31/2017 is 00U. This is the date when Content Label is printed or the parts manufacturing date.:&quot;** I dont know if this date index code is some standard , but if it is I cannot find it anywhere, I need a way to generate it from within bartender barcode software which has vbscript support for when this custom requirements arise, how can we generate this? I was thinking of creating a string containing 0-10 and a-z and then searching for the nth ocurrence (30 in the example given) would give me the U, but I don&#39;t know how to handle the middle and leftmost digits once I reach more than 36, like creating my own 39tecimal (is that even a thing) numerical system. ",
+            "link": "https://stackoverflow.com/questions/50160160/generate-3-digit-alphanumeric-date-index",
+            "title": "Generate 3 digit alphanumeric DATE INDEX",
+            "body": "<p>I have a requirement for a container label, that will have a QR code, part of the code will be a <strong>\"3-digit date index starting from 1/1/2017. For example, 1/1/2017 is 000 and 1/31/2017 is 00U. This is the date when Content Label is printed or the parts manufacturing date.:\"</strong> I dont know if this date index code is some standard , but if it is I cannot find it anywhere, I need a way to generate it from within bartender barcode software which has vbscript support for when this custom requirements arise, how can we generate this? I was thinking of creating a string containing 0-10 and a-z and then searching for the nth ocurrence (30 in the example given) would give me the U, but I don't know how to handle the middle and leftmost digits once I reach more than 36, like creating my own 39tecimal (is that even a thing) numerical system. </p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net",
+                "arrays",
+                "json",
+                "web-scraping"
+            ],
+            "owner": {
+                "reputation": 63,
+                "user_id": 9101467,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/7cf8898fbb270b8a631864f9f00fb8ed?s=128&d=identicon&r=PG&f=1",
+                "display_name": "ChakirBelhaj",
+                "link": "https://stackoverflow.com/users/9101467/chakirbelhaj"
+            },
+            "is_answered": true,
+            "view_count": 68,
+            "accepted_answer_id": 50360660,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1526431702,
+            "creation_date": 1526426393,
+            "last_edit_date": 1526428631,
+            "question_id": 50360422,
+            "body_markdown": "I am webscraping some data and trying to write the scraped data to a json file using c# newtonsoft.Json.\r\n\r\nI get stuck when writing the data to the Json file in my **controller**.\r\nThe multidimensional arrays in c# confuse me.\r\n\r\nThanks in advance.\r\n\r\nThis is an example of the Json file I am trying to create:\r\n\r\n    [\r\n\t{\r\n\t\t&quot;testmodule1&quot;: {\r\n\t\t\t&quot;name&quot;: {\r\n\t\t\t\t&quot;required&quot;: true,\r\n\t\t\t\t&quot;options&quot;: [\r\n\t\t\t\t\t&quot;option1&quot;,\r\n\t\t\t\t\t&quot;option2&quot;\r\n\t\t\t\t]\r\n\t\t\t},\r\n\t\t\t&quot;admin&quot;: {\r\n\t\t\t\t&quot;required&quot;: true,\r\n\t\t\t\t&quot;options&quot;: [\r\n\t\t\t\t\t&quot;option1&quot;,\r\n\t\t\t\t\t&quot;option2&quot;\r\n\t\t\t\t]\r\n\t\t\t},\r\n\t\t\t&quot;path&quot;: {\r\n\t\t\t\t&quot;required&quot;: true,\r\n\t\t\t\t&quot;options&quot;: [\r\n\t\t\t\t\t&quot;option1&quot;,\r\n\t\t\t\t\t&quot;option2&quot;\r\n\t\t\t\t]\r\n\t\t\t}\r\n\t\t}\r\n\t},\r\n\t{\r\n\t\t&quot;testmodule2&quot;: {\r\n\t\t\t&quot;name&quot;: {\r\n\t\t\t\t&quot;required&quot;: true,\r\n\t\t\t\t&quot;options&quot;: [\r\n\t\t\t\t\t&quot;option1&quot;,\r\n\t\t\t\t\t&quot;option2&quot;\r\n\t\t\t\t]\r\n\t\t\t},\r\n\t\t\t&quot;server&quot;: {\r\n\t\t\t\t&quot;required&quot;: false,\r\n\t\t\t\t&quot;options&quot;: [\r\n\t\t\t\t]\r\n\t\t\t},\r\n\t\t\t&quot;port&quot;: {\r\n\t\t\t\t&quot;required&quot;: true,\r\n\t\t\t\t&quot;options&quot;: [\r\n\t\t\t\t\t&quot;option1&quot;,\r\n\t\t\t\t\t&quot;option2&quot;\r\n\t\t\t\t]\r\n\t\t\t}\r\n\t\t}\r\n\t}\r\n    ]\r\n\r\nThese are my classes:\r\n\r\n        public class JsonData\r\n    {\r\n        public Dictionary&lt;string, JsonParameters&gt; modulename { get; set; }\r\n    }\r\n\r\n    public class JsonParameters\r\n    {\r\n        public JsonParametersData parameter { get; set; }\r\n    }\r\n    public class JsonParametersData\r\n    {\r\n        public bool required { get; set; }\r\n        public List&lt;string&gt; options { get; set; }\r\n    }\r\n\r\nThis is my controller, here is where I get stuck. **the name modulename does not exist in the current context**:\r\n\r\n    public class WebscrapeController : Controller\r\n        {\r\n            // GET: Webscrape\r\n            public ActionResult Index()\r\n            {\r\n\r\n                List&lt;JsonData&gt; data = new List&lt;JsonData&gt;();\r\n                data.Add(new JsonData()\r\n                {\r\n                    modulename = new Dictionary&lt;string, JsonParameters&gt;()\r\n                    {\r\n                        modulename.Add(&quot;testmodule1&quot;, new JsonParameters()\r\n                        {\r\n                            parameter = new JsonParametersData()\r\n                            {\r\n                                required = true,\r\n                                options = new List&lt;string&gt;()\r\n                                {\r\n                                    &quot;option1&quot;,\r\n                                    &quot;option2&quot;\r\n                                }\r\n                            }\r\n                        })\r\n                    }\r\n                });\r\n\r\n                string json = JsonConvert.SerializeObject(data.ToArray());\r\n\r\n                //write string to file\r\n                System.IO.File.WriteAllText(\r\n                    @&quot;C:mypath&quot;,\r\n                    json);\r\n            }\r\n        }\r\n\r\n[![enter image description here][1]][1]\r\n\r\nNote that the property names `&quot;testmodule1&quot;` and `&quot;testmodule2&quot;` as well as `&quot;name&quot;`, `&quot;admin&quot;`, `&quot;path&quot;`, `&quot;server&quot;` are arbitrary; they differ for each array.\r\n\r\n  [1]: https://i.stack.imgur.com/AIHf0.png",
+            "link": "https://stackoverflow.com/questions/50360422/need-help-writing-data-to-json-in-c",
+            "title": "Need help writing data to json in c#",
+            "body": "<p>I am webscraping some data and trying to write the scraped data to a json file using c# newtonsoft.Json.</p>\n\n<p>I get stuck when writing the data to the Json file in my <strong>controller</strong>.\nThe multidimensional arrays in c# confuse me.</p>\n\n<p>Thanks in advance.</p>\n\n<p>This is an example of the Json file I am trying to create:</p>\n\n<pre><code>[\n{\n    \"testmodule1\": {\n        \"name\": {\n            \"required\": true,\n            \"options\": [\n                \"option1\",\n                \"option2\"\n            ]\n        },\n        \"admin\": {\n            \"required\": true,\n            \"options\": [\n                \"option1\",\n                \"option2\"\n            ]\n        },\n        \"path\": {\n            \"required\": true,\n            \"options\": [\n                \"option1\",\n                \"option2\"\n            ]\n        }\n    }\n},\n{\n    \"testmodule2\": {\n        \"name\": {\n            \"required\": true,\n            \"options\": [\n                \"option1\",\n                \"option2\"\n            ]\n        },\n        \"server\": {\n            \"required\": false,\n            \"options\": [\n            ]\n        },\n        \"port\": {\n            \"required\": true,\n            \"options\": [\n                \"option1\",\n                \"option2\"\n            ]\n        }\n    }\n}\n]\n</code></pre>\n\n<p>These are my classes:</p>\n\n<pre><code>    public class JsonData\n{\n    public Dictionary&lt;string, JsonParameters&gt; modulename { get; set; }\n}\n\npublic class JsonParameters\n{\n    public JsonParametersData parameter { get; set; }\n}\npublic class JsonParametersData\n{\n    public bool required { get; set; }\n    public List&lt;string&gt; options { get; set; }\n}\n</code></pre>\n\n<p>This is my controller, here is where I get stuck. <strong>the name modulename does not exist in the current context</strong>:</p>\n\n<pre><code>public class WebscrapeController : Controller\n    {\n        // GET: Webscrape\n        public ActionResult Index()\n        {\n\n            List&lt;JsonData&gt; data = new List&lt;JsonData&gt;();\n            data.Add(new JsonData()\n            {\n                modulename = new Dictionary&lt;string, JsonParameters&gt;()\n                {\n                    modulename.Add(\"testmodule1\", new JsonParameters()\n                    {\n                        parameter = new JsonParametersData()\n                        {\n                            required = true,\n                            options = new List&lt;string&gt;()\n                            {\n                                \"option1\",\n                                \"option2\"\n                            }\n                        }\n                    })\n                }\n            });\n\n            string json = JsonConvert.SerializeObject(data.ToArray());\n\n            //write string to file\n            System.IO.File.WriteAllText(\n                @\"C:mypath\",\n                json);\n        }\n    }\n</code></pre>\n\n<p><a href=\"https://i.stack.imgur.com/AIHf0.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/AIHf0.png\" alt=\"enter image description here\"></a></p>\n\n<p>Note that the property names <code>\"testmodule1\"</code> and <code>\"testmodule2\"</code> as well as <code>\"name\"</code>, <code>\"admin\"</code>, <code>\"path\"</code>, <code>\"server\"</code> are arbitrary; they differ for each array.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "azure",
+                "asp.net-core-mvc"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8290454,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/38d2fd0de43c180709eacd3ae28f481a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Gregorio",
+                "link": "https://stackoverflow.com/users/8290454/gregorio"
+            },
+            "is_answered": false,
+            "view_count": 49,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526431676,
+            "creation_date": 1526400074,
+            "last_edit_date": 1526431676,
+            "question_id": 50354621,
+            "body_markdown": "My web app deployed in azure gives the following error in the startup.  \r\n\r\n&gt; KeyNotFoundException: The given key was not present in the dictionary.\r\n&gt; This happens registering the MvcCore dependence.\r\n&gt; System.Collections.Generic.Dictionary.get_Item(TKey key)\r\n&gt; Microsoft.AspNetCore.Mvc.Internal.DefaultAssemblyPartDiscoveryProvider+CandidateResolver.ComputeClassification(string\r\n&gt; dependency)\r\n&gt; Microsoft.AspNetCore.Mvc.Internal.DefaultAssemblyPartDiscoveryProvider+CandidateResolver.ComputeClassification(string\r\n&gt; dependency)\r\n&gt; Microsoft.AspNetCore.Mvc.Internal.DefaultAssemblyPartDiscoveryProvider+CandidateResolver+&lt;GetCandidates&gt;d__4.MoveNext()\r\n\r\nIn local environment run without problems. But in azure deploy throw that error.\r\n\r\n    services.AddMvcCore (options =&gt;\r\n    {\r\n    &#160; options.Filters.Add (new TelemetryActionFilter ());\r\n    });\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50354621/keynotfoundexception-register-mvccore-in-azure-portal",
+            "title": "KeyNotFoundException register MvcCore in azure portal",
+            "body": "<p>My web app deployed in azure gives the following error in the startup.  </p>\n\n<blockquote>\n  <p>KeyNotFoundException: The given key was not present in the dictionary.\n  This happens registering the MvcCore dependence.\n  System.Collections.Generic.Dictionary.get_Item(TKey key)\n  Microsoft.AspNetCore.Mvc.Internal.DefaultAssemblyPartDiscoveryProvider+CandidateResolver.ComputeClassification(string\n  dependency)\n  Microsoft.AspNetCore.Mvc.Internal.DefaultAssemblyPartDiscoveryProvider+CandidateResolver.ComputeClassification(string\n  dependency)\n  Microsoft.AspNetCore.Mvc.Internal.DefaultAssemblyPartDiscoveryProvider+CandidateResolver+d__4.MoveNext()</p>\n</blockquote>\n\n<p>In local environment run without problems. But in azure deploy throw that error.</p>\n\n<pre><code>services.AddMvcCore (options =&gt;\n{\n  options.Filters.Add (new TelemetryActionFilter ());\n});\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pandas",
+                "dataframe",
+                "timedelta"
+            ],
+            "owner": {
+                "reputation": 63,
+                "user_id": 9394674,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/1a35f081b91ceb1e768463639e389c22?s=128&d=identicon&r=PG&f=1",
+                "display_name": "PeterJames123",
+                "link": "https://stackoverflow.com/users/9394674/peterjames123"
+            },
+            "is_answered": true,
+            "view_count": 19,
+            "accepted_answer_id": 50360957,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526431563,
+            "creation_date": 1526430856,
+            "last_edit_date": 1526431563,
+            "question_id": 50360890,
+            "body_markdown": " The code below produces a df:\r\n\r\n    import pandas as pd\r\n    import random\r\n    from datetime import timedelta\r\n\r\n    def randomTime():\r\n\r\n        rtime = int(random.random()*86400)\r\n\r\n        hours   = int(rtime/3600)\r\n        minutes = int((rtime - hours*3600)/60)\r\n        seconds = rtime - hours*3600 - minutes*60\r\n\r\n        time_string = &#39;%02d:%02d:%02d&#39; % (hours, minutes, seconds)\r\n        return time_string\r\n\r\n    time = [randomTime() for _ in range(8)]\r\n\r\n    k = 5\r\n    N = 8\r\n\r\n    d = ({&#39;Time&#39; : (time),\r\n        &#39;Events&#39; : [&#39;ABC&#39;,&#39;DEF&#39;,&#39;GHI&#39;,&#39;JKL&#39;,&#39;ABC&#39;,&#39;DEF&#39;,&#39;GHI&#39;,&#39;JKL&#39;],\r\n        &#39;Number1&#39; : [&#39;xx&#39;,&#39;xx&#39;,1,&#39;xx&#39;,&#39;xx&#39;,&#39;xx&#39;,2,&#39;xx&#39;],\r\n        &#39;Number2&#39; : [&#39;xx&#39;,1,&#39;xx&#39;,1,&#39;xx&#39;,2,&#39;xx&#39;,2]})\r\n\r\n    df = pd.DataFrame(data=d)\r\n\r\n&lt;!- -&gt;\r\n\r\nI am trying to add time to selected rows of timestamps within a df. I&#39;m trying to alter the last 4 timestamps to add 3 hours. At the moment it&#39;s producing strings.\r\n\r\n    df.iloc[4:8,3] = pd.TimedeltaIndex(df.iloc[4:8,3]) + timedelta(hours=3)\r\n\r\n    print(df)\r\n\r\n    Output:  \r\n    Events Number1 Number2            Time\r\n    0    ABC      xx      xx        14:25:51\r\n    1    DEF      xx       1        10:02:32\r\n    2    GHI       1      xx        01:23:32\r\n    3    JKL      xx       1        07:27:42\r\n    4    ABC      xx      xx  74325000000000\r\n    5    DEF      xx       2  38992000000000\r\n    6    GHI       2      xx  19158000000000\r\n    7    JKL      xx       2  26746000000000\r\n\r\nI&#39;m unsure if this is because the date is being added in the calculation here? I&#39;m not sure what I&#39;m doing wrong.",
+            "link": "https://stackoverflow.com/questions/50360890/add-time-to-a-subset-of-rows-in-a-pandas-dataframe",
+            "title": "Add time to a subset of rows in a pandas DataFrame",
+            "body": "<p>The code below produces a df:</p>\n\n<pre><code>import pandas as pd\nimport random\nfrom datetime import timedelta\n\ndef randomTime():\n\n    rtime = int(random.random()*86400)\n\n    hours   = int(rtime/3600)\n    minutes = int((rtime - hours*3600)/60)\n    seconds = rtime - hours*3600 - minutes*60\n\n    time_string = '%02d:%02d:%02d' % (hours, minutes, seconds)\n    return time_string\n\ntime = [randomTime() for _ in range(8)]\n\nk = 5\nN = 8\n\nd = ({'Time' : (time),\n    'Events' : ['ABC','DEF','GHI','JKL','ABC','DEF','GHI','JKL'],\n    'Number1' : ['xx','xx',1,'xx','xx','xx',2,'xx'],\n    'Number2' : ['xx',1,'xx',1,'xx',2,'xx',2]})\n\ndf = pd.DataFrame(data=d)\n</code></pre>\n\n<p></p>\n\n<p>I am trying to add time to selected rows of timestamps within a df. I'm trying to alter the last 4 timestamps to add 3 hours. At the moment it's producing strings.</p>\n\n<pre><code>df.iloc[4:8,3] = pd.TimedeltaIndex(df.iloc[4:8,3]) + timedelta(hours=3)\n\nprint(df)\n\nOutput:  \nEvents Number1 Number2            Time\n0    ABC      xx      xx        14:25:51\n1    DEF      xx       1        10:02:32\n2    GHI       1      xx        01:23:32\n3    JKL      xx       1        07:27:42\n4    ABC      xx      xx  74325000000000\n5    DEF      xx       2  38992000000000\n6    GHI       2      xx  19158000000000\n7    JKL      xx       2  26746000000000\n</code></pre>\n\n<p>I'm unsure if this is because the date is being added in the calculation here? I'm not sure what I'm doing wrong.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net-mvc",
+                "drop-down-menu",
+                "binding"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 5876889,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9a5869a40eadc539cf8032da84f97eb2?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Farhad 95",
+                "link": "https://stackoverflow.com/users/5876889/farhad-95"
+            },
+            "is_answered": false,
+            "view_count": 22,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526431531,
+            "creation_date": 1526391768,
+            "last_edit_date": 1526431531,
+            "question_id": 50351829,
+            "body_markdown": "I&#39;ve populated a dropdownlist with data from my database. However, I&#39;m unsure if my method is effective or not. What can I do to improve this or is the method I used secure/sufficient?\r\n\r\nI have added the controller, the viewModel and the View below. All advice is greatly appreciated!\r\n\r\nController:\r\n\r\n     [HttpGet]\r\n        public ActionResult SchedulerIndex()\r\n        {\r\n            Entities entities = new Entities();\r\n\r\n            var getJobList = entities.Jobs.ToList();\r\n            SelectList list = new SelectList(getJobList, &quot;JobId&quot;, &quot;JobName&quot;);\r\n            ViewBag.jobListName = list;\r\n\r\n    \r\n        [HttpPost]\r\n        public ActionResult ScheduleInfo(Values model, int JobList1, string Second, string Minute, string Hour, object DayOfMonth, object Month, object DaysOfWeek, int repeatTime)\r\n        {\r\n            model.Job = JobList1;\r\n\r\n\r\n\r\nView:\r\n\r\n        @using (Html.BeginForm(&quot;ScheduleInfo&quot;, &quot;Scheduler&quot;, FormMethod.Post))\r\n    {\r\n        Html.EnableClientValidation();\r\n    &lt;center&gt;\r\n        &lt;div style=&quot;text-align: center&quot;&gt;\r\n            &lt;div class=&quot;form-group&quot;&gt;\r\n                &lt;h4&gt;Select a job from the list&lt;/h4&gt;\r\n                @Html.DropDownList(&quot;JobList1&quot;, ViewBag.jobListName as SelectList)\r\n            &lt;/div&gt;\r\n        &lt;/div&gt;\r\n    &lt;/center&gt;\r\n\r\n\r\nViewModel:\r\n\r\n        public class Values\r\n    {\r\n\r\n        public List&lt;object&gt; DayOfMonth { get; set; }\r\n        public List&lt;object&gt; Month { get; set; }\r\n        public List&lt;object&gt; DaysOfWeek { get; set; }\r\n\r\n\r\n\r\n        [Required(ErrorMessage = &quot;Enter a number between 0-59!&quot;)]\r\n        [RegularExpression(@&quot;^(,{0,1}(\\b\\d\\b|[0-5][0-9]|\\*+)(-\\b\\d\\b|-[0-5][0-9]){0,1})$&quot;, ErrorMessage = &quot;Enter a number between 0-59!&quot;)]\r\n        public object Second { get; set; }\r\n\r\n\r\n        [Required(ErrorMessage = &quot;Enter a number between 0-59!&quot;)]\r\n        [RegularExpression(@&quot;^(,{0,1}(\\b\\d\\b|[0-5][0-9]|\\*+)(-\\b\\d\\b|-[0-5][0-9]){0,1})$&quot;, ErrorMessage = &quot;Enter a number between 0-59!&quot;)]\r\n        public object Minute { get; set; }\r\n\r\n\r\n        [Required(ErrorMessage = &quot;Enter a number between 0-23!&quot;)]\r\n        [RegularExpression(@&quot;^(,{0,1}(\\b\\d\\b|[0-1][0-9]|[2][0-3]|\\*+)(-\\b\\d\\b|-[0-1][0-9]|-[2][0-4]){0,1})$&quot;, ErrorMessage = &quot;Enter a number between 0-23!&quot;)]\r\n        public object Hour { get; set; }\r\n\r\n\r\n        //public List&lt;SelectListItem&gt; Jobs { get; set; }\r\n        public int Job { get; set; }\r\n\r\n        public List&lt;Values&gt; DofMInfo { get; set; }\r\n        public string DofMNo { get; set; }\r\n        public int DofMID { get; set; }\r\n\r\n        public List&lt;Values&gt; MonthInfo { get; set; }\r\n        public int monthID { get; set; }\r\n        public string monthName { get; set; }\r\n    \r\n\r\n        public List&lt;Values&gt; DayInfo { get; set; }\r\n        public int dayID { get; set; }\r\n        public string dayName { get; set; }\r\n\r\n        [Required(ErrorMessage =&quot;Enter the number of repeat times. 0 = execute once!&quot;)]\r\n        public int repeatTime { get; set; }\r\n\r\n        public bool IsChecked { get; set; }\r\n    }",
+            "link": "https://stackoverflow.com/questions/50351829/binding-dropdownlist-asp-net-mvc",
+            "title": "Binding dropdownlist asp.net mvc",
+            "body": "<p>I've populated a dropdownlist with data from my database. However, I'm unsure if my method is effective or not. What can I do to improve this or is the method I used secure/sufficient?</p>\n\n<p>I have added the controller, the viewModel and the View below. All advice is greatly appreciated!</p>\n\n<p>Controller:</p>\n\n<pre><code> [HttpGet]\n    public ActionResult SchedulerIndex()\n    {\n        Entities entities = new Entities();\n\n        var getJobList = entities.Jobs.ToList();\n        SelectList list = new SelectList(getJobList, \"JobId\", \"JobName\");\n        ViewBag.jobListName = list;\n\n\n    [HttpPost]\n    public ActionResult ScheduleInfo(Values model, int JobList1, string Second, string Minute, string Hour, object DayOfMonth, object Month, object DaysOfWeek, int repeatTime)\n    {\n        model.Job = JobList1;\n</code></pre>\n\n<p>View:</p>\n\n<pre><code>    @using (Html.BeginForm(\"ScheduleInfo\", \"Scheduler\", FormMethod.Post))\n{\n    Html.EnableClientValidation();\n&lt;center&gt;\n    &lt;div style=\"text-align: center\"&gt;\n        &lt;div class=\"form-group\"&gt;\n            &lt;h4&gt;Select a job from the list&lt;/h4&gt;\n            @Html.DropDownList(\"JobList1\", ViewBag.jobListName as SelectList)\n        &lt;/div&gt;\n    &lt;/div&gt;\n&lt;/center&gt;\n</code></pre>\n\n<p>ViewModel:</p>\n\n<pre><code>    public class Values\n{\n\n    public List&lt;object&gt; DayOfMonth { get; set; }\n    public List&lt;object&gt; Month { get; set; }\n    public List&lt;object&gt; DaysOfWeek { get; set; }\n\n\n\n    [Required(ErrorMessage = \"Enter a number between 0-59!\")]\n    [RegularExpression(@\"^(,{0,1}(\\b\\d\\b|[0-5][0-9]|\\*+)(-\\b\\d\\b|-[0-5][0-9]){0,1})$\", ErrorMessage = \"Enter a number between 0-59!\")]\n    public object Second { get; set; }\n\n\n    [Required(ErrorMessage = \"Enter a number between 0-59!\")]\n    [RegularExpression(@\"^(,{0,1}(\\b\\d\\b|[0-5][0-9]|\\*+)(-\\b\\d\\b|-[0-5][0-9]){0,1})$\", ErrorMessage = \"Enter a number between 0-59!\")]\n    public object Minute { get; set; }\n\n\n    [Required(ErrorMessage = \"Enter a number between 0-23!\")]\n    [RegularExpression(@\"^(,{0,1}(\\b\\d\\b|[0-1][0-9]|[2][0-3]|\\*+)(-\\b\\d\\b|-[0-1][0-9]|-[2][0-4]){0,1})$\", ErrorMessage = \"Enter a number between 0-23!\")]\n    public object Hour { get; set; }\n\n\n    //public List&lt;SelectListItem&gt; Jobs { get; set; }\n    public int Job { get; set; }\n\n    public List&lt;Values&gt; DofMInfo { get; set; }\n    public string DofMNo { get; set; }\n    public int DofMID { get; set; }\n\n    public List&lt;Values&gt; MonthInfo { get; set; }\n    public int monthID { get; set; }\n    public string monthName { get; set; }\n\n\n    public List&lt;Values&gt; DayInfo { get; set; }\n    public int dayID { get; set; }\n    public string dayName { get; set; }\n\n    [Required(ErrorMessage =\"Enter the number of repeat times. 0 = execute once!\")]\n    public int repeatTime { get; set; }\n\n    public bool IsChecked { get; set; }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "android-service"
+            ],
+            "owner": {
+                "reputation": 216,
+                "user_id": 942794,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/1d1908bd3fc7c7e2d7bc6da10271fc59?s=128&d=identicon&r=PG",
+                "display_name": "JoeyG",
+                "link": "https://stackoverflow.com/users/942794/joeyg"
+            },
+            "is_answered": false,
+            "view_count": 1046,
+            "answer_count": 1,
+            "score": 13,
+            "last_activity_date": 1526431529,
+            "creation_date": 1502892703,
+            "question_id": 45715905,
+            "body_markdown": "In previous versions of Android, I used this method to find if a service from another app was up and running. It worked reliably for me:\r\n\r\n    ActivityManager manager = (ActivityManager)getSystemService(Context.ACTIVITY_SERVICE);\r\n    List&lt;RunningServiceInfo&gt; services = manager.getRunningServices(Integer.MAX_VALUE);\r\n\r\n\r\nHowever, with Android O this is now deprecated and will only return information about the calling apps services. I&#39;ve looked into other solutions, but I don&#39;t want to ask the user for more permissions, (UsageStatsManager, NotificationManager, etc).\r\n\r\nIs there an alternate solution for obtaining if a service from a different app is running or not in Android O?",
+            "link": "https://stackoverflow.com/questions/45715905/android-o-replacement-for-getrunningservices",
+            "title": "Android O Replacement for getRunningServices",
+            "body": "<p>In previous versions of Android, I used this method to find if a service from another app was up and running. It worked reliably for me:</p>\n\n<pre><code>ActivityManager manager = (ActivityManager)getSystemService(Context.ACTIVITY_SERVICE);\nList&lt;RunningServiceInfo&gt; services = manager.getRunningServices(Integer.MAX_VALUE);\n</code></pre>\n\n<p>However, with Android O this is now deprecated and will only return information about the calling apps services. I've looked into other solutions, but I don't want to ask the user for more permissions, (UsageStatsManager, NotificationManager, etc).</p>\n\n<p>Is there an alternate solution for obtaining if a service from a different app is running or not in Android O?</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift",
+                "post",
+                "http-headers",
+                "alamofire"
+            ],
+            "owner": {
+                "reputation": 14,
+                "user_id": 7492423,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/551429536e6ceba3b09a177f18801d9c?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Garret Koontz",
+                "link": "https://stackoverflow.com/users/7492423/garret-koontz"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526431510,
+            "creation_date": 1526425795,
+            "question_id": 50360340,
+            "body_markdown": "I am integrating Reddit&#39;s API into my iOS application, however my POST request is not working, and I am using the Application Only OAuth method as seen [here](https://github.com/reddit-archive/reddit/wiki/OAuth2#application-only-oauth). I am doing everything in my `AppDelegate` class. I am using Alamofire to perform requests.\r\n\r\n    open func application(_ app: UIApplication, open url: URL, options: [UIApplicationOpenURLOptionsKey : Any] = [:]) -&gt; Bool {\r\n        if url.scheme == &quot;APP_SCHEME&quot; {\r\n            let queryParams = url.query?.components(separatedBy: &quot;&amp;&quot;)\r\n            var codeParam = (queryParams! as NSArray).filtered(using: NSPredicate(format: &quot;SELF BEGINSWITH %@&quot;, &quot;code=&quot;))\r\n            let codeQuery = codeParam[0] as? String\r\n            if let code = codeQuery?.replacingOccurrences(of: &quot;code=&quot;, with: &quot;&quot;) {\r\n                print(&quot;My code is \\(code)&quot;)\r\n                \r\n                guard let url = URL(string: &quot;https://www.reddit.com/api/v1/access_token&quot;) else { return false }\r\n                let params: Parameters = [\r\n                    &quot;grant_type&quot; : &quot;https://oauth.reddit.com/grants/installed_client&quot;,\r\n                    &quot;device_id&quot; : &quot;\\(UUID().uuidString)&quot;]\r\n                \r\n                let username = &quot;MY_CLIENT_ID&quot;\r\n                let password = &quot;&quot;\r\n                let loginString = String(format: &quot;%@%@&quot;, username, password)\r\n                let loginData = loginString.data(using: String.Encoding.utf8)! as NSData\r\n                let base64EncodedString = loginData.base64EncodedString()\r\n                \r\n                let headers = [&quot;Authorization&quot;: &quot;Basic \\(base64EncodedString)&quot;]\r\n                \r\n                Alamofire.request(url, method: .post , parameters: params, encoding: JSONEncoding.default, headers: headers).responseJSON { (response) in\r\n                    print(response)\r\n                }\r\n            }\r\n            return true\r\n        }\r\n        return false\r\n    }\r\n\r\nWhenever I run my application, log in to authorize through Reddit, and redirect to my application, my console prints out\r\n\r\n \r\n\r\n       CredStore - performQuery - Error copying matching creds.  Error=-25300, query={\r\n        class = inet;\r\n        &quot;m_Limit&quot; = &quot;m_LimitAll&quot;;\r\n        ptcl = htps;\r\n        &quot;r_Attributes&quot; = 1;\r\n        sdmn = reddit;\r\n        srvr = &quot;www.reddit.com&quot;;\r\n        sync = syna;\r\n    }\r\n    SUCCESS: {\r\n        error = 401;\r\n        message = Unauthorized;\r\n    }\r\n\r\nI&#39;ve looked up the CredStore query error and a lot of other people are having it, I think it is an Alamofire issue with request handling. I have allowed Arbritary Loads in my `Info.plist`. As you can see I also get a 401 error, it must be my header but I am stuck.\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50360340/error-trying-to-make-post-request-with-alamofire-4-and-oauth2-swift",
+            "title": "Error trying to make POST request with Alamofire 4 and OAuth2 - Swift",
+            "body": "<p>I am integrating Reddit's API into my iOS application, however my POST request is not working, and I am using the Application Only OAuth method as seen <a href=\"https://github.com/reddit-archive/reddit/wiki/OAuth2#application-only-oauth\" rel=\"nofollow noreferrer\">here</a>. I am doing everything in my <code>AppDelegate</code> class. I am using Alamofire to perform requests.</p>\n\n<pre><code>open func application(_ app: UIApplication, open url: URL, options: [UIApplicationOpenURLOptionsKey : Any] = [:]) -&gt; Bool {\n    if url.scheme == \"APP_SCHEME\" {\n        let queryParams = url.query?.components(separatedBy: \"&amp;\")\n        var codeParam = (queryParams! as NSArray).filtered(using: NSPredicate(format: \"SELF BEGINSWITH %@\", \"code=\"))\n        let codeQuery = codeParam[0] as? String\n        if let code = codeQuery?.replacingOccurrences(of: \"code=\", with: \"\") {\n            print(\"My code is \\(code)\")\n\n            guard let url = URL(string: \"https://www.reddit.com/api/v1/access_token\") else { return false }\n            let params: Parameters = [\n                \"grant_type\" : \"https://oauth.reddit.com/grants/installed_client\",\n                \"device_id\" : \"\\(UUID().uuidString)\"]\n\n            let username = \"MY_CLIENT_ID\"\n            let password = \"\"\n            let loginString = String(format: \"%@%@\", username, password)\n            let loginData = loginString.data(using: String.Encoding.utf8)! as NSData\n            let base64EncodedString = loginData.base64EncodedString()\n\n            let headers = [\"Authorization\": \"Basic \\(base64EncodedString)\"]\n\n            Alamofire.request(url, method: .post , parameters: params, encoding: JSONEncoding.default, headers: headers).responseJSON { (response) in\n                print(response)\n            }\n        }\n        return true\n    }\n    return false\n}\n</code></pre>\n\n<p>Whenever I run my application, log in to authorize through Reddit, and redirect to my application, my console prints out</p>\n\n<pre><code>   CredStore - performQuery - Error copying matching creds.  Error=-25300, query={\n    class = inet;\n    \"m_Limit\" = \"m_LimitAll\";\n    ptcl = htps;\n    \"r_Attributes\" = 1;\n    sdmn = reddit;\n    srvr = \"www.reddit.com\";\n    sync = syna;\n}\nSUCCESS: {\n    error = 401;\n    message = Unauthorized;\n}\n</code></pre>\n\n<p>I've looked up the CredStore query error and a lot of other people are having it, I think it is an Alamofire issue with request handling. I have allowed Arbritary Loads in my <code>Info.plist</code>. As you can see I also get a 401 error, it must be my header but I am stuck.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "io"
+            ],
+            "owner": {
+                "reputation": 93,
+                "user_id": 1261315,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/c067833c85848ff651fe8380e57e8d94?s=128&d=identicon&r=PG",
+                "display_name": "Sore Finger Tips",
+                "link": "https://stackoverflow.com/users/1261315/sore-finger-tips"
+            },
+            "is_answered": false,
+            "view_count": 13726,
+            "answer_count": 4,
+            "score": 0,
+            "last_activity_date": 1526431507,
+            "creation_date": 1331519715,
+            "last_edit_date": 1331541026,
+            "question_id": 9661092,
+            "body_markdown": "Trying to create a file in a specific directory that uses a variable in its name.  However, I keep get and IOException at the following lines.\r\n\r\n    File dir = new File(&quot;logs/&quot; + s);\r\n    dir.mkdirs();\r\n    File permfile = new File(dir, stamp + &quot;.txt&quot;);\r\n    permfile.createNewFile();\r\n    boolean exist = permfile.createNewFile();\r\n\r\nI appreciate your guidance.  Ive&#39; been at this 12 hours today, once I can write the files I can go home!  :)\r\n",
+            "link": "https://stackoverflow.com/questions/9661092/create-new-file-name-using-variables-in-the-name",
+            "title": "Create new file name using variables in the name",
+            "body": "<p>Trying to create a file in a specific directory that uses a variable in its name.  However, I keep get and IOException at the following lines.</p>\n\n<pre><code>File dir = new File(\"logs/\" + s);\ndir.mkdirs();\nFile permfile = new File(dir, stamp + \".txt\");\npermfile.createNewFile();\nboolean exist = permfile.createNewFile();\n</code></pre>\n\n<p>I appreciate your guidance.  Ive' been at this 12 hours today, once I can write the files I can go home!  :)</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "hibernate",
+                "orm"
+            ],
+            "owner": {
+                "reputation": 9020,
+                "user_id": 2674303,
+                "user_type": "registered",
+                "accept_rate": 62,
+                "profile_image": "https://www.gravatar.com/avatar/411d782b77899035a96abb71b64e062a?s=128&d=identicon&r=PG",
+                "display_name": "gstackoverflow",
+                "link": "https://stackoverflow.com/users/2674303/gstackoverflow"
+            },
+            "is_answered": false,
+            "view_count": 17454,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1526431507,
+            "creation_date": 1378912865,
+            "last_edit_date": 1378913755,
+            "question_id": 18745160,
+            "body_markdown": "What the reason of my mistake?\r\nI have to entities. Their relation is many to many.\r\n\r\n\r\nprepod:\r\n\r\n\r\n    @Entity(name = &quot;prepod&quot;)\r\n    public class Prepod {\r\n    \r\n    \tprivate Long id;\r\n    \r\n    \tList&lt;Student&gt; students = new ArrayList&lt;Student&gt;();\r\n    \r\n    \t@ManyToMany\r\n    \tpublic List&lt;Student&gt; getStudents() {\r\n    \t\treturn students;\r\n    \t}\r\n    \r\n    \tpublic void setStudents(List&lt;Student&gt; students) {\r\n    \t\tthis.students = students;\r\n    \t}\r\n    \r\n    \t@Id\r\n    \t@GeneratedValue(strategy = GenerationType.IDENTITY)\r\n    \t@Column(name = &quot;id&quot;)\r\n    \tpublic Long getId() {\r\n    \t\treturn id;\r\n    \t}\r\n    \r\n    \tpublic void setId(Long i) {\r\n    \t\tid = i;\r\n    \t}\r\n    }\r\n\r\n\r\n\r\nstudent:\r\n\r\n\r\n    @Entity\r\n    @Table(name=&quot;Student&quot;)\r\n    public class Student {\r\n        \r\n        private Long id;    \r\n        private String name;    \r\n        private Long age;\r\n        private List&lt;Prepod&gt; prepods = new ArrayList&lt;Prepod&gt;();\r\n        \r\n        @ManyToMany(mappedBy=&quot;students&quot;)\r\n        public List&lt;Prepod&gt; getPrepods() {\r\n    \t\treturn prepods;\r\n    \t}\r\n    \r\n    \tpublic void setPrepods(List&lt;Prepod&gt; prepods) {\r\n    \t\tthis.prepods = prepods;\r\n    \t}\r\n    \r\n    \tpublic Student(){\r\n            name = null;\r\n        }\r\n        \r\n        public Student(Student s){\r\n            name = s.getName();\r\n        }   \r\n        \r\n        @Id\r\n    \t@GeneratedValue(strategy = GenerationType.IDENTITY )\r\n    \t@Column (name = &quot;id&quot;)\r\n        public Long getId() {\r\n            return id;\r\n        }\r\n        \r\n        @Column(name=&quot;name&quot;)\r\n        public String getName(){\r\n            return name;\r\n        }\r\n        \r\n        @Column(name=&quot;age&quot;)\r\n        public Long getAge(){\r\n            return age;\r\n        }\r\n        \r\n        public void setId(Long i){\r\n            id = i;     \r\n        }\r\n        \r\n        public void setName(String s){\r\n            name = s;\r\n        }   \r\n        \r\n        public void setAge(Long age){\r\n            this.age = age;\r\n        }   \r\n    }\r\n\r\n\r\n\r\ninvocation code:\r\n\r\n    public static void main(String[] args){\r\n    \t\tPrepod prepod = new Prepod();\r\n    \t\tprepod.setId(1l);\r\n    \t\tStudent student = new Student();\r\n    \t\tstudent.setId(1l);\r\n    \t\tstudent.setName(&quot;qweqwe&quot;);\r\n    \t\tprepod.getStudents().add(student);\r\n    \t\tstudent.getPrepods().add(prepod);\r\n    \t\t\r\n    \t\tSession session = HibernateUtil.getSessionFactory().openSession();\r\n    \t\tsession.beginTransaction();\r\n    \t\tsession.save(prepod);\r\n    \t\tsession.save(student);\r\n    \t\tsession.getTransaction().commit();\r\n    \t}\r\n\r\nexception text:\r\n\r\n    Hibernate: insert into prepod default values\r\n    Exception in thread &quot;main&quot; org.hibernate.exception.ConstraintViolationException: could not execute statement\r\n    \tat org.hibernate.exception.internal.SQLStateConversionDelegate.convert(SQLStateConversionDelegate.java:129)\r\n    \tat org.hibernate.exception.internal.StandardSQLExceptionConverter.convert(StandardSQLExceptionConverter.java:49)\r\n    \tat org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:125)\r\n    \tat org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:110)\r\n    \tat org.hibernate.engine.jdbc.internal.ResultSetReturnImpl.executeUpdate(ResultSetReturnImpl.java:136)\r\n    \tat org.hibernate.id.IdentityGenerator$GetGeneratedKeysDelegate.executeAndExtract(IdentityGenerator.java:96)\r\n    \tat org.hibernate.id.insert.AbstractReturningDelegate.performInsert(AbstractReturningDelegate.java:58)\r\n    \tat org.hibernate.persister.entity.AbstractEntityPersister.insert(AbstractEntityPersister.java:2975)\r\n    \tat org.hibernate.persister.entity.AbstractEntityPersister.insert(AbstractEntityPersister.java:3487)\r\n    \tat org.hibernate.action.internal.EntityIdentityInsertAction.execute(EntityIdentityInsertAction.java:81)\r\n    \tat org.hibernate.engine.spi.ActionQueue.execute(ActionQueue.java:364)\r\n    \tat org.hibernate.engine.spi.ActionQueue.addResolvedEntityInsertAction(ActionQueue.java:205)\r\n    \tat org.hibernate.engine.spi.ActionQueue.addInsertAction(ActionQueue.java:185)\r\n    \tat org.hibernate.engine.spi.ActionQueue.addAction(ActionQueue.java:169)\r\n    \tat org.hibernate.event.internal.AbstractSaveEventListener.addInsertAction(AbstractSaveEventListener.java:321)\r\n    \tat org.hibernate.event.internal.AbstractSaveEventListener.performSaveOrReplicate(AbstractSaveEventListener.java:286)\r\n    \tat org.hibernate.event.internal.AbstractSaveEventListener.performSave(AbstractSaveEventListener.java:192)\r\n    \tat org.hibernate.event.internal.AbstractSaveEventListener.saveWithGeneratedId(AbstractSaveEventListener.java:125)\r\n    \tat org.hibernate.event.internal.DefaultSaveOrUpdateEventListener.saveWithGeneratedOrRequestedId(DefaultSaveOrUpdateEventListener.java:206)\r\n    \tat org.hibernate.event.internal.DefaultSaveEventListener.saveWithGeneratedOrRequestedId(DefaultSaveEventListener.java:55)\r\n    \tat org.hibernate.event.internal.DefaultSaveOrUpdateEventListener.entityIsTransient(DefaultSaveOrUpdateEventListener.java:191)\r\n    \tat org.hibernate.event.internal.DefaultSaveEventListener.performSaveOrUpdate(DefaultSaveEventListener.java:49)\r\n    \tat org.hibernate.event.internal.DefaultSaveOrUpdateEventListener.onSaveOrUpdate(DefaultSaveOrUpdateEventListener.java:90)\r\n    \tat org.hibernate.internal.SessionImpl.fireSave(SessionImpl.java:764)\r\n    \tat org.hibernate.internal.SessionImpl.save(SessionImpl.java:756)\r\n    \tat org.hibernate.internal.SessionImpl.save(SessionImpl.java:752)\r\n    \tat logic.Main.main(Main.java:17)\r\n\r\n\r\nTables create in databes, but data don&#39;t insert to my tables.\r\n\r\nCan you explain me what te reason?\r\n\r\nHow to fix it?\r\n\r\n**UPDATE**\r\n\r\ngenerated schema:\r\n\r\n![generated schema:][1]\r\n\r\n\r\n  [1]: http://i.stack.imgur.com/Somcj.jpg",
+            "link": "https://stackoverflow.com/questions/18745160/exception-in-thread-main-org-hibernate-exception-constraintviolationexception",
+            "title": "Exception in thread &quot;main&quot; org.hibernate.exception.ConstraintViolationException: could not execute statement",
+            "body": "<p>What the reason of my mistake?\nI have to entities. Their relation is many to many.</p>\n\n<p>prepod:</p>\n\n<pre><code>@Entity(name = \"prepod\")\npublic class Prepod {\n\n    private Long id;\n\n    List&lt;Student&gt; students = new ArrayList&lt;Student&gt;();\n\n    @ManyToMany\n    public List&lt;Student&gt; getStudents() {\n        return students;\n    }\n\n    public void setStudents(List&lt;Student&gt; students) {\n        this.students = students;\n    }\n\n    @Id\n    @GeneratedValue(strategy = GenerationType.IDENTITY)\n    @Column(name = \"id\")\n    public Long getId() {\n        return id;\n    }\n\n    public void setId(Long i) {\n        id = i;\n    }\n}\n</code></pre>\n\n<p>student:</p>\n\n<pre><code>@Entity\n@Table(name=\"Student\")\npublic class Student {\n\n    private Long id;    \n    private String name;    \n    private Long age;\n    private List&lt;Prepod&gt; prepods = new ArrayList&lt;Prepod&gt;();\n\n    @ManyToMany(mappedBy=\"students\")\n    public List&lt;Prepod&gt; getPrepods() {\n        return prepods;\n    }\n\n    public void setPrepods(List&lt;Prepod&gt; prepods) {\n        this.prepods = prepods;\n    }\n\n    public Student(){\n        name = null;\n    }\n\n    public Student(Student s){\n        name = s.getName();\n    }   \n\n    @Id\n    @GeneratedValue(strategy = GenerationType.IDENTITY )\n    @Column (name = \"id\")\n    public Long getId() {\n        return id;\n    }\n\n    @Column(name=\"name\")\n    public String getName(){\n        return name;\n    }\n\n    @Column(name=\"age\")\n    public Long getAge(){\n        return age;\n    }\n\n    public void setId(Long i){\n        id = i;     \n    }\n\n    public void setName(String s){\n        name = s;\n    }   \n\n    public void setAge(Long age){\n        this.age = age;\n    }   \n}\n</code></pre>\n\n<p>invocation code:</p>\n\n<pre><code>public static void main(String[] args){\n        Prepod prepod = new Prepod();\n        prepod.setId(1l);\n        Student student = new Student();\n        student.setId(1l);\n        student.setName(\"qweqwe\");\n        prepod.getStudents().add(student);\n        student.getPrepods().add(prepod);\n\n        Session session = HibernateUtil.getSessionFactory().openSession();\n        session.beginTransaction();\n        session.save(prepod);\n        session.save(student);\n        session.getTransaction().commit();\n    }\n</code></pre>\n\n<p>exception text:</p>\n\n<pre><code>Hibernate: insert into prepod default values\nException in thread \"main\" org.hibernate.exception.ConstraintViolationException: could not execute statement\n    at org.hibernate.exception.internal.SQLStateConversionDelegate.convert(SQLStateConversionDelegate.java:129)\n    at org.hibernate.exception.internal.StandardSQLExceptionConverter.convert(StandardSQLExceptionConverter.java:49)\n    at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:125)\n    at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:110)\n    at org.hibernate.engine.jdbc.internal.ResultSetReturnImpl.executeUpdate(ResultSetReturnImpl.java:136)\n    at org.hibernate.id.IdentityGenerator$GetGeneratedKeysDelegate.executeAndExtract(IdentityGenerator.java:96)\n    at org.hibernate.id.insert.AbstractReturningDelegate.performInsert(AbstractReturningDelegate.java:58)\n    at org.hibernate.persister.entity.AbstractEntityPersister.insert(AbstractEntityPersister.java:2975)\n    at org.hibernate.persister.entity.AbstractEntityPersister.insert(AbstractEntityPersister.java:3487)\n    at org.hibernate.action.internal.EntityIdentityInsertAction.execute(EntityIdentityInsertAction.java:81)\n    at org.hibernate.engine.spi.ActionQueue.execute(ActionQueue.java:364)\n    at org.hibernate.engine.spi.ActionQueue.addResolvedEntityInsertAction(ActionQueue.java:205)\n    at org.hibernate.engine.spi.ActionQueue.addInsertAction(ActionQueue.java:185)\n    at org.hibernate.engine.spi.ActionQueue.addAction(ActionQueue.java:169)\n    at org.hibernate.event.internal.AbstractSaveEventListener.addInsertAction(AbstractSaveEventListener.java:321)\n    at org.hibernate.event.internal.AbstractSaveEventListener.performSaveOrReplicate(AbstractSaveEventListener.java:286)\n    at org.hibernate.event.internal.AbstractSaveEventListener.performSave(AbstractSaveEventListener.java:192)\n    at org.hibernate.event.internal.AbstractSaveEventListener.saveWithGeneratedId(AbstractSaveEventListener.java:125)\n    at org.hibernate.event.internal.DefaultSaveOrUpdateEventListener.saveWithGeneratedOrRequestedId(DefaultSaveOrUpdateEventListener.java:206)\n    at org.hibernate.event.internal.DefaultSaveEventListener.saveWithGeneratedOrRequestedId(DefaultSaveEventListener.java:55)\n    at org.hibernate.event.internal.DefaultSaveOrUpdateEventListener.entityIsTransient(DefaultSaveOrUpdateEventListener.java:191)\n    at org.hibernate.event.internal.DefaultSaveEventListener.performSaveOrUpdate(DefaultSaveEventListener.java:49)\n    at org.hibernate.event.internal.DefaultSaveOrUpdateEventListener.onSaveOrUpdate(DefaultSaveOrUpdateEventListener.java:90)\n    at org.hibernate.internal.SessionImpl.fireSave(SessionImpl.java:764)\n    at org.hibernate.internal.SessionImpl.save(SessionImpl.java:756)\n    at org.hibernate.internal.SessionImpl.save(SessionImpl.java:752)\n    at logic.Main.main(Main.java:17)\n</code></pre>\n\n<p>Tables create in databes, but data don't insert to my tables.</p>\n\n<p>Can you explain me what te reason?</p>\n\n<p>How to fix it?</p>\n\n<p><strong>UPDATE</strong></p>\n\n<p>generated schema:</p>\n\n<p><img src=\"https://i.stack.imgur.com/Somcj.jpg\" alt=\"generated schema:\"></p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "performance",
+                "internet-explorer"
+            ],
+            "owner": {
+                "reputation": 309,
+                "user_id": 1026428,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/a7160d77da26935926b25d2bd68002d1?s=128&d=identicon&r=PG",
+                "display_name": "Notre",
+                "link": "https://stackoverflow.com/users/1026428/notre"
+            },
+            "is_answered": false,
+            "view_count": 8783,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526431507,
+            "creation_date": 1393533755,
+            "question_id": 22079893,
+            "body_markdown": "One of my users is intermittently getting a dialog in IE 8 that says:\r\n\r\nA script on this page is causing Internet Explorer to run slowly\r\n\r\nThis problem has been reported numerous times in the MSDN forums and other places on the web.  For example:\r\n\r\n - http://social.msdn.microsoft.com/Forums/ie/en-US/0fdb7550-0a59-4553-a90e-1958475f2ce5/how-to-debug-a-script-on-this-page-is-causing-internet-explorer-to-run-slowly?forum=iewebdevelopment\r\n - http://social.msdn.microsoft.com/Forums/ie/en-US/dafffdd8-a390-4a3c-a904-867acaec298e/error-message-a-script-on-this-page-is-causing-internet-explorer-to-run-slowly-for-ie8?forum=whatforum\r\n - http://social.msdn.microsoft.com/Forums/ie/en-US/e9d16d2a-60e1-4d6f-8f80-0d981eab3a2e/a-script-on-this-page-is-causing-your-web-browser-to-run-slowly?forum=bingmapsajax\r\n\r\n\r\nSo, this question is a duplicate of those and many others.  But it is an intentional duplicate, because I don&#39;t think any of those questions were answered in a way that helps a user (developer) to determine precisely what in his scenario causes the dialog to appear.  \r\n\r\nI know that based on this page:\r\n\r\nhttp://support.microsoft.com/kb/175500\r\n\r\nthe dialog appears when a certain number of statements have executed since a new script begins execution (through a variety of means).  By default the number of statements is 5,000,000 but this is configurable via a registry entry.  \r\n\r\nThe general prescription to this problem is a combination of:\r\n\r\n - Write less code.  Unfortunately, this is not always possible.\r\n - Use web workers. This is not an option for IE before IE 10, nor with\r\n   some mobile browsers.\r\n - Use setTimeOut, setInterval, event handlers, etc to break the\r\n   script(s) up.  This is a legitimate strategy across all browsers.\r\n\r\nSo, I understand what the problem is in general terms, and I understand what the options are to solve the problem, again in general terms.  The question is, how to determine what area(s) of the code are causing the dialog to appear for a specific user?  Often this problem occurs with a very large code base (including third party libraries), so a manual review of the code base without some tooling support is not feasible.\r\n\r\nMost browsers, including IE8 and later, have profiling tools that enable the developer to determine JavaScript CPU usage.  With the exception of IE, other browsers decide a script is long running not based on the numbers of statements executed but rather the amount of time the script spent executing.  To this end, the profilers available in (or as add ons) to the browsers can identify the percentage and usually raw time spent executing a function, both inclusively and exclusively for a function, and the results can be sorted accordingly.  IE&#39;s profiler will also give you a count of how often a function is called.  None of these profilers tell you how many statements of code within a function were executed during profiling; they tell you only how long was spent in the function and how many times the function was called.  This doesn&#39;t help with IE&#39;s slow script dialog logic, which is based on the number of statements (not time) that were executed.  There is sometimes a correlation between the time spent executing a function and the number of statements, but it is not a reliable relationship as of course different types of statements  can take very different lengths of times to execute (e.g. many native JavaScript functions are faster than calls which update the DOM; both have the same statement count but the former executes faster than the latter, making examining %/raw time not very useful).\r\n\r\nOne approach I&#39;ve used that is of some value is when the slow script dialog appears, start the debugger in IE (if not already started) and select the break on next statement command in the debugger.  Then click the dialog button in the browser that allows the slow script to continue executing.  At this point, the debugger is invoked and the developer can examine the call stack to determine what is executing at the time the slow script dialog appears.  This is okay, but a very manual approach and there&#39;s no guarantee there aren&#39;t multiple scripts running that can at different times invoke the dialog.\r\n\r\nAn interesting idea I&#39;ve seen suggested is to use a JavaScript code coverage tool to instrument the code base.  There are multiple JavaScript code coverage options out there, but the ease of use of a browser extension that could dynamically instrument the code seems like an ideal solution.  (Another interesting idea is to use a proxy server, for example http://siliconforks.com/jscoverage/manual.html; &#39;jscoverage --server --proxy&#39;, but I couldn&#39;t get this to work on virtually any website, except the the silicon forks website itself).  There&#39;s a proof of concept one available for Chrome (http://googletesting.blogspot.ca/2011/10/scriptcover-makes-javascript-coverage.html) that I think could be a great start for helping resolve the the slow script problem -- if such an extension could be made for IE.\r\n\r\nSo, to reiterate my main question is what tools/processes can one use to debug/analyze a slow script dialog appearing on a user&#39;s machine?  A subquestion would be, does anyone know of any JavaScript code analysis tools that could be repurposed to help in diagnosing the slow script dialog in IE, and that takes minimal deployment effort? Can an IE extension be written, in theory, that does the sort of code coverage as the Google&#39; script cover extension does?\r\n\r\nThank you,\r\n\r\nNotre",
+            "link": "https://stackoverflow.com/questions/22079893/debugging-error-message-a-script-on-this-page-is-causing-internet-explorer-to",
+            "title": "Debugging error message: &quot;A script on this page is causing Internet Explorer to run slowly&quot;",
+            "body": "<p>One of my users is intermittently getting a dialog in IE 8 that says:</p>\n\n<p>A script on this page is causing Internet Explorer to run slowly</p>\n\n<p>This problem has been reported numerous times in the MSDN forums and other places on the web.  For example:</p>\n\n<ul>\n<li><a href=\"http://social.msdn.microsoft.com/Forums/ie/en-US/0fdb7550-0a59-4553-a90e-1958475f2ce5/how-to-debug-a-script-on-this-page-is-causing-internet-explorer-to-run-slowly?forum=iewebdevelopment\" rel=\"nofollow\">http://social.msdn.microsoft.com/Forums/ie/en-US/0fdb7550-0a59-4553-a90e-1958475f2ce5/how-to-debug-a-script-on-this-page-is-causing-internet-explorer-to-run-slowly?forum=iewebdevelopment</a></li>\n<li><a href=\"http://social.msdn.microsoft.com/Forums/ie/en-US/dafffdd8-a390-4a3c-a904-867acaec298e/error-message-a-script-on-this-page-is-causing-internet-explorer-to-run-slowly-for-ie8?forum=whatforum\" rel=\"nofollow\">http://social.msdn.microsoft.com/Forums/ie/en-US/dafffdd8-a390-4a3c-a904-867acaec298e/error-message-a-script-on-this-page-is-causing-internet-explorer-to-run-slowly-for-ie8?forum=whatforum</a></li>\n<li><a href=\"http://social.msdn.microsoft.com/Forums/ie/en-US/e9d16d2a-60e1-4d6f-8f80-0d981eab3a2e/a-script-on-this-page-is-causing-your-web-browser-to-run-slowly?forum=bingmapsajax\" rel=\"nofollow\">http://social.msdn.microsoft.com/Forums/ie/en-US/e9d16d2a-60e1-4d6f-8f80-0d981eab3a2e/a-script-on-this-page-is-causing-your-web-browser-to-run-slowly?forum=bingmapsajax</a></li>\n</ul>\n\n<p>So, this question is a duplicate of those and many others.  But it is an intentional duplicate, because I don't think any of those questions were answered in a way that helps a user (developer) to determine precisely what in his scenario causes the dialog to appear.  </p>\n\n<p>I know that based on this page:</p>\n\n<p><a href=\"http://support.microsoft.com/kb/175500\" rel=\"nofollow\">http://support.microsoft.com/kb/175500</a></p>\n\n<p>the dialog appears when a certain number of statements have executed since a new script begins execution (through a variety of means).  By default the number of statements is 5,000,000 but this is configurable via a registry entry.  </p>\n\n<p>The general prescription to this problem is a combination of:</p>\n\n<ul>\n<li>Write less code.  Unfortunately, this is not always possible.</li>\n<li>Use web workers. This is not an option for IE before IE 10, nor with\nsome mobile browsers.</li>\n<li>Use setTimeOut, setInterval, event handlers, etc to break the\nscript(s) up.  This is a legitimate strategy across all browsers.</li>\n</ul>\n\n<p>So, I understand what the problem is in general terms, and I understand what the options are to solve the problem, again in general terms.  The question is, how to determine what area(s) of the code are causing the dialog to appear for a specific user?  Often this problem occurs with a very large code base (including third party libraries), so a manual review of the code base without some tooling support is not feasible.</p>\n\n<p>Most browsers, including IE8 and later, have profiling tools that enable the developer to determine JavaScript CPU usage.  With the exception of IE, other browsers decide a script is long running not based on the numbers of statements executed but rather the amount of time the script spent executing.  To this end, the profilers available in (or as add ons) to the browsers can identify the percentage and usually raw time spent executing a function, both inclusively and exclusively for a function, and the results can be sorted accordingly.  IE's profiler will also give you a count of how often a function is called.  None of these profilers tell you how many statements of code within a function were executed during profiling; they tell you only how long was spent in the function and how many times the function was called.  This doesn't help with IE's slow script dialog logic, which is based on the number of statements (not time) that were executed.  There is sometimes a correlation between the time spent executing a function and the number of statements, but it is not a reliable relationship as of course different types of statements  can take very different lengths of times to execute (e.g. many native JavaScript functions are faster than calls which update the DOM; both have the same statement count but the former executes faster than the latter, making examining %/raw time not very useful).</p>\n\n<p>One approach I've used that is of some value is when the slow script dialog appears, start the debugger in IE (if not already started) and select the break on next statement command in the debugger.  Then click the dialog button in the browser that allows the slow script to continue executing.  At this point, the debugger is invoked and the developer can examine the call stack to determine what is executing at the time the slow script dialog appears.  This is okay, but a very manual approach and there's no guarantee there aren't multiple scripts running that can at different times invoke the dialog.</p>\n\n<p>An interesting idea I've seen suggested is to use a JavaScript code coverage tool to instrument the code base.  There are multiple JavaScript code coverage options out there, but the ease of use of a browser extension that could dynamically instrument the code seems like an ideal solution.  (Another interesting idea is to use a proxy server, for example <a href=\"http://siliconforks.com/jscoverage/manual.html\" rel=\"nofollow\">http://siliconforks.com/jscoverage/manual.html</a>; 'jscoverage --server --proxy', but I couldn't get this to work on virtually any website, except the the silicon forks website itself).  There's a proof of concept one available for Chrome (<a href=\"http://googletesting.blogspot.ca/2011/10/scriptcover-makes-javascript-coverage.html\" rel=\"nofollow\">http://googletesting.blogspot.ca/2011/10/scriptcover-makes-javascript-coverage.html</a>) that I think could be a great start for helping resolve the the slow script problem -- if such an extension could be made for IE.</p>\n\n<p>So, to reiterate my main question is what tools/processes can one use to debug/analyze a slow script dialog appearing on a user's machine?  A subquestion would be, does anyone know of any JavaScript code analysis tools that could be repurposed to help in diagnosing the slow script dialog in IE, and that takes minimal deployment effort? Can an IE extension be written, in theory, that does the sort of code coverage as the Google' script cover extension does?</p>\n\n<p>Thank you,</p>\n\n<p>Notre</p>\n"
+        },
+        {
+            "tags": [
+                "excel",
+                "excel-vba",
+                "reference",
+                "return-value",
+                "nothing"
+            ],
+            "owner": {
+                "reputation": 60,
+                "user_id": 3308839,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://www.gravatar.com/avatar/5c75b89fb91323ee52ffa37560916196?s=128&d=identicon&r=PG&f=1",
+                "display_name": "CheeseMo",
+                "link": "https://stackoverflow.com/users/3308839/cheesemo"
+            },
+            "is_answered": false,
+            "view_count": 7956,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526431507,
+            "creation_date": 1405047165,
+            "question_id": 24689368,
+            "body_markdown": "In VBA code (for excel) I&#39;m trying to write a function to return the next blank row on a sheet to insert input. In my code I do something like `Set rng = Range(&quot;Data!A&quot; &amp; row)` then return the reference. \r\n\r\nThe VBA code I&#39;m working on is at work so I will only be able to summarize code, sadly. I will update with more examples when I can. \r\n\r\nThrough debugging, I have determined that the range being created is referencing a valid cell location. However, it is returning &quot;Nothing&quot; instead of an empty Range object. I&#39;ve gone so far as to set that cell&#39;s value to &quot; &quot; (a space) prior to returning the Range and setting it back to &quot;&quot; after. \r\n\r\nMy question is a two-parter: (1) why is an empty (cell values) Range reference always returning &quot;Nothing&quot;, and (2) how do I properly reference an empty cell as a valid Range object?\r\n\r\nI have other code doing basically the same thing and it works fine. I&#39;m stumped. ",
+            "link": "https://stackoverflow.com/questions/24689368/excel-vba-range-reference-is-nothing",
+            "title": "Excel-VBA; Range reference is &quot;Nothing&quot;?",
+            "body": "<p>In VBA code (for excel) I'm trying to write a function to return the next blank row on a sheet to insert input. In my code I do something like <code>Set rng = Range(\"Data!A\" &amp; row)</code> then return the reference. </p>\n\n<p>The VBA code I'm working on is at work so I will only be able to summarize code, sadly. I will update with more examples when I can. </p>\n\n<p>Through debugging, I have determined that the range being created is referencing a valid cell location. However, it is returning \"Nothing\" instead of an empty Range object. I've gone so far as to set that cell's value to \" \" (a space) prior to returning the Range and setting it back to \"\" after. </p>\n\n<p>My question is a two-parter: (1) why is an empty (cell values) Range reference always returning \"Nothing\", and (2) how do I properly reference an empty cell as a valid Range object?</p>\n\n<p>I have other code doing basically the same thing and it works fine. I'm stumped. </p>\n"
+        },
+        {
+            "tags": [
+                "linux",
+                "process"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 9200783,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ad1f9dcef448e8f2c34254be15cd5236?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Newbie",
+                "link": "https://stackoverflow.com/users/9200783/newbie"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526431497,
+            "creation_date": 1526431497,
+            "question_id": 50360975,
+            "body_markdown": "Is there an application that will check a file and it has, for example, 0, it will start a process and if it has 1, it will exit the process?\r\n",
+            "link": "https://stackoverflow.com/questions/50360975/linux-program-to-start-a-process-based-on-status-file",
+            "title": "Linux program to start a process based on status file",
+            "body": "<p>Is there an application that will check a file and it has, for example, 0, it will start a process and if it has 1, it will exit the process?</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "google-maps",
+                "google-maps-markers",
+                "geojson"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 8872744,
+                "user_type": "registered",
+                "accept_rate": 25,
+                "profile_image": "https://graph.facebook.com/2003872849897803/picture?type=large",
+                "display_name": "Lan Le",
+                "link": "https://stackoverflow.com/users/8872744/lan-le"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526431489,
+            "creation_date": 1526431489,
+            "question_id": 50360974,
+            "body_markdown": "I am trying to markers on top of the highlight the geojson layer above but I cannot add more than one marker. I have played with the zIndex but it does not seem to work\r\nhere is my add marker and geojson code:\r\n\r\n    mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {\r\n            @Override\r\n            public void onMapClick(LatLng latLng) {\r\n                try {\r\n                    Geocoder gc = new Geocoder(ScratchmapActivity.this, Locale.getDefault());\r\n                    List&lt;Address&gt; addrs = null;\r\n                    addrs = gc.getFromLocation(latLng.latitude, latLng.longitude, 2);\r\n                    String country =addrs.get(0).getCountryName();\r\n                    zInd++;\r\n                    mMap.addMarker(new MarkerOptions().position(latLng).title(\r\n                        &quot;aloha&quot;).zIndex(zInd));\r\n                    \r\n                }catch (IOException ex) {\r\n                    ex.printStackTrace();\r\n                }\r\n            }\r\n        });\r\n\r\n\r\n    public void addGeoJsonLayer(int color, int resource){\r\n\r\n        try {\r\n            GeoJsonLayer layer = new GeoJsonLayer(mMap, resource, getApplicationContext());\r\n\r\n            GeoJsonPolygonStyle style = layer.getDefaultPolygonStyle();\r\n            style.setFillColor(color);\r\n            style.setStrokeColor(color);\r\n            style.setStrokeWidth(1F);\r\n            style.setZIndex((float) 1);\r\n\r\n            layer.addLayerToMap();\r\n\r\n        } catch (IOException ex) {\r\n            Log.e(&quot;IOException&quot;, ex.getLocalizedMessage());\r\n        } catch (JSONException ex) {\r\n            Log.e(&quot;JSONException&quot;, ex.getLocalizedMessage());\r\n        }\r\n\r\n    }\r\n\r\n[enter image description here][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/5PJdp.png",
+            "link": "https://stackoverflow.com/questions/50360974/google-map-android-add-multiple-markers-on-top-of-of-a-geojson-layer",
+            "title": "(google map android) add multiple markers on top of of a geojson layer",
+            "body": "<p>I am trying to markers on top of the highlight the geojson layer above but I cannot add more than one marker. I have played with the zIndex but it does not seem to work\nhere is my add marker and geojson code:</p>\n\n<pre><code>mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {\n        @Override\n        public void onMapClick(LatLng latLng) {\n            try {\n                Geocoder gc = new Geocoder(ScratchmapActivity.this, Locale.getDefault());\n                List&lt;Address&gt; addrs = null;\n                addrs = gc.getFromLocation(latLng.latitude, latLng.longitude, 2);\n                String country =addrs.get(0).getCountryName();\n                zInd++;\n                mMap.addMarker(new MarkerOptions().position(latLng).title(\n                    \"aloha\").zIndex(zInd));\n\n            }catch (IOException ex) {\n                ex.printStackTrace();\n            }\n        }\n    });\n\n\npublic void addGeoJsonLayer(int color, int resource){\n\n    try {\n        GeoJsonLayer layer = new GeoJsonLayer(mMap, resource, getApplicationContext());\n\n        GeoJsonPolygonStyle style = layer.getDefaultPolygonStyle();\n        style.setFillColor(color);\n        style.setStrokeColor(color);\n        style.setStrokeWidth(1F);\n        style.setZIndex((float) 1);\n\n        layer.addLayerToMap();\n\n    } catch (IOException ex) {\n        Log.e(\"IOException\", ex.getLocalizedMessage());\n    } catch (JSONException ex) {\n        Log.e(\"JSONException\", ex.getLocalizedMessage());\n    }\n\n}\n</code></pre>\n\n<p><a href=\"https://i.stack.imgur.com/5PJdp.png\" rel=\"nofollow noreferrer\">enter image description here</a></p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 243
+}

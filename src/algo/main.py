@@ -1,6 +1,5 @@
 import plots 
 import numpy as np
-import numpy as np
 import matplotlib.pyplot as plt
 from tfidf import StackoverflowCorpus
 from sklearn.model_selection import train_test_split
@@ -126,7 +125,7 @@ def analyseOneTag(tag, idx):
 
 f1 = plt.figure(figsize=figuresize)
 plt.tight_layout()
-for idx, tag in enumerate(['python', 'php', 'html', 'android', 'c#', 'sql']): #,, 
+for idx, tag in enumerate(['python']): #,, , 'php', 'html', 'android', 'c#', 'sql'
     analyseOneTag(tag, idx)
 
 plt.show()

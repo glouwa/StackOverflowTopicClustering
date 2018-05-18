@@ -4,7 +4,7 @@ import { JSDOM } from 'jsdom'
 import { PostId } from '../model'
 import { StackOverflowPost } from '../model'
 import { StackOverflowMeta } from '../model'
-import { bla } from '../stats-frequency'
+import { counts } from '../stats-frequency'
 
 export function download(source, amount) 
 {    
