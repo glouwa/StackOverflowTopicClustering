@@ -4,20 +4,48 @@ from pprint import pprint
 from tfidf import StackoverflowCorpus
 from scipy.cluster.hierarchy import dendrogram, linkage, to_tree
 
-wordtype = 'raw'
+from sklearn import preprocessing
+from sklearn import pipeline
+from sklearn import decomposition
+
+wordtype = 'lemma'
 topfeature = 'title'
-tfidfcfg= [1, 1] # 11 wolkig aber gelb, 32 beste klassifikations aber nix gelb, 00 separiert gut sonst bullshit
+tfidfcfg= [3, 2] # 11 wolkig aber gelb, 32 beste klassifikations aber nix gelb, 00 separiert gut sonst bullshit
 corpus = StackoverflowCorpus('bag-of-words/stackoverflow-' + wordtype, topfeature, tfidfcfg[0], tfidfcfg[1])
 print("Corpus", len(corpus.documents), len(corpus.termssorted))
 
-X = np.matrix(corpus.w.T)
+interndim = 100
+
+X_ = np.matrix(corpus.w.T)
+
+p = pipeline.Pipeline([
+    ('sca', preprocessing.MaxAbsScaler()),
+    #('clu', decomposition.PCA(n_components=interndim))    
+    ('clu', decomposition.TruncatedSVD(n_components=interndim)),
+    ('norm', preprocessing.MaxAbsScaler()) 
+])
+X = p.fit_transform(X_)
+C = p.named_steps['clu'].components_
 F = corpus.termssorted
+print("Compoentens", C.shape)
+
+def top(component, feature_names, n_top_words):        
+    return " ".join([feature_names[i] for i in component.argsort()[:n_top_words]])
+    #return " ".join([feature_names[i] for i in component.argsort()[:-n_top_words - 1:-1]])    
+
+
+for c in C:
+    print(top(c, F, 3))
+
+
 print("nltk reduced", X.shape)
 
+#Z = linkage(X, 'ward')
+#Z = linkage(X, 'single')
+Z = linkage(X, 'complete')
+#Z = linkage(X, 'average')
 
-
-Z = linkage(X, 'ward')
-
+print(Z[:20])
 
 acc = {}
 acc['count'] = 0
@@ -32,7 +60,7 @@ def visit(n):
 
 to_tree(Z).pre_order(visit)
 
-max_d = 18
+max_d = 10
 
 from scipy.cluster.hierarchy import fcluster
 clusters = fcluster(Z, max_d, criterion='distance')
@@ -70,7 +98,8 @@ def  fancy_dendrogram(*args, **kwargs):
 n = len(Z)
 print("zlen", n, Z.shape)
 
-nodeMat = np.zeros((n, len(corpus.termssorted)))
+#nodeMat = np.zeros((n, len(corpus.termssorted)))
+nodeMat = np.zeros((n, interndim))
 
 print(nodeMat.shape)
 print(nodeMat[0].shape)
@@ -82,15 +111,22 @@ for idx, node in enumerate(Z):
     right = X[rid] if rid < n else nodeMat[rid-n]        
     nodeMat[idx] = (left + right)/2
 
-def top(component, feature_names, n_top_words):    
-    return " ".join([feature_names[i] for i in component.argsort()[:n_top_words]])
-    #return " ".join([feature_names[i] for i in component.argsort()[:-n_top_words - 1:-1]])    
+def component2term(cw, c):
+    #print(cw.shape, c.shape)    
+    o = np.dot(cw, c)
+    #print("outer", o.shape)    
+    return o
+    s = sum(o)
+    print("orig", s.shape)
+    return s
 
 def llf(id):
     if id < n:
-        return top(X[id], F, 3)
+        cw = C[id]
     else:
-        return top(nodeMat[id-n], F, 3)
+        cw = nodeMat[id-n]
+    tw = component2term(cw, C)
+    return top(tw, F, 3)
     
 print(llf(n*2-1))
 #top(X[0], F, 3)
@@ -103,7 +139,7 @@ fancy_dendrogram(
     leaf_rotation=90.,    
     leaf_font_size=8.,
     show_contracted=False,
-    annotate_above=10,  # useful in small plots so annotations don't overlap 
+    annotate_above=0,  # useful in small plots so annotations don't overlap 
     max_d=max_d,
     leaf_label_func=llf
 )

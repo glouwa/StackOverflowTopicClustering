@@ -31,45 +31,51 @@ _slow_or_bad_pipelines = {
     ]),
 }
 
-internaldim = 30
+#decomp =preprocessing.MaxAbsScaler()
+#decomp = decomposition.PCA(n_components=100)
+decomp = decomposition.TruncatedSVD(n_components=150)
+#decomp = decomposition.NMF(n_components=100, random_state=1, alpha=.1, l1_ratio=.5)
+#decomp = decomposition.LatentDirichletAllocation(n_components=200, learning_method='batch')
+
+classify_pre_pipeline = Pipeline([
+    ('norm1', preprocessing.MaxAbsScaler()),
+    ('nmf', decomp),
+    ('norm', preprocessing.MaxAbsScaler()),    
+])
+
 classify_pipelines = {
-    'SGDClassifier': Pipeline([                
-        #('nmf', decomposition.NMF(n_components=20, random_state=1, alpha=.1, l1_ratio=.5)),
+    'SGDClassifier': Pipeline([             
         ('clf', SGDClassifier(loss='hinge', penalty='l2', alpha=1e-3, random_state=42, max_iter=5, tol=None))    
     ]),
-    'MLPClassifier': Pipeline([  
-        #('nmf', decomposition.NMF(n_components=20, random_state=1, alpha=.1, l1_ratio=.5)),
+    'MLPClassifier': Pipeline([                
         ('clf', MLPClassifier(alpha=1))        
     ]),
-    'Linear SVM': Pipeline([        
-        ('nmf', decomposition.NMF(n_components=internaldim, random_state=1, alpha=.1, l1_ratio=.5)),
+    'Linear SVM': Pipeline([                   
         ('clf', svm.LinearSVC(C=1))
     ]),    
-    'LinearDiscriminantAnalysis': Pipeline([        
-        ('nmf', decomposition.NMF(n_components=internaldim, random_state=1, alpha=.1, l1_ratio=.5)),
-        #('scale', preprocessing.Normalizer()),
+    'LinearDiscriminantAnalysis': Pipeline([                        
         ('clf', LinearDiscriminantAnalysis())
     ]),
-    'DecisionTreeClassifier': Pipeline([                
-        #('nmf', decomposition.NMF(n_components=20, random_state=1, alpha=.1, l1_ratio=.5)),
+    'DecisionTreeClassifier': Pipeline([                                
         ('clf', DecisionTreeClassifier())        
     ]),    
-    'RandomForestClassifier': Pipeline([        
-        #('nmf', decomposition.NMF(n_components=20, random_state=1, alpha=.1, l1_ratio=.5)),
+    'RandomForestClassifier': Pipeline([                        
         ('clf', ensemble.RandomForestClassifier())
     ]),
-    'AdaBoostClassifier': Pipeline([        
-        ('nmf', decomposition.NMF(n_components=internaldim, random_state=1, alpha=.1, l1_ratio=.5)),
+    'AdaBoostClassifier': Pipeline([                        
         ('clf', ensemble.AdaBoostClassifier())        
     ]),               
 }
-
+"""
 classify_pipelines = {    
     'Linear SVM': Pipeline([        
-        ('nmf', decomposition.NMF(n_components=internaldim, random_state=1, alpha=.1, l1_ratio=.5)),
+        ('nmf', decomp),
         ('clf', svm.LinearSVC(C=1))
     ])
 }
+
+
+"""
 
 """
 vote = list(classify_pipelines.items())

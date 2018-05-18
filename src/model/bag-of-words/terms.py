@@ -1,6 +1,7 @@
 import nltk
 import json
 from nltk.tokenize import word_tokenize
+from nltk.corpus import wordnet
 
 from wordfilter import filterraw
 from wordfilter import featurefilter 
@@ -14,7 +15,11 @@ def splitone(result, qkey, tkey, sentence):
     terms = word_tokenize(sentence)           
     if len(terms) > 0:
         if featurefilter(tkey):
-            fterms = [w.lower() for w in terms if filterraw(w)]
+            fterms = []
+            for pair in nltk.pos_tag(terms, tagset='universal'):                
+                if filterraw(pair[0]):                                     
+                    if pair[1] == 'NOUN':                        
+                        fterms.append(pair[0].lower())
         else:
             fterms = terms
         result[qkey][outputfeature][tkey].append(fterms)

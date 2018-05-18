@@ -22,9 +22,9 @@ def precisionRecallPlot(ax, label, Y_test, Y_pred, defun):
 
 def clustervis(ax, label, pipeline, projected, termvec, colors):
     ax.set_title(label)
-    ax.set_xticks(())
-    ax.set_yticks(())
-    ax.set_zticks(())
+    #ax.set_xticks(())
+    #ax.set_yticks(())
+    #ax.set_zticks(())
     ax.set_xlabel(compbottom(pipeline, termvec, 0) + '  -  ' + comptop(pipeline, termvec, 0))
     ax.set_ylabel(compbottom(pipeline, termvec, 1) + '  -  ' + comptop(pipeline, termvec, 1))
     ax.set_zlabel(compbottom(pipeline, termvec, 2) + '  -  ' + comptop(pipeline, termvec, 2))

@@ -36,11 +36,11 @@ class DocumentSpace:
                 self.doctermRaw[t_idx][d] = self.doctermRaw[t_idx][d] + 1
         #print("doctermshape", self.doctermRaw.shape)
         
-        termfilter = sum(self.doctermRaw.T) > 5
+        termfilter = sum(self.doctermRaw.T) > 5 #15 was beim grßen ganz gut
         self.doctermRaw = self.doctermRaw[termfilter,:]
         #print("termfiltershape",termfilter.shape)        
         
-        docfilter = sum(self.doctermRaw) > 1
+        docfilter = sum(self.doctermRaw) > 0
         self.doctermRaw = self.doctermRaw[:,docfilter]
         self.documentsraw = np.array(docraw)[docfilter]
         self.documentsstr = np.array(docstr)[docfilter]
