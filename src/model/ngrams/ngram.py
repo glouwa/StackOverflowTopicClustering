@@ -6,14 +6,14 @@ from nltk.util import ngrams
 
 n = int(sys.argv[1])
 
-inputfile = './dist/data/bag-of-words/stackoverflow-stem.json'
+inputfile = './dist/data/bag-of-words/stackoverflow-lemma.json'
 outputfile = './dist/data/ngrams/stackoverflow-'+str(n)+'gram-stem.json'
 inputfeature = 'terms'
 outputfeature = 'terms'
 
 def splitone(result, qkey, tkey, sentence):        
     fterms = ngrams(sentence, n)    
-    fterms = [' '.join(str(i) for i in tupl) for tupl in fterms]        
+    fterms = [' '.join(str(i) for i in tupl) for tupl in fterms if tupl[0] != tupl[1]]        
     result[qkey][outputfeature][tkey].append(fterms)
 
 def splitterms():

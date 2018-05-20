@@ -40,7 +40,7 @@ class DocumentSpace:
         self.doctermRaw = self.doctermRaw[termfilter,:]
         #print("termfiltershape",termfilter.shape)        
         
-        docfilter = sum(self.doctermRaw) > 0
+        docfilter = sum(self.doctermRaw) > 2
         self.doctermRaw = self.doctermRaw[:,docfilter]
         self.documentsraw = np.array(docraw)[docfilter]
         self.documentsstr = np.array(docstr)[docfilter]

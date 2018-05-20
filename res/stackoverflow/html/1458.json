@@ -1,0 +1,826 @@
+{
+    "items": [
+        {
+            "tags": [
+                "javascript",
+                "mxgraph"
+            ],
+            "owner": {
+                "reputation": 412,
+                "user_id": 7376331,
+                "user_type": "registered",
+                "accept_rate": 54,
+                "profile_image": "https://www.gravatar.com/avatar/bc5b6cc1b9274f1cfd84abb3205d7bc7?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Tyler Dahle",
+                "link": "https://stackoverflow.com/users/7376331/tyler-dahle"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526464655,
+            "creation_date": 1526313743,
+            "question_id": 50334599,
+            "body_markdown": "I am having some trouble with mxGraph and parallel edges. My understanding that the parallelEdgeLayout is supposed to find edges between two vertices, and if they overlap, add a spacing. However, I cannot get this to work at all.\r\n\r\nI have my vertex and edge styles defined here:\r\n\r\n    GraphManager.prototype.defineStyles = function () {\r\n    \r\n        // Vertices\r\n        style = new Object();\r\n        style[mxConstants.STYLE_FONTFAMILY] = &quot;Salesforce Sans&quot;;\r\n        style[mxConstants.STYLE_SHAPE] = mxConstants.SHAPE_RECTANGLE;    \r\n        style[mxConstants.STYLE_FOLDABLE] = 0;\r\n        style[mxConstants.STYLE_ARCSIZE] = 9;\r\n        style[mxConstants.STYLE_FILLCOLOR] = &quot;#A6B8CE&quot;;\r\n        style[mxConstants.STYLE_STROKECOLOR] = &quot;#7591b3&quot;;//original\r\n        style[mxConstants.STYLE_STROKEWIDTH] = 1;\r\n        style[mxConstants.STYLE_PERIMETER] = mxPerimeter.RectanglePerimeter;\r\n        style[mxConstants.STYLE_PERIMETER_SPACING] = 2;\r\n        style[mxConstants.STYLE_ROUNDED] = true;\r\n        style[mxConstants.STYLE_SHADOW] = false;\r\n        style[mxConstants.STYLE_ORTHOGONAL] = true;\r\n        this.graph.getStylesheet().putCellStyle(styles.step, style);\r\n\r\n        // Edges\r\n        var style = new Object();\r\n        style[mxConstants.STYLE_ROUNDED] = true;\r\n        style[mxConstants.STYLE_EDGE] = mxEdgeStyle.OrthConnector;\r\n        style[mxConstants.STYLE_FONTFAMILY] = &quot;Salesforce Sans&quot;;\r\n        style[mxConstants.STYLE_STROKEWIDTH] = 3;\r\n        style[mxConstants.STYLE_OPACITY] = 75;\r\n        style[mxConstants.STYLE_SOURCE_PERIMETER_SPACING] = 5;\r\n        style[mxConstants.STYLE_TARGET_PERIMETER_SPACING] = 5;\r\n        style[mxConstants.STYLE_JETTY_SIZE] = &#39;auto&#39;;\r\n        this.graph.getStylesheet().putCellStyle(styles.edge, style);\r\n    }\r\n\r\nThen I set up my graph layout. I am using the stackLayout for the main layout of the graph. I have swim lanes set up that are stacked next to each other, and the stackLayout is the only layout that formats these correctly, so would like to use it.\r\n\r\n    GraphManager.prototype.defineLayout = function (model) {\r\n        // Applies size changes to siblings and parents\r\n        new mxSwimlaneManager(this.graph, false);\r\n\r\n        var parallelEdgeLayout = new mxParallelEdgeLayout(this.graph);\r\n\r\n        // Creates a stack depending on the orientation of the swimlane\r\n        var layout = new mxStackLayout(this.graph);\r\n        // Makes sure all children fit into the parent swimlane\r\n        layout.resizeParent = true;\r\n\r\n        // Applies the size to children if parent size changes\r\n        layout.fill = true;\r\n\r\n        // Only update the size of swimlanes\r\n        layout.isVertexIgnored = function (vertex) {\r\n            return !this.graph.isSwimlane(vertex);\r\n        }\r\n\r\n        // Keeps the lanes and pools stacked\r\n        var layoutMgr = new mxLayoutManager(this.graph);\r\n\r\n        layoutMgr.getLayout = function (cell) {\r\n            if (!model.isEdge(cell) &amp;&amp; this.graph.getModel().getChildCount(cell) &gt; 0 &amp;&amp;\r\n                (model.getParent(cell) == model.getRoot() || \r\n                this.graph.isPool(cell))) {\r\n                    layout.fill = this.graph.isPool(cell);\r\n\r\n                    return layout;\r\n            }\r\n        };\r\n\r\n\r\n        this.graph.addListener(mxEvent.CELL_CONNECTED, function(sender, evt)\r\n        {\r\n            console.log(&#39;Getting Parallels&#39;);\r\n            //var model = graph.getModel();\r\n            var edge = evt.getProperty(&#39;edge&#39;);\r\n            var src = model.getTerminal(edge, true);\r\n            var trg = model.getTerminal(edge, false);\r\n\r\n            console.log(src);\r\n            console.log(trg);\r\n            console.log(parallelEdgeLayout.findParallels(src));\r\n            console.log(parallelEdgeLayout.findParallels(trg));\r\n         \r\n            parallelEdgeLayout.isEdgeIgnored = function(edge2)\r\n            {\r\n                var src2 = model.getTerminal(edge2, true);\r\n                var trg2 = model.getTerminal(edge2, false);\r\n\r\n                return !(model.isEdge(edge2) &amp;&amp; ((src == src2 &amp;&amp; trg == trg2) || (src == trg2 &amp;&amp; trg == src2)));\r\n            };\r\n\r\n            parallelEdgeLayout.execute(graph.getDefaultParent());\r\n        });\r\n    }\r\n\r\nI have tried using a compositeLayout with stack layout and parallel edge layout, that didn&#39;t work either. The approach above does not work. in the console.logs for my cell connected listener, it will not detect any parallel edges between any vertices even though from this picture:\r\n\r\n[![enter image description here][1]][1]\r\n\r\nThere are definitely parallel edges... I would greatly appreciate any insight on getting parallel edge handling running on mxGraph. It would be nice to have the graph be able to sort this out on its own. Otherwise, I am going to have to calculate out all the exit and entry points for my edges on vertices, which I would like to avoid.\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/JQbt6.png",
+            "link": "https://stackoverflow.com/questions/50334599/parallel-edge-detection-handling-not-working-on-mxgraph-at-all",
+            "title": "Parallel Edge detection/handling not working on mxGraph at all",
+            "body": "<p>I am having some trouble with mxGraph and parallel edges. My understanding that the parallelEdgeLayout is supposed to find edges between two vertices, and if they overlap, add a spacing. However, I cannot get this to work at all.</p>\n\n<p>I have my vertex and edge styles defined here:</p>\n\n<pre><code>GraphManager.prototype.defineStyles = function () {\n\n    // Vertices\n    style = new Object();\n    style[mxConstants.STYLE_FONTFAMILY] = \"Salesforce Sans\";\n    style[mxConstants.STYLE_SHAPE] = mxConstants.SHAPE_RECTANGLE;    \n    style[mxConstants.STYLE_FOLDABLE] = 0;\n    style[mxConstants.STYLE_ARCSIZE] = 9;\n    style[mxConstants.STYLE_FILLCOLOR] = \"#A6B8CE\";\n    style[mxConstants.STYLE_STROKECOLOR] = \"#7591b3\";//original\n    style[mxConstants.STYLE_STROKEWIDTH] = 1;\n    style[mxConstants.STYLE_PERIMETER] = mxPerimeter.RectanglePerimeter;\n    style[mxConstants.STYLE_PERIMETER_SPACING] = 2;\n    style[mxConstants.STYLE_ROUNDED] = true;\n    style[mxConstants.STYLE_SHADOW] = false;\n    style[mxConstants.STYLE_ORTHOGONAL] = true;\n    this.graph.getStylesheet().putCellStyle(styles.step, style);\n\n    // Edges\n    var style = new Object();\n    style[mxConstants.STYLE_ROUNDED] = true;\n    style[mxConstants.STYLE_EDGE] = mxEdgeStyle.OrthConnector;\n    style[mxConstants.STYLE_FONTFAMILY] = \"Salesforce Sans\";\n    style[mxConstants.STYLE_STROKEWIDTH] = 3;\n    style[mxConstants.STYLE_OPACITY] = 75;\n    style[mxConstants.STYLE_SOURCE_PERIMETER_SPACING] = 5;\n    style[mxConstants.STYLE_TARGET_PERIMETER_SPACING] = 5;\n    style[mxConstants.STYLE_JETTY_SIZE] = 'auto';\n    this.graph.getStylesheet().putCellStyle(styles.edge, style);\n}\n</code></pre>\n\n<p>Then I set up my graph layout. I am using the stackLayout for the main layout of the graph. I have swim lanes set up that are stacked next to each other, and the stackLayout is the only layout that formats these correctly, so would like to use it.</p>\n\n<pre><code>GraphManager.prototype.defineLayout = function (model) {\n    // Applies size changes to siblings and parents\n    new mxSwimlaneManager(this.graph, false);\n\n    var parallelEdgeLayout = new mxParallelEdgeLayout(this.graph);\n\n    // Creates a stack depending on the orientation of the swimlane\n    var layout = new mxStackLayout(this.graph);\n    // Makes sure all children fit into the parent swimlane\n    layout.resizeParent = true;\n\n    // Applies the size to children if parent size changes\n    layout.fill = true;\n\n    // Only update the size of swimlanes\n    layout.isVertexIgnored = function (vertex) {\n        return !this.graph.isSwimlane(vertex);\n    }\n\n    // Keeps the lanes and pools stacked\n    var layoutMgr = new mxLayoutManager(this.graph);\n\n    layoutMgr.getLayout = function (cell) {\n        if (!model.isEdge(cell) &amp;&amp; this.graph.getModel().getChildCount(cell) &gt; 0 &amp;&amp;\n            (model.getParent(cell) == model.getRoot() || \n            this.graph.isPool(cell))) {\n                layout.fill = this.graph.isPool(cell);\n\n                return layout;\n        }\n    };\n\n\n    this.graph.addListener(mxEvent.CELL_CONNECTED, function(sender, evt)\n    {\n        console.log('Getting Parallels');\n        //var model = graph.getModel();\n        var edge = evt.getProperty('edge');\n        var src = model.getTerminal(edge, true);\n        var trg = model.getTerminal(edge, false);\n\n        console.log(src);\n        console.log(trg);\n        console.log(parallelEdgeLayout.findParallels(src));\n        console.log(parallelEdgeLayout.findParallels(trg));\n\n        parallelEdgeLayout.isEdgeIgnored = function(edge2)\n        {\n            var src2 = model.getTerminal(edge2, true);\n            var trg2 = model.getTerminal(edge2, false);\n\n            return !(model.isEdge(edge2) &amp;&amp; ((src == src2 &amp;&amp; trg == trg2) || (src == trg2 &amp;&amp; trg == src2)));\n        };\n\n        parallelEdgeLayout.execute(graph.getDefaultParent());\n    });\n}\n</code></pre>\n\n<p>I have tried using a compositeLayout with stack layout and parallel edge layout, that didn't work either. The approach above does not work. in the console.logs for my cell connected listener, it will not detect any parallel edges between any vertices even though from this picture:</p>\n\n<p><a href=\"https://i.stack.imgur.com/JQbt6.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/JQbt6.png\" alt=\"enter image description here\"></a></p>\n\n<p>There are definitely parallel edges... I would greatly appreciate any insight on getting parallel edge handling running on mxGraph. It would be nice to have the graph be able to sort this out on its own. Otherwise, I am going to have to calculate out all the exit and entry points for my edges on vertices, which I would like to avoid.</p>\n"
+        },
+        {
+            "tags": [
+                "notepad++"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 5141944,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/U29Lk.jpg?s=128&g=1",
+                "display_name": "Rothgar",
+                "link": "https://stackoverflow.com/users/5141944/rothgar"
+            },
+            "is_answered": false,
+            "view_count": 14598,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1526464655,
+            "creation_date": 1437543811,
+            "question_id": 31554748,
+            "body_markdown": "I have this table which is basically a line of explanation headers and then separate lines with a bunch of numbers and such corresponding to those headers, each separated by a single tab on their line. This causes the whole thing to look like one big jumbled mess, and none of the numbers line up with the headers at the top. I am trying to find some way to get it to all line up so that it&#39;s readable like a normal table. Hope this is an actually fixable problem.",
+            "link": "https://stackoverflow.com/questions/31554748/notepad-formatting-data-into-actual-table-columns",
+            "title": "notepad ++ formatting data into actual table/columns",
+            "body": "<p>I have this table which is basically a line of explanation headers and then separate lines with a bunch of numbers and such corresponding to those headers, each separated by a single tab on their line. This causes the whole thing to look like one big jumbled mess, and none of the numbers line up with the headers at the top. I am trying to find some way to get it to all line up so that it's readable like a normal table. Hope this is an actually fixable problem.</p>\n"
+        },
+        {
+            "tags": [
+                "database",
+                "mongodb",
+                "data-structures"
+            ],
+            "owner": {
+                "reputation": 834,
+                "user_id": 5770216,
+                "user_type": "registered",
+                "accept_rate": 98,
+                "profile_image": "https://i.stack.imgur.com/oSvjP.jpg?s=128&g=1",
+                "display_name": "Elias MP",
+                "link": "https://stackoverflow.com/users/5770216/elias-mp"
+            },
+            "is_answered": false,
+            "view_count": 34,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526464649,
+            "creation_date": 1526464095,
+            "last_edit_date": 1526464649,
+            "question_id": 50367571,
+            "body_markdown": "I would like to modelate correctly a system of following for users like twitter/instagram.\r\n\r\n*My first approach:*\r\n\r\n**Following Collection**\r\n\r\n{\r\n  &quot;UserId&quot; : &quot;1&quot;,\r\n  &quot;FollowingId&quot; : &quot;2&quot;\r\n}\r\n\r\n{\r\n  &quot;UserId&quot; : &quot;1&quot;,\r\n  &quot;FollowingId&quot; : &quot;3&quot;\r\n}\r\n\r\n{\r\n  &quot;UserId&quot; : &quot;1&quot;,\r\n  &quot;FollowingId&quot; : &quot;4&quot;\r\n}\r\n\r\nEach user&#180;s following will have a different document in the same collection.\r\n\r\nThis collection has IDs which are in the other collection (User) besides another additional data.\r\nIf I want to get another additional data ccoming from the users which I am following, I should do:\r\n\r\n**--1.** Get all IDs which I follow from the user, and then to do another query with these IDs for getting the additional data that I want.\r\nThe problem I am seeing, I have to do more query agaisnt the server.\r\n\r\n*My second approach:*\r\n\r\n**Following Collection**\r\n\r\n{\r\n  &quot;UserId&quot; : &quot;1&quot;,\r\n  &quot;Name&quot; : &quot;Jhon&quot;,\r\n   &quot;Alias&quot; : &quot;jhon1&quot;\r\n}\r\n\r\n{\r\n  &quot;UserId&quot; : &quot;1&quot;,\r\n  &quot;Name&quot; : &quot;Peter&quot;,\r\n   &quot;Alias&quot; : &quot;peter1&quot;\r\n}\r\n\r\n{\r\n  &quot;UserId&quot; : &quot;1&quot;,\r\n  &quot;Name&quot; : &quot;Tomas&quot;,\r\n   &quot;Alias&quot; : &quot; tomas1&quot;\r\n}\r\n\r\nI believe that this one is the proper way, repeating the information that I want to get, but if one day a specific user will get, for example, a million of users, and one of these users change his name I will have to do a massive update of all elements of Following collection...\r\n\r\nWhich one do you recommend me? Are there another, and best, possibility?\r\n\r\nThanks mate.",
+            "link": "https://stackoverflow.com/questions/50367571/how-can-i-modelate-a-structure-system-of-following-for-users",
+            "title": "How can I modelate a structure system of following for users?",
+            "body": "<p>I would like to modelate correctly a system of following for users like twitter/instagram.</p>\n\n<p><em>My first approach:</em></p>\n\n<p><strong>Following Collection</strong></p>\n\n<p>{\n  \"UserId\" : \"1\",\n  \"FollowingId\" : \"2\"\n}</p>\n\n<p>{\n  \"UserId\" : \"1\",\n  \"FollowingId\" : \"3\"\n}</p>\n\n<p>{\n  \"UserId\" : \"1\",\n  \"FollowingId\" : \"4\"\n}</p>\n\n<p>Each user´s following will have a different document in the same collection.</p>\n\n<p>This collection has IDs which are in the other collection (User) besides another additional data.\nIf I want to get another additional data ccoming from the users which I am following, I should do:</p>\n\n<p><strong>--1.</strong> Get all IDs which I follow from the user, and then to do another query with these IDs for getting the additional data that I want.\nThe problem I am seeing, I have to do more query agaisnt the server.</p>\n\n<p><em>My second approach:</em></p>\n\n<p><strong>Following Collection</strong></p>\n\n<p>{\n  \"UserId\" : \"1\",\n  \"Name\" : \"Jhon\",\n   \"Alias\" : \"jhon1\"\n}</p>\n\n<p>{\n  \"UserId\" : \"1\",\n  \"Name\" : \"Peter\",\n   \"Alias\" : \"peter1\"\n}</p>\n\n<p>{\n  \"UserId\" : \"1\",\n  \"Name\" : \"Tomas\",\n   \"Alias\" : \" tomas1\"\n}</p>\n\n<p>I believe that this one is the proper way, repeating the information that I want to get, but if one day a specific user will get, for example, a million of users, and one of these users change his name I will have to do a massive update of all elements of Following collection...</p>\n\n<p>Which one do you recommend me? Are there another, and best, possibility?</p>\n\n<p>Thanks mate.</p>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "dom",
+                "bootstrap-modal"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 6676148,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/6cbe0b0bac1f446a7da373e6592a5d78?s=128&d=identicon&r=PG&f=1",
+                "display_name": "zoosaie",
+                "link": "https://stackoverflow.com/users/6676148/zoosaie"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 2,
+            "score": -1,
+            "last_activity_date": 1526464642,
+            "creation_date": 1526461307,
+            "last_edit_date": 1526464642,
+            "question_id": 50366551,
+            "body_markdown": "`$(&#39;#myModal&#39;).modal(&#39;show&#39;);\r\n$(&#39;#myModal&#39;).modal(&#39;hide&#39;);`\r\nThis is the way we follow to open  a modal from js file.I am now working in angular 5. How to open modal from .ts file?\r\nTo be very clear how to talk with DOM from the .ts file in angular 5,like using `document.getElementById(&quot;demo&quot;)` we do in js file.\r\n\r\n    &lt;div class=&quot; col-sm-6 clearPadding&quot;&gt;\r\n    &lt;div class=&quot;addBottomPadding&quot;&gt;\r\n      &lt;h2&gt;Events&lt;/h2&gt;\r\n    &lt;/div&gt;\r\n    &lt;div class=&quot;addTopPadding&quot; *ngIf=&quot;flagEvent&quot;&gt;\r\n      &lt;canvas baseChart [data]=&quot;eventPieChartData&quot; [labels]=&quot;pieChartLabels&quot; [chartType]=&quot;pieChartType&quot; (chartHover)=&quot;chartHovered($event)&quot;\r\n        (chartClick)=&quot;eventChartClicked($event)&quot; data-toggle=&quot;modal&quot; data-target=&quot;***********&quot;&gt;\r\n      &lt;/canvas&gt;\r\n    &lt;/div&gt;\r\n  &lt;/div&gt;\r\n\r\n  \r\n\r\n    &lt;div class=&quot;col-sm-6 clearPadding&quot;&gt;\r\n    &lt;div class=&quot;addBottomPadding&quot;&gt;   \r\n      &lt;h2&gt;Registrants&lt;/h2&gt;\r\n   \r\n    &lt;/div&gt;\r\n    &lt;div class=&quot;addTopPadding&quot; *ngIf=&quot;flagUser&quot;&gt;\r\n      &lt;canvas baseChart [data]=&quot;usersPieChartData&quot; [labels]=&quot;pieChartLabels&quot; [chartType]=&quot;pieChartType&quot; (chartHover)=&quot;chartHovered($event)&quot;\r\n        (chartClick)=&quot;regChartClicked($event)&quot; data-toggle=&quot;modal&quot; data-target=&quot;**************&quot;&gt;\r\n      &lt;/canvas&gt;\r\n    &lt;/div&gt;\r\n  &lt;/div&gt;\r\n\r\nThis is my code.\r\nI have written *****  in place of modal target because , the function call \r\n`(chartClick)=&quot;eventChartClicked($event)` has 2 conditions. For each condition i wnt to open a modal from my typescript file.Here i cant use button also.",
+            "link": "https://stackoverflow.com/questions/50366551/access-dom-from-typescript-file",
+            "title": "Access DOM from typescript file",
+            "body": "<p><code>$('#myModal').modal('show');\n$('#myModal').modal('hide');</code>\nThis is the way we follow to open  a modal from js file.I am now working in angular 5. How to open modal from .ts file?\nTo be very clear how to talk with DOM from the .ts file in angular 5,like using <code>document.getElementById(\"demo\")</code> we do in js file.</p>\n\n<pre><code>&lt;div class=\" col-sm-6 clearPadding\"&gt;\n&lt;div class=\"addBottomPadding\"&gt;\n  &lt;h2&gt;Events&lt;/h2&gt;\n&lt;/div&gt;\n&lt;div class=\"addTopPadding\" *ngIf=\"flagEvent\"&gt;\n  &lt;canvas baseChart [data]=\"eventPieChartData\" [labels]=\"pieChartLabels\" [chartType]=\"pieChartType\" (chartHover)=\"chartHovered($event)\"\n    (chartClick)=\"eventChartClicked($event)\" data-toggle=\"modal\" data-target=\"***********\"&gt;\n  &lt;/canvas&gt;\n&lt;/div&gt;\n</code></pre>\n\n<p></p>\n\n<pre><code>&lt;div class=\"col-sm-6 clearPadding\"&gt;\n&lt;div class=\"addBottomPadding\"&gt;   \n  &lt;h2&gt;Registrants&lt;/h2&gt;\n\n&lt;/div&gt;\n&lt;div class=\"addTopPadding\" *ngIf=\"flagUser\"&gt;\n  &lt;canvas baseChart [data]=\"usersPieChartData\" [labels]=\"pieChartLabels\" [chartType]=\"pieChartType\" (chartHover)=\"chartHovered($event)\"\n    (chartClick)=\"regChartClicked($event)\" data-toggle=\"modal\" data-target=\"**************\"&gt;\n  &lt;/canvas&gt;\n&lt;/div&gt;\n</code></pre>\n\n<p></p>\n\n<p>This is my code.\nI have written *****  in place of modal target because , the function call \n<code>(chartClick)=\"eventChartClicked($event)</code> has 2 conditions. For each condition i wnt to open a modal from my typescript file.Here i cant use button also.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "sql-server"
+            ],
+            "owner": {
+                "reputation": 17,
+                "user_id": 9798931,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/dd7a4ffb6b67270f43c2a7bd04718759?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Nelly",
+                "link": "https://stackoverflow.com/users/9798931/nelly"
+            },
+            "is_answered": true,
+            "view_count": 53,
+            "accepted_answer_id": 50367774,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526464642,
+            "creation_date": 1526463015,
+            "question_id": 50367130,
+            "body_markdown": "I have a VB program that l am converting to C#. I am encountering errors in the unique ID code generator. It checks against an sql server database and reads the Id column. If the column is empty it generates a number for it. Afterwards any number generated will be increased by one. I formatted the Id in my own way. Here is the code\r\n\r\n\r\n         private void btnid_Click(object sender, EventArgs e)\r\n        {\r\n            string GetCode = &quot;0&quot;;\r\n            cn.Open();\r\n            cmd = new SqlCommand(&quot;select * from AddressBook order by Id desc&quot;);\r\n            try {\r\n                dr = cmd.ExecuteReader(CommandBehavior.SingleRow);\r\n                    if( dr.HasRows == true) {\r\n                        while(dr.Read()) {\r\n                        GetCode = (dr.GetString(dr.GetOrdinal(&quot;Id&quot;)));}\r\n                    \r\n                    }\r\n            }\r\n            catch (Exception ex){\r\n            \r\n            MessageBox.Show(ex.Message);\r\n            }\r\n\r\n            if ((GetCode == &quot;0&quot;))\r\n            {\r\n                txtid.Text = &quot;GPSC0000001&quot;;\r\n            }\r\n            else if ((GetCode != &quot;0&quot;))\r\n            {\r\n                string TotalCodeWithoutLable = GetCode.Count - 6;\r\n                string OldNum = GetCode.Substring(GetCode.Length - \r\n               TotalCodeWithoutLable);\r\n\r\n                txtid.Text = &quot;GPSC&quot; + StringFormat(OldNum + 1, \r\n            &quot;0000000&quot;).ToString;\r\n            }\r\n            //format number of casefilenumber\r\n                \r\n        }\r\nVS shows the following errors on this lines.This is the error: Error\t1\tOperator &#39;-&#39; cannot be applied to operands of type &#39;method group&#39; and &#39;int&#39;\t\r\n\r\n\r\n         string TotalCodeWithoutLable = GetCode.Count - 6;\r\n         string OldNum = GetCode.Substring(GetCode.Length - \r\n         TotalCodeWithoutLable);\r\n         txtid.Text = &quot;GPSC&quot; + StringFormat(OldNum + 1, &quot;0000000&quot;).ToString;\r\n\r\n\r\n       ",
+            "link": "https://stackoverflow.com/questions/50367130/error-in-code-to-generate-new-id-in-c-sql-server",
+            "title": "Error in code to generate new ID in c# sql server",
+            "body": "<p>I have a VB program that l am converting to C#. I am encountering errors in the unique ID code generator. It checks against an sql server database and reads the Id column. If the column is empty it generates a number for it. Afterwards any number generated will be increased by one. I formatted the Id in my own way. Here is the code</p>\n\n<pre><code>     private void btnid_Click(object sender, EventArgs e)\n    {\n        string GetCode = \"0\";\n        cn.Open();\n        cmd = new SqlCommand(\"select * from AddressBook order by Id desc\");\n        try {\n            dr = cmd.ExecuteReader(CommandBehavior.SingleRow);\n                if( dr.HasRows == true) {\n                    while(dr.Read()) {\n                    GetCode = (dr.GetString(dr.GetOrdinal(\"Id\")));}\n\n                }\n        }\n        catch (Exception ex){\n\n        MessageBox.Show(ex.Message);\n        }\n\n        if ((GetCode == \"0\"))\n        {\n            txtid.Text = \"GPSC0000001\";\n        }\n        else if ((GetCode != \"0\"))\n        {\n            string TotalCodeWithoutLable = GetCode.Count - 6;\n            string OldNum = GetCode.Substring(GetCode.Length - \n           TotalCodeWithoutLable);\n\n            txtid.Text = \"GPSC\" + StringFormat(OldNum + 1, \n        \"0000000\").ToString;\n        }\n        //format number of casefilenumber\n\n    }\n</code></pre>\n\n<p>VS shows the following errors on this lines.This is the error: Error    1   Operator '-' cannot be applied to operands of type 'method group' and 'int' </p>\n\n<pre><code>     string TotalCodeWithoutLable = GetCode.Count - 6;\n     string OldNum = GetCode.Substring(GetCode.Length - \n     TotalCodeWithoutLable);\n     txtid.Text = \"GPSC\" + StringFormat(OldNum + 1, \"0000000\").ToString;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "shiny",
+                "shinydashboard"
+            ],
+            "owner": {
+                "reputation": 74,
+                "user_id": 8214952,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://lh4.googleusercontent.com/-76tYwjiqeSg/AAAAAAAAAAI/AAAAAAAAF1E/bdcHYFyeyqM/photo.jpg?sz=128",
+                "display_name": "Balaji N",
+                "link": "https://stackoverflow.com/users/8214952/balaji-n"
+            },
+            "is_answered": true,
+            "view_count": 53,
+            "accepted_answer_id": 50367772,
+            "answer_count": 2,
+            "score": 5,
+            "last_activity_date": 1526464639,
+            "creation_date": 1526449357,
+            "last_edit_date": 1526453581,
+            "question_id": 50363193,
+            "body_markdown": "I am new to shiny. I would like to give static color for the slider bar irrespective of the range selected in shiny dashboard. I want to have different color for slider as follows, Ex: 0 to 40 – red, 40 to 60 – blue, 60 to 100 – green. \r\nPlease help me solve this issue.\r\nMy code,\r\n\r\n    library(shiny)\r\n    library(shinydashboard)\r\n    \r\n    ui &lt;- dashboardPage(skin = &quot;black&quot;,\r\n                        dashboardHeader(title = &quot;test&quot;),\r\n                        \r\n                      dashboardSidebar(\r\n                        sidebarMenu(\r\n                          menuItem(&quot;Complete&quot;, tabName = &quot;comp&quot;))),\r\n                        \r\n                        dashboardBody(\r\n                          tabItems(\r\n                            tabItem(tabName = &quot;comp&quot;,\r\n                              fluidRow(\r\n                                  sliderInput(&quot;range_var&quot;, &quot;&quot;, value = c(90,100), min = 0, max = 100, width = &#39;200%&#39;))))))\r\n    \r\n    server &lt;- function(input, output, session) { \r\n      observe({\r\n        updateSliderInput(session, &quot;range_var&quot;, label = &quot;&quot;, value = c(90, 100), min = 0, max = 100)\r\n      })\r\n    }\r\n    shinyApp(ui, server)\r\n\r\nThanks\r\nBalaji",
+            "link": "https://stackoverflow.com/questions/50363193/add-different-static-colors-for-sliderbar-in-shiny-dashboard",
+            "title": "Add different static colors for sliderbar in shiny dashboard",
+            "body": "<p>I am new to shiny. I would like to give static color for the slider bar irrespective of the range selected in shiny dashboard. I want to have different color for slider as follows, Ex: 0 to 40 – red, 40 to 60 – blue, 60 to 100 – green. \nPlease help me solve this issue.\nMy code,</p>\n\n<pre><code>library(shiny)\nlibrary(shinydashboard)\n\nui &lt;- dashboardPage(skin = \"black\",\n                    dashboardHeader(title = \"test\"),\n\n                  dashboardSidebar(\n                    sidebarMenu(\n                      menuItem(\"Complete\", tabName = \"comp\"))),\n\n                    dashboardBody(\n                      tabItems(\n                        tabItem(tabName = \"comp\",\n                          fluidRow(\n                              sliderInput(\"range_var\", \"\", value = c(90,100), min = 0, max = 100, width = '200%'))))))\n\nserver &lt;- function(input, output, session) { \n  observe({\n    updateSliderInput(session, \"range_var\", label = \"\", value = c(90, 100), min = 0, max = 100)\n  })\n}\nshinyApp(ui, server)\n</code></pre>\n\n<p>Thanks\nBalaji</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "xml",
+                "iso8583",
+                "j8583"
+            ],
+            "owner": {
+                "reputation": 1432,
+                "user_id": 1431999,
+                "user_type": "registered",
+                "accept_rate": 73,
+                "profile_image": "https://www.gravatar.com/avatar/1a0283fa68e354d6bc6a213f757aa140?s=128&d=identicon&r=PG",
+                "display_name": "Dheeraj Kumar",
+                "link": "https://stackoverflow.com/users/1431999/dheeraj-kumar"
+            },
+            "is_answered": false,
+            "view_count": 474,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1526464636,
+            "creation_date": 1476856018,
+            "last_edit_date": 1476856664,
+            "question_id": 40123151,
+            "body_markdown": "Using http://j8583.sourceforge.net/ I have parsed ISO message to XML in Java.\r\n\r\n**ISO to XML:**\r\n\r\n     &lt;j8583config&gt;\r\n     &lt;parse&gt;\r\n      &lt;PROCESSINGCODE&gt;000000&lt;/PROCESSINGCODE&gt; \r\n      &lt;SYSTEMTRACEAUDITNUMBER&gt;000001&lt;/SYSTEMTRACEAUDITNUMBER&gt; \r\n      &lt;Cardacceptorterminalidentification&gt;3239313130303031&lt;/Cardacceptorterminalidentification&gt; \r\n      &lt;Reservednational&gt;001054455354204D45535347&lt;/Reservednational&gt; \r\n      &lt;Networkmanagementinformationcode&gt;0301&lt;/Networkmanagementinformationcode&gt; \r\n      &lt;/parse&gt;\r\n      &lt;/j8583config&gt;\r\n\r\n\r\nNow I need to do vice-versa. I need to create ISO message from XML.\r\n\r\nCan someone please guide for this.\r\n\r\nAny help is appreciated.",
+            "link": "https://stackoverflow.com/questions/40123151/how-to-create-iso8583-meesage-from-xml-using-j8583",
+            "title": "How to create ISO8583 Meesage from XML using j8583",
+            "body": "<p>Using <a href=\"http://j8583.sourceforge.net/\" rel=\"nofollow\">http://j8583.sourceforge.net/</a> I have parsed ISO message to XML in Java.</p>\n\n<p><strong>ISO to XML:</strong></p>\n\n<pre><code> &lt;j8583config&gt;\n &lt;parse&gt;\n  &lt;PROCESSINGCODE&gt;000000&lt;/PROCESSINGCODE&gt; \n  &lt;SYSTEMTRACEAUDITNUMBER&gt;000001&lt;/SYSTEMTRACEAUDITNUMBER&gt; \n  &lt;Cardacceptorterminalidentification&gt;3239313130303031&lt;/Cardacceptorterminalidentification&gt; \n  &lt;Reservednational&gt;001054455354204D45535347&lt;/Reservednational&gt; \n  &lt;Networkmanagementinformationcode&gt;0301&lt;/Networkmanagementinformationcode&gt; \n  &lt;/parse&gt;\n  &lt;/j8583config&gt;\n</code></pre>\n\n<p>Now I need to do vice-versa. I need to create ISO message from XML.</p>\n\n<p>Can someone please guide for this.</p>\n\n<p>Any help is appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "mpi",
+                "hpc"
+            ],
+            "owner": {
+                "reputation": 1517,
+                "user_id": 656552,
+                "user_type": "registered",
+                "accept_rate": 79,
+                "profile_image": "https://i.stack.imgur.com/hIcsv.jpg?s=128&g=1",
+                "display_name": "Manolete",
+                "link": "https://stackoverflow.com/users/656552/manolete"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526464628,
+            "creation_date": 1526464628,
+            "question_id": 50367770,
+            "body_markdown": "I have created a shared memory window to communicate with intra node neighbors.\r\n\r\n    MPI_Win_allocate_shared(2*size*sizeof(double), 1, MPI_INFO_NULL, \r\n                            shmcomm, &amp;mem, &amp;win);\r\n    double *anew=mem; \r\n    double *aold=mem+size; \r\n      \r\nand I would to use MPI RMA when a neigbor is on an inter node location, so ideally I would like to do something like\r\n\r\n    MPI_Put(&amp;aold[index], 1, Xtype, left, offset, 1, Xtype, win);\r\n\r\nHowever this reports an error since `win` has been allocated in the shared memory environment so it does not understand neighbors outside its own node. \r\nIs there a way to create a secondary window to be used with `aold` so I can do something like\r\n\r\n    MPI_Put(&amp;aold[index], 1, Xtype, left, offset, 1, Xtype, OtherWin);",
+            "link": "https://stackoverflow.com/questions/50367770/using-mpi-put-with-shared-memory-windows",
+            "title": "Using MPI_Put with shared memory windows",
+            "body": "<p>I have created a shared memory window to communicate with intra node neighbors.</p>\n\n<pre><code>MPI_Win_allocate_shared(2*size*sizeof(double), 1, MPI_INFO_NULL, \n                        shmcomm, &amp;mem, &amp;win);\ndouble *anew=mem; \ndouble *aold=mem+size; \n</code></pre>\n\n<p>and I would to use MPI RMA when a neigbor is on an inter node location, so ideally I would like to do something like</p>\n\n<pre><code>MPI_Put(&amp;aold[index], 1, Xtype, left, offset, 1, Xtype, win);\n</code></pre>\n\n<p>However this reports an error since <code>win</code> has been allocated in the shared memory environment so it does not understand neighbors outside its own node. \nIs there a way to create a secondary window to be used with <code>aold</code> so I can do something like</p>\n\n<pre><code>MPI_Put(&amp;aold[index], 1, Xtype, left, offset, 1, Xtype, OtherWin);\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "spring-boot",
+                "junit"
+            ],
+            "owner": {
+                "reputation": 19,
+                "user_id": 8683238,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/9f7c747a55815c4849066d482b1cac9f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Space Cadet",
+                "link": "https://stackoverflow.com/users/8683238/space-cadet"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526464628,
+            "creation_date": 1526053714,
+            "question_id": 50295908,
+            "body_markdown": "I&#39;m trying to write a Spring Boot integration test for a microservice I&#39;ve written.  The microservices runs on port 8888.\r\n\r\nThis is my test class:\r\n\r\n    import com.mydomain.app.MyAPI;\r\n\r\n    import org.junit.Test;\r\n    import org.junit.runner.RunWith;\r\n    import org.springframework.beans.factory.annotation.Autowired;\r\n    import org.springframework.boot.test.context.SpringBootTest;\r\n    import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;\r\n    import org.springframework.boot.test.web.client.TestRestTemplate;\r\n    import org.springframework.test.context.junit4.SpringRunner;\r\n    import org.springframework.http.HttpHeaders;\r\n    import org.springframework.http.HttpEntity;\r\n    import org.springframework.http.ResponseEntity;\r\n\r\n\r\n    @RunWith(SpringRunner.class)\r\n    @SpringBootTest(classes = {MyAPI.class}, webEnvironment = WebEnvironment.RANDOM_PORT)\r\n    public class MyIntegrationTest {\r\n\r\n        @Autowired\r\n        private TestRestTemplate testRestTemplate;\r\n\r\n        @Test\r\n        public void contextLoads() {\r\n        }\r\n\r\n    }\r\n\r\nWhen I run the test without starting the microservice the test method passes fine - the context loads.  The problem is when I start the microservice then run the test.  I get an error saying that port 8888 is already in use.  I understand that it&#39;s in use because the microservice is bound to the port but I don&#39;t understand why WebEnvironment = RANDOM_PORT hasn&#39;t assigned a different port to the test sever than 8888.\r\n\r\nCan anyone assist please?",
+            "link": "https://stackoverflow.com/questions/50295908/spring-boot-integration-testing-port-bound",
+            "title": "Spring Boot Integration Testing - Port Bound",
+            "body": "<p>I'm trying to write a Spring Boot integration test for a microservice I've written.  The microservices runs on port 8888.</p>\n\n<p>This is my test class:</p>\n\n<pre><code>import com.mydomain.app.MyAPI;\n\nimport org.junit.Test;\nimport org.junit.runner.RunWith;\nimport org.springframework.beans.factory.annotation.Autowired;\nimport org.springframework.boot.test.context.SpringBootTest;\nimport org.springframework.boot.test.context.SpringBootTest.WebEnvironment;\nimport org.springframework.boot.test.web.client.TestRestTemplate;\nimport org.springframework.test.context.junit4.SpringRunner;\nimport org.springframework.http.HttpHeaders;\nimport org.springframework.http.HttpEntity;\nimport org.springframework.http.ResponseEntity;\n\n\n@RunWith(SpringRunner.class)\n@SpringBootTest(classes = {MyAPI.class}, webEnvironment = WebEnvironment.RANDOM_PORT)\npublic class MyIntegrationTest {\n\n    @Autowired\n    private TestRestTemplate testRestTemplate;\n\n    @Test\n    public void contextLoads() {\n    }\n\n}\n</code></pre>\n\n<p>When I run the test without starting the microservice the test method passes fine - the context loads.  The problem is when I start the microservice then run the test.  I get an error saying that port 8888 is already in use.  I understand that it's in use because the microservice is bound to the port but I don't understand why WebEnvironment = RANDOM_PORT hasn't assigned a different port to the test sever than 8888.</p>\n\n<p>Can anyone assist please?</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "json",
+                "pretty-print"
+            ],
+            "owner": {
+                "reputation": 11089,
+                "user_id": 371408,
+                "user_type": "registered",
+                "accept_rate": 95,
+                "profile_image": "https://www.gravatar.com/avatar/4aee79156a78ba2c12551acabd846f4d?s=128&d=identicon&r=PG",
+                "display_name": "Zach Rattner",
+                "link": "https://stackoverflow.com/users/371408/zach-rattner"
+            },
+            "is_answered": true,
+            "view_count": 350793,
+            "protected_date": 1500380726,
+            "accepted_answer_id": 9120871,
+            "answer_count": 20,
+            "score": 409,
+            "last_activity_date": 1526464627,
+            "creation_date": 1305781709,
+            "last_edit_date": 1467173053,
+            "question_id": 6054033,
+            "body_markdown": "I&#39;m building a PHP script that feeds JSON data to another script. My script builds data into a large associative array, and then outputs the data using `json_encode`. Here is an example script:\r\n\r\n    $data = array(&#39;a&#39; =&gt; &#39;apple&#39;, &#39;b&#39; =&gt; &#39;banana&#39;, &#39;c&#39; =&gt; &#39;catnip&#39;);\r\n    header(&#39;Content-type: text/javascript&#39;);\r\n    echo json_encode($data);\r\n\r\nThe above code yields the following output:\r\n\r\n    {&quot;a&quot;:&quot;apple&quot;,&quot;b&quot;:&quot;banana&quot;,&quot;c&quot;:&quot;catnip&quot;}\r\n\r\nThis is great if you have a small amount of data, but I&#39;d prefer something along these lines: \r\n\r\n    {\r\n        &quot;a&quot;: &quot;apple&quot;,\r\n        &quot;b&quot;: &quot;banana&quot;,\r\n        &quot;c&quot;: &quot;catnip&quot;\r\n    }\r\n\r\nIs there a way to do this in PHP without an ugly hack? It seems like someone at [Facebook][1] figured it out.\r\n\r\n\r\n  [1]: https://graph.facebook.com/19292868552",
+            "link": "https://stackoverflow.com/questions/6054033/pretty-printing-json-with-php",
+            "title": "Pretty-Printing JSON with PHP",
+            "body": "<p>I'm building a PHP script that feeds JSON data to another script. My script builds data into a large associative array, and then outputs the data using <code>json_encode</code>. Here is an example script:</p>\n\n<pre><code>$data = array('a' =&gt; 'apple', 'b' =&gt; 'banana', 'c' =&gt; 'catnip');\nheader('Content-type: text/javascript');\necho json_encode($data);\n</code></pre>\n\n<p>The above code yields the following output:</p>\n\n<pre><code>{\"a\":\"apple\",\"b\":\"banana\",\"c\":\"catnip\"}\n</code></pre>\n\n<p>This is great if you have a small amount of data, but I'd prefer something along these lines: </p>\n\n<pre><code>{\n    \"a\": \"apple\",\n    \"b\": \"banana\",\n    \"c\": \"catnip\"\n}\n</code></pre>\n\n<p>Is there a way to do this in PHP without an ugly hack? It seems like someone at <a href=\"https://graph.facebook.com/19292868552\" rel=\"noreferrer\">Facebook</a> figured it out.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pyqt",
+                "pyqt4"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8278303,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1522254031160613/picture?type=large",
+                "display_name": "Sounak Ray",
+                "link": "https://stackoverflow.com/users/8278303/sounak-ray"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526464627,
+            "creation_date": 1526456303,
+            "last_edit_date": 1526464627,
+            "question_id": 50364939,
+            "body_markdown": "I am trying to make a Machine Learning GUI with an image editing feature. I want the user to zoom in using single right button click and zoom out using double right button click with the left mouse button serving as panning tool.\r\n\r\nMy single mouse press events are working fine but I cannot seem to get my double mouse click event working properly. Can anyone say why this is so? I think there is an inheritance issue, but that should also stop my single press events from working properly. Thanks in advance\r\n\r\n    from PyQt4 import QtCore, QtGui\r\n    from PyQt4.QtCore import Qt\r\n    \r\n    try:\r\n        _fromUtf8 = QtCore.QString.fromUtf8\r\n    except AttributeError:\r\n        def _fromUtf8(s):\r\n            return s\r\n    \r\n    try:\r\n        _encoding = QtGui.QApplication.UnicodeUTF8\r\n        def _translate(context, text, disambig):\r\n            return QtGui.QApplication.translate(context, text, disambig, _encoding)\r\n    except AttributeError:\r\n        def _translate(context, text, disambig):\r\n            return QtGui.QApplication.translate(context, text, disambig)\r\n    \r\n    class Window(QtGui.QMainWindow):\r\n    \r\n        def __init__(self):\r\n            super(Window, self).__init__()\r\n            self.setObjectName(_fromUtf8(&quot;MainWindow&quot;))\r\n            self.resize(1000, 900)\r\n            qtRectangle = self.frameGeometry()\r\n            centerPoint = QtGui.QDesktopWidget().availableGeometry().center()\r\n            qtRectangle.moveCenter(centerPoint)\r\n            self.centralwidget = QtGui.QWidget(self)\r\n            self.centralwidget.setObjectName(_fromUtf8(&quot;centralwidget&quot;))\r\n            self.graphicsView = QtGui.QGraphicsView(self.centralwidget)\r\n            self.graphicsView.setGeometry(QtCore.QRect(100, 20, 800, 500))\r\n            self.graphicsView.setRubberBandSelectionMode(QtCore.Qt.ContainsItemBoundingRect)\r\n            self.graphicsView.setObjectName(_fromUtf8(&quot;graphicsView&quot;))\r\n            self.setCentralWidget(self.centralwidget) \r\n            self.scene=QtGui.QGraphicsScene()\r\n            self.move(qtRectangle.topLeft())\r\n            self.menubar = QtGui.QMenuBar(self)\r\n            self.menubar.setGeometry(QtCore.QRect(0, 0, 1000, 30))\r\n            self.menubar.setObjectName(_fromUtf8(&quot;menubar&quot;))\r\n            self.menuFile = QtGui.QMenu(self.menubar)\r\n            self.menuFile.setObjectName(_fromUtf8(&quot;menuFile&quot;))\r\n            self.menuOpen_File = QtGui.QMenu(self.menuFile)\r\n            self.menuOpen_File.setObjectName(_fromUtf8(&quot;menuOpen_File&quot;))\r\n            self.setMenuBar(self.menubar)\r\n            self.statusbar = QtGui.QStatusBar(self)\r\n            self.statusbar.setObjectName(_fromUtf8(&quot;statusbar&quot;))\r\n            self.setStatusBar(self.statusbar)\r\n            self.actionDisplay_Zone = QtGui.QAction(self)\r\n            self.actionDisplay_Zone.setObjectName(_fromUtf8(&quot;actionDisplay_Zone&quot;))\r\n            self.actionDisplay_Zone.triggered.connect(self.showDialog)\r\n            self.actionOriginal_Size = QtGui.QAction(self)\r\n            self.actionOriginal_Size.setObjectName(_fromUtf8(&quot;actionOriginal_Size&quot;))\r\n            self.actionOriginal_Size.triggered.connect(self.showOriginal_Image)\r\n            self.actionZoom_in = QtGui.QAction(self)\r\n            self.actionZoom_in.setObjectName(_fromUtf8(&quot;actionZoom&quot;))\r\n            self.actionZoom_in.triggered.connect(self.showZoom_in)\r\n            self.actionExit = QtGui.QAction(self)\r\n            self.actionExit.setObjectName(_fromUtf8(&quot;actionExit&quot;))\r\n            self.actionExit.triggered.connect(QtGui.QApplication.quit)\r\n            self.actionSave = QtGui.QAction(self)\r\n            self.actionSave.setObjectName(_fromUtf8(&quot;actionSave&quot;))\r\n            self.actionCrop = QtGui.QAction(self)\r\n            self.actionCrop.setObjectName(_fromUtf8(&quot;actionCrop&quot;))\r\n            self.actionFiltering = QtGui.QAction(self)\r\n            self.actionFiltering.setObjectName(_fromUtf8(&quot;actionFiltering&quot;))\r\n            self.menuOpen_File.addAction(self.actionDisplay_Zone)\r\n            self.menuOpen_File.addAction(self.actionOriginal_Size)\r\n            self.menuOpen_File.addAction(self.actionZoom_in)\r\n            self.menuFile.addAction(self.menuOpen_File.menuAction())\r\n            self.menuFile.addAction(self.actionSave)\r\n            self.menuFile.addAction(self.actionCrop)\r\n            self.menuFile.addAction(self.actionFiltering)\r\n            self.menuFile.addAction(self.actionExit)\r\n            self.menubar.addAction(self.menuFile.menuAction())\r\n            self._pixmapHandle = None\r\n            self.zoom = 0\r\n            self.canPan=False\r\n            self.canZoom=False\r\n            self.aspectRatioMode = QtCore.Qt.KeepAspectRatio\r\n            self._zoom = 0\r\n            self.retranslateUi()\r\n            self.show()\r\n    \r\n        def showDialog(self):\r\n            self.canPan=False\r\n            self.canZoom=False\r\n            self.centralwidget = QtGui.QWidget(self)\r\n            self.centralwidget.setObjectName(_fromUtf8(&quot;centralwidget&quot;))\r\n            self.graphicsView = QtGui.QGraphicsView(self.centralwidget)\r\n            self.graphicsView.setGeometry(QtCore.QRect(100, 20, 800, 500))\r\n            self.graphicsView.setRubberBandSelectionMode(QtCore.Qt.ContainsItemBoundingRect)\r\n            self.graphicsView.setObjectName(_fromUtf8(&quot;graphicsView&quot;))\r\n            self.setCentralWidget(self.centralwidget)\r\n            fname=QtGui.QFileDialog.getOpenFileName(None, &#39;OpenFile&#39;,&#39;&#39;,&quot;Image file(*.png *.jpg *.bmp *.jpeg)&quot;)\r\n            self.scene=QtGui.QGraphicsScene()\r\n            self.scene.addPixmap(QtGui.QPixmap(fname))\r\n            self.graphicsView.setScene(self.scene)\r\n            self.scene.setSceneRect(QtCore.QRectF())\r\n            self.graphicsView.fitInView(self.scene.sceneRect(), QtCore.Qt.KeepAspectRatio)\r\n    \r\n        def showOriginal_Image(self):\r\n            self.canPan=True\r\n            self.canZoom=False\r\n            self.centralwidget = QtGui.QWidget(self)\r\n            self.centralwidget.setObjectName(_fromUtf8(&quot;centralwidget&quot;))\r\n            self.graphicsView = QtGui.QGraphicsView(self.centralwidget)\r\n            self.graphicsView.setGeometry(QtCore.QRect(100, 10, 800, 500))\r\n            self.graphicsView.setRubberBandSelectionMode(QtCore.Qt.ContainsItemBoundingRect)\r\n            self.graphicsView.setObjectName(_fromUtf8(&quot;graphicsView&quot;))\r\n            self.setCentralWidget(self.centralwidget)\r\n            fname=QtGui.QFileDialog.getOpenFileName(None, &#39;OpenFile&#39;,&#39;&#39;,&quot;Image file(*.png *.jpg *.bmp *.jpeg)&quot;)\r\n            self.scene=QtGui.QGraphicsScene()\r\n            self.scene.addPixmap(QtGui.QPixmap(fname))\r\n            self.graphicsView.setScene(self.scene)\r\n    \r\n        def retranslateUi(self):\r\n            self.setWindowTitle(_translate(&quot;Image Viewer&quot;, &quot;Image Viewer&quot;, None))\r\n            self.menuFile.setTitle(_translate(&quot;MainWindow&quot;, &quot;File&quot;, None))\r\n            self.menuOpen_File.setTitle(_translate(&quot;MainWindow&quot;, &quot;Open File&quot;, None))\r\n            self.actionDisplay_Zone.setText(_translate(&quot;MainWindow&quot;, &quot;Display Zone Fit&quot;, None))\r\n            self.actionOriginal_Size.setText(_translate(&quot;MainWindow&quot;, &quot;Original Size&quot;, None))\r\n            self.actionZoom_in.setText(_translate(&quot;MainWindow&quot;, &quot;Zoom&quot;, None))\r\n            self.actionExit.setText(_translate(&quot;MainWindow&quot;, &quot;Exit&quot;, None))\r\n            self.actionSave.setText(_translate(&quot;MainWindow&quot;, &quot;Save&quot;, None))\r\n            self.actionCrop.setText(_translate(&quot;MainWindow&quot;, &quot;Crop&quot;, None))\r\n            self.actionFiltering.setText(_translate(&quot;MainWindow&quot;, &quot;Filtering&quot;, None))\r\n    \r\n        def showZoom_in(self, event):\r\n            self.canPan=True\r\n            self.canZoom=True\r\n            self.scene=QtGui.QGraphicsScene()\r\n            fname=QtGui.QFileDialog.getOpenFileName(None, &#39;OpenFile&#39;,&#39;&#39;,&quot;Image file(*.png *.jpg *.bmp *.jpeg)&quot;)\r\n            self.scene.addPixmap(QtGui.QPixmap(fname))\r\n            self.graphicsView.setScene(self.scene)\r\n            self.scene.setSceneRect(QtCore.QRectF())\r\n            self.graphicsView.fitInView(self.scene.sceneRect(), QtCore.Qt.KeepAspectRatio)\r\n        \r\n        def mousePressEvent(self, event):\r\n            &quot;&quot;&quot;Start mouse pan or zoom mode.\r\n            &quot;&quot;&quot;\r\n            scenePos = self.graphicsView.mapToScene(event.pos())\r\n            if event.button() == QtCore.Qt.LeftButton:\r\n                if self.canPan:\r\n                    self.graphicsView.setDragMode(QtGui.QGraphicsView.ScrollHandDrag)\r\n            elif event.button() == QtCore.Qt.RightButton:\r\n                if self.canZoom:\r\n                    self.zoom+=1\r\n                    factor=1.25\r\n                    self.graphicsView.scale(factor, factor)\r\n            QtGui.QGraphicsView.mousePressEvent(self.graphicsView, event)\r\n    \r\n        &quot;&quot;&quot;def wheelEvent(self, event):\r\n            if self.canZoom:\r\n                self.graphicsView.setTransformationAnchor(QtGui.QGraphicsView.AnchorUnderMouse)\r\n                self.graphicsView.setResizeAnchor(QtGui.QGraphicsView.AnchorUnderMouse)\r\n                self.graphicsView.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)\r\n                self.graphicsView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)\r\n                self.graphicsView.setDragMode(QtGui.QGraphicsView.ScrollHandDrag)\r\n                if event.delta()&gt;0:\r\n                    factor=1.05\r\n                    self.zoom+=1\r\n                else:\r\n                    factor=0.97\r\n                    self.zoom-=1\r\n                if self.zoom&gt;0:\r\n                    self.graphicsView.scale(factor, factor)\r\n                elif self.zoom==0:\r\n                    self.graphicsView.fitInView(self.scene.sceneRect(), QtCore.Qt.KeepAspectRatio)\r\n                else:\r\n                    self.zoom=0\r\n                if event.type()==QtCore.QEvent.Wheel:\r\n                    event.ignore()\r\n           &quot;&quot;&quot;       \r\n    \r\n        def mouseDoubleClickEvent(self, event):\r\n            &quot;&quot;&quot; Show entire image.\r\n            &quot;&quot;&quot;\r\n            if event.button() == Qt.LeftButton:\r\n                None\r\n            elif event.button() == Qt.RightButton:\r\n                if self.canZoom:\r\n                    if self.zoom==0:\r\n                        self.graphicsView.scale(1, 1)\r\n                    elif self.zoom&gt;0:\r\n                        self.graphicsView.scale((1/(1.25*(self.zoom))), (1/(1.25*(self.zoom))))\r\n            QGraphicsView.mouseDoubleClickEvent(self, event)\r\n    \r\n    \r\n    \r\n    if __name__ == &quot;__main__&quot;:\r\n        import sys\r\n        app = QtGui.QApplication(sys.argv)\r\n        ui = Window()\r\n        sys.exit(app.exec_())\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50364939/mousedoubleclickevent-not-working-but-mousepressevent-working-properly-in-pyqt4",
+            "title": "mouseDoubleClickEvent not working but mousePressEvent working properly in PyQT4",
+            "body": "<p>I am trying to make a Machine Learning GUI with an image editing feature. I want the user to zoom in using single right button click and zoom out using double right button click with the left mouse button serving as panning tool.</p>\n\n<p>My single mouse press events are working fine but I cannot seem to get my double mouse click event working properly. Can anyone say why this is so? I think there is an inheritance issue, but that should also stop my single press events from working properly. Thanks in advance</p>\n\n<pre><code>from PyQt4 import QtCore, QtGui\nfrom PyQt4.QtCore import Qt\n\ntry:\n    _fromUtf8 = QtCore.QString.fromUtf8\nexcept AttributeError:\n    def _fromUtf8(s):\n        return s\n\ntry:\n    _encoding = QtGui.QApplication.UnicodeUTF8\n    def _translate(context, text, disambig):\n        return QtGui.QApplication.translate(context, text, disambig, _encoding)\nexcept AttributeError:\n    def _translate(context, text, disambig):\n        return QtGui.QApplication.translate(context, text, disambig)\n\nclass Window(QtGui.QMainWindow):\n\n    def __init__(self):\n        super(Window, self).__init__()\n        self.setObjectName(_fromUtf8(\"MainWindow\"))\n        self.resize(1000, 900)\n        qtRectangle = self.frameGeometry()\n        centerPoint = QtGui.QDesktopWidget().availableGeometry().center()\n        qtRectangle.moveCenter(centerPoint)\n        self.centralwidget = QtGui.QWidget(self)\n        self.centralwidget.setObjectName(_fromUtf8(\"centralwidget\"))\n        self.graphicsView = QtGui.QGraphicsView(self.centralwidget)\n        self.graphicsView.setGeometry(QtCore.QRect(100, 20, 800, 500))\n        self.graphicsView.setRubberBandSelectionMode(QtCore.Qt.ContainsItemBoundingRect)\n        self.graphicsView.setObjectName(_fromUtf8(\"graphicsView\"))\n        self.setCentralWidget(self.centralwidget) \n        self.scene=QtGui.QGraphicsScene()\n        self.move(qtRectangle.topLeft())\n        self.menubar = QtGui.QMenuBar(self)\n        self.menubar.setGeometry(QtCore.QRect(0, 0, 1000, 30))\n        self.menubar.setObjectName(_fromUtf8(\"menubar\"))\n        self.menuFile = QtGui.QMenu(self.menubar)\n        self.menuFile.setObjectName(_fromUtf8(\"menuFile\"))\n        self.menuOpen_File = QtGui.QMenu(self.menuFile)\n        self.menuOpen_File.setObjectName(_fromUtf8(\"menuOpen_File\"))\n        self.setMenuBar(self.menubar)\n        self.statusbar = QtGui.QStatusBar(self)\n        self.statusbar.setObjectName(_fromUtf8(\"statusbar\"))\n        self.setStatusBar(self.statusbar)\n        self.actionDisplay_Zone = QtGui.QAction(self)\n        self.actionDisplay_Zone.setObjectName(_fromUtf8(\"actionDisplay_Zone\"))\n        self.actionDisplay_Zone.triggered.connect(self.showDialog)\n        self.actionOriginal_Size = QtGui.QAction(self)\n        self.actionOriginal_Size.setObjectName(_fromUtf8(\"actionOriginal_Size\"))\n        self.actionOriginal_Size.triggered.connect(self.showOriginal_Image)\n        self.actionZoom_in = QtGui.QAction(self)\n        self.actionZoom_in.setObjectName(_fromUtf8(\"actionZoom\"))\n        self.actionZoom_in.triggered.connect(self.showZoom_in)\n        self.actionExit = QtGui.QAction(self)\n        self.actionExit.setObjectName(_fromUtf8(\"actionExit\"))\n        self.actionExit.triggered.connect(QtGui.QApplication.quit)\n        self.actionSave = QtGui.QAction(self)\n        self.actionSave.setObjectName(_fromUtf8(\"actionSave\"))\n        self.actionCrop = QtGui.QAction(self)\n        self.actionCrop.setObjectName(_fromUtf8(\"actionCrop\"))\n        self.actionFiltering = QtGui.QAction(self)\n        self.actionFiltering.setObjectName(_fromUtf8(\"actionFiltering\"))\n        self.menuOpen_File.addAction(self.actionDisplay_Zone)\n        self.menuOpen_File.addAction(self.actionOriginal_Size)\n        self.menuOpen_File.addAction(self.actionZoom_in)\n        self.menuFile.addAction(self.menuOpen_File.menuAction())\n        self.menuFile.addAction(self.actionSave)\n        self.menuFile.addAction(self.actionCrop)\n        self.menuFile.addAction(self.actionFiltering)\n        self.menuFile.addAction(self.actionExit)\n        self.menubar.addAction(self.menuFile.menuAction())\n        self._pixmapHandle = None\n        self.zoom = 0\n        self.canPan=False\n        self.canZoom=False\n        self.aspectRatioMode = QtCore.Qt.KeepAspectRatio\n        self._zoom = 0\n        self.retranslateUi()\n        self.show()\n\n    def showDialog(self):\n        self.canPan=False\n        self.canZoom=False\n        self.centralwidget = QtGui.QWidget(self)\n        self.centralwidget.setObjectName(_fromUtf8(\"centralwidget\"))\n        self.graphicsView = QtGui.QGraphicsView(self.centralwidget)\n        self.graphicsView.setGeometry(QtCore.QRect(100, 20, 800, 500))\n        self.graphicsView.setRubberBandSelectionMode(QtCore.Qt.ContainsItemBoundingRect)\n        self.graphicsView.setObjectName(_fromUtf8(\"graphicsView\"))\n        self.setCentralWidget(self.centralwidget)\n        fname=QtGui.QFileDialog.getOpenFileName(None, 'OpenFile','',\"Image file(*.png *.jpg *.bmp *.jpeg)\")\n        self.scene=QtGui.QGraphicsScene()\n        self.scene.addPixmap(QtGui.QPixmap(fname))\n        self.graphicsView.setScene(self.scene)\n        self.scene.setSceneRect(QtCore.QRectF())\n        self.graphicsView.fitInView(self.scene.sceneRect(), QtCore.Qt.KeepAspectRatio)\n\n    def showOriginal_Image(self):\n        self.canPan=True\n        self.canZoom=False\n        self.centralwidget = QtGui.QWidget(self)\n        self.centralwidget.setObjectName(_fromUtf8(\"centralwidget\"))\n        self.graphicsView = QtGui.QGraphicsView(self.centralwidget)\n        self.graphicsView.setGeometry(QtCore.QRect(100, 10, 800, 500))\n        self.graphicsView.setRubberBandSelectionMode(QtCore.Qt.ContainsItemBoundingRect)\n        self.graphicsView.setObjectName(_fromUtf8(\"graphicsView\"))\n        self.setCentralWidget(self.centralwidget)\n        fname=QtGui.QFileDialog.getOpenFileName(None, 'OpenFile','',\"Image file(*.png *.jpg *.bmp *.jpeg)\")\n        self.scene=QtGui.QGraphicsScene()\n        self.scene.addPixmap(QtGui.QPixmap(fname))\n        self.graphicsView.setScene(self.scene)\n\n    def retranslateUi(self):\n        self.setWindowTitle(_translate(\"Image Viewer\", \"Image Viewer\", None))\n        self.menuFile.setTitle(_translate(\"MainWindow\", \"File\", None))\n        self.menuOpen_File.setTitle(_translate(\"MainWindow\", \"Open File\", None))\n        self.actionDisplay_Zone.setText(_translate(\"MainWindow\", \"Display Zone Fit\", None))\n        self.actionOriginal_Size.setText(_translate(\"MainWindow\", \"Original Size\", None))\n        self.actionZoom_in.setText(_translate(\"MainWindow\", \"Zoom\", None))\n        self.actionExit.setText(_translate(\"MainWindow\", \"Exit\", None))\n        self.actionSave.setText(_translate(\"MainWindow\", \"Save\", None))\n        self.actionCrop.setText(_translate(\"MainWindow\", \"Crop\", None))\n        self.actionFiltering.setText(_translate(\"MainWindow\", \"Filtering\", None))\n\n    def showZoom_in(self, event):\n        self.canPan=True\n        self.canZoom=True\n        self.scene=QtGui.QGraphicsScene()\n        fname=QtGui.QFileDialog.getOpenFileName(None, 'OpenFile','',\"Image file(*.png *.jpg *.bmp *.jpeg)\")\n        self.scene.addPixmap(QtGui.QPixmap(fname))\n        self.graphicsView.setScene(self.scene)\n        self.scene.setSceneRect(QtCore.QRectF())\n        self.graphicsView.fitInView(self.scene.sceneRect(), QtCore.Qt.KeepAspectRatio)\n\n    def mousePressEvent(self, event):\n        \"\"\"Start mouse pan or zoom mode.\n        \"\"\"\n        scenePos = self.graphicsView.mapToScene(event.pos())\n        if event.button() == QtCore.Qt.LeftButton:\n            if self.canPan:\n                self.graphicsView.setDragMode(QtGui.QGraphicsView.ScrollHandDrag)\n        elif event.button() == QtCore.Qt.RightButton:\n            if self.canZoom:\n                self.zoom+=1\n                factor=1.25\n                self.graphicsView.scale(factor, factor)\n        QtGui.QGraphicsView.mousePressEvent(self.graphicsView, event)\n\n    \"\"\"def wheelEvent(self, event):\n        if self.canZoom:\n            self.graphicsView.setTransformationAnchor(QtGui.QGraphicsView.AnchorUnderMouse)\n            self.graphicsView.setResizeAnchor(QtGui.QGraphicsView.AnchorUnderMouse)\n            self.graphicsView.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)\n            self.graphicsView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)\n            self.graphicsView.setDragMode(QtGui.QGraphicsView.ScrollHandDrag)\n            if event.delta()&gt;0:\n                factor=1.05\n                self.zoom+=1\n            else:\n                factor=0.97\n                self.zoom-=1\n            if self.zoom&gt;0:\n                self.graphicsView.scale(factor, factor)\n            elif self.zoom==0:\n                self.graphicsView.fitInView(self.scene.sceneRect(), QtCore.Qt.KeepAspectRatio)\n            else:\n                self.zoom=0\n            if event.type()==QtCore.QEvent.Wheel:\n                event.ignore()\n       \"\"\"       \n\n    def mouseDoubleClickEvent(self, event):\n        \"\"\" Show entire image.\n        \"\"\"\n        if event.button() == Qt.LeftButton:\n            None\n        elif event.button() == Qt.RightButton:\n            if self.canZoom:\n                if self.zoom==0:\n                    self.graphicsView.scale(1, 1)\n                elif self.zoom&gt;0:\n                    self.graphicsView.scale((1/(1.25*(self.zoom))), (1/(1.25*(self.zoom))))\n        QGraphicsView.mouseDoubleClickEvent(self, event)\n\n\n\nif __name__ == \"__main__\":\n    import sys\n    app = QtGui.QApplication(sys.argv)\n    ui = Window()\n    sys.exit(app.exec_())\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "mysql"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 6706931,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/533293630189599/picture?type=large",
+                "display_name": "Ulasoft Koinot Uz",
+                "link": "https://stackoverflow.com/users/6706931/ulasoft-koinot-uz"
+            },
+            "is_answered": true,
+            "view_count": 25,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526464615,
+            "creation_date": 1526464152,
+            "last_edit_date": 1526464210,
+            "question_id": 50367595,
+            "body_markdown": "    SELECT IF(price == null, 0, price) FROM trips \r\n    WHERE id=9 and prices LIKE &quot;%|s|1|%&quot; and prices LIKE &quot;%|ss|24|%&quot;\r\n\r\nIf `LIKE &quot;%|ss|2|%`&quot; do that price if there is a `LIKE &quot;%|ss|24|%&quot;` doing nothing shows you have to make it `0`.\r\n",
+            "link": "https://stackoverflow.com/questions/50367595/mysql-if-else-true-false",
+            "title": "MySQL IF ELSE true false",
+            "body": "<pre><code>SELECT IF(price == null, 0, price) FROM trips \nWHERE id=9 and prices LIKE \"%|s|1|%\" and prices LIKE \"%|ss|24|%\"\n</code></pre>\n\n<p>If <code>LIKE \"%|ss|2|%</code>\" do that price if there is a <code>LIKE \"%|ss|24|%\"</code> doing nothing shows you have to make it <code>0</code>.</p>\n"
+        },
+        {
+            "tags": [
+                "css",
+                "flexbox",
+                "grid",
+                "bootstrap-4",
+                "wrap"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9797880,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/0f3d14f030cb702d098702796a19041b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Nev",
+                "link": "https://stackoverflow.com/users/9797880/nev"
+            },
+            "is_answered": false,
+            "view_count": 38,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1526464615,
+            "creation_date": 1526446289,
+            "last_edit_date": 1526464615,
+            "question_id": 50362656,
+            "body_markdown": "I&#39;m trying to have a grid that wrap at a specific number of columns\r\n\r\nFor example :\r\n\r\nWe have a number of 5 units of 3 columns and we want then wrapping for 3+2 when we have above 4 units,\r\n\r\n - 4 units of 3 columns . no wrapping\r\n - above 4 : wrapping to 3+2\r\n\r\nI have this, but I feel like a little something is missing :\r\n\r\n                    &lt;div class=&quot;row&quot;&gt;    \r\n                        &lt;div class=&quot;col-12 d-flex flex-wrap&quot;&gt;\r\n                            &lt;ul class=&quot;col-12 col-md-9 d-flex&quot;&gt;\r\n                                &lt;li class=&quot;col-12 col-md-4&quot;&gt;\r\n                                    &lt;img src=&quot;&quot; alt=&quot;&quot;&gt;\r\n                                    &lt;p&gt;&lt;/p&gt;\r\n                                    &lt;a href=&quot;&quot;&gt;&lt;/a&gt;\r\n                                &lt;/li&gt;\r\n                                &lt;li class=&quot;col-12 col-md-4&quot;&gt;\r\n                                    &lt;img src=&quot;&quot; alt=&quot;&quot;&gt;\r\n                                    &lt;p&gt;&lt;/p&gt;\r\n                                    &lt;a href=&quot;&quot;&gt;&lt;/a&gt;\r\n                                &lt;/li&gt;\r\n                                &lt;li class=&quot;col-12 col-md-4&quot;&gt;\r\n                                    &lt;img src=&quot;&quot; alt=&quot;&quot;&gt;\r\n                                    &lt;p&gt;&lt;/p&gt;\r\n                                    &lt;a href=&quot;&quot;&gt;&lt;/a&gt;\r\n                                &lt;/li&gt;       \r\n                            &lt;/ul&gt;\r\n                            &lt;ul class=&quot;col-12 col-md-auto d-flex&quot;&gt;\r\n                                &lt;li class=&quot;col-12 col-md-auto&quot;&gt;\r\n                                    &lt;img src=&quot;&quot; alt=&quot;&quot;&gt;\r\n                                    &lt;p&gt;&lt;/p&gt;\r\n                                    &lt;a href=&quot;&quot;&gt;&lt;/a&gt;\r\n                                &lt;/li&gt;\r\n                            &lt;/ul&gt;\r\n                        &lt;/div&gt;\r\n                    &lt;/div&gt;\r\n",
+            "link": "https://stackoverflow.com/questions/50362656/wrapping-at-specific-columns-and-specific-number-of-columns",
+            "title": "Wrapping at specific columns and specific number of columns",
+            "body": "<p>I'm trying to have a grid that wrap at a specific number of columns</p>\n\n<p>For example :</p>\n\n<p>We have a number of 5 units of 3 columns and we want then wrapping for 3+2 when we have above 4 units,</p>\n\n<ul>\n<li>4 units of 3 columns . no wrapping</li>\n<li>above 4 : wrapping to 3+2</li>\n</ul>\n\n<p>I have this, but I feel like a little something is missing :</p>\n\n<pre><code>                &lt;div class=\"row\"&gt;    \n                    &lt;div class=\"col-12 d-flex flex-wrap\"&gt;\n                        &lt;ul class=\"col-12 col-md-9 d-flex\"&gt;\n                            &lt;li class=\"col-12 col-md-4\"&gt;\n                                &lt;img src=\"\" alt=\"\"&gt;\n                                &lt;p&gt;&lt;/p&gt;\n                                &lt;a href=\"\"&gt;&lt;/a&gt;\n                            &lt;/li&gt;\n                            &lt;li class=\"col-12 col-md-4\"&gt;\n                                &lt;img src=\"\" alt=\"\"&gt;\n                                &lt;p&gt;&lt;/p&gt;\n                                &lt;a href=\"\"&gt;&lt;/a&gt;\n                            &lt;/li&gt;\n                            &lt;li class=\"col-12 col-md-4\"&gt;\n                                &lt;img src=\"\" alt=\"\"&gt;\n                                &lt;p&gt;&lt;/p&gt;\n                                &lt;a href=\"\"&gt;&lt;/a&gt;\n                            &lt;/li&gt;       \n                        &lt;/ul&gt;\n                        &lt;ul class=\"col-12 col-md-auto d-flex\"&gt;\n                            &lt;li class=\"col-12 col-md-auto\"&gt;\n                                &lt;img src=\"\" alt=\"\"&gt;\n                                &lt;p&gt;&lt;/p&gt;\n                                &lt;a href=\"\"&gt;&lt;/a&gt;\n                            &lt;/li&gt;\n                        &lt;/ul&gt;\n                    &lt;/div&gt;\n                &lt;/div&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "date",
+                "strtotime"
+            ],
+            "owner": {
+                "reputation": 462,
+                "user_id": 2333753,
+                "user_type": "registered",
+                "accept_rate": 25,
+                "profile_image": "https://www.gravatar.com/avatar/1e09ff5636c1f4ae121f3a4f19649ed8?s=128&d=identicon&r=PG",
+                "display_name": "Neve12ende12",
+                "link": "https://stackoverflow.com/users/2333753/neve12ende12"
+            },
+            "is_answered": true,
+            "view_count": 1417,
+            "accepted_answer_id": 16288755,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1526464613,
+            "creation_date": 1367271547,
+            "question_id": 16288688,
+            "body_markdown": "    &lt;?php\r\n      $endDate = date(&quot;Y-m-d&quot;, strtotime(&quot;fourth monday april &quot;. date(&quot;Y&quot;, strtotime(&quot;2013-04-01&quot;))));     \r\n      echo $endDate\r\n    ?&gt;\r\n\r\nWhy does this ouput 2013-04-29 when the correct answer is 2013-04-22?\r\n\r\nAnytime the day you are searching for happens to fall on the first of a month, the day counter (i.e. &quot;fourth&quot;) always displays one more than it should.\r\n\r\nExample:  &quot;third wednesday may 2013&quot; outputs 2013-05-22 when it should be 2013-05-15.\r\n\r\nI am guessing the quick way to fix this would be to see if the first day of the month is the same day you are looking for and decrease the day counter (&quot;fourth&quot;, &quot;third&quot; etc.) accordingly?",
+            "link": "https://stackoverflow.com/questions/16288688/strtotimenth-day-of-month-year",
+            "title": "strtotime(nth [day] of [month] [year])",
+            "body": "<pre><code>&lt;?php\n  $endDate = date(\"Y-m-d\", strtotime(\"fourth monday april \". date(\"Y\", strtotime(\"2013-04-01\"))));     \n  echo $endDate\n?&gt;\n</code></pre>\n\n<p>Why does this ouput 2013-04-29 when the correct answer is 2013-04-22?</p>\n\n<p>Anytime the day you are searching for happens to fall on the first of a month, the day counter (i.e. \"fourth\") always displays one more than it should.</p>\n\n<p>Example:  \"third wednesday may 2013\" outputs 2013-05-22 when it should be 2013-05-15.</p>\n\n<p>I am guessing the quick way to fix this would be to see if the first day of the month is the same day you are looking for and decrease the day counter (\"fourth\", \"third\" etc.) accordingly?</p>\n"
+        },
+        {
+            "tags": [
+                "api",
+                "widget",
+                "soundcloud"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9799276,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/f14cb7f84fb648eb5ad0fd24777eab5f?s=128&d=identicon&r=PG",
+                "display_name": "KainLaVey",
+                "link": "https://stackoverflow.com/users/9799276/kainlavey"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526464612,
+            "creation_date": 1526464612,
+            "question_id": 50367762,
+            "body_markdown": "iam using the Souncloud Widget API to load and play different tracks on a website.\r\n\r\nUsers can click on a button, then the SC iframe loads the Track and start it automatically.\r\n\r\n    $(&#39;.song&#39;).on(&#39;click&#39;, function()\r\n        {\r\n            // SC Track ID\r\n            var trackId = $(this).attr(&#39;data-track-id&#39;);\r\n\r\n            // Load track in SC Widget\r\n            widget.load(&#39;http://api.soundcloud.com/tracks/&#39; + trackId,\r\n                {\r\n                    show_artwork: false,\r\n                    auto_play: true\r\n                }\r\n            );\r\n\r\n        });\r\n\r\nWorks fine on Desktop PCs but not on Mobile Devices. I know that the Soundcloud Widget doesen&#39;t want to support AutoPlay on mobile divices. \r\n\r\nMy question is: Is there a Workaround for that?\r\n\r\nMy idea was to use a callbackfunction in the load method and start the player with widget.play(). But that doesn&#39;t work.\r\n\r\nAnother Idea would be to simulate a click on the &quot;hear in browser&quot; button which appears in the mobile iframe version. But i dont get it selected with JS/jQuery...\r\n\r\nAny Ideas? Thank you &lt;3",
+            "link": "https://stackoverflow.com/questions/50367762/soundcloud-widget-api-autoplay-after-load-on-mobile-devices",
+            "title": "Soundcloud Widget API Autoplay after load on mobile devices?",
+            "body": "<p>iam using the Souncloud Widget API to load and play different tracks on a website.</p>\n\n<p>Users can click on a button, then the SC iframe loads the Track and start it automatically.</p>\n\n<pre><code>$('.song').on('click', function()\n    {\n        // SC Track ID\n        var trackId = $(this).attr('data-track-id');\n\n        // Load track in SC Widget\n        widget.load('http://api.soundcloud.com/tracks/' + trackId,\n            {\n                show_artwork: false,\n                auto_play: true\n            }\n        );\n\n    });\n</code></pre>\n\n<p>Works fine on Desktop PCs but not on Mobile Devices. I know that the Soundcloud Widget doesen't want to support AutoPlay on mobile divices. </p>\n\n<p>My question is: Is there a Workaround for that?</p>\n\n<p>My idea was to use a callbackfunction in the load method and start the player with widget.play(). But that doesn't work.</p>\n\n<p>Another Idea would be to simulate a click on the \"hear in browser\" button which appears in the mobile iframe version. But i dont get it selected with JS/jQuery...</p>\n\n<p>Any Ideas? Thank you &lt;3</p>\n"
+        },
+        {
+            "tags": [
+                "visual-studio-2015",
+                "xamarin.android"
+            ],
+            "owner": {
+                "reputation": 28,
+                "user_id": 7406353,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10210604965427779/picture?type=large",
+                "display_name": "Austin Phillips",
+                "link": "https://stackoverflow.com/users/7406353/austin-phillips"
+            },
+            "is_answered": true,
+            "view_count": 941,
+            "accepted_answer_id": 43095286,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1526464593,
+            "creation_date": 1490703804,
+            "last_edit_date": 1526464593,
+            "question_id": 43069480,
+            "body_markdown": "So I have been trying to create an APK in Release mode using the MSBuild command line executable.\r\n\r\nHere is the contents of my batch file which I created:\r\n\r\n**ECHO Building DsdMobile Solution... &gt;CON\r\ncd &quot;C:\\Ross\\DEVELOPMENT\\HANDHELD\\Android\\Dsd Mobile MaterialDesign&quot;**\r\n\r\n**&quot;C:\\Program Files (x86)\\MSBuild\\14.0\\Bin\\MSBuild.exe&quot; DsdMobile.sln /P:Configuration=Release /v:quiet /t:Clean /nologo**\r\n\r\n**&quot;C:\\Program Files (x86)\\MSBuild\\14.0\\Bin\\MSBuild.exe&quot; DsdMobile.sln /P:Configuration=Release /v:quiet /t:Rebuild,PackageForAndroid /nologo**\r\n\r\nThe first line I change the directory to my solution location.\r\nNext, I do a Clean\r\n\r\nLast, I do a Rebuild and PackageForAndroid (which I am expecting a ...apk file in my bin release folder. An apk is never created and I get an error.\r\n\r\nThe build is successful, but I get an error:\r\n\r\n**&quot;C:Ross\\Development\\Handheld\\Android\\Dsd Mobile MaterialDesign\\DsdMobile.sln.metaproj : error MSB4057: The target &quot;PackageForAndroid&quot; does not exists in the project. [C:\\Ross\\DEVELOPMENT\\HANDHELD\\Android\\Dsd Mobile MaterialDesign\\DsdMobile.sln]**\r\n\r\nI have also tried to use &quot;SignAndroidPackage&quot; :t/ parameter, but this also fails with the same error:\r\n\r\n**&quot;C:Ross\\Development\\Handheld\\Android\\Dsd Mobile MaterialDesign\\DsdMobile.sln.metaproj : error MSB4057: The target &quot;SignAndroidPackage&quot; does not exists in the project. [C:\\Ross\\DEVELOPMENT\\HANDHELD\\Android\\Dsd Mobile MaterialDesign\\DsdMobile.sln]**\r\n\r\nThe resource I have been using was from a PowerShell script:\r\n\r\nhttps://gist.github.com/postb99/8319234\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/43069480/creating-an-apk-using-msbuild-command-line-error-packageforandroid-or-signandro",
+            "title": "Creating an APK using MSBuild command line error (PackageForAndroid or SignAndroidPackage)",
+            "body": "<p>So I have been trying to create an APK in Release mode using the MSBuild command line executable.</p>\n\n<p>Here is the contents of my batch file which I created:</p>\n\n<p><strong>ECHO Building DsdMobile Solution... >CON\ncd \"C:\\Ross\\DEVELOPMENT\\HANDHELD\\Android\\Dsd Mobile MaterialDesign\"</strong></p>\n\n<p><strong>\"C:\\Program Files (x86)\\MSBuild\\14.0\\Bin\\MSBuild.exe\" DsdMobile.sln /P:Configuration=Release /v:quiet /t:Clean /nologo</strong></p>\n\n<p><strong>\"C:\\Program Files (x86)\\MSBuild\\14.0\\Bin\\MSBuild.exe\" DsdMobile.sln /P:Configuration=Release /v:quiet /t:Rebuild,PackageForAndroid /nologo</strong></p>\n\n<p>The first line I change the directory to my solution location.\nNext, I do a Clean</p>\n\n<p>Last, I do a Rebuild and PackageForAndroid (which I am expecting a ...apk file in my bin release folder. An apk is never created and I get an error.</p>\n\n<p>The build is successful, but I get an error:</p>\n\n<p><strong>\"C:Ross\\Development\\Handheld\\Android\\Dsd Mobile MaterialDesign\\DsdMobile.sln.metaproj : error MSB4057: The target \"PackageForAndroid\" does not exists in the project. [C:\\Ross\\DEVELOPMENT\\HANDHELD\\Android\\Dsd Mobile MaterialDesign\\DsdMobile.sln]</strong></p>\n\n<p>I have also tried to use \"SignAndroidPackage\" :t/ parameter, but this also fails with the same error:</p>\n\n<p><strong>\"C:Ross\\Development\\Handheld\\Android\\Dsd Mobile MaterialDesign\\DsdMobile.sln.metaproj : error MSB4057: The target \"SignAndroidPackage\" does not exists in the project. [C:\\Ross\\DEVELOPMENT\\HANDHELD\\Android\\Dsd Mobile MaterialDesign\\DsdMobile.sln]</strong></p>\n\n<p>The resource I have been using was from a PowerShell script:</p>\n\n<p><a href=\"https://gist.github.com/postb99/8319234\" rel=\"nofollow noreferrer\">https://gist.github.com/postb99/8319234</a></p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "oop",
+                "model",
+                "social-media-like"
+            ],
+            "owner": {
+                "reputation": 603,
+                "user_id": 1679376,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/XKd8Y.jpg?s=128&g=1",
+                "display_name": "igs013",
+                "link": "https://stackoverflow.com/users/1679376/igs013"
+            },
+            "is_answered": true,
+            "view_count": 103,
+            "accepted_answer_id": 12472165,
+            "answer_count": 1,
+            "score": 5,
+            "last_activity_date": 1526464592,
+            "creation_date": 1347951357,
+            "last_edit_date": 1526464592,
+            "question_id": 12471818,
+            "body_markdown": "I&#39;m working on a flash gaming website. I have two models: **Game** and **User** and an intermediate table in which I keep the user&#39;s actions as for example: &quot;User 1 likes Game 3&quot;.\r\n \r\n 1. Where is the best place for my like function?\r\n 2. Is it a good practice to grab current user id in **Game** model? or should I pass it as parameter?\r\n\r\nFor performance reasons, I increment likes field in game table too.\r\nI’ve omitted to check if user already likes the game just to keep it simple.  \r\nHere are my options:\r\n\r\nFirst version:\r\n\r\n    $user-&gt;like(12345);\r\n\r\n    class User  \r\n    {\r\n      public function like($game_id)\r\n      {\r\n        $like = new User_Game();  \r\n        $like-&gt;user_id = $this-&gt;id;  \r\n        $like-&gt;game_id = $game_id;  \r\n        $like-&gt;save();  \r\n\r\n        $obj = new Game($game_id);  \r\n        $obj-&gt;likes++;  \r\n        $obj-&gt;save();  \r\n      }\r\n    }  \r\n\r\nSecond version:\r\n\r\n    $game-&gt;like(); // by current user\r\n\r\n    class Game  \r\n    {  \r\n      public function like()  \r\n      {\r\n\r\n        $like = new User_Game();    \r\n        $like-&gt;user_id = $_SESSION[‘user_id’];    \r\n        $like-&gt;game_id = $this-&gt;id;    \r\n        $like-&gt;save();   \r\n\r\n        $this-&gt;likes++;    \r\n        $this-&gt;save();    \r\n      }    \r\n    }    ",
+            "link": "https://stackoverflow.com/questions/12471818/best-practice-for-like-functionality",
+            "title": "Best practice for &#39;like&#39; functionality",
+            "body": "<p>I'm working on a flash gaming website. I have two models: <strong>Game</strong> and <strong>User</strong> and an intermediate table in which I keep the user's actions as for example: \"User 1 likes Game 3\".</p>\n\n<ol>\n<li>Where is the best place for my like function?</li>\n<li>Is it a good practice to grab current user id in <strong>Game</strong> model? or should I pass it as parameter?</li>\n</ol>\n\n<p>For performance reasons, I increment likes field in game table too.\nI’ve omitted to check if user already likes the game just to keep it simple.<br>\nHere are my options:</p>\n\n<p>First version:</p>\n\n<pre><code>$user-&gt;like(12345);\n\nclass User  \n{\n  public function like($game_id)\n  {\n    $like = new User_Game();  \n    $like-&gt;user_id = $this-&gt;id;  \n    $like-&gt;game_id = $game_id;  \n    $like-&gt;save();  \n\n    $obj = new Game($game_id);  \n    $obj-&gt;likes++;  \n    $obj-&gt;save();  \n  }\n}  \n</code></pre>\n\n<p>Second version:</p>\n\n<pre><code>$game-&gt;like(); // by current user\n\nclass Game  \n{  \n  public function like()  \n  {\n\n    $like = new User_Game();    \n    $like-&gt;user_id = $_SESSION[‘user_id’];    \n    $like-&gt;game_id = $this-&gt;id;    \n    $like-&gt;save();   \n\n    $this-&gt;likes++;    \n    $this-&gt;save();    \n  }    \n}    \n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "jquery"
+            ],
+            "owner": {
+                "reputation": 1311,
+                "user_id": 2902661,
+                "user_type": "registered",
+                "accept_rate": 86,
+                "profile_image": "https://i.stack.imgur.com/gHMRf.png?s=128&g=1",
+                "display_name": "jnUK",
+                "link": "https://stackoverflow.com/users/2902661/jnuk"
+            },
+            "is_answered": true,
+            "view_count": 93,
+            "accepted_answer_id": 20782977,
+            "answer_count": 5,
+            "score": 0,
+            "last_activity_date": 1526464589,
+            "creation_date": 1388052592,
+            "last_edit_date": 1526464589,
+            "question_id": 20782943,
+            "body_markdown": "I am using a div element which acts as a button. When I click on it, it must be disabled until the animation completes. Presently, I am unbinding it on click and again binds on animation complete which I think is not a good way. Can anyone please suggest is any way to disable the element?\r\n\r\n    function moveLeft() {\r\n    \t//I unbind the element (div) after clicking on it\r\n    \t$(&#39;#w_oCNABarSlideBack&#39;).unbind(&#39;click&#39;);\r\n    \t\r\n    \t//Write your suggestions above to disable the element\r\n    \tif(_nBadgeLeft&gt;=0) return;\r\n    \telse _nBadgeLeft = _nBadgeLeft + _nBadgeWidth;\r\n    \t$(&#39;#w_oCNABarSlider ul&#39;).animate({\r\n    \t\tleft : _nBadgeLeft\r\n    \t}, 200, function() {\r\n    \t\t//again bind the event again on animation complete\r\n    \t\t$(&#39;#w_oCNABarSlideBack&#39;).bind(&#39;click&#39;, function() { moveLeft(); });\r\n    \t\t\r\n    \t\t//Write your suggestions above to enable the element\r\n    \t});\r\n    };",
+            "link": "https://stackoverflow.com/questions/20782943/is-there-any-way-to-disable-clicking-on-an-element",
+            "title": "Is there any way to disable clicking on an element?",
+            "body": "<p>I am using a div element which acts as a button. When I click on it, it must be disabled until the animation completes. Presently, I am unbinding it on click and again binds on animation complete which I think is not a good way. Can anyone please suggest is any way to disable the element?</p>\n\n<pre><code>function moveLeft() {\n    //I unbind the element (div) after clicking on it\n    $('#w_oCNABarSlideBack').unbind('click');\n\n    //Write your suggestions above to disable the element\n    if(_nBadgeLeft&gt;=0) return;\n    else _nBadgeLeft = _nBadgeLeft + _nBadgeWidth;\n    $('#w_oCNABarSlider ul').animate({\n        left : _nBadgeLeft\n    }, 200, function() {\n        //again bind the event again on animation complete\n        $('#w_oCNABarSlideBack').bind('click', function() { moveLeft(); });\n\n        //Write your suggestions above to enable the element\n    });\n};\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c",
+                "decimal"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9115374,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/d9508655e392e7aac1aa83a30bb697da?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Zusaetlich",
+                "link": "https://stackoverflow.com/users/9115374/zusaetlich"
+            },
+            "is_answered": true,
+            "view_count": 56,
+            "accepted_answer_id": 50367614,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1526464588,
+            "creation_date": 1526463379,
+            "question_id": 50367278,
+            "body_markdown": "I am wondering how could I return a specific amount of decimals. My code is below and I want to return the value with only one decimal but I couldn&#39;t find the right syntax. (e.g x=3.465.. but I want to return x=3.4)\r\n\r\n        double avg(int* grade, int len){\r\n        int i; float sum=0.0;\r\n\r\n        for(i=0;i&lt;len;i++){\r\n        sum+=*(grade+i);\r\n        }\r\n\r\n        return sum/len;\r\n        }",
+            "link": "https://stackoverflow.com/questions/50367278/returning-a-specific-amount-of-decimals-in-c",
+            "title": "Returning a specific amount of decimals in C",
+            "body": "<p>I am wondering how could I return a specific amount of decimals. My code is below and I want to return the value with only one decimal but I couldn't find the right syntax. (e.g x=3.465.. but I want to return x=3.4)</p>\n\n<pre><code>    double avg(int* grade, int len){\n    int i; float sum=0.0;\n\n    for(i=0;i&lt;len;i++){\n    sum+=*(grade+i);\n    }\n\n    return sum/len;\n    }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "excel-vba"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9799161,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/f2a09e100ce77206beeaef98f6021023?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user9799161",
+                "link": "https://stackoverflow.com/users/9799161/user9799161"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526464587,
+            "creation_date": 1526464587,
+            "question_id": 50367753,
+            "body_markdown": "I have an issue with creating .txt load files for SAP LSMW. The code takes data from an opened workbook and then populates various .txt files by various conditions - mostly by headers. The file worked well, but I would like to move data into two separate load files based on the data that is in the column under &quot;BUKRS&quot;. Here comes an issue with Hlookup not being able to look for various values. Moreover, all of the data gets saved only to the file &quot;05-Vend-Loadcache(No WHTAX).xls&quot; I woudl like to divide the files by cost centre numbers that are in column &quot;BUKRS&quot;. These are 9000, 5500, 6200, 8400, 8600, 8500. These ones should go to &quot;06-Vend-Loadcache(WHTAX).xls&quot;. Unfortunately it does not work and only &quot;05-Vend-Loadcache(No WHTAX).xls&quot; gets populated. I have no clue why? Could you help me, please? \r\n\r\n    Sub VENDOR()\r\n    &#39;CC3200 (LSMW1)  LNRZB (LSMW4) Line 60 for 5500 ....\r\n\r\n    CCD = Application.WorksheetFunction.HLookup(&quot;BUKRS&quot;, DTA.Range(&quot;A1:IV2&quot;), 2, 0)\r\n    CCE = DTA.Cells(1, 60)\r\n    WFNA = &quot;05-Vend-Loadcache(No WHTAX).xls&quot;\r\n\r\n\r\n    Select Case CCD\r\n    Case 9000, 5500, 6200, 8400, 8600, 8500\r\n    WFNA = &quot;06-Vend-Loadcache(WHTAX).xls&quot;\r\n    End Select\r\n\r\n    SHT = &quot;BISOVSH&quot;\r\n    DATACHK = 1\r\n\r\n    If ((CCE = &quot;&quot; Or CCE = &quot;CC3200&quot; Or CCE = &quot;VERKF&quot; Or CCE = &quot;TELF1&quot; Or CCE = &quot;KZRET&quot;) And WFNA = &quot;05-Vend-Loadcache(No WHTAX).xls&quot;) Then\r\n    Call EXPORTDTA\r\n    Else\r\n    &#39;do nothing as not to Export\r\n     End If\r\n\r\n    If CCE = &quot;LNRZB&quot; And WFNA = &quot;06-Vend-Loadcache(WHTAX).xls&quot; Then\r\n    Call EXPORTDTA\r\n    Else\r\n    &#39;do nothing as not to Export\r\n    End If\r\n    End Sub\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50367753/vba-excel-cannot-insert-right-data-into-loadfiles",
+            "title": "VBA Excel - cannot insert right data into loadfiles",
+            "body": "<p>I have an issue with creating .txt load files for SAP LSMW. The code takes data from an opened workbook and then populates various .txt files by various conditions - mostly by headers. The file worked well, but I would like to move data into two separate load files based on the data that is in the column under \"BUKRS\". Here comes an issue with Hlookup not being able to look for various values. Moreover, all of the data gets saved only to the file \"05-Vend-Loadcache(No WHTAX).xls\" I woudl like to divide the files by cost centre numbers that are in column \"BUKRS\". These are 9000, 5500, 6200, 8400, 8600, 8500. These ones should go to \"06-Vend-Loadcache(WHTAX).xls\". Unfortunately it does not work and only \"05-Vend-Loadcache(No WHTAX).xls\" gets populated. I have no clue why? Could you help me, please? </p>\n\n<pre><code>Sub VENDOR()\n'CC3200 (LSMW1)  LNRZB (LSMW4) Line 60 for 5500 ....\n\nCCD = Application.WorksheetFunction.HLookup(\"BUKRS\", DTA.Range(\"A1:IV2\"), 2, 0)\nCCE = DTA.Cells(1, 60)\nWFNA = \"05-Vend-Loadcache(No WHTAX).xls\"\n\n\nSelect Case CCD\nCase 9000, 5500, 6200, 8400, 8600, 8500\nWFNA = \"06-Vend-Loadcache(WHTAX).xls\"\nEnd Select\n\nSHT = \"BISOVSH\"\nDATACHK = 1\n\nIf ((CCE = \"\" Or CCE = \"CC3200\" Or CCE = \"VERKF\" Or CCE = \"TELF1\" Or CCE = \"KZRET\") And WFNA = \"05-Vend-Loadcache(No WHTAX).xls\") Then\nCall EXPORTDTA\nElse\n'do nothing as not to Export\n End If\n\nIf CCE = \"LNRZB\" And WFNA = \"06-Vend-Loadcache(WHTAX).xls\" Then\nCall EXPORTDTA\nElse\n'do nothing as not to Export\nEnd If\nEnd Sub\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "contactscontract"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 5470457,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/bbde1a655307eb6144f8b02fa4ef2ad4?s=128&d=identicon&r=PG&f=1",
+                "display_name": "anupriya",
+                "link": "https://stackoverflow.com/users/5470457/anupriya"
+            },
+            "is_answered": true,
+            "view_count": 325,
+            "answer_count": 2,
+            "score": -2,
+            "last_activity_date": 1526464587,
+            "creation_date": 1474545588,
+            "question_id": 39638460,
+            "body_markdown": "i want to retrieve the contact list from the phone avoiding any duplicates. i think it is retrieving the contacts from google account,phone or sim. so how to avoid the duplicate contacts. though a contact can have same number but with different numbers. but same name and same number should not appear in the list.\r\nthis is the code.\r\n\r\n \r\n\r\n    ContentResolver cr = getContentResolver();\r\n            final String[] PROJECTION = new String[] {\r\n                    ContactsContract.CommonDataKinds.Phone.CONTACT_ID,\r\n                    ContactsContract.Contacts.DISPLAY_NAME,\r\n                    ContactsContract.CommonDataKinds.Phone.NUMBER\r\n            };\r\n            String selection = ContactsContract.Contacts.IN_VISIBLE_GROUP + &quot; = &#39;&quot;\r\n                    + (&quot;1&quot;) + &quot;&#39;&quot;;\r\n            //String selection = ContactsContract.Contacts.HAS_PHONE_NUMBER;\r\n            Cursor cur = cr.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, PROJECTION, selection\r\n                    + &quot; AND &quot; + ContactsContract.Contacts.HAS_PHONE_NUMBER\r\n                    + &quot;=1&quot;, null,  ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + &quot; COLLATE LOCALIZED ASC&quot;);\r\n    \r\n            if(cur != null) {\r\n                if (cur.getCount() &gt; 0) {\r\n                    while (cur.moveToNext()) {\r\n    \r\n                        String contactPhone = cur.getString(cur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));\r\n                        String contactName = cur.getString(cur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));\r\n                        String contactId = cur.getString(cur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID));\r\n                        contacts.add(new Contact().setId(contactId).setName(contactName).setNumber(contactPhone));\r\n                    }\r\n                }\r\n    \r\n                cur.close();\r\n            }",
+            "link": "https://stackoverflow.com/questions/39638460/fetch-distinct-and-unique-contacts-from-the-phone-avoiding-duplicity",
+            "title": "fetch distinct and unique contacts from the phone avoiding duplicity",
+            "body": "<p>i want to retrieve the contact list from the phone avoiding any duplicates. i think it is retrieving the contacts from google account,phone or sim. so how to avoid the duplicate contacts. though a contact can have same number but with different numbers. but same name and same number should not appear in the list.\nthis is the code.</p>\n\n<pre><code>ContentResolver cr = getContentResolver();\n        final String[] PROJECTION = new String[] {\n                ContactsContract.CommonDataKinds.Phone.CONTACT_ID,\n                ContactsContract.Contacts.DISPLAY_NAME,\n                ContactsContract.CommonDataKinds.Phone.NUMBER\n        };\n        String selection = ContactsContract.Contacts.IN_VISIBLE_GROUP + \" = '\"\n                + (\"1\") + \"'\";\n        //String selection = ContactsContract.Contacts.HAS_PHONE_NUMBER;\n        Cursor cur = cr.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, PROJECTION, selection\n                + \" AND \" + ContactsContract.Contacts.HAS_PHONE_NUMBER\n                + \"=1\", null,  ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + \" COLLATE LOCALIZED ASC\");\n\n        if(cur != null) {\n            if (cur.getCount() &gt; 0) {\n                while (cur.moveToNext()) {\n\n                    String contactPhone = cur.getString(cur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));\n                    String contactName = cur.getString(cur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));\n                    String contactId = cur.getString(cur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID));\n                    contacts.add(new Contact().setId(contactId).setName(contactName).setNumber(contactPhone));\n                }\n            }\n\n            cur.close();\n        }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "reactjs",
+                "ecmascript-6",
+                "async-await",
+                "es6-promise"
+            ],
+            "owner": {
+                "reputation": 1283,
+                "user_id": 955183,
+                "user_type": "registered",
+                "accept_rate": 87,
+                "profile_image": "https://www.gravatar.com/avatar/9ea879545ec96ff6af718f5fbdb7ed7e?s=128&d=identicon&r=PG",
+                "display_name": "Andr&#233; Teixeira",
+                "link": "https://stackoverflow.com/users/955183/andr%c3%a9-teixeira"
+            },
+            "is_answered": true,
+            "view_count": 37,
+            "accepted_answer_id": 50367653,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526464585,
+            "creation_date": 1526463966,
+            "question_id": 50367515,
+            "body_markdown": "I&#39;m working on a React component that handles a form submit. \r\n\r\n    &lt;form\r\n        name=&quot;theForm&quot;\r\n        ref={(el) =&gt; { this.theForm = el }}\r\n        onSubmit={this.handleSubmit}\r\n        noValidate\r\n    &gt;\r\n\r\nOn the submit event handler I perform validation, using HTML5 form checkvalidity() calling another function, validateForm();\r\n\r\n    handleSubmit(e) {\r\n        e.preventDefault();\r\n        if (this.validateForm()) {\r\n            //Call the api to post data\r\n        }\r\n    }\r\n\r\nIf the validity on validateForm is false, I populate a list on state called dirtyFormInputs that is passed to the form&#39;s child components.\r\n\r\nDue to setState async behaviour, I changed my code to handle the updates to dirtyFormInputs list with async/await as follows:\r\n\r\n    async validateForm() {\r\n        const formLength = this.theForm.length;\r\n\r\n        if (this.theForm.checkValidity() === false) {\r\n            this.setState({ dirtyFormInputs: [] });  \r\n            for(let input of this.theForm){\r\n                input.nodeName.toLowerCase() !== &#39;button&#39; \r\n                    &amp;&amp; await this.validateInput(input);\r\n            }\r\n            return false;\r\n        }\r\n        return true;\r\n    }\r\n\r\nBut since I changed the validateInput method to properly update dirtyFormInputs, the return false statement on validateForm() is not effective anymore and my form is submitted even when failing on valitidy check.\r\n\r\n    validateInput(input) {\r\n        if (!input.validity.valid) {\r\n            return new Promise((resolve) =&gt; {\r\n                this.setState({\r\n                    dirtyFormInputs: [...this.state.dirtyFormInputs, input.name]\r\n                }, resolve)\r\n            });\r\n        }\r\n    }",
+            "link": "https://stackoverflow.com/questions/50367515/async-method-to-return-true-or-false-on-react-component",
+            "title": "Async method to return true or false on React component",
+            "body": "<p>I'm working on a React component that handles a form submit. </p>\n\n<pre><code>&lt;form\n    name=\"theForm\"\n    ref={(el) =&gt; { this.theForm = el }}\n    onSubmit={this.handleSubmit}\n    noValidate\n&gt;\n</code></pre>\n\n<p>On the submit event handler I perform validation, using HTML5 form checkvalidity() calling another function, validateForm();</p>\n\n<pre><code>handleSubmit(e) {\n    e.preventDefault();\n    if (this.validateForm()) {\n        //Call the api to post data\n    }\n}\n</code></pre>\n\n<p>If the validity on validateForm is false, I populate a list on state called dirtyFormInputs that is passed to the form's child components.</p>\n\n<p>Due to setState async behaviour, I changed my code to handle the updates to dirtyFormInputs list with async/await as follows:</p>\n\n<pre><code>async validateForm() {\n    const formLength = this.theForm.length;\n\n    if (this.theForm.checkValidity() === false) {\n        this.setState({ dirtyFormInputs: [] });  \n        for(let input of this.theForm){\n            input.nodeName.toLowerCase() !== 'button' \n                &amp;&amp; await this.validateInput(input);\n        }\n        return false;\n    }\n    return true;\n}\n</code></pre>\n\n<p>But since I changed the validateInput method to properly update dirtyFormInputs, the return false statement on validateForm() is not effective anymore and my form is submitted even when failing on valitidy check.</p>\n\n<pre><code>validateInput(input) {\n    if (!input.validity.valid) {\n        return new Promise((resolve) =&gt; {\n            this.setState({\n                dirtyFormInputs: [...this.state.dirtyFormInputs, input.name]\n            }, resolve)\n        });\n    }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "qt"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 4853414,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-8BkvrUg8ySA/AAAAAAAAAAI/AAAAAAAAAJs/5-MzDHNUAlg/photo.jpg?sz=128",
+                "display_name": "Peter Nwanosike",
+                "link": "https://stackoverflow.com/users/4853414/peter-nwanosike"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526464584,
+            "creation_date": 1526459485,
+            "last_edit_date": 1526464584,
+            "question_id": 50365940,
+            "body_markdown": "How do i calculate the key for this QCPFinancial?\r\n\r\n    QTime tk=m_startTime.time();\r\n    tk.setHMS(tk.hour(),tk.minute(),tk.second());\r\n    m_startTime.setTime(tk);\r\n\r\n    m_binSize = 500*24; // bin data in 1 day intervals\r\n\r\n    static int startTime(m_startTime.toTime_t());\r\n\r\n    int index = qFloor((from-startTime)/m_binSize+0.5);\r\n    //double key=m_startTime.toTime_t()+(index-1)*m_binSize;\r\n\r\n    candlesticks-&gt;addData(key++,open,high,low,close);\r\n    xAxis-&gt;setRange(key, 8, Qt::AlignRight);\r\n    replot();\r\n\r\n    dateTimeTicker-&gt;setDateTimeSpec(Qt::UTC);\r\n    dateTimeTicker-&gt;setDateTimeFormat(&quot;dd. MMMM hh:mm&quot;);\r\n    xAxis-&gt;setBasePen(Qt::NoPen);\r\n    xAxis-&gt;setTickLabels(true);\r\n    xAxis-&gt;setTicks(true);\r\n    xAxis-&gt;setTicker(dateTimeTicker);\r\n    rescaleAxes();\r\n    xAxis-&gt;scaleRange(1.025, xAxis-&gt;range().center());\r\n    yAxis-&gt;scaleRange(1.1,  yAxis-&gt;range().center());\r\n\r\n    // make axis rects&#39; left side line up:\r\n    QCPMarginGroup *group = new QCPMarginGroup(this);\r\n    axisRect()-&gt;setMarginGroup(QCP::msLeft|QCP::msRight, group);`",
+            "link": "https://stackoverflow.com/questions/50365940/trying-to-calculate-the-index-in-qcustomplot",
+            "title": "Trying to calculate the index in QCustomPlot",
+            "body": "<p>How do i calculate the key for this QCPFinancial?</p>\n\n<pre><code>QTime tk=m_startTime.time();\ntk.setHMS(tk.hour(),tk.minute(),tk.second());\nm_startTime.setTime(tk);\n\nm_binSize = 500*24; // bin data in 1 day intervals\n\nstatic int startTime(m_startTime.toTime_t());\n\nint index = qFloor((from-startTime)/m_binSize+0.5);\n//double key=m_startTime.toTime_t()+(index-1)*m_binSize;\n\ncandlesticks-&gt;addData(key++,open,high,low,close);\nxAxis-&gt;setRange(key, 8, Qt::AlignRight);\nreplot();\n\ndateTimeTicker-&gt;setDateTimeSpec(Qt::UTC);\ndateTimeTicker-&gt;setDateTimeFormat(\"dd. MMMM hh:mm\");\nxAxis-&gt;setBasePen(Qt::NoPen);\nxAxis-&gt;setTickLabels(true);\nxAxis-&gt;setTicks(true);\nxAxis-&gt;setTicker(dateTimeTicker);\nrescaleAxes();\nxAxis-&gt;scaleRange(1.025, xAxis-&gt;range().center());\nyAxis-&gt;scaleRange(1.1,  yAxis-&gt;range().center());\n\n// make axis rects' left side line up:\nQCPMarginGroup *group = new QCPMarginGroup(this);\naxisRect()-&gt;setMarginGroup(QCP::msLeft|QCP::msRight, group);`\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "php",
+                "wordpress",
+                "api"
+            ],
+            "owner": {
+                "reputation": 23,
+                "user_id": 5550913,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/61c51e6c96c411818dae35895e6300b8?s=128&d=identicon&r=PG&f=1",
+                "display_name": "123MijnWebsite",
+                "link": "https://stackoverflow.com/users/5550913/123mijnwebsite"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526464567,
+            "creation_date": 1526464567,
+            "question_id": 50367741,
+            "body_markdown": "I need to get the following done, but am stuck on how to get this done:\r\n\r\nUser has UserID from the third party stored in Wordpress and need to make a call to the third party api like:\r\n`https://thirdapi.com/authenticate.svc?user_id=12345`\r\n\r\nThe result will be: `&quot;Token: Generated-Token&quot;` \r\n\r\nand need to make another call like so: `https://thirdapi.com/SSO.htm?token=Generated-Token`\r\n\r\nbut this is only used as Single Sign-On.\r\n\r\nI would like to make the first call when a button is pressed. And also make the second call with the generated-token after the same button is pressed.\r\n\r\nAnother way I think would be is:\r\n\r\nStore it in a cookie: User is logged in to Wordpress and connects to the third api and stores the token in a cookie, so it will know the user is authenticated? How would I do this?\r\n\r\nWhat is the best way to make multiple API calls on a page?\r\n\r\nFor example:\r\n\r\n - Make API call (1) and get the result for userID(1).\r\n - Make API call (2) and get the result for userID(2).\r\n - Make API call (3) and get the result for userID(3).\r\n\r\nAnd show all results together. Also I can make 1 call per second.\r\n\r\nHope someone can help!\r\n\r\nThanks!\r\n",
+            "link": "https://stackoverflow.com/questions/50367741/authenticate-and-connect-with-third-party-from-wordpress",
+            "title": "Authenticate and connect with third party from Wordpress",
+            "body": "<p>I need to get the following done, but am stuck on how to get this done:</p>\n\n<p>User has UserID from the third party stored in Wordpress and need to make a call to the third party api like:\n<code>https://thirdapi.com/authenticate.svc?user_id=12345</code></p>\n\n<p>The result will be: <code>\"Token: Generated-Token\"</code> </p>\n\n<p>and need to make another call like so: <code>https://thirdapi.com/SSO.htm?token=Generated-Token</code></p>\n\n<p>but this is only used as Single Sign-On.</p>\n\n<p>I would like to make the first call when a button is pressed. And also make the second call with the generated-token after the same button is pressed.</p>\n\n<p>Another way I think would be is:</p>\n\n<p>Store it in a cookie: User is logged in to Wordpress and connects to the third api and stores the token in a cookie, so it will know the user is authenticated? How would I do this?</p>\n\n<p>What is the best way to make multiple API calls on a page?</p>\n\n<p>For example:</p>\n\n<ul>\n<li>Make API call (1) and get the result for userID(1).</li>\n<li>Make API call (2) and get the result for userID(2).</li>\n<li>Make API call (3) and get the result for userID(3).</li>\n</ul>\n\n<p>And show all results together. Also I can make 1 call per second.</p>\n\n<p>Hope someone can help!</p>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "spring-boot"
+            ],
+            "owner": {
+                "reputation": 85,
+                "user_id": 6872018,
+                "user_type": "registered",
+                "accept_rate": 33,
+                "profile_image": "https://www.gravatar.com/avatar/952918191e792778a6a8605aceed0345?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Sayali Shinde",
+                "link": "https://stackoverflow.com/users/6872018/sayali-shinde"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526464557,
+            "creation_date": 1526453318,
+            "last_edit_date": 1526464557,
+            "question_id": 50364123,
+            "body_markdown": "I am working on **Spring Boot JWT** example, in this example - \r\n\r\nhttps://github.com/nydiarra/springboot-jwt \r\n\r\nI just simply updated **maven** dependency from:\r\n \r\n`&lt;version&gt;1.5.3.RELEASE&lt;/version&gt;` to `&lt;version&gt;1.5.13.RELEASE&lt;/version&gt;`.\r\n\r\nHow can we fixed the below error?\r\n\r\n&gt;org.springframework.beans.factory.BeanCreationException: Error creating bean with name &#39;springSecurityFilterChain&#39; defined in class path resource [org/springframework/security/config/annotation/web/configuration/WebSecurityConfiguration.class]: Bean instantiation via factory method failed; nested exception is org.springframework.beans.BeanInstantiationException: Failed to instantiate [javax.servlet.Filter]: Factory method &#39;springSecurityFilterChain&#39; threw exception; nested exception is org.springframework.beans.factory.BeanNotOfRequiredTypeException: Bean named &#39;corsFilter&#39; is expected to be of type &#39;org.springframework.web.filter.CorsFilter&#39; but was actually of type &#39;org.springframework.boot.web.servlet.FilterRegistrationBean&#39;\r\n    \tat org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:599) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1181) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1075) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:513) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \tat org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:483) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory$1.getObject(AbstractBeanFactory.java:312) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \tat org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:230) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:308) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:197) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:297) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \tat org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:197) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \tat org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:761) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \tat org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:867) ~[spring-context-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \tat org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:543) ~[spring-context-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \tat org.springframework.boot.context.embedded.EmbeddedWebApplicationContext.refresh(EmbeddedWebApplicationContext.java:122) ~[spring-boot-1.5.13.RELEASE.jar:1.5.13.RELEASE]\r\n    \tat org.springframework.boot.SpringApplication.refresh(SpringApplication.java:693) [spring-boot-1.5.13.RELEASE.jar:1.5.13.RELEASE]\r\n    \tat org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:360) [spring-boot-1.5.13.RELEASE.jar:1.5.13.RELEASE]\r\n    \tat org.springframework.boot.SpringApplication.run(SpringApplication.java:303) [spring-boot-1.5.13.RELEASE.jar:1.5.13.RELEASE]\r\n    \tat org.springframework.boot.SpringApplication.run(SpringApplication.java:1118) [spring-boot-1.5.13.RELEASE.jar:1.5.13.RELEASE]\r\n    \tat org.springframework.boot.SpringApplication.run(SpringApplication.java:1107) [spring-boot-1.5.13.RELEASE.jar:1.5.13.RELEASE]\r\n    \tat com.nouhoun.springboot.jwt.integration.SpringbootJwtApplication.main(SpringbootJwtApplication.java:10) [classes/:na]\r\n    \tat sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[na:1.8.0_161]\r\n    \tat sun.reflect.NativeMethodAccessorImpl.invoke(Unknown Source) ~[na:1.8.0_161]\r\n    \tat sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source) ~[na:1.8.0_161]\r\n    \tat java.lang.reflect.Method.invoke(Unknown Source) ~[na:1.8.0_161]\r\n    \tat org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:49) [spring-boot-devtools-1.5.13.RELEASE.jar:1.5.13.RELEASE]\r\n    Caused by: org.springframework.beans.BeanInstantiationException: Failed to instantiate [javax.servlet.Filter]: Factory method &#39;springSecurityFilterChain&#39; threw exception; nested exception is org.springframework.beans.factory.BeanNotOfRequiredTypeException: Bean named &#39;corsFilter&#39; is expected to be of type &#39;org.springframework.web.filter.CorsFilter&#39; but was actually of type &#39;org.springframework.boot.web.servlet.FilterRegistrationBean&#39;\r\n    \tat org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:189) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \tat org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:588) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\r\n    \t... 25 common frames omitted",
+            "link": "https://stackoverflow.com/questions/50364123/org-springframework-beans-factory-beancreationexception-error-creating-bean-wit",
+            "title": "org.springframework.beans.factory.BeanCreationException: Error creating bean with name &#39;springSecurityFilterChain&#39; defined in class path resource",
+            "body": "<p>I am working on <strong>Spring Boot JWT</strong> example, in this example - </p>\n\n<p><a href=\"https://github.com/nydiarra/springboot-jwt\" rel=\"nofollow noreferrer\">https://github.com/nydiarra/springboot-jwt</a> </p>\n\n<p>I just simply updated <strong>maven</strong> dependency from:</p>\n\n<p><code>&lt;version&gt;1.5.3.RELEASE&lt;/version&gt;</code> to <code>&lt;version&gt;1.5.13.RELEASE&lt;/version&gt;</code>.</p>\n\n<p>How can we fixed the below error?</p>\n\n<blockquote>\n  <p>org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'springSecurityFilterChain' defined in class path resource [org/springframework/security/config/annotation/web/configuration/WebSecurityConfiguration.class]: Bean instantiation via factory method failed; nested exception is org.springframework.beans.BeanInstantiationException: Failed to instantiate [javax.servlet.Filter]: Factory method 'springSecurityFilterChain' threw exception; nested exception is org.springframework.beans.factory.BeanNotOfRequiredTypeException: Bean named 'corsFilter' is expected to be of type 'org.springframework.web.filter.CorsFilter' but was actually of type 'org.springframework.boot.web.servlet.FilterRegistrationBean'\n          at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:599) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1181) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1075) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:513) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:483) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          at org.springframework.beans.factory.support.AbstractBeanFactory$1.getObject(AbstractBeanFactory.java:312) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:230) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:308) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:197) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:297) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:197) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:761) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:867) ~[spring-context-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:543) ~[spring-context-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          at org.springframework.boot.context.embedded.EmbeddedWebApplicationContext.refresh(EmbeddedWebApplicationContext.java:122) ~[spring-boot-1.5.13.RELEASE.jar:1.5.13.RELEASE]\n          at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:693) [spring-boot-1.5.13.RELEASE.jar:1.5.13.RELEASE]\n          at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:360) [spring-boot-1.5.13.RELEASE.jar:1.5.13.RELEASE]\n          at org.springframework.boot.SpringApplication.run(SpringApplication.java:303) [spring-boot-1.5.13.RELEASE.jar:1.5.13.RELEASE]\n          at org.springframework.boot.SpringApplication.run(SpringApplication.java:1118) [spring-boot-1.5.13.RELEASE.jar:1.5.13.RELEASE]\n          at org.springframework.boot.SpringApplication.run(SpringApplication.java:1107) [spring-boot-1.5.13.RELEASE.jar:1.5.13.RELEASE]\n          at com.nouhoun.springboot.jwt.integration.SpringbootJwtApplication.main(SpringbootJwtApplication.java:10) [classes/:na]\n          at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[na:1.8.0_161]\n          at sun.reflect.NativeMethodAccessorImpl.invoke(Unknown Source) ~[na:1.8.0_161]\n          at sun.reflect.DelegatingMethodAccessorImpl.invoke(Unknown Source) ~[na:1.8.0_161]\n          at java.lang.reflect.Method.invoke(Unknown Source) ~[na:1.8.0_161]\n          at org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:49) [spring-boot-devtools-1.5.13.RELEASE.jar:1.5.13.RELEASE]\n      Caused by: org.springframework.beans.BeanInstantiationException: Failed to instantiate [javax.servlet.Filter]: Factory method 'springSecurityFilterChain' threw exception; nested exception is org.springframework.beans.factory.BeanNotOfRequiredTypeException: Bean named 'corsFilter' is expected to be of type 'org.springframework.web.filter.CorsFilter' but was actually of type 'org.springframework.boot.web.servlet.FilterRegistrationBean'\n          at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:189) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:588) ~[spring-beans-4.3.17.RELEASE.jar:4.3.17.RELEASE]\n          ... 25 common frames omitted</p>\n</blockquote>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "jar",
+                "android-library",
+                "aar"
+            ],
+            "owner": {
+                "reputation": 1010,
+                "user_id": 1540311,
+                "user_type": "registered",
+                "accept_rate": 69,
+                "profile_image": "https://www.gravatar.com/avatar/2e943689da0256aa33fe303eb5cb1562?s=128&d=identicon&r=PG",
+                "display_name": "vfsoraki",
+                "link": "https://stackoverflow.com/users/1540311/vfsoraki"
+            },
+            "is_answered": false,
+            "view_count": 23,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1526464549,
+            "creation_date": 1526459487,
+            "question_id": 50365942,
+            "body_markdown": "I am writing an SDK to be used in other applications, to enable them to use our service. Obviously, I am writing a library for that.\r\n\r\nNote that user here means user of SDK.\r\n\r\nThe questions:\r\n\r\n- I need to have an activity in my library. Do users have to declare my activity in their application to use it? Can I have activity defined in the manifest of my library, export library as `aar`? Does this work?\r\n- My library needs some permissions, like to check if internet is available or not. Like the above issue, can I have my permissions defined in manifest of my library?\r\n- `aar` or `jar`? What is the difference, beside the things mentioned in Google docs. Any support issues with `aar`, idk like lower API versions not supporting it or other IDEs (Eclipse? Still used?) not supporting it? I mean some practical issues with `aar`, if there is any.\r\n\r\nI&#39;m also open to any documentation or any link to help me.\r\n\r\nI have developed for Android in the past, last time was when Android Studio was just released in alpha. It seems like a new world now :)",
+            "link": "https://stackoverflow.com/questions/50365942/some-questions-regarding-libraries-in-android",
+            "title": "Some questions regarding libraries in Android",
+            "body": "<p>I am writing an SDK to be used in other applications, to enable them to use our service. Obviously, I am writing a library for that.</p>\n\n<p>Note that user here means user of SDK.</p>\n\n<p>The questions:</p>\n\n<ul>\n<li>I need to have an activity in my library. Do users have to declare my activity in their application to use it? Can I have activity defined in the manifest of my library, export library as <code>aar</code>? Does this work?</li>\n<li>My library needs some permissions, like to check if internet is available or not. Like the above issue, can I have my permissions defined in manifest of my library?</li>\n<li><code>aar</code> or <code>jar</code>? What is the difference, beside the things mentioned in Google docs. Any support issues with <code>aar</code>, idk like lower API versions not supporting it or other IDEs (Eclipse? Still used?) not supporting it? I mean some practical issues with <code>aar</code>, if there is any.</li>\n</ul>\n\n<p>I'm also open to any documentation or any link to help me.</p>\n\n<p>I have developed for Android in the past, last time was when Android Studio was just released in alpha. It seems like a new world now :)</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pandas",
+                "loops",
+                "dataframe"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9687755,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/bb8b7e85787c294b62e938f0601be465?s=128&d=identicon&r=PG&f=1",
+                "display_name": "JanSons",
+                "link": "https://stackoverflow.com/users/9687755/jansons"
+            },
+            "is_answered": false,
+            "view_count": 32,
+            "closed_date": 1526453399,
+            "answer_count": 1,
+            "score": -3,
+            "last_activity_date": 1526464549,
+            "creation_date": 1526418825,
+            "last_edit_date": 1526464549,
+            "question_id": 50359261,
+            "body_markdown": "I created a dataframe that combines several excel sheet outputs in a df. The structure of all the excel sheets is equal, only values differ. The excel sheets contain several categories (eg brightness, weight,...) and these categories contain subcategories (eg brightness of non living objects,brightness of living object..., weight of non living objects, weight of objects,...). \r\n\r\nMy goal is to know how often within each categorie and for each subcategory within a category, a value occured and to give this out as a summary. However, right now my code returns the output for the whole dataframe, not for the single  &quot;excel sheet&quot; dataframes. Can you tell me how I have to modify the code to get the result for &quot;sort_values&quot; for the individual sub dataframes? I tried it with list comprehendsion, but I am stuck at the same problem. Currently, the code is stuck in the for-loop. Thanks!\r\n\r\n    # import from folder that contains various xls files\r\n    path = os.getcwd()\r\n    files = os.listdir(path)\r\n    files_xls = [f for f in files if f[-3:] == &#39;xls&#39;]\r\n\r\n    # create df with all the sub-dfs (of which each contains col1, col2, ...)\r\n    df = pd.DataFrame[(&#39;col1&#39;, &#39;col2&#39;, &#39;col3&#39;, &#39;col4&#39;, &#39;col5&#39;)]\r\n    for f in files_xls:\r\n        all_data = pd.read_excel(f)\r\n        df = df.append(all_data)\r\n\r\n    # iterator through df and return the counts for the single dfs within df\r\n    for row in df.iterrows():\r\n        df.sort_values([&#39;col1&#39;, &#39;col2&#39;, &#39;col3&#39;)]\r\n    \r\n    the dataframe has the following shape:\r\n    sheet1 \r\n    feature 1\r\n    category1 category2 category3 category4 category5\r\n    1        44         321       112        61\r\n    feature2\r\n    category1 category2 category3 category4 category5\r\n     43       32        32        233       123\r\n    feature3\r\n    category1 category2 category3 category4 category5\r\n    432       3211      32        13        1 23      \r\n\r\n\r\n    sheet2    \r\n    feature 1\r\n    category1 category2 category3 category4 category5\r\n    1        44         321       112        61\r\n    feature2\r\n    category1 category2 category3 category4 category5\r\n     43       32        32        233       123\r\n    feature3\r\n    category1 category2 category3 category4 category5\r\n    432       3211      32        13        1 23      \r\n\r\n   ...",
+            "link": "https://stackoverflow.com/questions/50359261/iterate-over-pandas-dataframe-that-consist-of-subdataframes",
+            "closed_reason": "unclear what you&#39;re asking",
+            "title": "Iterate over pandas dataframe that consist of subdataframes",
+            "body": "<p>I created a dataframe that combines several excel sheet outputs in a df. The structure of all the excel sheets is equal, only values differ. The excel sheets contain several categories (eg brightness, weight,...) and these categories contain subcategories (eg brightness of non living objects,brightness of living object..., weight of non living objects, weight of objects,...). </p>\n\n<p>My goal is to know how often within each categorie and for each subcategory within a category, a value occured and to give this out as a summary. However, right now my code returns the output for the whole dataframe, not for the single  \"excel sheet\" dataframes. Can you tell me how I have to modify the code to get the result for \"sort_values\" for the individual sub dataframes? I tried it with list comprehendsion, but I am stuck at the same problem. Currently, the code is stuck in the for-loop. Thanks!</p>\n\n<pre><code># import from folder that contains various xls files\npath = os.getcwd()\nfiles = os.listdir(path)\nfiles_xls = [f for f in files if f[-3:] == 'xls']\n\n# create df with all the sub-dfs (of which each contains col1, col2, ...)\ndf = pd.DataFrame[('col1', 'col2', 'col3', 'col4', 'col5')]\nfor f in files_xls:\n    all_data = pd.read_excel(f)\n    df = df.append(all_data)\n\n# iterator through df and return the counts for the single dfs within df\nfor row in df.iterrows():\n    df.sort_values(['col1', 'col2', 'col3')]\n\nthe dataframe has the following shape:\nsheet1 \nfeature 1\ncategory1 category2 category3 category4 category5\n1        44         321       112        61\nfeature2\ncategory1 category2 category3 category4 category5\n 43       32        32        233       123\nfeature3\ncategory1 category2 category3 category4 category5\n432       3211      32        13        1 23      \n\n\nsheet2    \nfeature 1\ncategory1 category2 category3 category4 category5\n1        44         321       112        61\nfeature2\ncategory1 category2 category3 category4 category5\n 43       32        32        233       123\nfeature3\ncategory1 category2 category3 category4 category5\n432       3211      32        13        1 23      \n</code></pre>\n\n<p>...</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "api",
+                "get",
+                "retrofit",
+                "robospice"
+            ],
+            "owner": {
+                "reputation": 1496,
+                "user_id": 755370,
+                "user_type": "registered",
+                "accept_rate": 82,
+                "profile_image": "https://www.gravatar.com/avatar/bfc20c4eaf04a855355711b8e0cc080b?s=128&d=identicon&r=PG",
+                "display_name": "AndroidNoob",
+                "link": "https://stackoverflow.com/users/755370/androidnoob"
+            },
+            "is_answered": true,
+            "view_count": 27445,
+            "accepted_answer_id": 19975226,
+            "answer_count": 4,
+            "score": 43,
+            "last_activity_date": 1526464548,
+            "creation_date": 1384424355,
+            "last_edit_date": 1492691737,
+            "question_id": 19975046,
+            "body_markdown": "I am using Retrofit and Robospice to make API calls in my android application. All @POST methods work great, and so do @GET commands without any parameters in the URL, but I can&#39;t get any @GET calls to work with parameters on the end! \r\n\r\nFor example, if my API path was &quot;my/api/call/&quot; and I wanted 2 parameters &quot;param1&quot; and &quot;param2&quot; in the URL, the get call would look like:\r\n\r\nhttp://www.example.com/my/api/call?param1=value1&amp;param2=value2\r\n\r\nso I have setup my @GET interface like so:\r\n\r\n    @GET(&quot;/my/api/call?param1={p1}&amp;param2={p2}&quot;)\r\n    Response getMyThing(@Path(&quot;p1&quot;)\r\n    String param1, @Path(&quot;p2&quot;)\r\n    String param2);\r\n\r\nbut I get an error saying &lt;br&gt;&quot;An exception occurred during request network execution : URL query string &quot;`/my/api/call?param1={p1}&amp;param2={p2}`&quot; on method getMyThing may not have replaced block.&quot;\r\n\r\nWhat am I doing wrong?\r\n",
+            "link": "https://stackoverflow.com/questions/19975046/retrofit-multiple-query-parameters-in-get-command",
+            "title": "Retrofit: multiple query parameters in @GET command?",
+            "body": "<p>I am using Retrofit and Robospice to make API calls in my android application. All @POST methods work great, and so do @GET commands without any parameters in the URL, but I can't get any @GET calls to work with parameters on the end! </p>\n\n<p>For example, if my API path was \"my/api/call/\" and I wanted 2 parameters \"param1\" and \"param2\" in the URL, the get call would look like:</p>\n\n<p><a href=\"http://www.example.com/my/api/call?param1=value1&amp;param2=value2\" rel=\"noreferrer\">http://www.example.com/my/api/call?param1=value1&amp;param2=value2</a></p>\n\n<p>so I have setup my @GET interface like so:</p>\n\n<pre><code>@GET(\"/my/api/call?param1={p1}&amp;param2={p2}\")\nResponse getMyThing(@Path(\"p1\")\nString param1, @Path(\"p2\")\nString param2);\n</code></pre>\n\n<p>but I get an error saying <br>\"An exception occurred during request network execution : URL query string \"<code>/my/api/call?param1={p1}&amp;param2={p2}</code>\" on method getMyThing may not have replaced block.\"</p>\n\n<p>What am I doing wrong?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "bluej"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 9780814,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-I1Gvi9TwULc/AAAAAAAAAAI/AAAAAAAAACE/RUgUrcaLWoI/photo.jpg?sz=128",
+                "display_name": "Jaffar Ali",
+                "link": "https://stackoverflow.com/users/9780814/jaffar-ali"
+            },
+            "is_answered": true,
+            "view_count": 55,
+            "accepted_answer_id": 50367491,
+            "answer_count": 2,
+            "score": -1,
+            "last_activity_date": 1526464548,
+            "creation_date": 1526462749,
+            "question_id": 50367036,
+            "body_markdown": "(Heads up, I&#39;ve never written a proper program before so bear with me)\r\n\r\nI&#39;m trying to write an if-statement that compares the VALUES of the `position` fields of two instances (which literally returns the integer &quot;position&quot;). Problem is, they are private fields in different classes so I cannot access them directly. Instead, I made methods in each class which return the variable.\r\n\r\nNow in my if-statement, this is the condition that is to be true/false:\r\n\r\n`if (enemy1.getPosition() = player.getGun1Position())`\r\n\r\nNow the problem is, if I use `=` the machine assumes I&#39;m trying to assign a value to the position of `enemy1` and I&#39;ve been researching to find that `==` compares the memory location rather than the value of the two fields.\r\n\r\nI have also read that\r\n\r\n`.equals()`\r\n\r\ncan be used but I&#39;m assuming it can&#39;t be used here because\r\n\r\n`enemy1.getPosition().equals(player.getGun1Position())`\r\n\r\ngives an error when I try it.\r\n\r\n**NOTE:** I cannot change the fields to public because this is for an assignment and the fields need to be private.\r\n\r\nAny help would be appreciated :)",
+            "link": "https://stackoverflow.com/questions/50367036/java-comparing-values-of-two-variables-in-if-statement-but-cant-use-equals",
+            "title": "(Java) Comparing values of two variables in if-statement but can&#39;t use `.equals()`",
+            "body": "<p>(Heads up, I've never written a proper program before so bear with me)</p>\n\n<p>I'm trying to write an if-statement that compares the VALUES of the <code>position</code> fields of two instances (which literally returns the integer \"position\"). Problem is, they are private fields in different classes so I cannot access them directly. Instead, I made methods in each class which return the variable.</p>\n\n<p>Now in my if-statement, this is the condition that is to be true/false:</p>\n\n<p><code>if (enemy1.getPosition() = player.getGun1Position())</code></p>\n\n<p>Now the problem is, if I use <code>=</code> the machine assumes I'm trying to assign a value to the position of <code>enemy1</code> and I've been researching to find that <code>==</code> compares the memory location rather than the value of the two fields.</p>\n\n<p>I have also read that</p>\n\n<p><code>.equals()</code></p>\n\n<p>can be used but I'm assuming it can't be used here because</p>\n\n<p><code>enemy1.getPosition().equals(player.getGun1Position())</code></p>\n\n<p>gives an error when I try it.</p>\n\n<p><strong>NOTE:</strong> I cannot change the fields to public because this is for an assignment and the fields need to be private.</p>\n\n<p>Any help would be appreciated :)</p>\n"
+        },
+        {
+            "tags": [
+                "jquery",
+                "html",
+                "handlebars.js"
+            ],
+            "owner": {
+                "reputation": 196,
+                "user_id": 538793,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://i.stack.imgur.com/bH9na.jpg?s=128&g=1",
+                "display_name": "mayank",
+                "link": "https://stackoverflow.com/users/538793/mayank"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526464548,
+            "creation_date": 1526459250,
+            "last_edit_date": 1526464548,
+            "question_id": 50365859,
+            "body_markdown": "I am using handlebar templating. which stores data like below \r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    function showResult(result) {\r\n      document.querySelector(&#39;#result&#39;).innerText += result;\r\n    }\r\n    showResult(&quot;Using .html() &quot; + $(&#39;script#myId&#39;).html())\r\n    showResult(&quot;Using .text() &quot; + $(&#39;script#myId&#39;).text())\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;script src=&quot;https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js&quot;&gt;&lt;/script&gt;\r\n    &lt;script id=&quot;myId&quot; class=&quot;myClass&quot; type=&quot;text/x-handlebars-template&quot;&gt;\r\n        &lt;div&gt;My HTML content&lt;/div&gt;\r\n    &lt;/script&gt;\r\n\r\n    &lt;div id=&quot;result&quot;&gt;&lt;/div&gt;\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\nI am trying to get template data as `$(&#39;script#myId&#39;).html()`. which returns &quot; &quot;.\r\n\r\nWhile if I do `$(&#39;script#myId&#39;).text()`, it does return data in text format but I need it in HTML form.\r\n\r\nhappening in firefox only working fine in chrome.\r\n\r\nThanks\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50365859/scriptid-html-returns-data-from-handlebar-template-firefox-only",
+            "title": "$(&#39;script#id&#39;).html() returns &quot; &quot; data from handlebar template[ firefox only]",
+            "body": "<p>I am using handlebar templating. which stores data like below </p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-js lang-js prettyprint-override\"><code>function showResult(result) {\r\n  document.querySelector('#result').innerText += result;\r\n}\r\nshowResult(\"Using .html() \" + $('script#myId').html())\r\nshowResult(\"Using .text() \" + $('script#myId').text())</code></pre>\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>&lt;script src=\"https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js\"&gt;&lt;/script&gt;\r\n&lt;script id=\"myId\" class=\"myClass\" type=\"text/x-handlebars-template\"&gt;\r\n    &lt;div&gt;My HTML content&lt;/div&gt;\r\n&lt;/script&gt;\r\n\r\n&lt;div id=\"result\"&gt;&lt;/div&gt;</code></pre>\r\n</div>\r\n</div>\r\n</p>\n\n<p>I am trying to get template data as <code>$('script#myId').html()</code>. which returns \" \".</p>\n\n<p>While if I do <code>$('script#myId').text()</code>, it does return data in text format but I need it in HTML form.</p>\n\n<p>happening in firefox only working fine in chrome.</p>\n\n<p>Thanks</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 77
+}

@@ -1,0 +1,836 @@
+{
+    "items": [
+        {
+            "tags": [
+                "c",
+                "mfc"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9797899,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "김도환",
+                "link": "https://stackoverflow.com/users/9797899/%ea%b9%80%eb%8f%84%ed%99%98"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "closed_date": 1526459947,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526448766,
+            "creation_date": 1526447692,
+            "last_edit_date": 1526448766,
+            "question_id": 50362879,
+            "body_markdown": "When I build a program, it seems that it takes an infinite loop when sending data\r\n\r\n\r\nI have implemented a thread on the processing of events that occur when sending data. \r\nI thought I got an infinite loop here.\r\n\r\nWhen debugging, the ClearCommError () function in the send function stops the program\r\nIf you comment out this function, the program hangs when you run the if statement below it.\r\n\r\nWhere&#39;s the problem?\r\n\r\nThe platform I wrote is VS 2008.\r\n\r\n\r\n\r\n\r\n\r\n    #include &quot;stdafx.h&quot;\r\n    #include &quot;Serial.h&quot;\r\n    #include &quot;SerialComm.h&quot;\r\n    \r\n    \r\n    IMPLEMENT_DYNAMIC(CSerialComm, CCmdTarget)\r\n    \r\n    \r\n    CSerialComm::CSerialComm()\r\n    {\r\n    \r\n    }\r\n    \r\n    CSerialComm::~CSerialComm()\r\n    {\r\n    }\r\n    \r\n    CSerialComm::CSerialComm(CString ComPort,CString BaudRate,CString Parity,CString DataBit,CString StopBits)\r\n    {\r\n     m_sComPort   = ComPort;\r\n     m_sBaudRate  = BaudRate;\r\n     m_sParity    = Parity;\r\n     m_sDataBit   = DataBit;\r\n     m_sStopBits  = StopBits;\r\n     m_sPortOpenned = FALSE;\r\n     m_nLength = 0;\r\n    \r\n     memset(m_sInBuf,0,MAXBUF*2);\r\n    \r\n     m_pEvent = new CEvent(false,true);\r\n    }\r\n    \r\n    \r\n    \r\n    BEGIN_MESSAGE_MAP(CSerialComm, CCmdTarget)\r\n    END_MESSAGE_MAP()\r\n    \r\n    \r\n    \r\n   \r\n    \r\n  \r\n    bool CSerialComm::SetSerial()\r\n    { \r\n      \r\n     DWORD DErr;\r\n     COMMTIMEOUTS CommTimeOuts;\r\n     \r\n     if (!m_sPortOpenned) \r\n     {\r\n     return false;\r\n     }\r\n     \r\n    \r\n    \r\n     ClearCommError(m_hComm,&amp;DErr,NULL);\r\n    \r\n    \r\n     SetupComm(m_hComm, InBufSize, OutBufSize);\r\n   \r\n     PurgeComm(m_hComm, PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR);\r\n    \r\n    \r\n     \r\n     // setup for overlapped I/O\r\n     \r\n  \r\n     CommTimeOuts.ReadIntervalTimeout = MAXDWORD;\r\n     \r\n    \r\n     CommTimeOuts.ReadTotalTimeoutMultiplier = 0;\r\n     CommTimeOuts.ReadTotalTimeoutConstant = 0;\r\n     \r\n      \r\n     CommTimeOuts.WriteTotalTimeoutMultiplier = 0;\r\n     CommTimeOuts.WriteTotalTimeoutConstant = 1000;\r\n     \r\n    \r\n     SetCommTimeouts(m_hComm, &amp;CommTimeOuts);\r\n    \r\n     memset(&amp;m_dcb,0,sizeof(m_dcb));\r\n     m_dcb.DCBlength=sizeof(m_dcb);\r\n    \r\n    \r\n    \r\n     GetCommState(m_hComm, &amp;m_dcb);\r\n     \r\n     \r\n    \r\n     m_dcb.fBinary = TRUE;\r\n     m_dcb.fParity = TRUE;\r\n     m_dcb.fRtsControl = RTS_CONTROL_DISABLE;\r\n     m_dcb.fDtrControl = DTR_CONTROL_DISABLE;\r\n     m_dcb.fOutxDsrFlow = FALSE;\r\n     m_dcb.fOutX = FALSE;\r\n     m_dcb.fInX = FALSE;\r\n    \r\n    \r\n     if (m_sBaudRate == &quot;300&quot;)\r\n       m_dcb.BaudRate = CBR_300;\r\n     \r\n     else if (m_sBaudRate == &quot;600&quot;)\r\n       m_dcb.BaudRate = CBR_600;\r\n     \r\n     else if (m_sBaudRate == &quot;1200&quot;)\r\n       m_dcb.BaudRate = CBR_1200;\r\n     \r\n     else if (m_sBaudRate == &quot;2400&quot;)\r\n       m_dcb.BaudRate = CBR_2400;\r\n     \r\n     else if (m_sBaudRate == &quot;4800&quot;)\r\n       m_dcb.BaudRate = CBR_4800;\r\n     \r\n     else if (m_sBaudRate == &quot;9600&quot;)\r\n       m_dcb.BaudRate = CBR_9600;\r\n     \r\n     else if (m_sBaudRate == &quot;14400&quot;)\r\n       m_dcb.BaudRate = CBR_14400;\r\n     \r\n     else if (m_sBaudRate == &quot;19200&quot;)\r\n       m_dcb.BaudRate = CBR_19200;\r\n     \r\n     else if (m_sBaudRate == &quot;28800&quot;)\r\n       m_dcb.BaudRate = CBR_38400;\r\n     \r\n     else if (m_sBaudRate == &quot;33600&quot;)\r\n       m_dcb.BaudRate = CBR_38400;\r\n     \r\n     else if (m_sBaudRate == &quot;38400&quot;)\r\n       m_dcb.BaudRate = CBR_38400;\r\n     \r\n     else if (m_sBaudRate == &quot;56000&quot;)\r\n       m_dcb.BaudRate = CBR_56000;\r\n     \r\n     else if (m_sBaudRate == &quot;57600&quot;)\r\n       m_dcb.BaudRate = CBR_57600;\r\n     \r\n     else if (m_sBaudRate == &quot;115200&quot;)\r\n       m_dcb.BaudRate = CBR_115200;\r\n     \r\n     else if (m_sBaudRate == &quot;128000&quot;)\r\n       m_dcb.BaudRate = CBR_128000;\r\n     \r\n     else if (m_sBaudRate == &quot;256000&quot;)\r\n       m_dcb.BaudRate = CBR_256000;\r\n     \r\n     else if (m_sBaudRate == &quot;PCI_9600&quot;)\r\n       m_dcb.BaudRate = 1075;\r\n     \r\n     else if (m_sBaudRate == &quot;PCI_19200&quot;)\r\n       m_dcb.BaudRate = 2212;\r\n     \r\n     else if (m_sBaudRate == &quot;PCI_38400&quot;)\r\n       m_dcb.BaudRate = 4300;\r\n     \r\n     else if (m_sBaudRate == &quot;PCI_57600&quot;)\r\n       m_dcb.BaudRate = 6450;\r\n     \r\n     else if (m_sBaudRate == &quot;PCI_500K&quot;)\r\n       m_dcb.BaudRate = 56000;\r\n    \r\n    \r\n     \r\n     if(m_sParity == &quot;NONE&quot;)\r\n       m_dcb.Parity = NOPARITY;\r\n     \r\n     else if(m_sParity == &quot;Even&quot;)\r\n       m_dcb.Parity = EVENPARITY;\r\n     \r\n     else if(m_sParity == &quot;Odd&quot;)\r\n       m_dcb.Parity = ODDPARITY;\r\n    \r\n    \r\n     \r\n     \r\n     if(m_sDataBit == &quot;7 Bit&quot;)\r\n       m_dcb.ByteSize = 7;\r\n     \r\n     else if(m_sDataBit == &quot;8 Bit&quot;)\r\n       m_dcb.ByteSize = 8;\r\n    \r\n     \r\n     \r\n     if(m_sStopBits == &quot;1 Bit&quot;)\r\n       m_dcb.StopBits = ONESTOPBIT; \r\n     \r\n     else if(m_sStopBits == &quot;1.5 Bit&quot;)\r\n       m_dcb.StopBits = ONE5STOPBITS; \r\n     \r\n     else if (m_sStopBits = &quot;2 Bit&quot;)\r\n       m_dcb.StopBits = TWOSTOPBITS;\r\n     \r\n    \r\n     SetCommState(m_hComm, &amp;m_dcb);\r\n    \r\n     \r\n     SetCommMask(m_hComm, EV_RXCHAR);\r\n     \r\n     \r\n    \r\n    \r\n     return true;\r\n    }\r\n    \r\n    \r\n    \r\n \r\n    \r\n    bool CSerialComm::OpenPort(HWND hWnd)\r\n    {\r\n     \r\n     \r\n     m_hWnd = hWnd;\r\n     \r\n    \r\n      \r\n     m_hComm = CreateFile(m_sComPort, GENERIC_READ | GENERIC_WRITE, 0,\r\n                          NULL, OPEN_EXISTING, 0, NULL);\r\n    \r\n    \r\n      if(m_hComm != INVALID_HANDLE_VALUE) \r\n               \r\n        m_sPortOpenned =TRUE;\r\n      else\r\n       return false;\r\n    \r\n     \r\n     SetSerial();\r\n    \r\n     \r\n     m_OldW.Offset=0;\r\n     m_OldW.OffsetHigh=0;\r\n     m_OldR.Offset=0;\r\n     m_OldR.OffsetHigh=0;\r\n    \r\n      m_OldR.hEvent = CreateEvent(NULL,true,false,NULL);\r\n     if(m_OldR.hEvent=NULL)\r\n     {\r\n      CloseHandle(m_OldR.hEvent);\r\n      return false;\r\n     }\r\n    \r\n     m_OldW.hEvent=CreateEvent(NULL,true,false,NULL);\r\n     if(m_OldW.hEvent=NULL)\r\n     {\r\n      CloseHandle(m_OldW.hEvent);\r\n      return false;\r\n     }\r\n    \r\n    \r\n     AfxBeginThread(CommThread,(LPVOID)this);\r\n    \r\n    \r\n     return true;\r\n    }\r\n    \r\n    \r\n    \r\n  \r\n    bool CSerialComm::Send(LPCTSTR WrittenBufData, int len)\r\n    {\r\n     BOOL SigChk=true; \r\n     DWORD ErrorFlags; \r\n     DWORD BytesWritten;\r\n    \r\n     COMSTAT ComStat;\r\n    \r\n     if(!m_sPortOpenned)\r\n     {\r\n      return 0;\r\n     }\r\n    \r\n     ClearCommError(m_hComm,&amp;ErrorFlags,&amp;ComStat);\r\n    \r\n    \r\n    \r\n \r\n      \r\n     if (!WriteFile(m_hComm, WrittenBufData, len, &amp;BytesWritten, &amp;m_OldW))\r\n \r\n     {\r\n      \r\n      \r\n    \r\n    \r\n      if(GetLastError()==ERROR_IO_PENDING)\r\n      {       \r\n       if(WaitForSingleObject(m_OldW.hEvent,1000) != WAIT_OBJECT_0)\r\n      \r\n        SigChk=false;\r\n       else\r\n        GetOverlappedResult(m_hComm,&amp;m_OldW,&amp;BytesWritten,false);\r\n      }\r\n    \r\n      else\r\n       SigChk=false;\r\n     }\r\n     \r\n     ClearCommError(m_hComm,&amp;ErrorFlags,&amp;ComStat);\r\n     \r\n     return BytesWritten;\r\n    }\r\n    \r\n    \r\n   \r\n    \r\n    bool CSerialComm::Receive(LPSTR ReadBufData, int len)\r\n    {\r\n    \r\n     DWORD ErrorFlags;\r\n     DWORD Err;\r\n    \r\n     DWORD BytesRead;\r\n     COMSTAT ComStat;\r\n     \r\n     ClearCommError(m_hComm,&amp;ErrorFlags,&amp;ComStat);\r\n    \r\n     BytesRead = ComStat.cbInQue;\r\n     \r\n\r\n    \r\n     if (BytesRead &gt; 0) \r\n     {\r\n      if(!ReadFile(m_hComm, &amp;ReadBufData, len, &amp;BytesRead, &amp;m_OldR))\r\n      {\r\n       if(GetLastError() == ERROR_IO_PENDING)\r\n       {\r\n        if(WaitForSingleObject(m_OldR.hEvent,1000)!=WAIT_OBJECT_0)\r\n         BytesRead=0;\r\n        else\r\n         GetOverlappedResult(m_hComm,&amp;m_OldR,&amp;BytesRead,false);\r\n       }\r\n    \r\n       \r\n       \r\n       else\r\n       {\r\n        BytesRead = 0;\r\n        ClearCommError(m_hComm,&amp;ErrorFlags,&amp;ComStat);\r\n       }\r\n      }\r\n     }\r\n     \r\n     \r\n     return BytesRead;\r\n    }\r\n    \r\n  \r\n    \r\n    UINT CSerialComm::CommThread(LPVOID IpData)\r\n    {\r\n     DWORD ErrorFlags;\r\n     DWORD Evt;\r\n     COMSTAT ComStat;\r\n     char Buf[MAXBUF];\r\n     DWORD Length;\r\n     DWORD BytesRead;\r\n    \r\n     //OVERLAPPED OVR;\r\n    \r\n     int size;\r\n     int insize;\r\n     \r\n     \r\n     CSerialComm* Comm = (CSerialComm*)IpData;\r\n    \r\n     memset(Buf,&#39;\\0&#39;,MAXBUF);\r\n    \r\n     while(Comm-&gt;m_sPortOpenned)\r\n     {\r\n      Evt = 0;\r\n      Length=0;\r\n      insize=0;\r\n       \r\n      if(WaitCommEvent(Comm-&gt;m_hComm, &amp;Evt,NULL))\r\n      {\r\n     \r\n    \r\n      ClearCommError(Comm-&gt;m_hComm,&amp;ErrorFlags,&amp;ComStat);\r\n      \r\n      if((Evt&amp;EV_RXCHAR)==EV_RXCHAR)\r\n      {\r\n       if(ComStat.cbInQue &gt; MAXBUF)\r\n        size = MAXBUF;\r\n       else\r\n        size = ComStat.cbInQue;\r\n    \r\n        do\r\n        {\r\n         ClearCommError(Comm-&gt;m_hComm,&amp;ErrorFlags,&amp;ComStat);\r\n    \r\n         BytesRead = Comm-&gt;Receive(Buf,10000);   \r\n    \r\n        } while((Length!=0)&amp;&amp;(insize&lt;size));\r\n    \r\n    \r\n        if(Comm-&gt;m_nLength + insize &gt; MAXBUF*2)\r\n         insize=(Comm-&gt;m_nLength+insize) - MAXBUF*2;\r\n    \r\n      \r\n        Comm-&gt;m_pEvent-&gt;ResetEvent();\r\n        memcpy(Comm-&gt;m_sInBuf+Comm-&gt;m_nLength,Buf,insize);\r\n    \r\n        Comm-&gt;m_nLength +=insize;\r\n    \r\n        Comm-&gt;m_pEvent-&gt;SetEvent();\r\n    \r\n        LPARAM temp=(LPARAM)Comm;\r\n    \r\n        SendMessage(Comm-&gt;m_hWnd,WM_MYRECEIVE,Comm-&gt;m_nLength,temp);\r\n      \r\n      } \r\n      }\r\n    \r\n     }\r\n      \r\n     \r\n      PurgeComm(Comm-&gt;m_hComm, PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR);\r\n    \r\n      LPARAM temp = (LPARAM)Comm;\r\n    \r\n      SendMessage(Comm-&gt;m_hWnd,WM_MYCLOSE,0,temp);\r\n     \r\n      return 0;\r\n    \r\n    }\r\n    \r\n    \r\n    \r\n    \r\n    void CSerialComm::Close(void)\r\n    {\r\n     if(!m_sPortOpenned)\r\n      return;\r\n    \r\n     m_sPortOpenned = false;\r\n     SetCommMask(m_hComm,0);\r\n     PurgeComm(m_hComm,PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR);\r\n     \r\n     \r\n     Sleep(500);\r\n     \r\n    }\r\n    \r\n    void CSerialComm::Clear(void)\r\n    {\r\n    }\r\n    \r\n    \r\n    void CSerialComm::HandleClose(void)\r\n    {\r\n     CloseHandle(m_hComm);\r\n     CloseHandle(m_OldR.hEvent);\r\n     CloseHandle(m_OldW.hEvent);\r\n    }\r\n    \r\n    \r\n    \r\n    \r\n    \r\n    // SerialDlg.cpp \r\n    //\r\n    \r\n    #include &quot;stdafx.h&quot;\r\n    #include &quot;Serial.h&quot;\r\n    #include &quot;SerialDlg.h&quot;\r\n    \r\n    \r\n    #ifdef _DEBUG\r\n    #define new DEBUG_NEW\r\n    #endif\r\n    \r\n    \r\n \r\n    \r\n    class CAboutDlg : public CDialog\r\n    {\r\n    public:\r\n     CAboutDlg();\r\n    \r\n    \r\n     enum { IDD = IDD_ABOUTBOX };\r\n    \r\n     protected:\r\n     virtual void DoDataExchange(CDataExchange* pDX);   \r\n    \r\n   \r\n    protected:\r\n     DECLARE_MESSAGE_MAP()\r\n    };\r\n    \r\n    CAboutDlg::CAboutDlg() : CDialog(CAboutDlg::IDD)\r\n    {\r\n    }\r\n    \r\n    void CAboutDlg::DoDataExchange(CDataExchange* pDX)\r\n    {\r\n     CDialog::DoDataExchange(pDX);\r\n    }\r\n    \r\n    BEGIN_MESSAGE_MAP(CAboutDlg, CDialog)\r\n    END_MESSAGE_MAP()\r\n    \r\n    \r\n  \r\n    \r\n    \r\n    \r\n    \r\n    CSerialDlg::CSerialDlg(CWnd* pParent /*=NULL*/)\r\n     : CDialog(CSerialDlg::IDD, pParent)\r\n     , m_strSetComPort(_T(&quot;.&quot;))\r\n     , m_strSetBaudRate(_T(&quot;.&quot;))\r\n     , m_strSetComPort2(_T(&quot;.&quot;))\r\n     , m_strSetBaudRate2(_T(&quot;.&quot;))\r\n    {\r\n     m_hIcon = AfxGetApp()-&gt;LoadIcon(IDR_MAINFRAME);\r\n    }\r\n    \r\n    void CSerialDlg::DoDataExchange(CDataExchange* pDX)\r\n    {\r\n     CDialog::DoDataExchange(pDX);\r\n     DDX_Control(pDX, IDC_SETCOMPORT, m_ctrlSetComPort);\r\n     DDX_CBString(pDX, IDC_SETCOMPORT, m_strSetComPort);\r\n     DDX_Control(pDX, IDC_SETBAUDRATE, m_ctrlSetBaudRate);\r\n     DDX_CBString(pDX, IDC_SETBAUDRATE, m_strSetBaudRate);\r\n     DDX_Control(pDX, IDC_EDITVIEWDATA, m_EditViewData);\r\n     DDX_Control(pDX, IDC_EDIT_SENDDATA, m_EditSendData);\r\n     DDX_Control(pDX, IDC_SETCOMPORT2, m_ctrlSetComPort2);\r\n     DDX_CBString(pDX, IDC_SETCOMPORT2, m_strSetComPort2);\r\n     DDX_Control(pDX, IDC_SETBAUDRATE2, m_ctrlSetBaudRate2);\r\n     DDX_CBString(pDX, IDC_SETBAUDRATE2, m_strSetBaudRate2);\r\n     DDX_Control(pDX, IDC_EDITVIEWDATA2, m_EditViewData2);\r\n     DDX_Control(pDX, IDC_EDIT_SENDDATA2, m_EditSendData2);\r\n    }\r\n    \r\n    BEGIN_MESSAGE_MAP(CSerialDlg, CDialog)\r\n     ON_WM_SYSCOMMAND()\r\n     ON_WM_PAINT()\r\n     ON_WM_QUERYDRAGICON()\r\n     //}}AFX_MSG_MAP\r\n     ON_CBN_SELCHANGE(IDC_SETCOMPORT, &amp;CSerialDlg::OnCbnSelchangeSetcomport)\r\n     ON_EN_CHANGE(IDC_EDITVIEWDATA, &amp;CSerialDlg::OnEnChangeEditviewdata)\r\n     ON_BN_CLICKED(IDC_OPENPORT, &amp;CSerialDlg::OnBnClickedOpenport)\r\n     ON_BN_CLICKED(IDC_CLEAR, &amp;CSerialDlg::OnBnClickedClear)\r\n     ON_BN_CLICKED(IDC_SENDDATA, &amp;CSerialDlg::OnBnClickedSenddata)\r\n     ON_CBN_SELCHANGE(IDC_SETBAUDRATE, &amp;CSerialDlg::OnCbnSelchangeSetbaudrate)\r\n     ON_EN_CHANGE(IDC_EDIT_SENDDATA, &amp;CSerialDlg::OnEnChangeEditSenddata)\r\n    \r\n     ON_MESSAGE(WM_MYRECEIVE, &amp;CSerialDlg::OnReceive)\r\n    // ON_MESSAGE(WM_MYRECEIVE, &amp;CSerialDlg::OnReceive2)\r\n    \r\n     ON_MESSAGE(WM_MYCLOSE, &amp;CSerialDlg::OnThreadClosed)\r\n    \r\n     ON_CBN_SELCHANGE(IDC_SETCOMPORT2, &amp;CSerialDlg::OnCbnSelchangeSetcomport2)\r\n     ON_CBN_SELCHANGE(IDC_SETBAUDRATE2, &amp;CSerialDlg::OnCbnSelchangeSetbaudrate2)\r\n     ON_BN_CLICKED(IDC_OPENPORT2, &amp;CSerialDlg::OnBnClickedOpenport2)\r\n     ON_BN_CLICKED(IDC_SENDDATA2, &amp;CSerialDlg::OnBnClickedSenddata2)\r\n    END_MESSAGE_MAP()\r\n    \r\n    \r\n    // CSerialDlg 메시지 처리기\r\n    \r\n    BOOL CSerialDlg::OnInitDialog()\r\n    {\r\n     CDialog::OnInitDialog();\r\n    \r\n\r\n     ASSERT((IDM_ABOUTBOX &amp; 0xFFF0) == IDM_ABOUTBOX);\r\n     ASSERT(IDM_ABOUTBOX &lt; 0xF000);\r\n    \r\n     CMenu* pSysMenu = GetSystemMenu(FALSE);\r\n     if (pSysMenu != NULL)\r\n     {\r\n      BOOL bNameValid;\r\n      CString strAboutMenu;\r\n      bNameValid = strAboutMenu.LoadString(IDS_ABOUTBOX);\r\n      ASSERT(bNameValid);\r\n      if (!strAboutMenu.IsEmpty())\r\n      {\r\n       pSysMenu-&gt;AppendMenu(MF_SEPARATOR);\r\n       pSysMenu-&gt;AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);\r\n      }\r\n     }\r\n    \r\n     \r\n     SetIcon(m_hIcon, TRUE);   \r\n     SetIcon(m_hIcon, FALSE); \r\n    \r\n     \r\n    \r\n     m_ctrlSetComPort.AddString(_T(&quot;COM1&quot;));\r\n     m_ctrlSetComPort.AddString(_T(&quot;COM2&quot;));\r\n     m_ctrlSetComPort.AddString(_T(&quot;COM3&quot;));\r\n     m_ctrlSetComPort.AddString(_T(&quot;COM4&quot;));\r\n     m_ctrlSetComPort.AddString(_T(&quot;COM5&quot;));\r\n     m_ctrlSetComPort.AddString(_T(&quot;COM6&quot;));\r\n     m_ctrlSetComPort.AddString(_T(&quot;COM7&quot;));\r\n     m_ctrlSetComPort.AddString(_T(&quot;COM8&quot;));\r\n    \r\n     m_ctrlSetBaudRate.AddString(_T(&quot;9600&quot;));\r\n     m_ctrlSetBaudRate.AddString(_T(&quot;19200&quot;));\r\n     m_ctrlSetBaudRate.AddString(_T(&quot;57600&quot;));\r\n     m_ctrlSetBaudRate.AddString(_T(&quot;115200&quot;));\r\n    \r\n     Comport1_State = false;\r\n     m_strSetComPort= _T(&quot;COM3&quot;);\r\n     m_strSetBaudRate = _T(&quot;115200&quot;);\r\n    \r\n     GetDlgItem(IDC_OPENPORT)-&gt;SetWindowText(_T(&quot;OPEN&quot;));\r\n    \r\n    \r\n     m_ctrlSetComPort2.AddString(_T(&quot;COM1&quot;));\r\n     m_ctrlSetComPort2.AddString(_T(&quot;COM2&quot;));\r\n     m_ctrlSetComPort2.AddString(_T(&quot;COM3&quot;));\r\n     m_ctrlSetComPort2.AddString(_T(&quot;COM4&quot;));\r\n     m_ctrlSetComPort2.AddString(_T(&quot;COM5&quot;));\r\n     m_ctrlSetComPort2.AddString(_T(&quot;COM6&quot;));\r\n     m_ctrlSetComPort2.AddString(_T(&quot;COM7&quot;));\r\n     m_ctrlSetComPort2.AddString(_T(&quot;COM8&quot;));\r\n    \r\n     m_ctrlSetBaudRate2.AddString(_T(&quot;9600&quot;));\r\n     m_ctrlSetBaudRate2.AddString(_T(&quot;19200&quot;));\r\n     m_ctrlSetBaudRate2.AddString(_T(&quot;57600&quot;));\r\n     m_ctrlSetBaudRate2.AddString(_T(&quot;115200&quot;));\r\n    \r\n     Comport2_State = false;\r\n     m_strSetComPort2= _T(&quot;COM3&quot;);\r\n     m_strSetBaudRate2 = _T(&quot;115200&quot;);\r\n    \r\n     GetDlgItem(IDC_OPENPORT2)-&gt;SetWindowText(_T(&quot;OPEN&quot;));\r\n     \r\n     \r\n     UpdateData(false);\r\n    \r\n     return TRUE;  \r\n    }\r\n    \r\n    void CSerialDlg::OnSysCommand(UINT nID, LPARAM lParam)\r\n    {\r\n     if ((nID &amp; 0xFFF0) == IDM_ABOUTBOX)\r\n     {\r\n      CAboutDlg dlgAbout;\r\n      dlgAbout.DoModal();\r\n     }\r\n     else\r\n     {\r\n      CDialog::OnSysCommand(nID, lParam);\r\n     }\r\n    }\r\n    \r\n    \r\n    void CSerialDlg::OnPaint()\r\n    {\r\n     if (IsIconic())\r\n     {\r\n      CPaintDC dc(this); \r\n    \r\n      SendMessage(WM_ICONERASEBKGND, reinterpret_cast&lt;WPARAM&gt;(dc.GetSafeHdc()), 0);\r\n    \r\n     \r\n      int cxIcon = GetSystemMetrics(SM_CXICON);\r\n      int cyIcon = GetSystemMetrics(SM_CYICON);\r\n      CRect rect;\r\n      GetClientRect(&amp;rect);\r\n      int x = (rect.Width() - cxIcon + 1) / 2;\r\n      int y = (rect.Height() - cyIcon + 1) / 2;\r\n    \r\n      \r\n      dc.DrawIcon(x, y, m_hIcon);\r\n     }\r\n     else\r\n     {\r\n      CDialog::OnPaint();\r\n     }\r\n    }\r\n    \r\n\r\n    HCURSOR CSerialDlg::OnQueryDragIcon()\r\n    {\r\n     return static_cast&lt;HCURSOR&gt;(m_hIcon);\r\n    }\r\n    \r\n    \r\n    void CSerialDlg::OnCbnSelchangeSetcomport()\r\n    {\r\n   \r\n     UpdateData(true); \r\n    }\r\n    \r\n    \r\n    void CSerialDlg::OnCbnSelchangeSetbaudrate()\r\n    {\r\n     \r\n     UpdateData(true);\r\n    }\r\n    \r\n    \r\n    void CSerialDlg::OnEnChangeEditviewdata()\r\n    {\r\n    \r\n    }\r\n    \r\n    void CSerialDlg::OnBnClickedOpenport()\r\n    {\r\n    \r\n     \r\n     if(Comport1_State)\r\n     {\r\n      if(m_Comm)\r\n      {\r\n       m_Comm -&gt;Close();\r\n       m_Comm = NULL;\r\n       AfxMessageBox(_T(&quot;COM close port&quot;));\r\n       Comport1_State = false;\r\n       GetDlgItem(IDC_OPENPORT)-&gt;SetWindowText(_T(&quot;OPEN&quot;));\r\n       //GetDlgItem(IDC_OPENPORT)-&gt;EnableWindow(true);\r\n       GetDlgItem(IDC_SENDDATA)-&gt;EnableWindow(false);\r\n      }\r\n     }\r\n    \r\n     else\r\n     {\r\n      m_Comm = new CSerialComm(_T(&quot;\\\\\\\\.\\\\&quot;)+m_strSetComPort, m_strSetBaudRate, _T(&quot;NONE&quot;), _T(&quot;8 Bit&quot;), _T(&quot;1 Bit&quot;));\r\n     \r\n      if (m_Comm-&gt;OpenPort(GetSafeHwnd()) !=0)\r\n      {     \r\n       Comport1_State=true;\r\n       GetDlgItem(IDC_OPENPORT)-&gt;SetWindowText(_T(&quot;CLOSE&quot;));\r\n       //GetDlgItem(IDC_OPENPORT)-&gt;EnableWindow(false);\r\n       GetDlgItem(IDC_SENDDATA)-&gt;EnableWindow(true);\r\n    \r\n       AfxMessageBox(_T(&quot;COM port open&quot;));\r\n      }\r\n      else\r\n      {\r\n       AfxMessageBox(_T(&quot;ERROR&quot;));\r\n      }\r\n     \r\n     }\r\n    }\r\n    \r\n    void CSerialDlg::OnBnClickedClear()\r\n    {\r\n\r\n    }\r\n    \r\n    void CSerialDlg::OnBnClickedSenddata()\r\n    {\r\n\r\n     CString str;\r\n    \r\n     if(Comport1_State == true)\r\n     {\r\n      GetDlgItem(IDC_EDIT_SENDDATA) -&gt; GetWindowText(str);\r\n      str += &quot;\\r\\n&quot;;\r\n      m_Comm-&gt;Send(str,str.GetLength());\r\n      AfxMessageBox(_T(&quot;succ&quot;));\r\n     }\r\n     else\r\n     {\r\n      AfxMessageBox(_T(&quot;ERROR&quot;));\r\n     }\r\n    \r\n    }\r\n    \r\n    \r\n    void CSerialDlg::OnEnChangeEditSenddata()\r\n    {\r\n    \r\n    }\r\n    \r\n    \r\n\r\n    \r\n    LRESULT CSerialDlg::OnThreadClosed(WPARAM length, LPARAM lpara)\r\n    {\r\n     ((CSerialComm*)lpara)-&gt;HandleClose();\r\n     delete ((CSerialComm*)lpara);\r\n    \r\n     return 0;\r\n    }\r\n    \r\n    \r\n    LRESULT CSerialDlg::OnReceive(WPARAM length, LPARAM lpara)\r\n    {\r\n     CString str;\r\n     char data[20000];\r\n     if(m_Comm)\r\n     {\r\n      m_Comm-&gt;Receive(data,length);\r\n      data[length]=_T(&#39;\\0&#39;);\r\n      str+=_T(&quot;\\r\\n&quot;);\r\n      AfxMessageBox(_T(&quot;read&quot;));\r\n      for(int i=0; i&lt;(int)length; i++)\r\n      {\r\n       str+=data[i];\r\n      }\r\n    \r\n      m_EditViewData.ReplaceSel(str);\r\n      str=&quot;.&quot;;\r\n     }\r\n    \r\n     \r\n     return 0;\r\n    }",
+            "link": "https://stackoverflow.com/questions/50362879/questions-about-mfc-serial-communication",
+            "closed_reason": "off-topic",
+            "title": "Questions about MFC Serial communication",
+            "body": "<p>When I build a program, it seems that it takes an infinite loop when sending data</p>\n\n<p>I have implemented a thread on the processing of events that occur when sending data. \nI thought I got an infinite loop here.</p>\n\n<p>When debugging, the ClearCommError () function in the send function stops the program\nIf you comment out this function, the program hangs when you run the if statement below it.</p>\n\n<p>Where's the problem?</p>\n\n<p>The platform I wrote is VS 2008.</p>\n\n<pre><code>#include \"stdafx.h\"\n#include \"Serial.h\"\n#include \"SerialComm.h\"\n\n\nIMPLEMENT_DYNAMIC(CSerialComm, CCmdTarget)\n\n\nCSerialComm::CSerialComm()\n{\n\n}\n\nCSerialComm::~CSerialComm()\n{\n}\n\nCSerialComm::CSerialComm(CString ComPort,CString BaudRate,CString Parity,CString DataBit,CString StopBits)\n{\n m_sComPort   = ComPort;\n m_sBaudRate  = BaudRate;\n m_sParity    = Parity;\n m_sDataBit   = DataBit;\n m_sStopBits  = StopBits;\n m_sPortOpenned = FALSE;\n m_nLength = 0;\n\n memset(m_sInBuf,0,MAXBUF*2);\n\n m_pEvent = new CEvent(false,true);\n}\n\n\n\nBEGIN_MESSAGE_MAP(CSerialComm, CCmdTarget)\nEND_MESSAGE_MAP()\n\n\n\n\n\n\nbool CSerialComm::SetSerial()\n{ \n\n DWORD DErr;\n COMMTIMEOUTS CommTimeOuts;\n\n if (!m_sPortOpenned) \n {\n return false;\n }\n\n\n\n ClearCommError(m_hComm,&amp;DErr,NULL);\n\n\n SetupComm(m_hComm, InBufSize, OutBufSize);\n\n PurgeComm(m_hComm, PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR);\n\n\n\n // setup for overlapped I/O\n\n\n CommTimeOuts.ReadIntervalTimeout = MAXDWORD;\n\n\n CommTimeOuts.ReadTotalTimeoutMultiplier = 0;\n CommTimeOuts.ReadTotalTimeoutConstant = 0;\n\n\n CommTimeOuts.WriteTotalTimeoutMultiplier = 0;\n CommTimeOuts.WriteTotalTimeoutConstant = 1000;\n\n\n SetCommTimeouts(m_hComm, &amp;CommTimeOuts);\n\n memset(&amp;m_dcb,0,sizeof(m_dcb));\n m_dcb.DCBlength=sizeof(m_dcb);\n\n\n\n GetCommState(m_hComm, &amp;m_dcb);\n\n\n\n m_dcb.fBinary = TRUE;\n m_dcb.fParity = TRUE;\n m_dcb.fRtsControl = RTS_CONTROL_DISABLE;\n m_dcb.fDtrControl = DTR_CONTROL_DISABLE;\n m_dcb.fOutxDsrFlow = FALSE;\n m_dcb.fOutX = FALSE;\n m_dcb.fInX = FALSE;\n\n\n if (m_sBaudRate == \"300\")\n   m_dcb.BaudRate = CBR_300;\n\n else if (m_sBaudRate == \"600\")\n   m_dcb.BaudRate = CBR_600;\n\n else if (m_sBaudRate == \"1200\")\n   m_dcb.BaudRate = CBR_1200;\n\n else if (m_sBaudRate == \"2400\")\n   m_dcb.BaudRate = CBR_2400;\n\n else if (m_sBaudRate == \"4800\")\n   m_dcb.BaudRate = CBR_4800;\n\n else if (m_sBaudRate == \"9600\")\n   m_dcb.BaudRate = CBR_9600;\n\n else if (m_sBaudRate == \"14400\")\n   m_dcb.BaudRate = CBR_14400;\n\n else if (m_sBaudRate == \"19200\")\n   m_dcb.BaudRate = CBR_19200;\n\n else if (m_sBaudRate == \"28800\")\n   m_dcb.BaudRate = CBR_38400;\n\n else if (m_sBaudRate == \"33600\")\n   m_dcb.BaudRate = CBR_38400;\n\n else if (m_sBaudRate == \"38400\")\n   m_dcb.BaudRate = CBR_38400;\n\n else if (m_sBaudRate == \"56000\")\n   m_dcb.BaudRate = CBR_56000;\n\n else if (m_sBaudRate == \"57600\")\n   m_dcb.BaudRate = CBR_57600;\n\n else if (m_sBaudRate == \"115200\")\n   m_dcb.BaudRate = CBR_115200;\n\n else if (m_sBaudRate == \"128000\")\n   m_dcb.BaudRate = CBR_128000;\n\n else if (m_sBaudRate == \"256000\")\n   m_dcb.BaudRate = CBR_256000;\n\n else if (m_sBaudRate == \"PCI_9600\")\n   m_dcb.BaudRate = 1075;\n\n else if (m_sBaudRate == \"PCI_19200\")\n   m_dcb.BaudRate = 2212;\n\n else if (m_sBaudRate == \"PCI_38400\")\n   m_dcb.BaudRate = 4300;\n\n else if (m_sBaudRate == \"PCI_57600\")\n   m_dcb.BaudRate = 6450;\n\n else if (m_sBaudRate == \"PCI_500K\")\n   m_dcb.BaudRate = 56000;\n\n\n\n if(m_sParity == \"NONE\")\n   m_dcb.Parity = NOPARITY;\n\n else if(m_sParity == \"Even\")\n   m_dcb.Parity = EVENPARITY;\n\n else if(m_sParity == \"Odd\")\n   m_dcb.Parity = ODDPARITY;\n\n\n\n\n if(m_sDataBit == \"7 Bit\")\n   m_dcb.ByteSize = 7;\n\n else if(m_sDataBit == \"8 Bit\")\n   m_dcb.ByteSize = 8;\n\n\n\n if(m_sStopBits == \"1 Bit\")\n   m_dcb.StopBits = ONESTOPBIT; \n\n else if(m_sStopBits == \"1.5 Bit\")\n   m_dcb.StopBits = ONE5STOPBITS; \n\n else if (m_sStopBits = \"2 Bit\")\n   m_dcb.StopBits = TWOSTOPBITS;\n\n\n SetCommState(m_hComm, &amp;m_dcb);\n\n\n SetCommMask(m_hComm, EV_RXCHAR);\n\n\n\n\n return true;\n}\n\n\n\n\n\nbool CSerialComm::OpenPort(HWND hWnd)\n{\n\n\n m_hWnd = hWnd;\n\n\n\n m_hComm = CreateFile(m_sComPort, GENERIC_READ | GENERIC_WRITE, 0,\n                      NULL, OPEN_EXISTING, 0, NULL);\n\n\n  if(m_hComm != INVALID_HANDLE_VALUE) \n\n    m_sPortOpenned =TRUE;\n  else\n   return false;\n\n\n SetSerial();\n\n\n m_OldW.Offset=0;\n m_OldW.OffsetHigh=0;\n m_OldR.Offset=0;\n m_OldR.OffsetHigh=0;\n\n  m_OldR.hEvent = CreateEvent(NULL,true,false,NULL);\n if(m_OldR.hEvent=NULL)\n {\n  CloseHandle(m_OldR.hEvent);\n  return false;\n }\n\n m_OldW.hEvent=CreateEvent(NULL,true,false,NULL);\n if(m_OldW.hEvent=NULL)\n {\n  CloseHandle(m_OldW.hEvent);\n  return false;\n }\n\n\n AfxBeginThread(CommThread,(LPVOID)this);\n\n\n return true;\n}\n\n\n\n\nbool CSerialComm::Send(LPCTSTR WrittenBufData, int len)\n{\n BOOL SigChk=true; \n DWORD ErrorFlags; \n DWORD BytesWritten;\n\n COMSTAT ComStat;\n\n if(!m_sPortOpenned)\n {\n  return 0;\n }\n\n ClearCommError(m_hComm,&amp;ErrorFlags,&amp;ComStat);\n\n\n\n\n\n if (!WriteFile(m_hComm, WrittenBufData, len, &amp;BytesWritten, &amp;m_OldW))\n\n {\n\n\n\n\n  if(GetLastError()==ERROR_IO_PENDING)\n  {       \n   if(WaitForSingleObject(m_OldW.hEvent,1000) != WAIT_OBJECT_0)\n\n    SigChk=false;\n   else\n    GetOverlappedResult(m_hComm,&amp;m_OldW,&amp;BytesWritten,false);\n  }\n\n  else\n   SigChk=false;\n }\n\n ClearCommError(m_hComm,&amp;ErrorFlags,&amp;ComStat);\n\n return BytesWritten;\n}\n\n\n\n\nbool CSerialComm::Receive(LPSTR ReadBufData, int len)\n{\n\n DWORD ErrorFlags;\n DWORD Err;\n\n DWORD BytesRead;\n COMSTAT ComStat;\n\n ClearCommError(m_hComm,&amp;ErrorFlags,&amp;ComStat);\n\n BytesRead = ComStat.cbInQue;\n\n\n\n if (BytesRead &gt; 0) \n {\n  if(!ReadFile(m_hComm, &amp;ReadBufData, len, &amp;BytesRead, &amp;m_OldR))\n  {\n   if(GetLastError() == ERROR_IO_PENDING)\n   {\n    if(WaitForSingleObject(m_OldR.hEvent,1000)!=WAIT_OBJECT_0)\n     BytesRead=0;\n    else\n     GetOverlappedResult(m_hComm,&amp;m_OldR,&amp;BytesRead,false);\n   }\n\n\n\n   else\n   {\n    BytesRead = 0;\n    ClearCommError(m_hComm,&amp;ErrorFlags,&amp;ComStat);\n   }\n  }\n }\n\n\n return BytesRead;\n}\n\n\n\nUINT CSerialComm::CommThread(LPVOID IpData)\n{\n DWORD ErrorFlags;\n DWORD Evt;\n COMSTAT ComStat;\n char Buf[MAXBUF];\n DWORD Length;\n DWORD BytesRead;\n\n //OVERLAPPED OVR;\n\n int size;\n int insize;\n\n\n CSerialComm* Comm = (CSerialComm*)IpData;\n\n memset(Buf,'\\0',MAXBUF);\n\n while(Comm-&gt;m_sPortOpenned)\n {\n  Evt = 0;\n  Length=0;\n  insize=0;\n\n  if(WaitCommEvent(Comm-&gt;m_hComm, &amp;Evt,NULL))\n  {\n\n\n  ClearCommError(Comm-&gt;m_hComm,&amp;ErrorFlags,&amp;ComStat);\n\n  if((Evt&amp;EV_RXCHAR)==EV_RXCHAR)\n  {\n   if(ComStat.cbInQue &gt; MAXBUF)\n    size = MAXBUF;\n   else\n    size = ComStat.cbInQue;\n\n    do\n    {\n     ClearCommError(Comm-&gt;m_hComm,&amp;ErrorFlags,&amp;ComStat);\n\n     BytesRead = Comm-&gt;Receive(Buf,10000);   \n\n    } while((Length!=0)&amp;&amp;(insize&lt;size));\n\n\n    if(Comm-&gt;m_nLength + insize &gt; MAXBUF*2)\n     insize=(Comm-&gt;m_nLength+insize) - MAXBUF*2;\n\n\n    Comm-&gt;m_pEvent-&gt;ResetEvent();\n    memcpy(Comm-&gt;m_sInBuf+Comm-&gt;m_nLength,Buf,insize);\n\n    Comm-&gt;m_nLength +=insize;\n\n    Comm-&gt;m_pEvent-&gt;SetEvent();\n\n    LPARAM temp=(LPARAM)Comm;\n\n    SendMessage(Comm-&gt;m_hWnd,WM_MYRECEIVE,Comm-&gt;m_nLength,temp);\n\n  } \n  }\n\n }\n\n\n  PurgeComm(Comm-&gt;m_hComm, PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR);\n\n  LPARAM temp = (LPARAM)Comm;\n\n  SendMessage(Comm-&gt;m_hWnd,WM_MYCLOSE,0,temp);\n\n  return 0;\n\n}\n\n\n\n\nvoid CSerialComm::Close(void)\n{\n if(!m_sPortOpenned)\n  return;\n\n m_sPortOpenned = false;\n SetCommMask(m_hComm,0);\n PurgeComm(m_hComm,PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR);\n\n\n Sleep(500);\n\n}\n\nvoid CSerialComm::Clear(void)\n{\n}\n\n\nvoid CSerialComm::HandleClose(void)\n{\n CloseHandle(m_hComm);\n CloseHandle(m_OldR.hEvent);\n CloseHandle(m_OldW.hEvent);\n}\n\n\n\n\n\n// SerialDlg.cpp \n//\n\n#include \"stdafx.h\"\n#include \"Serial.h\"\n#include \"SerialDlg.h\"\n\n\n#ifdef _DEBUG\n#define new DEBUG_NEW\n#endif\n\n\n\n\nclass CAboutDlg : public CDialog\n{\npublic:\n CAboutDlg();\n\n\n enum { IDD = IDD_ABOUTBOX };\n\n protected:\n virtual void DoDataExchange(CDataExchange* pDX);   \n\n\nprotected:\n DECLARE_MESSAGE_MAP()\n};\n\nCAboutDlg::CAboutDlg() : CDialog(CAboutDlg::IDD)\n{\n}\n\nvoid CAboutDlg::DoDataExchange(CDataExchange* pDX)\n{\n CDialog::DoDataExchange(pDX);\n}\n\nBEGIN_MESSAGE_MAP(CAboutDlg, CDialog)\nEND_MESSAGE_MAP()\n\n\n\n\n\n\n\nCSerialDlg::CSerialDlg(CWnd* pParent /*=NULL*/)\n : CDialog(CSerialDlg::IDD, pParent)\n , m_strSetComPort(_T(\".\"))\n , m_strSetBaudRate(_T(\".\"))\n , m_strSetComPort2(_T(\".\"))\n , m_strSetBaudRate2(_T(\".\"))\n{\n m_hIcon = AfxGetApp()-&gt;LoadIcon(IDR_MAINFRAME);\n}\n\nvoid CSerialDlg::DoDataExchange(CDataExchange* pDX)\n{\n CDialog::DoDataExchange(pDX);\n DDX_Control(pDX, IDC_SETCOMPORT, m_ctrlSetComPort);\n DDX_CBString(pDX, IDC_SETCOMPORT, m_strSetComPort);\n DDX_Control(pDX, IDC_SETBAUDRATE, m_ctrlSetBaudRate);\n DDX_CBString(pDX, IDC_SETBAUDRATE, m_strSetBaudRate);\n DDX_Control(pDX, IDC_EDITVIEWDATA, m_EditViewData);\n DDX_Control(pDX, IDC_EDIT_SENDDATA, m_EditSendData);\n DDX_Control(pDX, IDC_SETCOMPORT2, m_ctrlSetComPort2);\n DDX_CBString(pDX, IDC_SETCOMPORT2, m_strSetComPort2);\n DDX_Control(pDX, IDC_SETBAUDRATE2, m_ctrlSetBaudRate2);\n DDX_CBString(pDX, IDC_SETBAUDRATE2, m_strSetBaudRate2);\n DDX_Control(pDX, IDC_EDITVIEWDATA2, m_EditViewData2);\n DDX_Control(pDX, IDC_EDIT_SENDDATA2, m_EditSendData2);\n}\n\nBEGIN_MESSAGE_MAP(CSerialDlg, CDialog)\n ON_WM_SYSCOMMAND()\n ON_WM_PAINT()\n ON_WM_QUERYDRAGICON()\n //}}AFX_MSG_MAP\n ON_CBN_SELCHANGE(IDC_SETCOMPORT, &amp;CSerialDlg::OnCbnSelchangeSetcomport)\n ON_EN_CHANGE(IDC_EDITVIEWDATA, &amp;CSerialDlg::OnEnChangeEditviewdata)\n ON_BN_CLICKED(IDC_OPENPORT, &amp;CSerialDlg::OnBnClickedOpenport)\n ON_BN_CLICKED(IDC_CLEAR, &amp;CSerialDlg::OnBnClickedClear)\n ON_BN_CLICKED(IDC_SENDDATA, &amp;CSerialDlg::OnBnClickedSenddata)\n ON_CBN_SELCHANGE(IDC_SETBAUDRATE, &amp;CSerialDlg::OnCbnSelchangeSetbaudrate)\n ON_EN_CHANGE(IDC_EDIT_SENDDATA, &amp;CSerialDlg::OnEnChangeEditSenddata)\n\n ON_MESSAGE(WM_MYRECEIVE, &amp;CSerialDlg::OnReceive)\n// ON_MESSAGE(WM_MYRECEIVE, &amp;CSerialDlg::OnReceive2)\n\n ON_MESSAGE(WM_MYCLOSE, &amp;CSerialDlg::OnThreadClosed)\n\n ON_CBN_SELCHANGE(IDC_SETCOMPORT2, &amp;CSerialDlg::OnCbnSelchangeSetcomport2)\n ON_CBN_SELCHANGE(IDC_SETBAUDRATE2, &amp;CSerialDlg::OnCbnSelchangeSetbaudrate2)\n ON_BN_CLICKED(IDC_OPENPORT2, &amp;CSerialDlg::OnBnClickedOpenport2)\n ON_BN_CLICKED(IDC_SENDDATA2, &amp;CSerialDlg::OnBnClickedSenddata2)\nEND_MESSAGE_MAP()\n\n\n// CSerialDlg 메시지 처리기\n\nBOOL CSerialDlg::OnInitDialog()\n{\n CDialog::OnInitDialog();\n\n\n ASSERT((IDM_ABOUTBOX &amp; 0xFFF0) == IDM_ABOUTBOX);\n ASSERT(IDM_ABOUTBOX &lt; 0xF000);\n\n CMenu* pSysMenu = GetSystemMenu(FALSE);\n if (pSysMenu != NULL)\n {\n  BOOL bNameValid;\n  CString strAboutMenu;\n  bNameValid = strAboutMenu.LoadString(IDS_ABOUTBOX);\n  ASSERT(bNameValid);\n  if (!strAboutMenu.IsEmpty())\n  {\n   pSysMenu-&gt;AppendMenu(MF_SEPARATOR);\n   pSysMenu-&gt;AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);\n  }\n }\n\n\n SetIcon(m_hIcon, TRUE);   \n SetIcon(m_hIcon, FALSE); \n\n\n\n m_ctrlSetComPort.AddString(_T(\"COM1\"));\n m_ctrlSetComPort.AddString(_T(\"COM2\"));\n m_ctrlSetComPort.AddString(_T(\"COM3\"));\n m_ctrlSetComPort.AddString(_T(\"COM4\"));\n m_ctrlSetComPort.AddString(_T(\"COM5\"));\n m_ctrlSetComPort.AddString(_T(\"COM6\"));\n m_ctrlSetComPort.AddString(_T(\"COM7\"));\n m_ctrlSetComPort.AddString(_T(\"COM8\"));\n\n m_ctrlSetBaudRate.AddString(_T(\"9600\"));\n m_ctrlSetBaudRate.AddString(_T(\"19200\"));\n m_ctrlSetBaudRate.AddString(_T(\"57600\"));\n m_ctrlSetBaudRate.AddString(_T(\"115200\"));\n\n Comport1_State = false;\n m_strSetComPort= _T(\"COM3\");\n m_strSetBaudRate = _T(\"115200\");\n\n GetDlgItem(IDC_OPENPORT)-&gt;SetWindowText(_T(\"OPEN\"));\n\n\n m_ctrlSetComPort2.AddString(_T(\"COM1\"));\n m_ctrlSetComPort2.AddString(_T(\"COM2\"));\n m_ctrlSetComPort2.AddString(_T(\"COM3\"));\n m_ctrlSetComPort2.AddString(_T(\"COM4\"));\n m_ctrlSetComPort2.AddString(_T(\"COM5\"));\n m_ctrlSetComPort2.AddString(_T(\"COM6\"));\n m_ctrlSetComPort2.AddString(_T(\"COM7\"));\n m_ctrlSetComPort2.AddString(_T(\"COM8\"));\n\n m_ctrlSetBaudRate2.AddString(_T(\"9600\"));\n m_ctrlSetBaudRate2.AddString(_T(\"19200\"));\n m_ctrlSetBaudRate2.AddString(_T(\"57600\"));\n m_ctrlSetBaudRate2.AddString(_T(\"115200\"));\n\n Comport2_State = false;\n m_strSetComPort2= _T(\"COM3\");\n m_strSetBaudRate2 = _T(\"115200\");\n\n GetDlgItem(IDC_OPENPORT2)-&gt;SetWindowText(_T(\"OPEN\"));\n\n\n UpdateData(false);\n\n return TRUE;  \n}\n\nvoid CSerialDlg::OnSysCommand(UINT nID, LPARAM lParam)\n{\n if ((nID &amp; 0xFFF0) == IDM_ABOUTBOX)\n {\n  CAboutDlg dlgAbout;\n  dlgAbout.DoModal();\n }\n else\n {\n  CDialog::OnSysCommand(nID, lParam);\n }\n}\n\n\nvoid CSerialDlg::OnPaint()\n{\n if (IsIconic())\n {\n  CPaintDC dc(this); \n\n  SendMessage(WM_ICONERASEBKGND, reinterpret_cast&lt;WPARAM&gt;(dc.GetSafeHdc()), 0);\n\n\n  int cxIcon = GetSystemMetrics(SM_CXICON);\n  int cyIcon = GetSystemMetrics(SM_CYICON);\n  CRect rect;\n  GetClientRect(&amp;rect);\n  int x = (rect.Width() - cxIcon + 1) / 2;\n  int y = (rect.Height() - cyIcon + 1) / 2;\n\n\n  dc.DrawIcon(x, y, m_hIcon);\n }\n else\n {\n  CDialog::OnPaint();\n }\n}\n\n\nHCURSOR CSerialDlg::OnQueryDragIcon()\n{\n return static_cast&lt;HCURSOR&gt;(m_hIcon);\n}\n\n\nvoid CSerialDlg::OnCbnSelchangeSetcomport()\n{\n\n UpdateData(true); \n}\n\n\nvoid CSerialDlg::OnCbnSelchangeSetbaudrate()\n{\n\n UpdateData(true);\n}\n\n\nvoid CSerialDlg::OnEnChangeEditviewdata()\n{\n\n}\n\nvoid CSerialDlg::OnBnClickedOpenport()\n{\n\n\n if(Comport1_State)\n {\n  if(m_Comm)\n  {\n   m_Comm -&gt;Close();\n   m_Comm = NULL;\n   AfxMessageBox(_T(\"COM close port\"));\n   Comport1_State = false;\n   GetDlgItem(IDC_OPENPORT)-&gt;SetWindowText(_T(\"OPEN\"));\n   //GetDlgItem(IDC_OPENPORT)-&gt;EnableWindow(true);\n   GetDlgItem(IDC_SENDDATA)-&gt;EnableWindow(false);\n  }\n }\n\n else\n {\n  m_Comm = new CSerialComm(_T(\"\\\\\\\\.\\\\\")+m_strSetComPort, m_strSetBaudRate, _T(\"NONE\"), _T(\"8 Bit\"), _T(\"1 Bit\"));\n\n  if (m_Comm-&gt;OpenPort(GetSafeHwnd()) !=0)\n  {     \n   Comport1_State=true;\n   GetDlgItem(IDC_OPENPORT)-&gt;SetWindowText(_T(\"CLOSE\"));\n   //GetDlgItem(IDC_OPENPORT)-&gt;EnableWindow(false);\n   GetDlgItem(IDC_SENDDATA)-&gt;EnableWindow(true);\n\n   AfxMessageBox(_T(\"COM port open\"));\n  }\n  else\n  {\n   AfxMessageBox(_T(\"ERROR\"));\n  }\n\n }\n}\n\nvoid CSerialDlg::OnBnClickedClear()\n{\n\n}\n\nvoid CSerialDlg::OnBnClickedSenddata()\n{\n\n CString str;\n\n if(Comport1_State == true)\n {\n  GetDlgItem(IDC_EDIT_SENDDATA) -&gt; GetWindowText(str);\n  str += \"\\r\\n\";\n  m_Comm-&gt;Send(str,str.GetLength());\n  AfxMessageBox(_T(\"succ\"));\n }\n else\n {\n  AfxMessageBox(_T(\"ERROR\"));\n }\n\n}\n\n\nvoid CSerialDlg::OnEnChangeEditSenddata()\n{\n\n}\n\n\n\n\nLRESULT CSerialDlg::OnThreadClosed(WPARAM length, LPARAM lpara)\n{\n ((CSerialComm*)lpara)-&gt;HandleClose();\n delete ((CSerialComm*)lpara);\n\n return 0;\n}\n\n\nLRESULT CSerialDlg::OnReceive(WPARAM length, LPARAM lpara)\n{\n CString str;\n char data[20000];\n if(m_Comm)\n {\n  m_Comm-&gt;Receive(data,length);\n  data[length]=_T('\\0');\n  str+=_T(\"\\r\\n\");\n  AfxMessageBox(_T(\"read\"));\n  for(int i=0; i&lt;(int)length; i++)\n  {\n   str+=data[i];\n  }\n\n  m_EditViewData.ReplaceSel(str);\n  str=\".\";\n }\n\n\n return 0;\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "wordpress"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 7505368,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/8DFYs.gif?s=128&g=1",
+                "display_name": "Shibi",
+                "link": "https://stackoverflow.com/users/7505368/shibi"
+            },
+            "is_answered": false,
+            "view_count": 25,
+            "answer_count": 0,
+            "score": 2,
+            "last_activity_date": 1526448753,
+            "creation_date": 1526448753,
+            "question_id": 50363083,
+            "body_markdown": "I am developing a custom application using wordpress, Here there were student login when they login they can see all the semester which created as tags, course and subjects are category and subcategory. I need to list all the semesters, under each semester their subjects need to list. how is it possible,\r\n\r\nsemesters were the tags, Course were Category, Subjects were subcategory\r\n\r\neg:\r\nif there are 6 semesters for BBA course. List all the 6 semesters from 1 to 6. ie can display tag in wordpress. But how to display subcategory ie the subjects under semester",
+            "link": "https://stackoverflow.com/questions/50363083/is-it-possible-to-get-subcategories-of-a-category-by-tag-in-wordpress",
+            "title": "Is it possible to get subcategories of a category by tag in wordpress?",
+            "body": "<p>I am developing a custom application using wordpress, Here there were student login when they login they can see all the semester which created as tags, course and subjects are category and subcategory. I need to list all the semesters, under each semester their subjects need to list. how is it possible,</p>\n\n<p>semesters were the tags, Course were Category, Subjects were subcategory</p>\n\n<p>eg:\nif there are 6 semesters for BBA course. List all the 6 semesters from 1 to 6. ie can display tag in wordpress. But how to display subcategory ie the subjects under semester</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net",
+                "grid"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9762344,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-HHmDd9Ey2pY/AAAAAAAAAAI/AAAAAAAADgc/ZzHVKBQK9gk/photo.jpg?sz=128",
+                "display_name": "smoldev",
+                "link": "https://stackoverflow.com/users/9762344/smoldev"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526448753,
+            "creation_date": 1526437912,
+            "last_edit_date": 1526448753,
+            "question_id": 50361654,
+            "body_markdown": "I want to ask how to show `&#39;Image&#39;` on `grid control` based on `&#39;Text&#39;` data on database. \r\nI have &quot;Condition&quot; column in db with &quot;Fit&quot; and &quot;Unfit&quot; value. \r\nSo i want to show \r\n\r\n    &quot;icon1.png&quot; for &quot;Fit&quot;\r\n    &quot;icon2.png&quot; fot &quot;Unfit&quot;\r\n\r\nThese are my aspx and code that i tried before but it did&#39;nt show any image\r\n\r\n     &lt;dx:GridViewDataColumn Caption=&quot;Condition&quot; FieldName=&quot;Condition&quot; Width=&quot;80px&quot;&gt;\r\n                            &lt;DataItemTemplate&gt;   \r\n                                &lt;qwui:QImage ID=&quot;imgCondition&quot; Width=&quot;100%&quot; ClientInstanceName=&quot;imgCondition&quot; runat=&quot;server&quot;\r\n                                ImageUrl=&#39;&lt;%# ImageDisplay(Eval(&quot;Condition&quot;).ToString()) %&gt;&#39;  Visible=&quot;false&quot; &gt;\r\n                                &lt;/qwui:QImage&gt; &lt;/DataItemTemplate&gt;\r\n\r\n      &lt;/dx:GridViewDataColumn&gt;\r\n\r\n \r\n\r\n  and here is my codebehind\r\n\r\n    protected string ImageDisplay(string Condition)\r\n        {\r\n            var dtb = SelectMCUCorporate(Session[&quot;ProjectMCUNo&quot;].ToString(), Convert.ToBoolean(Session[&quot;IsRealization&quot;]));\r\n\r\n                foreach (DataRow row in dtb.Rows)\r\n                {\r\n\r\n                    if (row[&quot;Condition&quot;] == &quot;Fit&quot;)\r\n                    {\r\n                         return &quot;~/MasterPage/Images/iconEMR/conIcon.png&quot;;\r\n                    }\r\n                    else if (row[&quot;Condition&quot;] == &quot;Unfit&quot;)\r\n                    {\r\n                        return &quot;~/MasterPage/Images/iconEMR/conIcon2.png&quot;;\r\n                    }\r\n                    else {\r\n                        return &quot;~/MasterPage/Images/iconEMR/AbcIcon.png&quot;;\r\n                    }\r\n                }\r\n              \r\n        }\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50361654/how-to-show-image-in-gridview-control-based-on-text-data-from-database",
+            "title": "How to show image in GridView control based on &#39;text&#39; data from database?",
+            "body": "<p>I want to ask how to show <code>'Image'</code> on <code>grid control</code> based on <code>'Text'</code> data on database. \nI have \"Condition\" column in db with \"Fit\" and \"Unfit\" value. \nSo i want to show </p>\n\n<pre><code>\"icon1.png\" for \"Fit\"\n\"icon2.png\" fot \"Unfit\"\n</code></pre>\n\n<p>These are my aspx and code that i tried before but it did'nt show any image</p>\n\n<pre><code> &lt;dx:GridViewDataColumn Caption=\"Condition\" FieldName=\"Condition\" Width=\"80px\"&gt;\n                        &lt;DataItemTemplate&gt;   \n                            &lt;qwui:QImage ID=\"imgCondition\" Width=\"100%\" ClientInstanceName=\"imgCondition\" runat=\"server\"\n                            ImageUrl='&lt;%# ImageDisplay(Eval(\"Condition\").ToString()) %&gt;'  Visible=\"false\" &gt;\n                            &lt;/qwui:QImage&gt; &lt;/DataItemTemplate&gt;\n\n  &lt;/dx:GridViewDataColumn&gt;\n</code></pre>\n\n<p>and here is my codebehind</p>\n\n<pre><code>protected string ImageDisplay(string Condition)\n    {\n        var dtb = SelectMCUCorporate(Session[\"ProjectMCUNo\"].ToString(), Convert.ToBoolean(Session[\"IsRealization\"]));\n\n            foreach (DataRow row in dtb.Rows)\n            {\n\n                if (row[\"Condition\"] == \"Fit\")\n                {\n                     return \"~/MasterPage/Images/iconEMR/conIcon.png\";\n                }\n                else if (row[\"Condition\"] == \"Unfit\")\n                {\n                    return \"~/MasterPage/Images/iconEMR/conIcon2.png\";\n                }\n                else {\n                    return \"~/MasterPage/Images/iconEMR/AbcIcon.png\";\n                }\n            }\n\n    }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "ios",
+                "gadbannerview"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 7725285,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/232180e16cbe16202cc91b225f2da03f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "S.Lapin",
+                "link": "https://stackoverflow.com/users/7725285/s-lapin"
+            },
+            "is_answered": false,
+            "view_count": 30,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526448751,
+            "creation_date": 1489730001,
+            "question_id": 42850178,
+            "body_markdown": "Now I&#39;m working at SDL2 based game for iOS and I have a question.\r\nHow to implement Google advertising banner in my case?",
+            "link": "https://stackoverflow.com/questions/42850178/sdl2-based-game-and-gadbannerview",
+            "title": "SDL2 based game and GADBannerView",
+            "body": "<p>Now I'm working at SDL2 based game for iOS and I have a question.\nHow to implement Google advertising banner in my case?</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "app-store",
+                "itunesconnect"
+            ],
+            "owner": {
+                "reputation": 1578,
+                "user_id": 3487953,
+                "user_type": "registered",
+                "accept_rate": 36,
+                "profile_image": "https://www.gravatar.com/avatar/a872140f6bedb292ed521329550034da?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Tarun Seera",
+                "link": "https://stackoverflow.com/users/3487953/tarun-seera"
+            },
+            "is_answered": true,
+            "view_count": 2433,
+            "accepted_answer_id": 36175075,
+            "answer_count": 2,
+            "score": 3,
+            "last_activity_date": 1526448746,
+            "creation_date": 1458539556,
+            "question_id": 36124026,
+            "body_markdown": "I have submitted my app with version 1.2.1 and build version 1.0.\r\nThe app has been successfully uploaded to iTunes connect,But it was showing processing since a long time and after that its showing a red badge over with some error:ITC.apps.preReleaseBuild.errors.processingFailed\r\n\r\nShould I upload a new version of app or there is any solution for this.\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/36124026/itunes-connect-build-status-is-processing-since-a-long-time-and-then-erroritc-a",
+            "title": "itunes Connect build status is processing since a long time and then error:ITC.apps.preReleaseBuild.errors.processingFailed",
+            "body": "<p>I have submitted my app with version 1.2.1 and build version 1.0.\nThe app has been successfully uploaded to iTunes connect,But it was showing processing since a long time and after that its showing a red badge over with some error:ITC.apps.preReleaseBuild.errors.processingFailed</p>\n\n<p>Should I upload a new version of app or there is any solution for this.</p>\n"
+        },
+        {
+            "tags": [
+                "asp.net-mvc",
+                "web-services",
+                "amazon-web-services",
+                "asp.net-web-api2",
+                "signalr"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 9754032,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/364b124d7fc2fd0cf014b7e56e4ce0d9?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Rajesh Kashyap",
+                "link": "https://stackoverflow.com/users/9754032/rajesh-kashyap"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526448745,
+            "creation_date": 1525946458,
+            "last_edit_date": 1526448745,
+            "question_id": 50270299,
+            "body_markdown": "Use the following code in your Web Api\r\n     \r\nAPI Server Code : \r\n\r\n    [EnableCors(origins: &quot;*&quot;, headers: &quot;*&quot;, methods: &quot;*&quot;)]\r\n          public class NotificationHub : Hub\r\n                {\r\n                  public void Hello(string message)\r\n                    {\r\n                        Clients.All.hello(&quot;This Massage via server : &quot; + message);\r\n                    }\r\n                }\r\n        \r\n      \r\n\r\nUse following code for Call your signalR function from client side or view.  \r\n \r\n&lt;script src=&quot;~/Scripts/jquery.signalR-2.2.3.min.js&quot;&gt;&lt;/script&gt;\r\n\r\n&lt;script src=&quot;http://localhost:51929/signalr/js&quot;&gt;&lt;/script&gt;\r\n\r\n\r\nClient Code: \r\n \r\n    &lt;script&gt;\r\n        $.connection.hub.url = &quot;http://localhost:51929/signalr&quot;;\r\n        \r\n        $.connection.hub.start()\r\n            .done(function () {\r\n            \r\n               $.connection.notificationHub.server.hello(&quot;Hi Rajesh!&quot;);\r\n            })\r\n            .fail(function () { alert(&#39;Error!&#39;); });\r\n\r\n        $.connection.notificationHub.client.hello = function (message) {\r\n            $(&#39;#message&#39;).append(message);\r\n        };\r\n    &lt;/script&gt;`",
+            "link": "https://stackoverflow.com/questions/50270299/call-integrated-signalr-web-api-service-from-mvc-application-from-javascript",
+            "title": "Call integrated SignalR web Api service from MVC application from javascript",
+            "body": "<p>Use the following code in your Web Api</p>\n\n<p>API Server Code : </p>\n\n<pre><code>[EnableCors(origins: \"*\", headers: \"*\", methods: \"*\")]\n      public class NotificationHub : Hub\n            {\n              public void Hello(string message)\n                {\n                    Clients.All.hello(\"This Massage via server : \" + message);\n                }\n            }\n</code></pre>\n\n<p>Use following code for Call your signalR function from client side or view.  </p>\n\n\n\n\n\n<p>Client Code: </p>\n\n<pre><code>&lt;script&gt;\n    $.connection.hub.url = \"http://localhost:51929/signalr\";\n\n    $.connection.hub.start()\n        .done(function () {\n\n           $.connection.notificationHub.server.hello(\"Hi Rajesh!\");\n        })\n        .fail(function () { alert('Error!'); });\n\n    $.connection.notificationHub.client.hello = function (message) {\n        $('#message').append(message);\n    };\n&lt;/script&gt;`\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "yii2"
+            ],
+            "owner": {
+                "reputation": 251,
+                "user_id": 3721154,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/w3s6B.jpg?s=128&g=1",
+                "display_name": "Aljay",
+                "link": "https://stackoverflow.com/users/3721154/aljay"
+            },
+            "is_answered": true,
+            "view_count": 27,
+            "accepted_answer_id": 50362823,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1526448738,
+            "creation_date": 1526446986,
+            "last_edit_date": 1526448738,
+            "question_id": 50362752,
+            "body_markdown": "I was trying to get the base url of my app build with yii2 I tried the following.\r\n\r\n    var_dump(Yii::$app-&gt;request-&gt;baseUrl)) // Output string(0) &quot;&quot;\r\n    var_dump(Yii::getAlias(&#39;@web&#39;)); // Output string(0) &quot;&quot;\r\n    var_dump(Yii::$app-&gt;homeUrl); // string(10) &quot;/dashboard&quot;\r\n    var_dump(Url::base()); // Output string(0) &quot;&quot;\r\n\r\nMy URL is.\r\nhttps://sub.sampledomain.com/dashboard/products\r\nI want to get the &quot;https://sub.sampledomain.com&quot;\r\n\r\nAny idea why all of this can&#39;t get the base URL?",
+            "link": "https://stackoverflow.com/questions/50362752/yii2-get-absolute-home-url",
+            "title": "Yii2 get absolute home url",
+            "body": "<p>I was trying to get the base url of my app build with yii2 I tried the following.</p>\n\n<pre><code>var_dump(Yii::$app-&gt;request-&gt;baseUrl)) // Output string(0) \"\"\nvar_dump(Yii::getAlias('@web')); // Output string(0) \"\"\nvar_dump(Yii::$app-&gt;homeUrl); // string(10) \"/dashboard\"\nvar_dump(Url::base()); // Output string(0) \"\"\n</code></pre>\n\n<p>My URL is.\n<a href=\"https://sub.sampledomain.com/dashboard/products\" rel=\"nofollow noreferrer\">https://sub.sampledomain.com/dashboard/products</a>\nI want to get the \"<a href=\"https://sub.sampledomain.com\" rel=\"nofollow noreferrer\">https://sub.sampledomain.com</a>\"</p>\n\n<p>Any idea why all of this can't get the base URL?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "java",
+                "post",
+                "get",
+                "getparameter"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 9448837,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Syahidatul Syahida",
+                "link": "https://stackoverflow.com/users/9448837/syahidatul-syahida"
+            },
+            "is_answered": true,
+            "view_count": 34,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526448736,
+            "creation_date": 1526441063,
+            "last_edit_date": 1526445626,
+            "question_id": 50362034,
+            "body_markdown": "I am new in java and javascript. I want to pass a value from function in js file to JSP file. But I didn&#39;t get the value and it shows NULL. Let&#39;s say js file named as maintain.js and JSP file as form.jsp. Supposedly the value obtains from function check in maintain.js are pass to JSP file which when onclick it passes the value to the searchItem function which in the `form.jsp` file.\r\n\r\nIn `maintain.js` file\r\n\r\n    function check(){\r\n     var p = &quot;apple&quot;;\r\n       var A = &quot;form.jsp?apple=&quot; + p;\r\n    }\r\n    \r\nIn my form.jsp file\r\n\r\n     &lt;div id=&quot;openModalDialog&quot; align=&quot;center&quot;  style=&quot;display:none&quot;&gt;\r\n       &lt;form id=&quot;srch_grp&quot;&gt;\r\n           &lt;%  String la=request.getParameter(&quot;apple&quot;); \r\n                System.out.println(&quot;apple:&quot; + apple);\r\n\r\n           %&gt;\r\n     &lt;input type=&quot;button&quot; name=&quot;btnitemsearch&quot; value=&quot;Search&quot; onclick=&quot;searchItem(&#39;&lt;%=apple%&gt;&#39;)&quot;&gt;\r\n         &lt;/form&gt;\r\n      &lt;/div&gt;\r\n\r\nIn a console, I get`apple:null`.\r\nWhat do I wrong here?\r\n\r\nThank you in advance.\r\n",
+            "link": "https://stackoverflow.com/questions/50362034/cannot-pass-value-from-js-to-jsp-file",
+            "title": "cannot pass value from js to jsp file",
+            "body": "<p>I am new in java and javascript. I want to pass a value from function in js file to JSP file. But I didn't get the value and it shows NULL. Let's say js file named as maintain.js and JSP file as form.jsp. Supposedly the value obtains from function check in maintain.js are pass to JSP file which when onclick it passes the value to the searchItem function which in the <code>form.jsp</code> file.</p>\n\n<p>In <code>maintain.js</code> file</p>\n\n<pre><code>function check(){\n var p = \"apple\";\n   var A = \"form.jsp?apple=\" + p;\n}\n</code></pre>\n\n<p>In my form.jsp file</p>\n\n<pre><code> &lt;div id=\"openModalDialog\" align=\"center\"  style=\"display:none\"&gt;\n   &lt;form id=\"srch_grp\"&gt;\n       &lt;%  String la=request.getParameter(\"apple\"); \n            System.out.println(\"apple:\" + apple);\n\n       %&gt;\n &lt;input type=\"button\" name=\"btnitemsearch\" value=\"Search\" onclick=\"searchItem('&lt;%=apple%&gt;')\"&gt;\n     &lt;/form&gt;\n  &lt;/div&gt;\n</code></pre>\n\n<p>In a console, I get<code>apple:null</code>.\nWhat do I wrong here?</p>\n\n<p>Thank you in advance.</p>\n"
+        },
+        {
+            "tags": [
+                "jquery",
+                "html",
+                "ajax"
+            ],
+            "owner": {
+                "reputation": 800,
+                "user_id": 1255810,
+                "user_type": "registered",
+                "accept_rate": 84,
+                "profile_image": "https://i.stack.imgur.com/RcoZa.jpg?s=128&g=1",
+                "display_name": "Araw",
+                "link": "https://stackoverflow.com/users/1255810/araw"
+            },
+            "is_answered": false,
+            "view_count": 23,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526448730,
+            "creation_date": 1526448240,
+            "last_edit_date": 1526448668,
+            "question_id": 50362979,
+            "body_markdown": "Is it possible to make browsers prompt the &quot;Show username and password&quot; dialog when submitting a login form using AJAX?\r\n\r\n    &lt;form id=&quot;login_form&quot; type=&quot;POST&quot;&gt;\r\n        &lt;h2 class=&quot;form-signin-heading text-center&quot;&gt;Login&lt;/h2&gt;\r\n        &lt;input type=&quot;email&quot; id=&quot;email&quot; class=&quot;form-control&quot; placeholder=&quot;Username&quot; required autofocus&gt;\r\n        &lt;input type=&quot;password&quot; id=&quot;password&quot; class=&quot;form-control&quot; placeholder=&quot;Password&quot; required&gt;\r\n        &lt;input type=&quot;hidden&quot; name=&quot;login_token&quot; id=&quot;login_token&quot; value=&quot;&lt;?php echo $token; ?&gt;&quot; /&gt;\r\n        &lt;button type=&quot;submit&quot; class=&quot;btn btn-lg btn-primary btn-block&quot; id=&quot;login&quot;&gt;&lt;i class=&quot;fa&quot; id=&quot;login_user&quot;&gt;&lt;/i&gt; Login&lt;/button&gt;\r\n    &lt;/form&gt;\r\n\r\nTake care of login on submit:\r\n\r\n    $(&quot;#login_form&quot;).submit(function(event)\r\n    {\r\n        event.preventDefault();\r\n    \r\n        //AJAX LOGIN LOGIC...\r\n    });\r\n        \r\nIt works fine to login, but the dialog showing &quot;Save username and password&quot; does not prompt. Is there anyway to &quot;force&quot; this behaviour?\r\n\r\nThanks for any help and guidance!",
+            "link": "https://stackoverflow.com/questions/50362979/ajax-make-browser-show-save-password-and-username",
+            "title": "AJAX: Make browser show &quot;Save password and username&quot;",
+            "body": "<p>Is it possible to make browsers prompt the \"Show username and password\" dialog when submitting a login form using AJAX?</p>\n\n<pre><code>&lt;form id=\"login_form\" type=\"POST\"&gt;\n    &lt;h2 class=\"form-signin-heading text-center\"&gt;Login&lt;/h2&gt;\n    &lt;input type=\"email\" id=\"email\" class=\"form-control\" placeholder=\"Username\" required autofocus&gt;\n    &lt;input type=\"password\" id=\"password\" class=\"form-control\" placeholder=\"Password\" required&gt;\n    &lt;input type=\"hidden\" name=\"login_token\" id=\"login_token\" value=\"&lt;?php echo $token; ?&gt;\" /&gt;\n    &lt;button type=\"submit\" class=\"btn btn-lg btn-primary btn-block\" id=\"login\"&gt;&lt;i class=\"fa\" id=\"login_user\"&gt;&lt;/i&gt; Login&lt;/button&gt;\n&lt;/form&gt;\n</code></pre>\n\n<p>Take care of login on submit:</p>\n\n<pre><code>$(\"#login_form\").submit(function(event)\n{\n    event.preventDefault();\n\n    //AJAX LOGIN LOGIC...\n});\n</code></pre>\n\n<p>It works fine to login, but the dialog showing \"Save username and password\" does not prompt. Is there anyway to \"force\" this behaviour?</p>\n\n<p>Thanks for any help and guidance!</p>\n"
+        },
+        {
+            "tags": [
+                "iphone",
+                "uitabbar",
+                "ios11",
+                "xcode9-beta",
+                "iphone-x"
+            ],
+            "owner": {
+                "reputation": 458,
+                "user_id": 8601932,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-jjA8WBEoP84/AAAAAAAAAAI/AAAAAAAAAq8/8unZKoJpWXE/photo.jpg?sz=128",
+                "display_name": "adrian chen",
+                "link": "https://stackoverflow.com/users/8601932/adrian-chen"
+            },
+            "is_answered": true,
+            "view_count": 15103,
+            "answer_count": 27,
+            "score": 82,
+            "last_activity_date": 1526448727,
+            "creation_date": 1505379552,
+            "question_id": 46214740,
+            "body_markdown": "Anyone having issue with the iPhone X simulator around the UITabBar component?\r\n\r\nMine seem to be rendering the icons and title on top of each other, I&#39;m not sure if I&#39;m missing anything, I also ran it in the iPhone 8 simulator, and one actual devices where it looks fine just as shown on the story board.\r\n\r\n**iPhone X:**\r\n\r\n[![iPhone X UITabBar bug][1]][1]\r\n\r\n\r\n**iPhone 8**\r\n\r\n[![iPhone 8 UITabBar works][2]][2]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/gerXV.png\r\n  [2]: https://i.stack.imgur.com/LMNeu.png",
+            "link": "https://stackoverflow.com/questions/46214740/ios-11-iphone-x-simulator-uitabbar-icons-and-titles-being-rendered-on-top-coveri",
+            "title": "iOS 11 iPhone X simulator UITabBar icons and titles being rendered on top covering eachother",
+            "body": "<p>Anyone having issue with the iPhone X simulator around the UITabBar component?</p>\n\n<p>Mine seem to be rendering the icons and title on top of each other, I'm not sure if I'm missing anything, I also ran it in the iPhone 8 simulator, and one actual devices where it looks fine just as shown on the story board.</p>\n\n<p><strong>iPhone X:</strong></p>\n\n<p><a href=\"https://i.stack.imgur.com/gerXV.png\" rel=\"noreferrer\"><img src=\"https://i.stack.imgur.com/gerXV.png\" alt=\"iPhone X UITabBar bug\"></a></p>\n\n<p><strong>iPhone 8</strong></p>\n\n<p><a href=\"https://i.stack.imgur.com/LMNeu.png\" rel=\"noreferrer\"><img src=\"https://i.stack.imgur.com/LMNeu.png\" alt=\"iPhone 8 UITabBar works\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "excel",
+                "vba",
+                "excel-vba",
+                "excel-formula",
+                "email-integration"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 5074684,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3cb0d05cc41859cbecfc09412ba6d4f3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Reg Robinson",
+                "link": "https://stackoverflow.com/users/5074684/reg-robinson"
+            },
+            "is_answered": true,
+            "view_count": 10444,
+            "accepted_answer_id": 31191030,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1526448717,
+            "creation_date": 1435854307,
+            "question_id": 31189863,
+            "body_markdown": "I have an excel sheet with dated scheduling information.  I would like to send daily updates on how many calls and how many appointments have been scheduled every day.  The spreadsheet looks as follows:\r\n\r\n    Date        Scheduled     Called    Notes\r\n    07/06/2015    0             5        None\r\n    07/07/2015    5            12        None\r\n    07/08/2015    2            10        None\r\n\r\nI am trying to write a program that, say on 7/06/2015, an email will be generated with that days scheduled, calls, and notes in the body and automatically sent.  Is this possible?",
+            "link": "https://stackoverflow.com/questions/31189863/sending-email-from-excel-automatically-based-on-date",
+            "title": "Sending email from excel automatically based on date",
+            "body": "<p>I have an excel sheet with dated scheduling information.  I would like to send daily updates on how many calls and how many appointments have been scheduled every day.  The spreadsheet looks as follows:</p>\n\n<pre><code>Date        Scheduled     Called    Notes\n07/06/2015    0             5        None\n07/07/2015    5            12        None\n07/08/2015    2            10        None\n</code></pre>\n\n<p>I am trying to write a program that, say on 7/06/2015, an email will be generated with that days scheduled, calls, and notes in the body and automatically sent.  Is this possible?</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "objective-c",
+                "iphone",
+                "xcode",
+                "url"
+            ],
+            "owner": {
+                "reputation": 4612,
+                "user_id": 174868,
+                "user_type": "registered",
+                "accept_rate": 96,
+                "profile_image": "https://i.stack.imgur.com/lfymu.jpg?s=128&g=1",
+                "display_name": "Thys",
+                "link": "https://stackoverflow.com/users/174868/thys"
+            },
+            "is_answered": true,
+            "view_count": 62797,
+            "accepted_answer_id": 3819561,
+            "answer_count": 21,
+            "score": 81,
+            "last_activity_date": 1526448716,
+            "creation_date": 1253793201,
+            "last_edit_date": 1423207834,
+            "question_id": 1471201,
+            "body_markdown": "In an iPhone app I am developing, there is a setting in which you can enter a URL, because of form &amp; function this URL needs to be validated online as well as offline.\r\n\r\nSo far I haven&#39;t been able to find any method to validate the url, so the question is;\r\n\r\nHow do I validate an URL input on the iPhone (Objective-C) online as well as offline?",
+            "link": "https://stackoverflow.com/questions/1471201/how-to-validate-an-url-on-the-iphone",
+            "title": "How to validate an url on the iPhone",
+            "body": "<p>In an iPhone app I am developing, there is a setting in which you can enter a URL, because of form &amp; function this URL needs to be validated online as well as offline.</p>\n\n<p>So far I haven't been able to find any method to validate the url, so the question is;</p>\n\n<p>How do I validate an URL input on the iPhone (Objective-C) online as well as offline?</p>\n"
+        },
+        {
+            "tags": [
+                "sql-server",
+                "ogr2ogr"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8481679,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10155652292355967/picture?type=large",
+                "display_name": "Joshua J Geoghegan",
+                "link": "https://stackoverflow.com/users/8481679/joshua-j-geoghegan"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526448699,
+            "creation_date": 1526448249,
+            "last_edit_date": 1526448699,
+            "question_id": 50362981,
+            "body_markdown": "I have an ogr2ogr batch file that reprojects SQL data into a new SQL Server table.\r\n\r\nIt works fine when I run the bat file manually but it fails if I run the bat file via a SQL Server stored procedure. I have given the `gdal` folders SQL Service permissions and `xp_CommandShell` is also enabled. I&#39;m using\r\n\r\n    EXECUTE xp_CMDShell &#39;blah&#39;\r\n\r\nin the T-SQL script.\r\n\r\nFor some reason the `ogr_MSSQLSpatial.dll` causes it to fail.\r\n\r\n&gt; ERROR 1: Can&#39;t load requested DLL: Z:\\BroadSpectrumSQLTreeExtract\\ogr2ogr\\gdalplugins\\ogr_MSSQLSpatial.dll\r\n\r\nIf I remove this dll the script runs via SQL but it means I need to add extra commands that the dll must take care of, such as setting source coordinate system. I haven&#39;t managed to get it working 100%. The furthest I got to was producing the reprojected table but the  geometry field is empty.\r\n\r\nThe DLL does contain SQL commands to the system tables. Could this be a SQL Server security issue stopping it from working?",
+            "link": "https://stackoverflow.com/questions/50362981/sql-server-ogr2ogr-batch-unable-to-access-ogr-mssqlspatial-dll",
+            "title": "SQL Server ogr2ogr batch unable to access ogr_MSSQLSpatial.dll",
+            "body": "<p>I have an ogr2ogr batch file that reprojects SQL data into a new SQL Server table.</p>\n\n<p>It works fine when I run the bat file manually but it fails if I run the bat file via a SQL Server stored procedure. I have given the <code>gdal</code> folders SQL Service permissions and <code>xp_CommandShell</code> is also enabled. I'm using</p>\n\n<pre><code>EXECUTE xp_CMDShell 'blah'\n</code></pre>\n\n<p>in the T-SQL script.</p>\n\n<p>For some reason the <code>ogr_MSSQLSpatial.dll</code> causes it to fail.</p>\n\n<blockquote>\n  <p>ERROR 1: Can't load requested DLL: Z:\\BroadSpectrumSQLTreeExtract\\ogr2ogr\\gdalplugins\\ogr_MSSQLSpatial.dll</p>\n</blockquote>\n\n<p>If I remove this dll the script runs via SQL but it means I need to add extra commands that the dll must take care of, such as setting source coordinate system. I haven't managed to get it working 100%. The furthest I got to was producing the reprojected table but the  geometry field is empty.</p>\n\n<p>The DLL does contain SQL commands to the system tables. Could this be a SQL Server security issue stopping it from working?</p>\n"
+        },
+        {
+            "tags": [
+                "apache-kafka"
+            ],
+            "owner": {
+                "reputation": 49,
+                "user_id": 9115155,
+                "user_type": "registered",
+                "accept_rate": 73,
+                "profile_image": "https://www.gravatar.com/avatar/6cee14c2307aaf761698e79776f380e4?s=128&d=identicon&r=PG&f=1",
+                "display_name": "enodmilvado",
+                "link": "https://stackoverflow.com/users/9115155/enodmilvado"
+            },
+            "is_answered": false,
+            "view_count": 56,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526448684,
+            "creation_date": 1526283445,
+            "last_edit_date": 1526448684,
+            "question_id": 50325194,
+            "body_markdown": "from kafka server.log , we see many messages about &quot;*FATAL Fatal error during KafkaServer startup. Prepare to shutdown*&quot;\r\n\r\nand &quot;*kafka.common.InvalidOffsetException: Attempt to append an offset (232884366) to position 203880 no larger than the last offset appended*&quot;\r\n\r\nCan these messages explain the reason that we cant start the kafka broker on kafka machine?\r\n\r\nsecond - what is the best solution for this issue ?\r\n\r\n* we are thinking to remove all the indexes and rebuild them again \r\n\r\nNote - we have 3 kafka servers on linux machines and they are standalone machine while zookeper servers installed on other machines\r\n\r\n**Kafka version - 0.10.0.2.6** \r\n\r\n\r\nthe server.log from kafka machine:\r\n\r\n\r\n\r\n    FATAL Fatal error during KafkaServer startup. Prepare to shutdown (kafka.server.KafkaServer)\r\n    kafka.common.InvalidOffsetException: Attempt to append an offset (232884366) to position 203880 no larger than the last offset appended (232884366) to /var/kafka/kafka-logs/wctpi.avro.pri.processed-59/00000000000124356738.index.\r\n    at kafka.log.OffsetIndex$anonfun$append$1.apply$mcV$sp(OffsetIndex.scala:132)\r\n    at kafka.log.OffsetIndex$anonfun$append$1.apply(OffsetIndex.scala:122)\r\n    at kafka.log.OffsetIndex$anonfun$append$1.apply(OffsetIndex.scala:122)\r\n    at kafka.utils.CoreUtils$.inLock(CoreUtils.scala:233)\r\n    at kafka.log.OffsetIndex.append(OffsetIndex.scala:122)\r\n    at kafka.log.LogSegment.recover(LogSegment.scala:225)\r\n    at kafka.log.Log$anonfun$loadSegments$4.apply(Log.scala:218)\r\n    at kafka.log.Log$anonfun$loadSegments$4.apply(Log.scala:179)\r\n    at scala.collection.TraversableLike$WithFilter$anonfun$foreach$1.apply(TraversableLike.scala:772)\r\n    at scala.collection.IndexedSeqOptimized$class.foreach(IndexedSeqOptimized.scala:33)\r\n    at scala.collection.mutable.ArrayOps$ofRef.foreach(ArrayOps.scala:108)\r\n    at scala.collection.TraversableLike$WithFilter.foreach(TraversableLike.scala:771)\r\n    at kafka.log.Log.loadSegments(Log.scala:179)\r\n    at kafka.log.Log.&lt;init&gt;(Log.scala:108)\r\n    at kafka.log.LogManager$anonfun$loadLogs$2$anonfun$3$anonfun$apply$10$anonfun$apply$1.apply$mcV$sp(LogManager.scala:151)\r\n    at kafka.utils.CoreUtils$anon$1.run(CoreUtils.scala:58)\r\n    at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511)\r\n    at java.util.concurrent.FutureTask.run(FutureTask.java:266)\r\n    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)\r\n    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)\r\n    at java.lang.Thread.run(Thread.java:745)\r\n    FATAL Fatal error during KafkaServerStartable startup. Prepare to shutdown (kafka.server.KafkaServerStartable)\r\n    kafka.common.InvalidOffsetException: Attempt to append an offset (232884366) to position 203880 no larger than the last offset appended (232884366) to /var/kafka/kafka-logs/wctpi.avro.pri.processed-59/00000000000124356738.index.\r\n    at kafka.log.OffsetIndex$anonfun$append$1.apply$mcV$sp(OffsetIndex.scala:132)\r\n    at kafka.log.OffsetIndex$anonfun$append$1.apply(OffsetIndex.scala:122)\r\n    at kafka.log.OffsetIndex$anonfun$append$1.apply(OffsetIndex.scala:122)\r\n    at kafka.utils.CoreUtils$.inLock(CoreUtils.scala:233)\r\n    at kafka.log.OffsetIndex.append(OffsetIndex.scala:122)\r\n    at kafka.log.LogSegment.recover(LogSegment.scala:225)\r\n    at kafka.log.Log$anonfun$loadSegments$4.apply(Log.scala:218)\r\n    at kafka.log.Log$anonfun$loadSegments$4.apply(Log.scala:179)\r\n    at scala.collection.TraversableLike$WithFilter$anonfun$foreach$1.apply(TraversableLike.scala:772)\r\n    at scala.collection.IndexedSeqOptimized$class.foreach(IndexedSeqOptimized.scala:33)\r\n    at scala.collection.mutable.ArrayOps$ofRef.foreach(ArrayOps.scala:108)\r\n    at scala.collection.TraversableLike$WithFilter.foreach(TraversableLike.scala:771)\r\n    at kafka.log.Log.loadSegments(Log.scala:179)\r\n    at kafka.log.Log.&lt;init&gt;(Log.scala:108)\r\n    at kafka.log.LogManager$anonfun$loadLogs$2$anonfun$3$anonfun$apply$10$anonfun$apply$1.apply$mcV$sp(LogManager.scala:151)\r\n    at kafka.utils.CoreUtils$anon$1.run(CoreUtils.scala:58)\r\n    at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511)\r\n    at java.util.concurrent.FutureTask.run(FutureTask.java:266)\r\n    at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)\r\n    at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)\r\n    at java.lang.Thread.run(Thread.java:745)",
+            "link": "https://stackoverflow.com/questions/50325194/kafka-what-is-the-meaning-of-invalidoffsetexception-in-server-log",
+            "title": "kafka + what is the meaning of InvalidOffsetException in server.log",
+            "body": "<p>from kafka server.log , we see many messages about \"<em>FATAL Fatal error during KafkaServer startup. Prepare to shutdown</em>\"</p>\n\n<p>and \"<em>kafka.common.InvalidOffsetException: Attempt to append an offset (232884366) to position 203880 no larger than the last offset appended</em>\"</p>\n\n<p>Can these messages explain the reason that we cant start the kafka broker on kafka machine?</p>\n\n<p>second - what is the best solution for this issue ?</p>\n\n<ul>\n<li>we are thinking to remove all the indexes and rebuild them again </li>\n</ul>\n\n<p>Note - we have 3 kafka servers on linux machines and they are standalone machine while zookeper servers installed on other machines</p>\n\n<p><strong>Kafka version - 0.10.0.2.6</strong> </p>\n\n<p>the server.log from kafka machine:</p>\n\n<pre><code>FATAL Fatal error during KafkaServer startup. Prepare to shutdown (kafka.server.KafkaServer)\nkafka.common.InvalidOffsetException: Attempt to append an offset (232884366) to position 203880 no larger than the last offset appended (232884366) to /var/kafka/kafka-logs/wctpi.avro.pri.processed-59/00000000000124356738.index.\nat kafka.log.OffsetIndex$anonfun$append$1.apply$mcV$sp(OffsetIndex.scala:132)\nat kafka.log.OffsetIndex$anonfun$append$1.apply(OffsetIndex.scala:122)\nat kafka.log.OffsetIndex$anonfun$append$1.apply(OffsetIndex.scala:122)\nat kafka.utils.CoreUtils$.inLock(CoreUtils.scala:233)\nat kafka.log.OffsetIndex.append(OffsetIndex.scala:122)\nat kafka.log.LogSegment.recover(LogSegment.scala:225)\nat kafka.log.Log$anonfun$loadSegments$4.apply(Log.scala:218)\nat kafka.log.Log$anonfun$loadSegments$4.apply(Log.scala:179)\nat scala.collection.TraversableLike$WithFilter$anonfun$foreach$1.apply(TraversableLike.scala:772)\nat scala.collection.IndexedSeqOptimized$class.foreach(IndexedSeqOptimized.scala:33)\nat scala.collection.mutable.ArrayOps$ofRef.foreach(ArrayOps.scala:108)\nat scala.collection.TraversableLike$WithFilter.foreach(TraversableLike.scala:771)\nat kafka.log.Log.loadSegments(Log.scala:179)\nat kafka.log.Log.&lt;init&gt;(Log.scala:108)\nat kafka.log.LogManager$anonfun$loadLogs$2$anonfun$3$anonfun$apply$10$anonfun$apply$1.apply$mcV$sp(LogManager.scala:151)\nat kafka.utils.CoreUtils$anon$1.run(CoreUtils.scala:58)\nat java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511)\nat java.util.concurrent.FutureTask.run(FutureTask.java:266)\nat java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)\nat java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)\nat java.lang.Thread.run(Thread.java:745)\nFATAL Fatal error during KafkaServerStartable startup. Prepare to shutdown (kafka.server.KafkaServerStartable)\nkafka.common.InvalidOffsetException: Attempt to append an offset (232884366) to position 203880 no larger than the last offset appended (232884366) to /var/kafka/kafka-logs/wctpi.avro.pri.processed-59/00000000000124356738.index.\nat kafka.log.OffsetIndex$anonfun$append$1.apply$mcV$sp(OffsetIndex.scala:132)\nat kafka.log.OffsetIndex$anonfun$append$1.apply(OffsetIndex.scala:122)\nat kafka.log.OffsetIndex$anonfun$append$1.apply(OffsetIndex.scala:122)\nat kafka.utils.CoreUtils$.inLock(CoreUtils.scala:233)\nat kafka.log.OffsetIndex.append(OffsetIndex.scala:122)\nat kafka.log.LogSegment.recover(LogSegment.scala:225)\nat kafka.log.Log$anonfun$loadSegments$4.apply(Log.scala:218)\nat kafka.log.Log$anonfun$loadSegments$4.apply(Log.scala:179)\nat scala.collection.TraversableLike$WithFilter$anonfun$foreach$1.apply(TraversableLike.scala:772)\nat scala.collection.IndexedSeqOptimized$class.foreach(IndexedSeqOptimized.scala:33)\nat scala.collection.mutable.ArrayOps$ofRef.foreach(ArrayOps.scala:108)\nat scala.collection.TraversableLike$WithFilter.foreach(TraversableLike.scala:771)\nat kafka.log.Log.loadSegments(Log.scala:179)\nat kafka.log.Log.&lt;init&gt;(Log.scala:108)\nat kafka.log.LogManager$anonfun$loadLogs$2$anonfun$3$anonfun$apply$10$anonfun$apply$1.apply$mcV$sp(LogManager.scala:151)\nat kafka.utils.CoreUtils$anon$1.run(CoreUtils.scala:58)\nat java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511)\nat java.util.concurrent.FutureTask.run(FutureTask.java:266)\nat java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)\nat java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)\nat java.lang.Thread.run(Thread.java:745)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "couchbase"
+            ],
+            "owner": {
+                "reputation": 1450,
+                "user_id": 1154644,
+                "user_type": "registered",
+                "accept_rate": 52,
+                "profile_image": "https://www.gravatar.com/avatar/97245cccb5a95730dd02bd9dd3f2e4c2?s=128&d=identicon&r=PG",
+                "display_name": "user1154644",
+                "link": "https://stackoverflow.com/users/1154644/user1154644"
+            },
+            "is_answered": true,
+            "view_count": 22,
+            "accepted_answer_id": 50363065,
+            "answer_count": 1,
+            "score": 3,
+            "last_activity_date": 1526448667,
+            "creation_date": 1526441812,
+            "last_edit_date": 1526443008,
+            "question_id": 50362121,
+            "body_markdown": "I am writing some integration tests for an app I built that uses couchbase.\r\n\r\nI am using Java. My question is, if I insert a document using:\r\n\r\n    bucket.insert(rawJsonDocument);\r\n\r\nAnd then immediately run an [`N1qlQuery`][1], should I expect to get a response when querying for the document that I just inserted, or is there some expected time period/delay before the document is actually persisted in the bucket?\r\n\r\nI am seeing cases where my tests are failing intermittently because the document isn&#39;t being found, but I re-ran the test, and it works sporadically.\r\n\r\nDoes the couchbase bucket object have something similar to what an [`EntityManager`][2] in JPA has with its flush operation? I know flush has a totally different meaning in couchbase, but I&#39;m trying to nail down why I&#39;m seeing this behavior.\r\n\r\nI&#39;ve verified the query syntax using the query tool in the console.\r\n\r\n\r\n  [1]: http://docs.couchbase.com/sdk-api/couchbase-java-client-2.3.0/com/couchbase/client/java/query/N1qlQuery.html\r\n  [2]: https://docs.oracle.com/javaee/7/api/javax/persistence/EntityManager.html",
+            "link": "https://stackoverflow.com/questions/50362121/couchbase-insert-and-query-latency",
+            "title": "couchbase insert and query latency",
+            "body": "<p>I am writing some integration tests for an app I built that uses couchbase.</p>\n\n<p>I am using Java. My question is, if I insert a document using:</p>\n\n<pre><code>bucket.insert(rawJsonDocument);\n</code></pre>\n\n<p>And then immediately run an <a href=\"http://docs.couchbase.com/sdk-api/couchbase-java-client-2.3.0/com/couchbase/client/java/query/N1qlQuery.html\" rel=\"nofollow noreferrer\"><code>N1qlQuery</code></a>, should I expect to get a response when querying for the document that I just inserted, or is there some expected time period/delay before the document is actually persisted in the bucket?</p>\n\n<p>I am seeing cases where my tests are failing intermittently because the document isn't being found, but I re-ran the test, and it works sporadically.</p>\n\n<p>Does the couchbase bucket object have something similar to what an <a href=\"https://docs.oracle.com/javaee/7/api/javax/persistence/EntityManager.html\" rel=\"nofollow noreferrer\"><code>EntityManager</code></a> in JPA has with its flush operation? I know flush has a totally different meaning in couchbase, but I'm trying to nail down why I'm seeing this behavior.</p>\n\n<p>I've verified the query syntax using the query tool in the console.</p>\n"
+        },
+        {
+            "tags": [
+                "ubuntu",
+                "amazon-ec2"
+            ],
+            "owner": {
+                "reputation": 98,
+                "user_id": 9037356,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://lh3.googleusercontent.com/-8uSEkF-FLuc/AAAAAAAAAAI/AAAAAAAAAAc/LgkB6NfrZL0/photo.jpg?sz=128",
+                "display_name": "ichimaru",
+                "link": "https://stackoverflow.com/users/9037356/ichimaru"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526448660,
+            "creation_date": 1526448660,
+            "question_id": 50363064,
+            "body_markdown": "We were looking into this file, `/var/logs/auth.logs` and shows this:\r\n\r\n[![enter image description here][1]][1]\r\n\r\n**(Question 1:)** Is this a possible hack attempt?\r\n\r\nUsing this website https://www.abuseipdb.com/check/59.173.173.107 I can track the origin of the IP address. &lt;br&gt;\r\n\r\nI also run this command `last` and shows this:\r\n\r\n[![enter image description here][2]][2]\r\n\r\nCan anyone please tell me what are this are? Thanks! &lt;br&gt;\r\n**(Question 2:)** What is the difference of last and auth.logs?\r\n\r\n  [1]: https://i.stack.imgur.com/kinvZ.jpg\r\n  [2]: https://i.stack.imgur.com/ActwE.jpg\r\n\r\n\r\n\r\n\r\n\r\n**(Question 3:)** What is `CRON[17637]` and `sshd[17686]`? &lt;br&gt;\r\n**(Question 4:)** What does this line mean, `Received disconnect from 59.173.173.107: 11: Normal Shutdown, Thank you for playing [preauth]`? &lt;br&gt;\r\n**(Question 5:)** Is this normal? Does everyone always get this?",
+            "link": "https://stackoverflow.com/questions/50363064/how-to-read-auth-logs-in-aws-ec2-instance-logs",
+            "title": "How to read auth.logs in AWS ec2 instance logs?",
+            "body": "<p>We were looking into this file, <code>/var/logs/auth.logs</code> and shows this:</p>\n\n<p><a href=\"https://i.stack.imgur.com/kinvZ.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/kinvZ.jpg\" alt=\"enter image description here\"></a></p>\n\n<p><strong>(Question 1:)</strong> Is this a possible hack attempt?</p>\n\n<p>Using this website <a href=\"https://www.abuseipdb.com/check/59.173.173.107\" rel=\"nofollow noreferrer\">https://www.abuseipdb.com/check/59.173.173.107</a> I can track the origin of the IP address. <br></p>\n\n<p>I also run this command <code>last</code> and shows this:</p>\n\n<p><a href=\"https://i.stack.imgur.com/ActwE.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/ActwE.jpg\" alt=\"enter image description here\"></a></p>\n\n<p>Can anyone please tell me what are this are? Thanks! <br>\n<strong>(Question 2:)</strong> What is the difference of last and auth.logs?</p>\n\n<p><strong>(Question 3:)</strong> What is <code>CRON[17637]</code> and <code>sshd[17686]</code>? <br>\n<strong>(Question 4:)</strong> What does this line mean, <code>Received disconnect from 59.173.173.107: 11: Normal Shutdown, Thank you for playing [preauth]</code>? <br>\n<strong>(Question 5:)</strong> Is this normal? Does everyone always get this?</p>\n"
+        },
+        {
+            "tags": [
+                "nexus",
+                "nexus3"
+            ],
+            "owner": {
+                "reputation": 1256,
+                "user_id": 1106134,
+                "user_type": "registered",
+                "accept_rate": 56,
+                "profile_image": "https://www.gravatar.com/avatar/8f5222c8dd89d2c52a67998eeb5b0fd3?s=128&d=identicon&r=PG",
+                "display_name": "Kaliyug Antagonist",
+                "link": "https://stackoverflow.com/users/1106134/kaliyug-antagonist"
+            },
+            "is_answered": true,
+            "view_count": 14,
+            "accepted_answer_id": 50363062,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526448653,
+            "creation_date": 1526381102,
+            "question_id": 50348248,
+            "body_markdown": "Nexus Repository Manager OSS 3.9.0-01.\r\n\r\nI wish to create a &#39;proxy&#39; Nexus repository that will a replica of the [public pypi repository][1]. The other machines can then be configured to point to this Nexus repo. so that a &#39;pip install&#39; on these machines works even if there is no Internet connection. Accordingly, I created a proxy repository of type &#39;pypi(proxy)&#39;.\r\n\r\n[![enter image description here][2]][2]\r\n[![enter image description here][3]][3]\r\n\r\nWhen I browse this repo, there aren&#39;t any components/assets but whenever someone does a &#39;pip install&#39; by pointing to this repo, the package shows up in the interface e.g: `pip install --user pyspark --verbose`\r\n[![enter image description here][4]][4]\r\n\r\nWhat I am looking for is to clone/copy all the packages in the PyPI repository at once so that the future &#39;pip install&#39; refers to this local copy and doesn&#39;t go to the Internet every time. Once a day, the local copy should be updated.\r\n\r\nIs it possible to do so in Nexus OSS?\r\n\r\n  [1]: https://pypi.org/\r\n  [2]: https://i.stack.imgur.com/6qQMu.jpg\r\n  [3]: https://i.stack.imgur.com/0RY5q.jpg\r\n  [4]: https://i.stack.imgur.com/sMqkE.jpg",
+            "link": "https://stackoverflow.com/questions/50348248/creating-a-full-replica-offline-copy-of-the-public-pypi-repository",
+            "title": "Creating a full replica/offline copy of the public pypi repository",
+            "body": "<p>Nexus Repository Manager OSS 3.9.0-01.</p>\n\n<p>I wish to create a 'proxy' Nexus repository that will a replica of the <a href=\"https://pypi.org/\" rel=\"nofollow noreferrer\">public pypi repository</a>. The other machines can then be configured to point to this Nexus repo. so that a 'pip install' on these machines works even if there is no Internet connection. Accordingly, I created a proxy repository of type 'pypi(proxy)'.</p>\n\n<p><a href=\"https://i.stack.imgur.com/6qQMu.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/6qQMu.jpg\" alt=\"enter image description here\"></a>\n<a href=\"https://i.stack.imgur.com/0RY5q.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/0RY5q.jpg\" alt=\"enter image description here\"></a></p>\n\n<p>When I browse this repo, there aren't any components/assets but whenever someone does a 'pip install' by pointing to this repo, the package shows up in the interface e.g: <code>pip install --user pyspark --verbose</code>\n<a href=\"https://i.stack.imgur.com/sMqkE.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/sMqkE.jpg\" alt=\"enter image description here\"></a></p>\n\n<p>What I am looking for is to clone/copy all the packages in the PyPI repository at once so that the future 'pip install' refers to this local copy and doesn't go to the Internet every time. Once a day, the local copy should be updated.</p>\n\n<p>Is it possible to do so in Nexus OSS?</p>\n"
+        },
+        {
+            "tags": [
+                "apache-kafka",
+                "purge"
+            ],
+            "owner": {
+                "reputation": 49,
+                "user_id": 9115155,
+                "user_type": "registered",
+                "accept_rate": 73,
+                "profile_image": "https://www.gravatar.com/avatar/6cee14c2307aaf761698e79776f380e4?s=128&d=identicon&r=PG&f=1",
+                "display_name": "enodmilvado",
+                "link": "https://stackoverflow.com/users/9115155/enodmilvado"
+            },
+            "is_answered": false,
+            "view_count": 27,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526448650,
+            "creation_date": 1526420225,
+            "last_edit_date": 1526448650,
+            "question_id": 50359494,
+            "body_markdown": "We have 3 kafka machines version - **0.10.0.2.6**\r\n\r\nWe want to purge all data files from all kafka&#39;s topics ( purge completely all data )\r\n\r\n\r\n\r\nThe CLI for this action should be ( should be run from the zoo server )\r\n\r\n\r\n    kafka-topics.sh --zookeeper localhost:2181 --alter --topic Topic1 --config retention.ms=1000\r\n    kafka-topics.sh --zookeeper localhost:2181 --alter --topic Topic2 --config retention.ms=1000\r\n    kafka-topics.sh --zookeeper localhost:2181 --alter --topic Topic3 --config retention.ms=1000\r\n    kafka-topics.sh --zookeeper localhost:2181 --alter --topic Topic4 --config retention.ms=1000\r\n    .\r\n\r\n.\r\n.\r\n\r\n\r\nSince we Temporarily update the retention time on the topic to one second (1000 ms )\r\n\r\nThen how to return the previous original retention!\r\n\r\nNote - **log.retention.hours = 168** ( from the ambari GUI ) and this is the original value\r\n\r\nSo how to return the original value (**168** hours) back on all topics ? after purge all Topics?\r\n\r\n\r\n\r\n**LIST OF TOPICS**\r\n\r\n    /usr/hdp/2.6.0.3-8/kafka/bin/kafka-topics.sh  --list --zookeeper localhost:2181\r\n    __consumer_offsets \r\n    _schemas\r\n    hrtfsa.polr.mdr.initial\r\n    hrtfsa.polr.pri.content_analysis\r\n    hrtfsa.polr.pri.decoded\r\n    hrtfsa.polr.pri.enriched.suspected_relation\r\n    hrtfsa.polr.pri.id_correlation\r\n    hrtfsa.polr.pri.processed\r\n    hrtfsa.polr.suspected_relations\r\n    hrtfsa.monitoring.heartbeat\r\n\r\n\r\n\r\n\r\nI found this ( https://gist.github.com/dmitz/47e230b35d84df900c2d57370f4e85b2 )\r\n\r\npurge the topic: \r\n\r\n    kafka-topics --zookeeper &lt;zookeeper_address&gt; --alter --topic &lt;topic_name&gt; --config retention.ms=1000\r\n\r\nreturn the orig value of retention:\r\n\r\n    kafka-topics --zookeeper &lt;zookeeper_address&gt; --alter --topic &lt;topic_name&gt; --delete-config retention.ms\r\n\r\nIs this correct for version 0.10.0.2.6 ?",
+            "link": "https://stackoverflow.com/questions/50359494/how-to-return-the-original-log-retention-after-purge-kafka-topics",
+            "title": "How to return the original log retention after purge kafka topics",
+            "body": "<p>We have 3 kafka machines version - <strong>0.10.0.2.6</strong></p>\n\n<p>We want to purge all data files from all kafka's topics ( purge completely all data )</p>\n\n<p>The CLI for this action should be ( should be run from the zoo server )</p>\n\n<pre><code>kafka-topics.sh --zookeeper localhost:2181 --alter --topic Topic1 --config retention.ms=1000\nkafka-topics.sh --zookeeper localhost:2181 --alter --topic Topic2 --config retention.ms=1000\nkafka-topics.sh --zookeeper localhost:2181 --alter --topic Topic3 --config retention.ms=1000\nkafka-topics.sh --zookeeper localhost:2181 --alter --topic Topic4 --config retention.ms=1000\n.\n</code></pre>\n\n<p>.\n.</p>\n\n<p>Since we Temporarily update the retention time on the topic to one second (1000 ms )</p>\n\n<p>Then how to return the previous original retention!</p>\n\n<p>Note - <strong>log.retention.hours = 168</strong> ( from the ambari GUI ) and this is the original value</p>\n\n<p>So how to return the original value (<strong>168</strong> hours) back on all topics ? after purge all Topics?</p>\n\n<p><strong>LIST OF TOPICS</strong></p>\n\n<pre><code>/usr/hdp/2.6.0.3-8/kafka/bin/kafka-topics.sh  --list --zookeeper localhost:2181\n__consumer_offsets \n_schemas\nhrtfsa.polr.mdr.initial\nhrtfsa.polr.pri.content_analysis\nhrtfsa.polr.pri.decoded\nhrtfsa.polr.pri.enriched.suspected_relation\nhrtfsa.polr.pri.id_correlation\nhrtfsa.polr.pri.processed\nhrtfsa.polr.suspected_relations\nhrtfsa.monitoring.heartbeat\n</code></pre>\n\n<p>I found this ( <a href=\"https://gist.github.com/dmitz/47e230b35d84df900c2d57370f4e85b2\" rel=\"nofollow noreferrer\">https://gist.github.com/dmitz/47e230b35d84df900c2d57370f4e85b2</a> )</p>\n\n<p>purge the topic: </p>\n\n<pre><code>kafka-topics --zookeeper &lt;zookeeper_address&gt; --alter --topic &lt;topic_name&gt; --config retention.ms=1000\n</code></pre>\n\n<p>return the orig value of retention:</p>\n\n<pre><code>kafka-topics --zookeeper &lt;zookeeper_address&gt; --alter --topic &lt;topic_name&gt; --delete-config retention.ms\n</code></pre>\n\n<p>Is this correct for version 0.10.0.2.6 ?</p>\n"
+        },
+        {
+            "tags": [
+                "ethereum"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9798003,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/25b99fbbbc541eedf219c75f71d15979?s=128&d=identicon&r=PG&f=1",
+                "display_name": "manoj",
+                "link": "https://stackoverflow.com/users/9798003/manoj"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526448644,
+            "creation_date": 1526448447,
+            "last_edit_date": 1526448644,
+            "question_id": 50363016,
+            "body_markdown": "I have an account address and their corresponding private keys in testrc so how to achieve asymmetric encryption and decryption in ethereum",
+            "link": "https://stackoverflow.com/questions/50363016/how-to-achieve-asymmetric-encrypt-and-decrypt-technique-in-ethereum-by-picking-t",
+            "title": "How to achieve asymmetric encrypt and decrypt technique in ethereum by picking the keys from testrpc",
+            "body": "<p>I have an account address and their corresponding private keys in testrc so how to achieve asymmetric encryption and decryption in ethereum</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-2.7"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9695279,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/d7b7a829300b54d2abac1a9c49186034?s=128&d=identicon&r=PG&f=1",
+                "display_name": "mcsy",
+                "link": "https://stackoverflow.com/users/9695279/mcsy"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526448631,
+            "creation_date": 1525925425,
+            "question_id": 50265340,
+            "body_markdown": "I have an application which continues running, the application won&#39;t be stopped, it will idle when there are no instructions by a client, and listen to the external event and react if there is any instruction input by the user at anytime\r\n\r\nThere is a configuration file which can be changed while the application is running, and the logging level is one of them. myLoggingLevel is the param below.\r\n\r\nIs there anyway to change the logging level while the application is running?\r\nI am using ConfigParser.RawConfigParser() for the configuration change.\r\n\r\n\timport time\r\n\timport logging\r\n\timport datetime\r\n\r\n\tdef getLogger(loggerName=&#39;myLoggerName&#39;, logLevel=&#39;INFO&#39;, log_path=&#39;C:/logs/&#39;):\r\n\t\tclass Formatter(logging.Formatter):\r\n\t\t\tdef formatTime(self, record, datefmt=None):\r\n\t\t\t\treturn (datetime.datetime.utcnow()).strftime(&#39;%H:%M:%S&#39;)\r\n\t\tlogLevel = logLevel.upper()\r\n\t\tlevels = {&#39;DEBUG&#39;   : logging.DEBUG,\r\n\t\t\t\t&#39;INFO&#39;      : logging.INFO,\r\n\t\t\t\t&#39;WARNING&#39;   : logging.WARNING,\r\n\t\t\t\t&#39;ERROR&#39;     : logging.ERROR,\r\n\t\t\t\t&#39;CRITICAL&#39;  : logging.CRITICAL}\r\n\t\ttoday = datetime.datetime.utcnow().strftime(&#39;%Y-%m-%d&#39;)\r\n\t\tfull_log_path = log_path + &#39;%s.%s.log&#39; % (loggerName, today)\r\n\t\tlogger = logging.getLogger(loggerName+&#39;.&#39;+today)\r\n\t\tif not len(logger.handlers):\r\n\t\t\tlogger.setLevel(levels[logLevel])\r\n\t\t\tfh = logging.FileHandler(full_log_path)\r\n\t\t\tformatter = Formatter(&#39;%(asctime)s.%(msecs)03d | %(message)s&#39;, datefmt=&#39;%H:%M:%S&#39;)\r\n\t\t\tfh.setFormatter(formatter)\r\n\t\t\tlogger.addHandler(fh)\r\n\t\t\tch = logging.StreamHandler()\r\n\t\t\tch.setLevel(logging.ERROR)\r\n\t\t\tch.setFormatter(formatter)\r\n\t\t\tlogger.addHandler(ch)\r\n\t\t\tlogger.propagate = False\r\n\t\t\tlogger.info(&#39;loggerName: %s&#39; % loggerName)\r\n\t\treturn logger\r\n\r\n\tdef run(myLoggingLevel):\r\n\t\twhile True:\r\n\t\t\tlog = getLogger(loggerName=&#39;testLogLevel&#39;, logLevel=myLoggingLevel)\r\n\t\t\tlog.debug(&#39;I am in debug&#39;)\r\n\t\t\tlog.info(&#39;I am in info&#39;)\r\n\t\t\ttime.sleep(3)\r\n\r\n\trun(myLoggingLevel=&#39;debug&#39;)\r\n",
+            "link": "https://stackoverflow.com/questions/50265340/logging-level-to-be-changed-in-the-middle-of-a-scripts",
+            "title": "Logging level to be changed in the middle of a scripts",
+            "body": "<p>I have an application which continues running, the application won't be stopped, it will idle when there are no instructions by a client, and listen to the external event and react if there is any instruction input by the user at anytime</p>\n\n<p>There is a configuration file which can be changed while the application is running, and the logging level is one of them. myLoggingLevel is the param below.</p>\n\n<p>Is there anyway to change the logging level while the application is running?\nI am using ConfigParser.RawConfigParser() for the configuration change.</p>\n\n<pre><code>import time\nimport logging\nimport datetime\n\ndef getLogger(loggerName='myLoggerName', logLevel='INFO', log_path='C:/logs/'):\n    class Formatter(logging.Formatter):\n        def formatTime(self, record, datefmt=None):\n            return (datetime.datetime.utcnow()).strftime('%H:%M:%S')\n    logLevel = logLevel.upper()\n    levels = {'DEBUG'   : logging.DEBUG,\n            'INFO'      : logging.INFO,\n            'WARNING'   : logging.WARNING,\n            'ERROR'     : logging.ERROR,\n            'CRITICAL'  : logging.CRITICAL}\n    today = datetime.datetime.utcnow().strftime('%Y-%m-%d')\n    full_log_path = log_path + '%s.%s.log' % (loggerName, today)\n    logger = logging.getLogger(loggerName+'.'+today)\n    if not len(logger.handlers):\n        logger.setLevel(levels[logLevel])\n        fh = logging.FileHandler(full_log_path)\n        formatter = Formatter('%(asctime)s.%(msecs)03d | %(message)s', datefmt='%H:%M:%S')\n        fh.setFormatter(formatter)\n        logger.addHandler(fh)\n        ch = logging.StreamHandler()\n        ch.setLevel(logging.ERROR)\n        ch.setFormatter(formatter)\n        logger.addHandler(ch)\n        logger.propagate = False\n        logger.info('loggerName: %s' % loggerName)\n    return logger\n\ndef run(myLoggingLevel):\n    while True:\n        log = getLogger(loggerName='testLogLevel', logLevel=myLoggingLevel)\n        log.debug('I am in debug')\n        log.info('I am in info')\n        time.sleep(3)\n\nrun(myLoggingLevel='debug')\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "json",
+                "serialization",
+                "jackson",
+                "customization"
+            ],
+            "owner": {
+                "reputation": 2614,
+                "user_id": 96766,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://www.gravatar.com/avatar/fe73ca8ab196d15b15472d62baf3bc79?s=128&d=identicon&r=PG",
+                "display_name": "wajda",
+                "link": "https://stackoverflow.com/users/96766/wajda"
+            },
+            "is_answered": true,
+            "view_count": 31263,
+            "accepted_answer_id": 14752292,
+            "answer_count": 11,
+            "score": 36,
+            "last_activity_date": 1526448630,
+            "creation_date": 1360088890,
+            "last_edit_date": 1502874887,
+            "question_id": 14714328,
+            "body_markdown": "I am developing a REST interface for my app using Jackson to serialize my POJO domain objects to JSON representation. I want to customize the serialization for some types to add additional properties to the JSON representation that do not exist in POJOs (e.g. add some metadata, reference data, etc). I know how to write my own `JsonSerializer`, but in that case I would need to explicitly call `JsonGenerator.writeXXX(..)` methods for __each__ property of my object while all I need is just to __add__ an additional property. In other words I would like to be able to write something like:\r\n\r\n    @Override\r\n    public void serialize(TaxonomyNode value, JsonGenerator jgen, SerializerProvider provider) {\r\n        jgen.writeStartObject();\r\n        jgen.writeAllFields(value); // &lt;-- The method I&#39;d like to have\r\n        jgen.writeObjectField(&quot;my_extra_field&quot;, &quot;some data&quot;);\r\n        jgen.writeEndObject();\r\n    }\r\n\r\nor (even better) to somehow intercept the serialization before the `jgen.writeEndObject()` call, e.g.:\r\n\r\n    @Override void beforeEndObject(....) {\r\n        jgen.writeObjectField(&quot;my_extra_field&quot;, &quot;some data&quot;);\r\n    }\r\n\r\nI thought I could extend `BeanSerializer` and override its `serialize(..)` method but it&#39;s declared `final` and also I couldn&#39;t find an easy way to create a new instance of `BeanSerializer` without providing it with all the type metadata details practically duplicating a good portion of Jackson. So I&#39;ve given up on doing that.\r\n\r\n__My question is__ - how to customize Jackson&#39;s serialization to add additional stuff to the JSON output for particular POJOs without introducing too much of the boilerplate code and reusing as much as possible of the default Jackson behaviour.",
+            "link": "https://stackoverflow.com/questions/14714328/jackson-how-to-add-custom-property-to-the-json-without-modifying-the-pojo",
+            "title": "Jackson: How to add custom property to the JSON without modifying the POJO",
+            "body": "<p>I am developing a REST interface for my app using Jackson to serialize my POJO domain objects to JSON representation. I want to customize the serialization for some types to add additional properties to the JSON representation that do not exist in POJOs (e.g. add some metadata, reference data, etc). I know how to write my own <code>JsonSerializer</code>, but in that case I would need to explicitly call <code>JsonGenerator.writeXXX(..)</code> methods for <strong>each</strong> property of my object while all I need is just to <strong>add</strong> an additional property. In other words I would like to be able to write something like:</p>\n\n<pre><code>@Override\npublic void serialize(TaxonomyNode value, JsonGenerator jgen, SerializerProvider provider) {\n    jgen.writeStartObject();\n    jgen.writeAllFields(value); // &lt;-- The method I'd like to have\n    jgen.writeObjectField(\"my_extra_field\", \"some data\");\n    jgen.writeEndObject();\n}\n</code></pre>\n\n<p>or (even better) to somehow intercept the serialization before the <code>jgen.writeEndObject()</code> call, e.g.:</p>\n\n<pre><code>@Override void beforeEndObject(....) {\n    jgen.writeObjectField(\"my_extra_field\", \"some data\");\n}\n</code></pre>\n\n<p>I thought I could extend <code>BeanSerializer</code> and override its <code>serialize(..)</code> method but it's declared <code>final</code> and also I couldn't find an easy way to create a new instance of <code>BeanSerializer</code> without providing it with all the type metadata details practically duplicating a good portion of Jackson. So I've given up on doing that.</p>\n\n<p><strong>My question is</strong> - how to customize Jackson's serialization to add additional stuff to the JSON output for particular POJOs without introducing too much of the boilerplate code and reusing as much as possible of the default Jackson behaviour.</p>\n"
+        },
+        {
+            "tags": [
+                "wpf",
+                "wpf-controls",
+                "fontfamily"
+            ],
+            "owner": {
+                "reputation": 100,
+                "user_id": 8890256,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://www.gravatar.com/avatar/62b21a4f88cd467630b4f224cbfce13a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "RezaNoei",
+                "link": "https://stackoverflow.com/users/8890256/rezanoei"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526448628,
+            "creation_date": 1526448628,
+            "question_id": 50363054,
+            "body_markdown": "I want to load my fonts from `Resources` folder and i wrote this code for that. \r\n\r\n    &lt;TextBlock Margin=&quot;0,10,0,0&quot;  FontFamily=&quot;/Resources/#IRRoya&quot; FontSize=&quot;14&quot; Text=&quot;پایگاه داده های موجود : &quot;/&gt;\r\n\r\nin design everything is OK, but when i run the project, this code doesn&#39;t work. \r\ni also forced my program to run with administrator privilege level, but it still doesn&#39;t work.",
+            "link": "https://stackoverflow.com/questions/50363054/wpf-couldnt-load-fonts-from-resources",
+            "title": "WPF Couldn&#39;t load fonts from resources",
+            "body": "<p>I want to load my fonts from <code>Resources</code> folder and i wrote this code for that. </p>\n\n<pre><code>&lt;TextBlock Margin=\"0,10,0,0\"  FontFamily=\"/Resources/#IRRoya\" FontSize=\"14\" Text=\"پایگاه داده های موجود : \"/&gt;\n</code></pre>\n\n<p>in design everything is OK, but when i run the project, this code doesn't work. \ni also forced my program to run with administrator privilege level, but it still doesn't work.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "generics",
+                "arraylist",
+                "types",
+                "components"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 7767805,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/9310d040d27bcc414956c65a8869b836?s=128&d=identicon&r=PG&f=1",
+                "display_name": "dstackflow",
+                "link": "https://stackoverflow.com/users/7767805/dstackflow"
+            },
+            "is_answered": true,
+            "view_count": 27,
+            "closed_date": 1526452008,
+            "accepted_answer_id": 50362984,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526448621,
+            "creation_date": 1526447636,
+            "question_id": 50362869,
+            "body_markdown": "I&#39;ve been trying to figure a way of determining an ArrayList&#39;s component type when passed to a static method as a parameter. My current attempt has resulted in this: \r\n\r\n    public static &lt;T&gt; Class getArrayListClass(ArrayList&lt;T&gt; al) {\r\n\t    Class clazz = null;\r\n\t    for(T t: al) {\r\n\t\t    if(t != null) {\r\n\t\t\t    clazz = t.getClass();//Get first type found.\r\n\t\t    }\r\n\t    }\r\n\t    return clazz;\r\n    }\r\nIs there an alternative way of determining the type of an ArrayList? Better yet, how can I find the component types of an ArrayList with size 0? The static method does not know &quot;who has ownership&quot; of the ArrayList object, making reflections with fields difficult because (from what I been reading) you need to know where the container comes from (surely the original source would know it&#39;s type), or someone who has reference to a container like it of known type (Non type T) or simply know its type...\r\nThere was a post about something similar, using Lists: https://stackoverflow.com/questions/1942644/get-generic-type-of-java-util-list In there solutions, they were using reflection and stated that it could be done for parameters and return types as well, but there were no examples of type T parameters... The second best answer on that link showed an example of acquiring the type from method parameters, but of non type T, which in my case, I am acquiring the ArrayList as a type T parameter. Any favorable solutions? My current method can only be applied to ArrayLists of size &gt; 0. I&#39;ve gotten types from primitive arrays before (fortunately): `someArray.getClass().getComponentType()//T[]` though they&#39;re vastly different, but that opens up one of my last two alternative options I&#39;d already seen and would rather avoid: A) converting ArrayLists to arrays of known type (not objects) then when type is needed to be known by other methods/objects, they can unwrap it using the getComponentType method or B) always send the type as an extra parameter... Don&#39;t know if this is a duplicate, but I&#39;ve looked a bit; if it is send me in the right direction. Thanks.",
+            "link": "https://stackoverflow.com/questions/50362869/java-acquiring-arraylist-component-type-from-method-parameter-of-arraylistt",
+            "closed_reason": "duplicate",
+            "title": "java acquiring arraylist component type from method parameter of arraylist&lt;T&gt;",
+            "body": "<p>I've been trying to figure a way of determining an ArrayList's component type when passed to a static method as a parameter. My current attempt has resulted in this: </p>\n\n<pre><code>public static &lt;T&gt; Class getArrayListClass(ArrayList&lt;T&gt; al) {\n    Class clazz = null;\n    for(T t: al) {\n        if(t != null) {\n            clazz = t.getClass();//Get first type found.\n        }\n    }\n    return clazz;\n}\n</code></pre>\n\n<p>Is there an alternative way of determining the type of an ArrayList? Better yet, how can I find the component types of an ArrayList with size 0? The static method does not know \"who has ownership\" of the ArrayList object, making reflections with fields difficult because (from what I been reading) you need to know where the container comes from (surely the original source would know it's type), or someone who has reference to a container like it of known type (Non type T) or simply know its type...\nThere was a post about something similar, using Lists: <a href=\"https://stackoverflow.com/questions/1942644/get-generic-type-of-java-util-list\">Get generic type of java.util.List</a> In there solutions, they were using reflection and stated that it could be done for parameters and return types as well, but there were no examples of type T parameters... The second best answer on that link showed an example of acquiring the type from method parameters, but of non type T, which in my case, I am acquiring the ArrayList as a type T parameter. Any favorable solutions? My current method can only be applied to ArrayLists of size > 0. I've gotten types from primitive arrays before (fortunately): <code>someArray.getClass().getComponentType()//T[]</code> though they're vastly different, but that opens up one of my last two alternative options I'd already seen and would rather avoid: A) converting ArrayLists to arrays of known type (not objects) then when type is needed to be known by other methods/objects, they can unwrap it using the getComponentType method or B) always send the type as an extra parameter... Don't know if this is a duplicate, but I've looked a bit; if it is send me in the right direction. Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "overflow",
+                "toolbar",
+                "appcompat",
+                "actionmode"
+            ],
+            "owner": {
+                "reputation": 332,
+                "user_id": 2299432,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/6603be8d65418005fb38a47d4016221c?s=128&d=identicon&r=PG",
+                "display_name": "Jun",
+                "link": "https://stackoverflow.com/users/2299432/jun"
+            },
+            "is_answered": true,
+            "view_count": 23446,
+            "accepted_answer_id": 31139160,
+            "answer_count": 7,
+            "score": 12,
+            "last_activity_date": 1526448614,
+            "creation_date": 1421460333,
+            "last_edit_date": 1495535408,
+            "question_id": 27995461,
+            "body_markdown": "With the AppCompat Toolbar, I want to be able to change the color of the overflow menu icon on ActionMode change.\r\n\r\nFor example, the overflow icon will be white in normal Toolbar mode. And will turn black on ActionMode. So far, I have managed to change the background of the action mode as well as the title text. But I have yet to find a way to change the overflow menu icon color.\r\n\r\nI know that there&#39;s an answer available:\r\nhttps://stackoverflow.com/questions/22720799/change-actionmode-overflow-icon\r\n\r\nI tried the first solution and I wasn&#39;t able to find the overflow icon.\r\n\r\nThe second solution, even with a 50L delay causes the overflow menu icon to flash the ActionMode&#39;s intended color for a brief split second that is very jarring.",
+            "link": "https://stackoverflow.com/questions/27995461/appcompat-toolbar-change-overflow-icon-color-in-actionmode",
+            "title": "AppCompat Toolbar: Change Overflow Icon Color in ActionMode",
+            "body": "<p>With the AppCompat Toolbar, I want to be able to change the color of the overflow menu icon on ActionMode change.</p>\n\n<p>For example, the overflow icon will be white in normal Toolbar mode. And will turn black on ActionMode. So far, I have managed to change the background of the action mode as well as the title text. But I have yet to find a way to change the overflow menu icon color.</p>\n\n<p>I know that there's an answer available:\n<a href=\"https://stackoverflow.com/questions/22720799/change-actionmode-overflow-icon\">Change ActionMode Overflow icon</a></p>\n\n<p>I tried the first solution and I wasn't able to find the overflow icon.</p>\n\n<p>The second solution, even with a 50L delay causes the overflow menu icon to flash the ActionMode's intended color for a brief split second that is very jarring.</p>\n"
+        },
+        {
+            "tags": [
+                "html",
+                "css",
+                "css3",
+                "flexbox"
+            ],
+            "owner": {
+                "reputation": 476,
+                "user_id": 1402910,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/e2b3d4ceeb4b2ba270fd4bb14d5520f5?s=128&d=identicon&r=PG",
+                "display_name": "uneducatedguy",
+                "link": "https://stackoverflow.com/users/1402910/uneducatedguy"
+            },
+            "is_answered": true,
+            "view_count": 5081,
+            "accepted_answer_id": 34194693,
+            "answer_count": 4,
+            "score": 15,
+            "last_activity_date": 1526448610,
+            "creation_date": 1449723751,
+            "last_edit_date": 1481514657,
+            "question_id": 34194042,
+            "body_markdown": "I have two sibling elements which each contain dynamic content.\r\n\r\n    &lt;div class=&quot;flex&quot;&gt;\r\n        &lt;div class=&quot;sibling-1&quot;&gt;&lt;/div&gt;\r\n        &lt;div class=&quot;sibling-2&quot;&gt;&lt;/div&gt;\r\n    &lt;/div&gt;\r\n\r\nIn some cases `sibling-1` will have more content then `sibling-2` and vice versa.\r\nI would like the height of the second element `sibling-2` always equal the height of the first `sibling-1`. If the height of `sibling-2` is greater then the height of `sibling-1` it will overflow the `flex` div and thus be scrollable.\r\n\r\nIs there any way to accomplish this with Flexbox? ",
+            "link": "https://stackoverflow.com/questions/34194042/one-flex-item-sets-the-height-limit-for-siblings",
+            "title": "One flex item sets the height limit for siblings",
+            "body": "<p>I have two sibling elements which each contain dynamic content.</p>\n\n<pre><code>&lt;div class=\"flex\"&gt;\n    &lt;div class=\"sibling-1\"&gt;&lt;/div&gt;\n    &lt;div class=\"sibling-2\"&gt;&lt;/div&gt;\n&lt;/div&gt;\n</code></pre>\n\n<p>In some cases <code>sibling-1</code> will have more content then <code>sibling-2</code> and vice versa.\nI would like the height of the second element <code>sibling-2</code> always equal the height of the first <code>sibling-1</code>. If the height of <code>sibling-2</code> is greater then the height of <code>sibling-1</code> it will overflow the <code>flex</code> div and thus be scrollable.</p>\n\n<p>Is there any way to accomplish this with Flexbox? </p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "image",
+                "copy"
+            ],
+            "owner": {
+                "reputation": 371,
+                "user_id": 4252996,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/c708ad123f5b181bfa47381fa7ea801a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "mondayguy",
+                "link": "https://stackoverflow.com/users/4252996/mondayguy"
+            },
+            "is_answered": true,
+            "view_count": 62,
+            "accepted_answer_id": 37717947,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1526448594,
+            "creation_date": 1465451173,
+            "last_edit_date": 1465451532,
+            "question_id": 37717767,
+            "body_markdown": "I have following method for coping jpg photos from one folder to another:\r\n\r\n\tpublic static void copyImage(String from, String to) {\r\n\t\ttry {\r\n\t\t\tFile sourceimage = new File(from);\r\n\t\t\tBufferedImage image = ImageIO.read(sourceimage);\r\n\t\t\tImageIO.write(image, &quot;jpg&quot;, new File(to));\r\n\t\t} catch (IOException ex) {\r\n\t\t\tLogger.getLogger(ImgLib.class.getName()).log(Level.SEVERE, null, ex);\r\n\t\t} catch (NullPointerException ex){\r\n\t\t\tLogger.getLogger(ImgLib.class.getName()).log(Level.SEVERE, null, ex);\r\n\t\t}\t\t\r\n\t}\r\n\r\nIt works, but little bit loosing quality of photo. \r\n\r\nHow I can achieve &quot;perfect&quot; cloning without loosing quality?",
+            "link": "https://stackoverflow.com/questions/37717767/java-clone-jpg-without-losing-quality-of-image",
+            "title": "Java clone jpg without losing quality of image",
+            "body": "<p>I have following method for coping jpg photos from one folder to another:</p>\n\n<pre><code>public static void copyImage(String from, String to) {\n    try {\n        File sourceimage = new File(from);\n        BufferedImage image = ImageIO.read(sourceimage);\n        ImageIO.write(image, \"jpg\", new File(to));\n    } catch (IOException ex) {\n        Logger.getLogger(ImgLib.class.getName()).log(Level.SEVERE, null, ex);\n    } catch (NullPointerException ex){\n        Logger.getLogger(ImgLib.class.getName()).log(Level.SEVERE, null, ex);\n    }       \n}\n</code></pre>\n\n<p>It works, but little bit loosing quality of photo. </p>\n\n<p>How I can achieve \"perfect\" cloning without loosing quality?</p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "ggplot2"
+            ],
+            "owner": {
+                "reputation": 792,
+                "user_id": 674301,
+                "user_type": "registered",
+                "accept_rate": 61,
+                "profile_image": "https://www.gravatar.com/avatar/97e523edc8aabe111dba9f2a8e9e2da6?s=128&d=identicon&r=PG",
+                "display_name": "Jeremy",
+                "link": "https://stackoverflow.com/users/674301/jeremy"
+            },
+            "is_answered": true,
+            "view_count": 58,
+            "accepted_answer_id": 50359809,
+            "answer_count": 2,
+            "score": 3,
+            "last_activity_date": 1526448584,
+            "creation_date": 1526421077,
+            "question_id": 50359647,
+            "body_markdown": "I&#39;d like to plot a function that takes two arguments. The best I&#39;ve found so far is the `image` function, but I&#39;d love to find a better either 3d plot or nicer ggplot countour plot like this:\r\n\r\n    x_seq = seq(1,1000)\r\n    \r\n    y_seq = seq(1,5000)\r\n    \r\n    z = outer(contributor_idx, size_estimate, function(x,y) log(y+1) + log(y+1)/log(x+1))\r\n    \r\n    image(z)\r\n\r\n[![current image][1]][1]\r\n\r\n\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/tlykZ.png",
+            "link": "https://stackoverflow.com/questions/50359647/plotting-2-dimensional-function-in-ggplot",
+            "title": "Plotting 2 dimensional function in ggplot",
+            "body": "<p>I'd like to plot a function that takes two arguments. The best I've found so far is the <code>image</code> function, but I'd love to find a better either 3d plot or nicer ggplot countour plot like this:</p>\n\n<pre><code>x_seq = seq(1,1000)\n\ny_seq = seq(1,5000)\n\nz = outer(contributor_idx, size_estimate, function(x,y) log(y+1) + log(y+1)/log(x+1))\n\nimage(z)\n</code></pre>\n\n<p><a href=\"https://i.stack.imgur.com/tlykZ.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/tlykZ.png\" alt=\"current image\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "sql"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9797802,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-Zc6YwZku9Nw/AAAAAAAAAAI/AAAAAAAABRk/LnUOAyXHRhI/photo.jpg?sz=128",
+                "display_name": "Ynot",
+                "link": "https://stackoverflow.com/users/9797802/ynot"
+            },
+            "is_answered": false,
+            "view_count": 22,
+            "answer_count": 2,
+            "score": -1,
+            "last_activity_date": 1526448576,
+            "creation_date": 1526444469,
+            "last_edit_date": 1526444717,
+            "question_id": 50362417,
+            "body_markdown": "    &lt;?php\r\n\r\n\t$con = mysqli_connect(&quot;localhost&quot;,&quot;root&quot;,&quot;&quot;,&quot;social_network&quot;) or die(&quot;Connection was not established&quot;);\r\n\r\n\tfunction InsertUser(){\r\n\t\tglobal $con;\r\n\t\t//if sign up button is pressed\r\n\t\tif(isset($_POST[&#39;sign_up&#39;])){\r\n\t\t\t$name = $_POST[&#39;u_name&#39;];\r\n\t\t\t$pass = $_POST[&#39;u_pass&#39;];\r\n\t\t\t$email = $_POST[&#39;u_email&#39;];\r\n\t\t\t$country = $_POST[&#39;u_country&#39;];\r\n\t\t\t$gender = $_POST[&#39;u_gender&#39;];\r\n\t\t\t$b_day = $_POST[&#39;u_birthday&#39;];\r\n\t\t\t$name = $_POST[&#39;u_name&#39;];\r\n\t\t\t$date = date(&quot;d-m-y&quot;);\r\n\t\t\t$status = &quot;unverified&quot;;\r\n\t\t\t$posts = &quot;No&quot;;\r\n\t\t\t//checks if the email already existist in the system\r\n\t\t\t$get_email = &quot;select * from users where user_email=&#39;$email&#39;&quot;;\r\n\t\t\t$run_email = mysqli_query($con,$get_email);\r\n\t\t\t$check = mysqli_num_rows($run_email);\r\n\t\t\t//if email validation\r\n\t\t\tif ($check==1) {\r\n\t\t\t\techo &quot;&lt;script&gt;alert(&#39;This email is already registered!, Try another one&#39;)&lt;/script&gt;&quot;;\r\n\t\t\t\texit();\r\n\t\t\t}\r\n\t\t\t//password properties string length \r\n\t\t\tif(strlen($pass)&lt;8){\r\n\r\n\t\t\t\techo &quot;&lt;script&gt;alert(&#39;Password should be minimum 8 characters&#39;)&lt;/script&gt;&quot;; \r\n\t\t\t\texit();\r\n\t\t\t}\r\n\t\t\telse {\r\n\t\t\t\t//inserting user input into the database\r\n\t\t\t\t$insert = &quot;INSERT INTO users (user_name,user_pass,user_email,user_country,user_gender,user_dob,user_image,register_date,last login,status,posts) VALUES (&#39;$name&#39;,&#39;$pass&#39;,&#39;$email&#39;,&#39;$country&#39;,&#39;$gender&#39;,&#39;$b_day&#39;,&#39;default.jpg&#39;,&#39;$date&#39;,&#39;$date&#39;,&#39;$status&#39;,&#39;$posts&#39;)&quot;;\r\n\r\n\t\t\t\t$run_insert = mysqli_query($con,$insert);\r\n\r\n\t\t\t\t\tif($run_insert){\r\n\t\t\t\t\t\techo &quot;&lt;script&gt;alert(&#39;Registration Successfull!&#39;)&lt;/script&gt;&quot;;\r\n\t\t\t\t\t} \r\n\t\t\t    }\r\n\t\t    }\r\n\t    }\r\n    ?&gt;",
+            "link": "https://stackoverflow.com/questions/50362417/this-code-wont-insert-user-save-data-into-the-sql-database",
+            "title": "this code wont insert user save data into the sql database",
+            "body": "<pre><code>&lt;?php\n\n$con = mysqli_connect(\"localhost\",\"root\",\"\",\"social_network\") or die(\"Connection was not established\");\n\nfunction InsertUser(){\n    global $con;\n    //if sign up button is pressed\n    if(isset($_POST['sign_up'])){\n        $name = $_POST['u_name'];\n        $pass = $_POST['u_pass'];\n        $email = $_POST['u_email'];\n        $country = $_POST['u_country'];\n        $gender = $_POST['u_gender'];\n        $b_day = $_POST['u_birthday'];\n        $name = $_POST['u_name'];\n        $date = date(\"d-m-y\");\n        $status = \"unverified\";\n        $posts = \"No\";\n        //checks if the email already existist in the system\n        $get_email = \"select * from users where user_email='$email'\";\n        $run_email = mysqli_query($con,$get_email);\n        $check = mysqli_num_rows($run_email);\n        //if email validation\n        if ($check==1) {\n            echo \"&lt;script&gt;alert('This email is already registered!, Try another one')&lt;/script&gt;\";\n            exit();\n        }\n        //password properties string length \n        if(strlen($pass)&lt;8){\n\n            echo \"&lt;script&gt;alert('Password should be minimum 8 characters')&lt;/script&gt;\"; \n            exit();\n        }\n        else {\n            //inserting user input into the database\n            $insert = \"INSERT INTO users (user_name,user_pass,user_email,user_country,user_gender,user_dob,user_image,register_date,last login,status,posts) VALUES ('$name','$pass','$email','$country','$gender','$b_day','default.jpg','$date','$date','$status','$posts')\";\n\n            $run_insert = mysqli_query($con,$insert);\n\n                if($run_insert){\n                    echo \"&lt;script&gt;alert('Registration Successfull!')&lt;/script&gt;\";\n                } \n            }\n        }\n    }\n?&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "react-native"
+            ],
+            "owner": {
+                "reputation": 134,
+                "user_id": 9663730,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Dan",
+                "link": "https://stackoverflow.com/users/9663730/dan"
+            },
+            "is_answered": true,
+            "view_count": 34,
+            "accepted_answer_id": 50363044,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526448574,
+            "creation_date": 1526381999,
+            "last_edit_date": 1526393044,
+            "question_id": 50348514,
+            "body_markdown": "I am trying to perform something like the following, which React Native does not like.\r\n\r\nI want to wrap _clickable_ text in a TouchableOpacity, and with its own styles.\r\n\r\nBy wrapping it in a parent `Text` component, all of the text sits perfectly side by side. However, I can&#39;t put a `TouchableOpacity` inside of a `Text` component. \r\n\r\n    &lt;View&gt;\r\n      &lt;Text&gt;\r\n        &lt;Text&gt;Hello my name is&lt;/Text&gt;\r\n        &lt;TouchableOpacity onPress={this.openProfile}&gt;\r\n          &lt;Text style={styles.clickable}&gt;{ name }&lt;/Text&gt;\r\n        &lt;/TouchableOpacity&gt;\r\n        &lt;Text&gt;, I am currently working at &lt;/Text&gt;\r\n        &lt;TouchableOpacity onPress={this.openCompanyPage}&gt;\r\n          &lt;Text style={styles.clickable}&gt;{ company }&lt;/Text&gt;\r\n        &lt;/TouchableOpacity&gt;\r\n      &lt;/Text&gt;\r\n    &lt;/View&gt;\r\n\r\nI get the error: `Views nested within a &lt;Text&gt; must have a width and height`. I am unable to set those measurements as I want them to be dynamic and be dependant on the content.\r\n\r\nFor example `name` could be John Smith or [Hubert Blaine Wolfe&#173;schlegel&#173;stein&#173;hausen&#173;berger&#173;dorff Sr][1].\r\n\r\n\r\nAs per comment, I want to render portions of the text with custom styles. I can do that effortlessly by placing [Text within Text](https://stackoverflow.com/questions/39002583/superscript-text-in-react-native). Now I want to add a clickable area to those portions of text (&quot;Dan&quot;, &quot;Google&quot;). But I cannot embed a TouchableOpacity inside of a Text element.\r\n\r\n[![enter image description here][2]][2]\r\n\r\n\r\n\r\n  [1]: https://en.wikipedia.org/wiki/Hubert_Blaine_Wolfeschlegelsteinhausenbergerdorff,_Sr.\r\n  [2]: https://i.stack.imgur.com/7mdyr.png",
+            "link": "https://stackoverflow.com/questions/50348514/how-can-i-wrap-a-touchableopacity-around-text-within-text",
+            "title": "How can I wrap a TouchableOpacity around Text within Text?",
+            "body": "<p>I am trying to perform something like the following, which React Native does not like.</p>\n\n<p>I want to wrap <em>clickable</em> text in a TouchableOpacity, and with its own styles.</p>\n\n<p>By wrapping it in a parent <code>Text</code> component, all of the text sits perfectly side by side. However, I can't put a <code>TouchableOpacity</code> inside of a <code>Text</code> component. </p>\n\n<pre><code>&lt;View&gt;\n  &lt;Text&gt;\n    &lt;Text&gt;Hello my name is&lt;/Text&gt;\n    &lt;TouchableOpacity onPress={this.openProfile}&gt;\n      &lt;Text style={styles.clickable}&gt;{ name }&lt;/Text&gt;\n    &lt;/TouchableOpacity&gt;\n    &lt;Text&gt;, I am currently working at &lt;/Text&gt;\n    &lt;TouchableOpacity onPress={this.openCompanyPage}&gt;\n      &lt;Text style={styles.clickable}&gt;{ company }&lt;/Text&gt;\n    &lt;/TouchableOpacity&gt;\n  &lt;/Text&gt;\n&lt;/View&gt;\n</code></pre>\n\n<p>I get the error: <code>Views nested within a &lt;Text&gt; must have a width and height</code>. I am unable to set those measurements as I want them to be dynamic and be dependant on the content.</p>\n\n<p>For example <code>name</code> could be John Smith or <a href=\"https://en.wikipedia.org/wiki/Hubert_Blaine_Wolfeschlegelsteinhausenbergerdorff,_Sr.\" rel=\"nofollow noreferrer\">Hubert Blaine Wolfe­schlegel­stein­hausen­berger­dorff Sr</a>.</p>\n\n<p>As per comment, I want to render portions of the text with custom styles. I can do that effortlessly by placing <a href=\"https://stackoverflow.com/questions/39002583/superscript-text-in-react-native\">Text within Text</a>. Now I want to add a clickable area to those portions of text (\"Dan\", \"Google\"). But I cannot embed a TouchableOpacity inside of a Text element.</p>\n\n<p><a href=\"https://i.stack.imgur.com/7mdyr.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/7mdyr.png\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "8051"
+            ],
+            "owner": {
+                "reputation": 52,
+                "user_id": 7426990,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1838851849724456/picture?type=large",
+                "display_name": "Animesh Srivastava",
+                "link": "https://stackoverflow.com/users/7426990/animesh-srivastava"
+            },
+            "is_answered": true,
+            "view_count": 37,
+            "accepted_answer_id": 50363041,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526448557,
+            "creation_date": 1520920607,
+            "last_edit_date": 1520920828,
+            "question_id": 49249197,
+            "body_markdown": "Let p0.0 be set to receive inputs and that it switches ON only once with an initial value 0f 0. Assuming that 8051 follows a regular Von Neumann Architecture , how can the number of cycles can be reduced?\r\nThe code is:\r\n\r\n    BACK :JNB P0.0,SKIP\r\n    DO_SOMETHING: CALL FIRST\r\n    SKIP: CALL SECOND                \r\n    SJMP BACK\r\n\r\nI just know that `Self Modifying Code` is to be used but don&#39;t know how to implement it. ",
+            "link": "https://stackoverflow.com/questions/49249197/self-modifying-code-8051",
+            "title": "Self Modifying Code 8051",
+            "body": "<p>Let p0.0 be set to receive inputs and that it switches ON only once with an initial value 0f 0. Assuming that 8051 follows a regular Von Neumann Architecture , how can the number of cycles can be reduced?\nThe code is:</p>\n\n<pre><code>BACK :JNB P0.0,SKIP\nDO_SOMETHING: CALL FIRST\nSKIP: CALL SECOND                \nSJMP BACK\n</code></pre>\n\n<p>I just know that <code>Self Modifying Code</code> is to be used but don't know how to implement it. </p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 18
+}

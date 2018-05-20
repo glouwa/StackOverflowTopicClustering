@@ -1,0 +1,841 @@
+{
+    "items": [
+        {
+            "tags": [
+                "json",
+                "scala",
+                "parsing",
+                "playframework"
+            ],
+            "owner": {
+                "reputation": 26,
+                "user_id": 4970711,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://www.gravatar.com/avatar/ea9c258b7b2be6853e4c67e1f6c3715a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "ElGatoGabe",
+                "link": "https://stackoverflow.com/users/4970711/elgatogabe"
+            },
+            "is_answered": true,
+            "view_count": 36,
+            "accepted_answer_id": 50247102,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1526449236,
+            "creation_date": 1525840611,
+            "last_edit_date": 1526449236,
+            "question_id": 50245602,
+            "body_markdown": "Say the JSON response I&#39;m working with is formatted as follows:\r\n\r\n    [\r\n        {\r\n           &quot;make&quot;: &quot;Tesla&quot;,\r\n           &quot;model&quot;: &quot;Model S&quot;,\r\n           &quot;year&quot;: 2017,\r\n           &quot;color&quot;: &quot;red&quot;,\r\n           &quot;owner&quot;: &quot;Bob&quot;,\r\n           &quot;max_speed&quot;: 200,\r\n           &quot;wheel_size&quot;: 30,\r\n           &quot;is_convertible&quot;: true,\r\n           &quot;license&quot;: &quot;ABC123&quot;,\r\n           &quot;cost&quot;: 50000,\r\n           &quot;down_payment&quot;: 2500,\r\n           &quot;other_property_1&quot;: 1,\r\n           &quot;other_property_2&quot;: 2,\r\n           &quot;other_property_3&quot;: 3,\r\n           &quot;other_property_4&quot;: 4,\r\n           &quot;other_property_5&quot;: 5,\r\n           &quot;other_property_6&quot;: 6,\r\n           &quot;other_property_7&quot;: 7,\r\n           &quot;other_property_8&quot;: 8,\r\n           &quot;other_property_9&quot;: 9,\r\n           &quot;other_property_10&quot;: 10,\r\n           &quot;other_property_11&quot;: 11\r\n        }\r\n    ]\r\nThe JSON here is an array of car objects (just 1 for simplicity), and I am trying to convert this into a model using a JSON Reads converter. Let&#39;s say I have a Car case class to represent each object, and that class has has a nested FinancialInfo case class to split up the amount of attributes logically, so to avoid Scala&#39;s 22 parameter limit.\r\n\r\n    import play.api.libs.functional.syntax._\r\n    import play.api.libs.json._\r\n\r\n    case class Car(\r\n        make: String,\r\n        model: String,\r\n        year: Int,\r\n        color: String,\r\n        owner: String,\r\n        maxSpeed: Int,\r\n        wheelSize: Int,\r\n        isConvertible: Boolean,\r\n        license: String,\r\n        financialInfo: FinancialInfo, // nested case class to avoid 22 param limit\r\n        otherProperty1: Int,\r\n        otherProperty2: Int,\r\n        otherProperty3: Int,\r\n        otherProperty4: Int,\r\n        otherProperty5: Int,\r\n        otherProperty6: Int,\r\n        otherProperty7: Int,\r\n        otherProperty8: Int,\r\n        otherProperty9: Int,\r\n        otherProperty10: Int,\r\n        otherProperty11: Int\r\n    )\r\n \r\n    object Car {\r\n        implicit val reads: Reads[Car] = (\r\n            (__ \\ &quot;make&quot;).read[String] and\r\n            (__ \\ &quot;model&quot;).read[String] and\r\n            (__ \\ &quot;year&quot;).read[Int] and\r\n            (__ \\ &quot;color&quot;).read[String] and\r\n            (__ \\ &quot;owner&quot;).read[String] and\r\n            (__ \\ &quot;max_speed&quot;).read[Int] and\r\n            (__ \\ &quot;wheel_size&quot;).read[Int] and\r\n            (__ \\ &quot;is_convertible&quot;).read[Boolean] and\r\n            (__ \\ &quot;license&quot;).read[String] and\r\n            (__ \\ &quot;financialInfo&quot;).read[FinancialInfo] and\r\n            (__ \\ &quot;other_property_1&quot;).read[Int] and\r\n            (__ \\ &quot;other_property_2&quot;).read[Int] and\r\n            (__ \\ &quot;other_property_3&quot;).read[Int] and\r\n            (__ \\ &quot;other_property_4&quot;).read[Int] and\r\n            (__ \\ &quot;other_property_5&quot;).read[Int] and\r\n            (__ \\ &quot;other_property_6&quot;).read[Int] and\r\n            (__ \\ &quot;other_property_7&quot;).read[Int] and\r\n            (__ \\ &quot;other_property_8&quot;).read[Int] and\r\n            (__ \\ &quot;other_property_9&quot;).read[Int] and\r\n            (__ \\ &quot;other_property_10&quot;).read[Int] and\r\n            (__ \\ &quot;other_property_11&quot;).read[Int]\r\n        )(Car.apply _)\r\n    }\r\n    \r\n    case class FinancialInfo(\r\n       cost: BigDecimal,\r\n       downPayment: BigDecimal\r\n    )\r\n\r\n    object FinancialInfo {\r\n        implicit val reads: Reads[FinancialInfo] = (\r\n            (__ \\ &quot;cost&quot;).read[BigDecimal] and\r\n            (__ \\ &quot;down_payment&quot;).read[BigDecimal]\r\n        )(FinancialInfo.apply _)\r\n    }\r\n\r\nHowever, I&#39;m guessing since there is no property in the JSON called `financialInfo`, it is not parsing it correctly. In my real application, I&#39;m getting this error when I use `response.json.validate[List[Car]]`:\r\n\r\n    JsError(List(((0)/financialInfo,List(JsonValidationError(List(error.path.missing),WrappedArray()))))) \r\n    \r\nTo summarize, in the example, `cost` and `down_payment` are not contained in a nested object, even though for the Car case class I had to include a nested model called `financialInfo`. What is the best way to work around this error and make sure the values for `cost` and `down_payment` can be parsed? Any help or insight would be greatly appreciated!",
+            "link": "https://stackoverflow.com/questions/50245602/convert-json-to-case-class-with-a-nested-objects-using-scala-play",
+            "title": "Convert JSON to case class with a nested objects using Scala/Play",
+            "body": "<p>Say the JSON response I'm working with is formatted as follows:</p>\n\n<pre><code>[\n    {\n       \"make\": \"Tesla\",\n       \"model\": \"Model S\",\n       \"year\": 2017,\n       \"color\": \"red\",\n       \"owner\": \"Bob\",\n       \"max_speed\": 200,\n       \"wheel_size\": 30,\n       \"is_convertible\": true,\n       \"license\": \"ABC123\",\n       \"cost\": 50000,\n       \"down_payment\": 2500,\n       \"other_property_1\": 1,\n       \"other_property_2\": 2,\n       \"other_property_3\": 3,\n       \"other_property_4\": 4,\n       \"other_property_5\": 5,\n       \"other_property_6\": 6,\n       \"other_property_7\": 7,\n       \"other_property_8\": 8,\n       \"other_property_9\": 9,\n       \"other_property_10\": 10,\n       \"other_property_11\": 11\n    }\n]\n</code></pre>\n\n<p>The JSON here is an array of car objects (just 1 for simplicity), and I am trying to convert this into a model using a JSON Reads converter. Let's say I have a Car case class to represent each object, and that class has has a nested FinancialInfo case class to split up the amount of attributes logically, so to avoid Scala's 22 parameter limit.</p>\n\n<pre><code>import play.api.libs.functional.syntax._\nimport play.api.libs.json._\n\ncase class Car(\n    make: String,\n    model: String,\n    year: Int,\n    color: String,\n    owner: String,\n    maxSpeed: Int,\n    wheelSize: Int,\n    isConvertible: Boolean,\n    license: String,\n    financialInfo: FinancialInfo, // nested case class to avoid 22 param limit\n    otherProperty1: Int,\n    otherProperty2: Int,\n    otherProperty3: Int,\n    otherProperty4: Int,\n    otherProperty5: Int,\n    otherProperty6: Int,\n    otherProperty7: Int,\n    otherProperty8: Int,\n    otherProperty9: Int,\n    otherProperty10: Int,\n    otherProperty11: Int\n)\n\nobject Car {\n    implicit val reads: Reads[Car] = (\n        (__ \\ \"make\").read[String] and\n        (__ \\ \"model\").read[String] and\n        (__ \\ \"year\").read[Int] and\n        (__ \\ \"color\").read[String] and\n        (__ \\ \"owner\").read[String] and\n        (__ \\ \"max_speed\").read[Int] and\n        (__ \\ \"wheel_size\").read[Int] and\n        (__ \\ \"is_convertible\").read[Boolean] and\n        (__ \\ \"license\").read[String] and\n        (__ \\ \"financialInfo\").read[FinancialInfo] and\n        (__ \\ \"other_property_1\").read[Int] and\n        (__ \\ \"other_property_2\").read[Int] and\n        (__ \\ \"other_property_3\").read[Int] and\n        (__ \\ \"other_property_4\").read[Int] and\n        (__ \\ \"other_property_5\").read[Int] and\n        (__ \\ \"other_property_6\").read[Int] and\n        (__ \\ \"other_property_7\").read[Int] and\n        (__ \\ \"other_property_8\").read[Int] and\n        (__ \\ \"other_property_9\").read[Int] and\n        (__ \\ \"other_property_10\").read[Int] and\n        (__ \\ \"other_property_11\").read[Int]\n    )(Car.apply _)\n}\n\ncase class FinancialInfo(\n   cost: BigDecimal,\n   downPayment: BigDecimal\n)\n\nobject FinancialInfo {\n    implicit val reads: Reads[FinancialInfo] = (\n        (__ \\ \"cost\").read[BigDecimal] and\n        (__ \\ \"down_payment\").read[BigDecimal]\n    )(FinancialInfo.apply _)\n}\n</code></pre>\n\n<p>However, I'm guessing since there is no property in the JSON called <code>financialInfo</code>, it is not parsing it correctly. In my real application, I'm getting this error when I use <code>response.json.validate[List[Car]]</code>:</p>\n\n<pre><code>JsError(List(((0)/financialInfo,List(JsonValidationError(List(error.path.missing),WrappedArray()))))) \n</code></pre>\n\n<p>To summarize, in the example, <code>cost</code> and <code>down_payment</code> are not contained in a nested object, even though for the Car case class I had to include a nested model called <code>financialInfo</code>. What is the best way to work around this error and make sure the values for <code>cost</code> and <code>down_payment</code> can be parsed? Any help or insight would be greatly appreciated!</p>\n"
+        },
+        {
+            "tags": [
+                "asp.net",
+                "intellisense",
+                "devexpress"
+            ],
+            "owner": {
+                "reputation": 8901,
+                "user_id": 326821,
+                "user_type": "registered",
+                "accept_rate": 51,
+                "profile_image": "https://www.gravatar.com/avatar/04e06009d1b04f39bc31519821e63479?s=128&d=identicon&r=PG",
+                "display_name": "gruber",
+                "link": "https://stackoverflow.com/users/326821/gruber"
+            },
+            "is_answered": true,
+            "view_count": 141,
+            "accepted_answer_id": 3575102,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526449211,
+            "creation_date": 1282826012,
+            "last_edit_date": 1526449211,
+            "question_id": 3575056,
+            "body_markdown": "I&#39;ve got problem with IntelliSense in markup for example:\r\n\r\nWhen I type \r\n\r\n    &lt;dxwgv:ASPxGridView ID=&quot;grid&quot; runat=&quot;server&quot;&gt;\r\n       &lt;Columns&gt;\r\n          &lt; -- here I hit ctrl + space and only normla html tags are shown: a, abbr ... --\r\n          But I would like to have available columns instead :/\r\n       &lt;/Columns&gt;\r\n    &lt;/ dxwgv:ASPxGridView&gt;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/3575056/devexpress-intellisense-in-markup",
+            "title": "Devexpress IntelliSense in markup",
+            "body": "<p>I've got problem with IntelliSense in markup for example:</p>\n\n<p>When I type </p>\n\n<pre><code>&lt;dxwgv:ASPxGridView ID=\"grid\" runat=\"server\"&gt;\n   &lt;Columns&gt;\n      &lt; -- here I hit ctrl + space and only normla html tags are shown: a, abbr ... --\n      But I would like to have available columns instead :/\n   &lt;/Columns&gt;\n&lt;/ dxwgv:ASPxGridView&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "memory"
+            ],
+            "owner": {
+                "reputation": 379,
+                "user_id": 1256234,
+                "user_type": "registered",
+                "accept_rate": 68,
+                "profile_image": "https://i.stack.imgur.com/8hkBI.png?s=128&g=1",
+                "display_name": "Andy J",
+                "link": "https://stackoverflow.com/users/1256234/andy-j"
+            },
+            "is_answered": true,
+            "view_count": 547,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1526449211,
+            "creation_date": 1426828801,
+            "last_edit_date": 1526449211,
+            "question_id": 29159918,
+            "body_markdown": "Recently I have been studying the basics of Hamming, R-S and BCH ECC schemes for NAND flash.\r\n\r\nAccording to [this][1] source (at the bottom of the page), for BCH, you could have a sector size of 512B or 1024B.  The number of parity bits depends on the sector size.\r\n\r\nMy question -- When dealing with ECC, is the sector size (512B or 1024B) &quot;user selectable&quot;?  That is, selectable by the software programmer?  Or is this something set in stone by the NAND vendor that you must comply with?\r\n\r\nThanks so much guys!\r\n\r\nAndrew\r\n\r\n  [1]: http://www.cyclicdesign.com/index.php/parity-bytes/2-bch/27-nand-ecc-how-many-parity-bytes",
+            "link": "https://stackoverflow.com/questions/29159918/nand-ecc-sector-size",
+            "title": "NAND ECC sector size",
+            "body": "<p>Recently I have been studying the basics of Hamming, R-S and BCH ECC schemes for NAND flash.</p>\n\n<p>According to <a href=\"http://www.cyclicdesign.com/index.php/parity-bytes/2-bch/27-nand-ecc-how-many-parity-bytes\" rel=\"nofollow noreferrer\">this</a> source (at the bottom of the page), for BCH, you could have a sector size of 512B or 1024B.  The number of parity bits depends on the sector size.</p>\n\n<p>My question -- When dealing with ECC, is the sector size (512B or 1024B) \"user selectable\"?  That is, selectable by the software programmer?  Or is this something set in stone by the NAND vendor that you must comply with?</p>\n\n<p>Thanks so much guys!</p>\n\n<p>Andrew</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "mockito",
+                "junit4"
+            ],
+            "owner": {
+                "reputation": 57,
+                "user_id": 4611561,
+                "user_type": "registered",
+                "accept_rate": 33,
+                "profile_image": "https://lh5.googleusercontent.com/-SDdaw-_odI4/AAAAAAAAAAI/AAAAAAAACDo/ydxGv1x4rPk/photo.jpg?sz=128",
+                "display_name": "Pradeep",
+                "link": "https://stackoverflow.com/users/4611561/pradeep"
+            },
+            "is_answered": true,
+            "view_count": 183,
+            "accepted_answer_id": 50363162,
+            "answer_count": 2,
+            "score": 3,
+            "last_activity_date": 1526449208,
+            "creation_date": 1501878011,
+            "last_edit_date": 1526417226,
+            "question_id": 45514907,
+            "body_markdown": "I have only parameterized constructor in my code and i need to inject through it.\r\n\r\nI want to spy parameterized constructor to inject mock object as dependency for my junit.\r\n\r\n    public RegDao(){\r\n     //original object instantiation here\r\n    Notification ....\r\n    EntryService .....\r\n    }\r\n\r\n    public RegDao(Notification notification , EntryService entry) {\r\n     // initialize here\r\n    }\r\n\r\n    we have something like below : \r\n    RegDao dao = Mockito.spy(RegDao.class);\r\n\r\nBut do we have something that i can inject mocked object in the Constructor and spy it?.\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/45514907/why-cannot-we-create-spy-for-parameterized-constructor-using-mockito",
+            "title": "why cannot we create spy for Parameterized Constructor using Mockito",
+            "body": "<p>I have only parameterized constructor in my code and i need to inject through it.</p>\n\n<p>I want to spy parameterized constructor to inject mock object as dependency for my junit.</p>\n\n<pre><code>public RegDao(){\n //original object instantiation here\nNotification ....\nEntryService .....\n}\n\npublic RegDao(Notification notification , EntryService entry) {\n // initialize here\n}\n\nwe have something like below : \nRegDao dao = Mockito.spy(RegDao.class);\n</code></pre>\n\n<p>But do we have something that i can inject mocked object in the Constructor and spy it?.</p>\n"
+        },
+        {
+            "tags": [
+                "docker",
+                "tox"
+            ],
+            "owner": {
+                "reputation": 257,
+                "user_id": 7789085,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://www.gravatar.com/avatar/3bab57a193bd4bb5793590f029892dd5?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Fact",
+                "link": "https://stackoverflow.com/users/7789085/fact"
+            },
+            "is_answered": true,
+            "view_count": 24,
+            "accepted_answer_id": 50363090,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526449200,
+            "creation_date": 1526439225,
+            "question_id": 50361816,
+            "body_markdown": "Can anyone could give me a clue why I am not able run a command in ENTRYPOINT.\r\nMy Docker file looks like \r\n\r\n    .....\r\n    .....  \r\n    ENTRYPOINT [&quot;bash -c tox -e docker-server&quot;]\r\n\r\nBut when I do Dcoker run, I get this error\r\n\r\n    Docker: Error response from daemon: OCI runtime create failed: \r\n    container_linux.go:348: starting container process caused &quot;exec: \\&quot;bash -c \r\n    tox -e docker-server\\&quot;: executable file not found in $PATH&quot;: unknown.\r\n\r\nThen I changed the command to ENTRYPOINT [&quot;sh ls -l&quot;], this time too I got any error \r\n\r\n    Docker: Error response from daemon: OCI runtime create failed: \r\n    container_linux.go:348: starting container process caused &quot;exec: \\&quot;sh ls - \r\n    l\\&quot;: executable file not found in $PATH&quot;: unknown.\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50361816/docker-entrypoint-doesnt-execute-command-tox",
+            "title": "Docker ENTRYPOINT doesn&#39;t execute command/ tox",
+            "body": "<p>Can anyone could give me a clue why I am not able run a command in ENTRYPOINT.\nMy Docker file looks like </p>\n\n<pre><code>.....\n.....  \nENTRYPOINT [\"bash -c tox -e docker-server\"]\n</code></pre>\n\n<p>But when I do Dcoker run, I get this error</p>\n\n<pre><code>Docker: Error response from daemon: OCI runtime create failed: \ncontainer_linux.go:348: starting container process caused \"exec: \\\"bash -c \ntox -e docker-server\\\": executable file not found in $PATH\": unknown.\n</code></pre>\n\n<p>Then I changed the command to ENTRYPOINT [\"sh ls -l\"], this time too I got any error </p>\n\n<pre><code>Docker: Error response from daemon: OCI runtime create failed: \ncontainer_linux.go:348: starting container process caused \"exec: \\\"sh ls - \nl\\\": executable file not found in $PATH\": unknown.\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "asp.net-mvc",
+                "razor"
+            ],
+            "owner": {
+                "reputation": 2026,
+                "user_id": 2619051,
+                "user_type": "registered",
+                "accept_rate": 89,
+                "profile_image": "https://graph.facebook.com/100000607106478/picture?type=large",
+                "display_name": "Don Thomas Boyle",
+                "link": "https://stackoverflow.com/users/2619051/don-thomas-boyle"
+            },
+            "is_answered": true,
+            "view_count": 692,
+            "accepted_answer_id": 17952821,
+            "answer_count": 2,
+            "score": 3,
+            "last_activity_date": 1526449183,
+            "creation_date": 1374861708,
+            "last_edit_date": 1526449183,
+            "question_id": 17888009,
+            "body_markdown": "Explanation: \r\n\r\nThe Views are generated with the default scaffolding type : &quot;MVC controller with read/write actions and view, using Entity Framework&quot;\r\n\r\n**I would like to know why the *&quot;DOES NOT SHOW UP INTELLISENSE&quot;* don&#39;t show the intellisense after *chaning the strongly* typed Model, even if you chang it back.**\r\n\r\n\r\n    &lt;table&gt;\r\n    &lt;tr&gt;\r\n        &lt;th&gt;\r\n            @Html.DisplayNameFor(model =&gt; model.UserName) &lt;- DOES NOT SHOW UP (INTELLISENSE)unless strongly typed against a NON-Collection must remove lambda expression\r\n        &lt;/th&gt;\r\n        &lt;th&gt;\r\n            @Html.DisplayNameFor(model =&gt; model.)&lt;- DOES NOT SHOW UP (INTELLISENSE) unless strongly typed against a NON-Collection must remove lambda expression\r\n        &lt;/th&gt;\r\n        &lt;th&gt;\r\n            @Html.DisplayNameFor(model =&gt; model.)&lt;- DOES NOT SHOW UP (INTELLISENSE)unless strongly typed against a NON-Collection must remove lambda expression\r\n        &lt;/th&gt;\r\n        &lt;th&gt;\r\n\r\n        &lt;/th&gt;\r\n    &lt;/tr&gt;\r\n\r\n\r\n    @foreach (var item in Model) {\r\n    &lt;tr&gt;\r\n        &lt;td&gt;\r\n           @Html.DisplayFor(modelItem =&gt; item.UserName)&lt;- SHOWS INTELLISENSE\r\n        &lt;/td&gt;\r\n        &lt;td&gt;\r\n            @Html.DisplayFor(modelItem =&gt; item.FirstName)&lt;- SHOWS INTELLISENSE\r\n        &lt;/td&gt;\r\n        &lt;td&gt;\r\n",
+            "link": "https://stackoverflow.com/questions/17888009/mvc4-razor-view-intellisense-issues",
+            "title": "MVC4 Razor View IntelliSense Issues",
+            "body": "<p>Explanation: </p>\n\n<p>The Views are generated with the default scaffolding type : \"MVC controller with read/write actions and view, using Entity Framework\"</p>\n\n<p><strong>I would like to know why the <em>\"DOES NOT SHOW UP INTELLISENSE\"</em> don't show the intellisense after <em>chaning the strongly</em> typed Model, even if you chang it back.</strong></p>\n\n<pre><code>&lt;table&gt;\n&lt;tr&gt;\n    &lt;th&gt;\n        @Html.DisplayNameFor(model =&gt; model.UserName) &lt;- DOES NOT SHOW UP (INTELLISENSE)unless strongly typed against a NON-Collection must remove lambda expression\n    &lt;/th&gt;\n    &lt;th&gt;\n        @Html.DisplayNameFor(model =&gt; model.)&lt;- DOES NOT SHOW UP (INTELLISENSE) unless strongly typed against a NON-Collection must remove lambda expression\n    &lt;/th&gt;\n    &lt;th&gt;\n        @Html.DisplayNameFor(model =&gt; model.)&lt;- DOES NOT SHOW UP (INTELLISENSE)unless strongly typed against a NON-Collection must remove lambda expression\n    &lt;/th&gt;\n    &lt;th&gt;\n\n    &lt;/th&gt;\n&lt;/tr&gt;\n\n\n@foreach (var item in Model) {\n&lt;tr&gt;\n    &lt;td&gt;\n       @Html.DisplayFor(modelItem =&gt; item.UserName)&lt;- SHOWS INTELLISENSE\n    &lt;/td&gt;\n    &lt;td&gt;\n        @Html.DisplayFor(modelItem =&gt; item.FirstName)&lt;- SHOWS INTELLISENSE\n    &lt;/td&gt;\n    &lt;td&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c",
+                "pointers",
+                "linked-list"
+            ],
+            "owner": {
+                "reputation": 143,
+                "user_id": 923600,
+                "user_type": "unregistered",
+                "profile_image": "https://www.gravatar.com/avatar/c91989b4b16988841639f2e1b088c38a?s=128&d=identicon&r=PG",
+                "display_name": "a6h",
+                "link": "https://stackoverflow.com/users/923600/a6h"
+            },
+            "is_answered": true,
+            "view_count": 36033,
+            "accepted_answer_id": 7271680,
+            "answer_count": 13,
+            "score": 28,
+            "last_activity_date": 1526449170,
+            "creation_date": 1314886545,
+            "last_edit_date": 1436435514,
+            "question_id": 7271647,
+            "body_markdown": "The two code examples below both add a node at the top of a linked list.\r\nBut whereas the first code example uses a double pointer the second code example uses a single pointer\r\n\r\n**code example 1:**\r\n  \r\n\r\n    struct node* push(struct node **head, int data)\r\n    {\r\n            struct node* newnode = malloc(sizeof(struct node));\r\n            newnode-&gt;data = data;\r\n            newnode-&gt;next = *head;\r\n            return newnode;\r\n    }\r\n\r\n    push(&amp;head,1);\r\n\r\n\r\n**code example 2:**\r\n\r\n\r\n    struct node* push(struct node *head, int data)\r\n    {\r\n            struct node* newnode = malloc(sizeof(struct node));\r\n            newnode-&gt;data = data;\r\n            newnode-&gt;next = head;\r\n            return newnode;\r\n    }\r\n\r\n    push(head,1)\r\n\r\n\r\nBoth strategies work. However, a lot of programs that use a linked list use a double pointer to add a new node. I know what a double pointer is. But if a single pointer would be sufficient to add a new node why do a lot of implementations rely on double pointers?\r\n\r\nIs there any case in which a single pointer does not work so we need to go for a double pointer?",
+            "link": "https://stackoverflow.com/questions/7271647/what-is-the-reason-for-using-a-double-pointer-when-adding-a-node-in-a-linked-lis",
+            "title": "What is the reason for using a double pointer when adding a node in a linked list?",
+            "body": "<p>The two code examples below both add a node at the top of a linked list.\nBut whereas the first code example uses a double pointer the second code example uses a single pointer</p>\n\n<p><strong>code example 1:</strong></p>\n\n<pre><code>struct node* push(struct node **head, int data)\n{\n        struct node* newnode = malloc(sizeof(struct node));\n        newnode-&gt;data = data;\n        newnode-&gt;next = *head;\n        return newnode;\n}\n\npush(&amp;head,1);\n</code></pre>\n\n<p><strong>code example 2:</strong></p>\n\n<pre><code>struct node* push(struct node *head, int data)\n{\n        struct node* newnode = malloc(sizeof(struct node));\n        newnode-&gt;data = data;\n        newnode-&gt;next = head;\n        return newnode;\n}\n\npush(head,1)\n</code></pre>\n\n<p>Both strategies work. However, a lot of programs that use a linked list use a double pointer to add a new node. I know what a double pointer is. But if a single pointer would be sufficient to add a new node why do a lot of implementations rely on double pointers?</p>\n\n<p>Is there any case in which a single pointer does not work so we need to go for a double pointer?</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "xcode",
+                "crittercism"
+            ],
+            "owner": {
+                "reputation": 575,
+                "user_id": 787610,
+                "user_type": "registered",
+                "accept_rate": 93,
+                "profile_image": "https://www.gravatar.com/avatar/de7bacddae46a9afdee74284ebdea287?s=128&d=identicon&r=PG",
+                "display_name": "Anders Sewerin Johansen",
+                "link": "https://stackoverflow.com/users/787610/anders-sewerin-johansen"
+            },
+            "is_answered": true,
+            "view_count": 6532,
+            "accepted_answer_id": 10886047,
+            "answer_count": 2,
+            "score": 19,
+            "last_activity_date": 1526449159,
+            "creation_date": 1338830114,
+            "last_edit_date": 1526449159,
+            "question_id": 10885313,
+            "body_markdown": "I would like for my app to reset to standard settings if it crashed during startup. *Preferably also if it crashed last time it was run*.\r\n\r\nEDIT: **Crittercism** has a `crittercismDidCrashOnLastLoad` method, but it only handles the case of crashing during load. It didn&#39;t work properly in the version of the library I used, but this has since been fixed.\r\n\r\nSuggestions?",
+            "link": "https://stackoverflow.com/questions/10885313/detect-app-crashed-during-load-last-time-it-was-run",
+            "title": "Detect app crashed during load / last time it was run?",
+            "body": "<p>I would like for my app to reset to standard settings if it crashed during startup. <em>Preferably also if it crashed last time it was run</em>.</p>\n\n<p>EDIT: <strong>Crittercism</strong> has a <code>crittercismDidCrashOnLastLoad</code> method, but it only handles the case of crashing during load. It didn't work properly in the version of the library I used, but this has since been fixed.</p>\n\n<p>Suggestions?</p>\n"
+        },
+        {
+            "tags": [
+                "azure",
+                "azure-active-directory",
+                "azure-keyvault",
+                "service-principal"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9773305,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/d045022d71ea06ea20ba70dbe495fad5?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Chaitu",
+                "link": "https://stackoverflow.com/users/9773305/chaitu"
+            },
+            "is_answered": false,
+            "view_count": 56,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526449156,
+            "creation_date": 1526052848,
+            "last_edit_date": 1526449156,
+            "question_id": 50295680,
+            "body_markdown": "I am trying to implement KeyVault managed Storage Account in Azure to rotate storage keys using KeyVault. I did follow the documentation, which uses both &quot;ServicePrincipalID&quot; and &quot;UserPrincipalID&quot;, but in my case i am provisioning my resources and implementing all the steps involved using my service principal (as we deploy using VSTS with service principal) and using &quot;ServicePrincipalID&quot; as ObjectID in place of &quot;UserPrincipalID&quot; (as there is no user intervention during provisioning and post-provisioning process). I did give my service principal &quot;Owner&quot; role and all required permissions for keyvault to access storage. But when i do &quot;Add-AzureKeyVaultManagedStorageAccount&quot; i get the below error which says &quot;KeyVault is unable to perform the action on behalf of the caller&quot;. So i am not sure what access i am still missing, even after making my principal as Owner. Please find my screenshots below for more details. Would be glad to hear any suggestions to cross this hurdle.\r\n\r\n\r\n[Error][1]\r\n[KeyVault details][2]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/U3SPh.png\r\n  [2]: https://i.stack.imgur.com/tIjW7.png\r\n\r\nThanks\r\nChaitanya Alladi.",
+            "link": "https://stackoverflow.com/questions/50295680/azure-keyvault-managed-storage-account",
+            "title": "Azure KeyVault Managed Storage Account",
+            "body": "<p>I am trying to implement KeyVault managed Storage Account in Azure to rotate storage keys using KeyVault. I did follow the documentation, which uses both \"ServicePrincipalID\" and \"UserPrincipalID\", but in my case i am provisioning my resources and implementing all the steps involved using my service principal (as we deploy using VSTS with service principal) and using \"ServicePrincipalID\" as ObjectID in place of \"UserPrincipalID\" (as there is no user intervention during provisioning and post-provisioning process). I did give my service principal \"Owner\" role and all required permissions for keyvault to access storage. But when i do \"Add-AzureKeyVaultManagedStorageAccount\" i get the below error which says \"KeyVault is unable to perform the action on behalf of the caller\". So i am not sure what access i am still missing, even after making my principal as Owner. Please find my screenshots below for more details. Would be glad to hear any suggestions to cross this hurdle.</p>\n\n<p><a href=\"https://i.stack.imgur.com/U3SPh.png\" rel=\"nofollow noreferrer\">Error</a>\n<a href=\"https://i.stack.imgur.com/tIjW7.png\" rel=\"nofollow noreferrer\">KeyVault details</a></p>\n\n<p>Thanks\nChaitanya Alladi.</p>\n"
+        },
+        {
+            "tags": [
+                "netty",
+                "solaris"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9450800,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "DongKwang Kim",
+                "link": "https://stackoverflow.com/users/9450800/dongkwang-kim"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526449150,
+            "creation_date": 1526448322,
+            "last_edit_date": 1526449150,
+            "question_id": 50362991,
+            "body_markdown": "I have been using netty-tcnative-1.1.33.Fork17 for my web server program on solaris since 2016. (JDK1.7 32bit, netty-4.0.25, solaris11).\r\nIt is good ssl provider for me who develop java program on solaris sparc.\r\n\r\nThen, I will update netty and netty-tcnative version on solaris sparc. \r\nThere are many updated netty and netty-tcnative after I used.\r\n\r\nNow, netty major version is 4.1.x ,   netty-tcnative major version is 2.0.x. I think I have to use this version.\r\nHowever, over netty-tcnative 2.0.2~8 package used not supported string function(strndup) on solaris sparc in jnilib.c.\r\n\r\nFinally, I comple and package netty-tcnative-2.0.1 with netty 4.1.13.Final on solaris sparc.(JDK1.8 64bit)\r\n\r\nQuestion1. There are anyother reason not support solaris sparc after netty-tcnative-2.0.2? \r\n           I&#39;m concerned about my netty-tcnative package for running. &lt;br/&gt;\r\nQuestion2. Can you change or include string function(strndup) on further version for solaris..? \r\n\r\nThanks..",
+            "link": "https://stackoverflow.com/questions/50362991/building-on-netty-tcnative-for-solaris",
+            "title": "Building on netty-tcnative for solaris?",
+            "body": "<p>I have been using netty-tcnative-1.1.33.Fork17 for my web server program on solaris since 2016. (JDK1.7 32bit, netty-4.0.25, solaris11).\nIt is good ssl provider for me who develop java program on solaris sparc.</p>\n\n<p>Then, I will update netty and netty-tcnative version on solaris sparc. \nThere are many updated netty and netty-tcnative after I used.</p>\n\n<p>Now, netty major version is 4.1.x ,   netty-tcnative major version is 2.0.x. I think I have to use this version.\nHowever, over netty-tcnative 2.0.2~8 package used not supported string function(strndup) on solaris sparc in jnilib.c.</p>\n\n<p>Finally, I comple and package netty-tcnative-2.0.1 with netty 4.1.13.Final on solaris sparc.(JDK1.8 64bit)</p>\n\n<p>Question1. There are anyother reason not support solaris sparc after netty-tcnative-2.0.2? \n           I'm concerned about my netty-tcnative package for running. <br/>\nQuestion2. Can you change or include string function(strndup) on further version for solaris..? </p>\n\n<p>Thanks..</p>\n"
+        },
+        {
+            "tags": [
+                "bitmap",
+                "automation",
+                "ocr",
+                "tesseract"
+            ],
+            "owner": {
+                "reputation": 2825,
+                "user_id": 227926,
+                "user_type": "registered",
+                "accept_rate": 93,
+                "profile_image": "https://www.gravatar.com/avatar/712c209dd792e2149ad79869aced2077?s=128&d=identicon&r=PG",
+                "display_name": "therobyouknow",
+                "link": "https://stackoverflow.com/users/227926/therobyouknow"
+            },
+            "is_answered": true,
+            "view_count": 2417,
+            "accepted_answer_id": 2722078,
+            "answer_count": 1,
+            "score": 3,
+            "last_activity_date": 1526449149,
+            "creation_date": 1268665682,
+            "last_edit_date": 1526449149,
+            "question_id": 2448106,
+            "body_markdown": "I want to remove rectangles etc that enclose text in a screenshot image, so that I can perform optical character recognition to get accurate text from the screenshot.\r\n\r\n**Background:**\r\n\r\nI doing this to extract data from a legacy application for use with other applications. This is the only way to get at this data as associated files are in a closed, proprietary, binary format.\r\n\r\nI will be using AutoItScript to drive the application to show data in its UI, then I will screenshot this and feed this to tesseract.\r\n\r\nI&#39;ve already had *some* success in automating the UI, and have been able to use tesseract to get plain ascii text out of the bitmap.\r\n\r\nThere are several AutoItScripr forum articles discussing its use with tesseract/OCR but not specifically for my question.\r\nhttp://www.autoitscript.com/forum/index.php?s=6c32c3ece12756e635a619cdf175eff9&amp;showforum=2\r\n\r\n**What I need to do**\r\n\r\nThere are thin, 1-pixel wide rectangles that closely enclose some text, when fed to tesseract, it sees them as I for example for a verticle line of the rectangle.\r\n\r\nAny thoughts on how to remove the rectangles, or best practices?\r\n\r\nI&#39;m asking if there is a generic command line based toolset to overwrite rectangles, for example, in .png files. I could then pass the .png through this, then pass it to tesseract.\r\n\r\n**Details on the tesseract release/setup I&#39;ve used are as follows:**\r\n\r\nGo here: http://code.google.com/p/tesseract-ocr/downloads/list\r\n- For the basic english generic character set to get Tesseract up and running and recognising your bitmapped text into ascii text, use tesseract-2.00.eng.tar.gz (current version at time of writing is: &quot;English language data for Tesseract (2.00 and up) Jul 2007 989 KB 84845&quot;)\r\n\r\n**Related questions I have already looked at on Stack Overflow**\r\n\r\n  - https://stackoverflow.com/questions/1335581/how-to-give-best-chance-of-success-to-an-ocr-software\r\n\r\n  - https://stackoverflow.com/questions/2296568/analysis-and-transformation-of-the-image-on-the-basis-of-this-analysis-for-better\r\n\r\n  - https://stackoverflow.com/questions/2268028/reading-characters-off-of-the-screen\r\n\r\nIn these, my question is not completely answered or a commercial solution is being sold. I do not want to consider a commercial solution at this stage.\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/2448106/ocr-how-to-improve-accuracy-existing-libraries-for-removing-non-text-furnitu",
+            "title": "OCR: How to improve accuracy - existing libraries for removing non-text &#39;furniture&#39;, shapes, etc to avoid confusing OCR?",
+            "body": "<p>I want to remove rectangles etc that enclose text in a screenshot image, so that I can perform optical character recognition to get accurate text from the screenshot.</p>\n\n<p><strong>Background:</strong></p>\n\n<p>I doing this to extract data from a legacy application for use with other applications. This is the only way to get at this data as associated files are in a closed, proprietary, binary format.</p>\n\n<p>I will be using AutoItScript to drive the application to show data in its UI, then I will screenshot this and feed this to tesseract.</p>\n\n<p>I've already had <em>some</em> success in automating the UI, and have been able to use tesseract to get plain ascii text out of the bitmap.</p>\n\n<p>There are several AutoItScripr forum articles discussing its use with tesseract/OCR but not specifically for my question.\n<a href=\"http://www.autoitscript.com/forum/index.php?s=6c32c3ece12756e635a619cdf175eff9&amp;showforum=2\" rel=\"nofollow noreferrer\">http://www.autoitscript.com/forum/index.php?s=6c32c3ece12756e635a619cdf175eff9&amp;showforum=2</a></p>\n\n<p><strong>What I need to do</strong></p>\n\n<p>There are thin, 1-pixel wide rectangles that closely enclose some text, when fed to tesseract, it sees them as I for example for a verticle line of the rectangle.</p>\n\n<p>Any thoughts on how to remove the rectangles, or best practices?</p>\n\n<p>I'm asking if there is a generic command line based toolset to overwrite rectangles, for example, in .png files. I could then pass the .png through this, then pass it to tesseract.</p>\n\n<p><strong>Details on the tesseract release/setup I've used are as follows:</strong></p>\n\n<p>Go here: <a href=\"http://code.google.com/p/tesseract-ocr/downloads/list\" rel=\"nofollow noreferrer\">http://code.google.com/p/tesseract-ocr/downloads/list</a>\n- For the basic english generic character set to get Tesseract up and running and recognising your bitmapped text into ascii text, use tesseract-2.00.eng.tar.gz (current version at time of writing is: \"English language data for Tesseract (2.00 and up) Jul 2007 989 KB 84845\")</p>\n\n<p><strong>Related questions I have already looked at on Stack Overflow</strong></p>\n\n<ul>\n<li><p><a href=\"https://stackoverflow.com/questions/1335581/how-to-give-best-chance-of-success-to-an-ocr-software\">How to give best chance of success to an OCR software?</a></p></li>\n<li><p><a href=\"https://stackoverflow.com/questions/2296568/analysis-and-transformation-of-the-image-on-the-basis-of-this-analysis-for-better\">Analysis and transformation of the image on the basis of this analysis for better OCR results</a></p></li>\n<li><p><a href=\"https://stackoverflow.com/questions/2268028/reading-characters-off-of-the-screen\">Reading characters off the screen</a></p></li>\n</ul>\n\n<p>In these, my question is not completely answered or a commercial solution is being sold. I do not want to consider a commercial solution at this stage.</p>\n"
+        },
+        {
+            "tags": [
+                "django",
+                "django-models",
+                "django-serializer"
+            ],
+            "owner": {
+                "reputation": 41,
+                "user_id": 9354059,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a0b61e5016a80de4aa0966aadcbc4761?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Adam ",
+                "link": "https://stackoverflow.com/users/9354059/adam"
+            },
+            "is_answered": true,
+            "view_count": 17,
+            "accepted_answer_id": 50363092,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526449136,
+            "creation_date": 1526448512,
+            "question_id": 50363029,
+            "body_markdown": "Using django 2.0.2\r\n\r\npython3.4\r\n\r\nmodels.py\r\n\r\n    class Userinfo(models.Model):\r\n    \r\n        useruid = models.BigAutoField(db_column=&#39;UserUID&#39;, primary_key=True)\r\n    \r\n        username = models.TextField(db_column=&#39;Content&#39;)\r\n    \r\n        registerdate = models.DateTimeField(db_column=&#39;RegisterDate&#39;)\r\n    \r\n        class Meta:\r\n            managed = False\r\n            db_table = &#39;userinfo&#39;\r\n\r\n    class Postinfo(models.Model):\r\n    \r\n        postuid = models.BigAutoField(db_column=&#39;PostUID&#39;, primary_key=True)\r\n    \r\n        useruid = models.ForeignKey(\r\n        Userinfo, db_column=&#39;UserUID&#39;, on_delete=models.CASCADE)\r\n    \r\n        content = models.TextField(db_column=&#39;Content&#39;)\r\n    \r\n        registerdate = models.DateTimeField(db_column=&#39;RegisterDate&#39;)\r\n    \r\n        class Meta:\r\n            managed = False\r\n            db_table = &#39;postinfo&#39;\r\n\r\nserializer.py\r\n\r\n    class req_AddPostSerializer(serializers.HyperlinkedModelSerializer):\r\n        class Meta:\r\n            model = models.Postinfo\r\n            fields = (&#39;useruid&#39;,  &#39;content&#39;)\r\n\r\nviews.py\r\n\r\n    class AddPost(viewsets.ModelViewSet):\r\n        queryset = &#39;&#39;\r\n        serializer_class = req_AddPostSerializer\r\n        \r\n        def create(self, request, *args, **kwargs):\r\n            serializer = req_AddPostSerializer(\r\n                data=request.data)\r\n            if not serializer.is_valid():\r\n                return Response(serilizer.errors)\r\n            serializer.save()\r\n            return Response(&quot;succes&quot;)\r\n\r\nrequest.data\r\n\r\n    {\r\n        &quot;useruid&quot;: &quot;1&quot;,\r\n        &quot;content&quot;: &quot;test&quot;\r\n    }\r\n\r\n errors\r\n\r\n    invalid hyperlink - no url match\r\nor \r\n\r\n    Incorrect type. Expected URL string, received str\r\n\r\nurl.py\r\n\r\n    router = routers.DefaultRouter(trailing_slash=False)\r\n    router.register(r&#39;AddPost&#39;,\r\n                    views.AddPost, base_name=&quot;AddPost&quot;)\r\n    urlpatterns = [\r\n    url(r&#39;^&#39;, include(router.urls)),\r\n    url(r&#39;^api-auth/&#39;, include(&#39;rest_framework.urls&#39;, namespace=&#39;rest_framework&#39;))\r\n    ]\r\n\r\n\r\ni want Postinfo.useruid = Userinfo.useruid\r\nbut i don&#39;t know this error\r\nhow to this\r\n\r\n if change useruid to IntegerField it&#39;s worked\r\n\r\nbut \r\nthis is out of not foreignkey",
+            "link": "https://stackoverflow.com/questions/50363029/django-foreignkey-in-hyperlinkedmodelserializer-what-type-of-value",
+            "title": "django foreignkey in HyperlinkedModelSerializer what type of value",
+            "body": "<p>Using django 2.0.2</p>\n\n<p>python3.4</p>\n\n<p>models.py</p>\n\n<pre><code>class Userinfo(models.Model):\n\n    useruid = models.BigAutoField(db_column='UserUID', primary_key=True)\n\n    username = models.TextField(db_column='Content')\n\n    registerdate = models.DateTimeField(db_column='RegisterDate')\n\n    class Meta:\n        managed = False\n        db_table = 'userinfo'\n\nclass Postinfo(models.Model):\n\n    postuid = models.BigAutoField(db_column='PostUID', primary_key=True)\n\n    useruid = models.ForeignKey(\n    Userinfo, db_column='UserUID', on_delete=models.CASCADE)\n\n    content = models.TextField(db_column='Content')\n\n    registerdate = models.DateTimeField(db_column='RegisterDate')\n\n    class Meta:\n        managed = False\n        db_table = 'postinfo'\n</code></pre>\n\n<p>serializer.py</p>\n\n<pre><code>class req_AddPostSerializer(serializers.HyperlinkedModelSerializer):\n    class Meta:\n        model = models.Postinfo\n        fields = ('useruid',  'content')\n</code></pre>\n\n<p>views.py</p>\n\n<pre><code>class AddPost(viewsets.ModelViewSet):\n    queryset = ''\n    serializer_class = req_AddPostSerializer\n\n    def create(self, request, *args, **kwargs):\n        serializer = req_AddPostSerializer(\n            data=request.data)\n        if not serializer.is_valid():\n            return Response(serilizer.errors)\n        serializer.save()\n        return Response(\"succes\")\n</code></pre>\n\n<p>request.data</p>\n\n<pre><code>{\n    \"useruid\": \"1\",\n    \"content\": \"test\"\n}\n</code></pre>\n\n<p>errors</p>\n\n<pre><code>invalid hyperlink - no url match\n</code></pre>\n\n<p>or </p>\n\n<pre><code>Incorrect type. Expected URL string, received str\n</code></pre>\n\n<p>url.py</p>\n\n<pre><code>router = routers.DefaultRouter(trailing_slash=False)\nrouter.register(r'AddPost',\n                views.AddPost, base_name=\"AddPost\")\nurlpatterns = [\nurl(r'^', include(router.urls)),\nurl(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework'))\n]\n</code></pre>\n\n<p>i want Postinfo.useruid = Userinfo.useruid\nbut i don't know this error\nhow to this</p>\n\n<p>if change useruid to IntegerField it's worked</p>\n\n<p>but \nthis is out of not foreignkey</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html",
+                "typescript",
+                "http",
+                "ionic-framework"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 9179703,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-Q6IG66w-kBI/AAAAAAAAAAI/AAAAAAAAADU/P9XoxPoGgi4/photo.jpg?sz=128",
+                "display_name": "Jag Tomal",
+                "link": "https://stackoverflow.com/users/9179703/jag-tomal"
+            },
+            "is_answered": true,
+            "view_count": 30,
+            "accepted_answer_id": 50363150,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526449128,
+            "creation_date": 1526411426,
+            "last_edit_date": 1526448529,
+            "question_id": 50357600,
+            "body_markdown": "I don&#39;t know after reading pages &amp; pages of Doc on Observers how to manipulate it.\r\nI just would like to put on the screen the weather of the day using an external API.\r\nThe problem is, I got an Observable of my class I made but nothing work.\r\n\r\nThis is my provider to take info from the API:\r\n\r\n    import { Injectable } from &#39;@angular/core&#39;;\r\n    import { HttpClient } from &#39;@angular/common/http&#39;;\r\n    import &#39;rxjs/add/operator/map&#39;;\r\n    \r\n    import { Observable } from &quot;rxjs/Rx&quot;;\r\n    import { Http, Response } from &quot;@angular/http&quot;;\r\n    \r\n    \r\n    @Injectable()\r\n    export class OpenWeatherProvider {\r\n      apikey = &#39;ea91a7eab8e8b73b433086eb0244fc94&#39;;\r\n      WeatherArr: Array&lt;String&gt; = [];\r\n      \r\n    \r\n      constructor(public http: HttpClient) {\r\n        \r\n      }\r\n    \r\n      getWeatherPerLatLng(lat,lng) {\r\n        return this.http.get&lt;Weather&gt;(&#39;http://api.openweathermap.org/data/2.5/weather?lat=&#39;+lat+&#39;&amp;lon=&#39;+lng+&#39;&amp;units=metric&amp;appid=&#39;+ this.apikey);\r\n      }\r\n    }\r\n    \r\n    export interface Weather{\r\n      coord: {\r\n        lon: number,\r\n        lat: number\r\n      },\r\n      weather: [\r\n        {\r\n          id: number,\r\n          main: String,\r\n          description: String,\r\n          icon: String\r\n        }\r\n      ],\r\n      base: String,\r\n      main: {\r\n        temp: number,\r\n        pressure: number,\r\n        humidity: number,\r\n        temp_min: number,\r\n        temp_max: number\r\n      },\r\n      visibility: number,\r\n      wind: {\r\n        speed: number,\r\n        deg: number\r\n      },\r\n      clouds: {\r\n        all: number\r\n      },\r\n      dt: number,\r\n      sys: {\r\n        type: number,\r\n        id: number,\r\n        message: number,\r\n        country: String,\r\n        sunrise: number,\r\n        sunset: number\r\n      },\r\n      id: number,\r\n      name: String,\r\n      cod: number\r\n    }\r\n\r\n**and this is my geoloc.ts to show the infos:**\r\n\r\n    import { Component } from &#39;@angular/core&#39;;\r\n    import { NavController, Platform } from &#39;ionic-angular&#39;;\r\n     \r\n     // importation des plugins\r\n    import { Geolocation } from &#39;@ionic-native/geolocation&#39;;\r\n    import { OpenWeatherProvider, Weather } from &#39;../../providers/meteo/open-weather-provider&#39;\r\n    import { Test } from &#39;../test/test&#39;;\r\n    import { Subscription } from &#39;rxjs/Subscription&#39;;\r\n    import { Observable } from &quot;rxjs/Rx&quot;\r\n     \r\n    @Component({\r\n      selector: &#39;geoloc&#39;,\r\n      templateUrl: &#39;geoloc.html&#39;\r\n    })\r\n    export class Geoloc {\t\r\n    \tpublic lng = 0;\r\n    \tpublic lat = 0;\r\n    \tpublic loading: boolean = false;\r\n    \tpublic weather$ : Observable&lt;Weather&gt;;\r\n    \r\n      constructor(public navCtrl: NavController, private geolocation: Geolocation, public platform: Platform, public Pro: OpenWeatherProvider) {\r\n    \t  \tplatform.ready().then(() =&gt;{\r\n    \t\t\t  this.loadPosition();\r\n    \t\t\t  const component = this;\r\n    \t  \t});\r\n      \t}\r\n    \r\n    \tloadPosition(){\r\n    \t\tthis.geolocation.getCurrentPosition().then((resp) =&gt; {\r\n    \t\t// resp.coords.latitude\r\n    \t\t//let userPosition: LatLng = news LatLng(resp.coords.latitude,resp.coords.longitude);\r\n    \t\t//console.log(resp.coords.latitude + &#39; &#39; + resp.coords.longitude);\\\r\n    \t\tthis.lng = resp.coords.longitude;\r\n    \t\tthis.lat = resp.coords.latitude;\r\n    \t\tthis.weather$ = this.Pro.getWeatherPerLatLng(this.lat,this.lng);\r\n    \r\n    \t\tconsole.log(&#39;Demande de GetWeatherPerLatLng&#39;,this.weather$);\r\n    \t\t});\r\n    \t}\r\n    \r\n    }\r\n\r\n**And the HTML to interact:**\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;ion-header&gt;\r\n        &lt;ion-navbar&gt;\r\n            &lt;button ion-button menuToggle&gt;\r\n                &lt;ion-icon name=&quot;menu&quot;&gt;&lt;/ion-icon&gt;\r\n              &lt;/button&gt;\r\n          &lt;ion-title&gt;Geolocalisation&lt;/ion-title&gt;\r\n        &lt;/ion-navbar&gt;\r\n      &lt;/ion-header&gt;\r\n       \r\n      &lt;ion-content padding&gt;\r\n        &lt;h2&gt;{{ &#39;GPS&#39; | translate}}&lt;/h2&gt;\r\n        &lt;p&gt;\r\n          Latitude {{ lat }}, Longitude{{ lng }}\r\n        &lt;/p&gt;\r\n        &lt;p &gt;\r\n          &lt;a href=&quot;../test/test.html&quot;&gt;{{ &#39;MAPS&#39; | translate}}&lt;/a&gt;\r\n        &lt;/p&gt;\r\n        &lt;br/&gt;\r\n        &lt;p&gt;Country: {{weather$}}&lt;/p&gt;\r\n        &lt;p&gt;&lt;/p&gt;\r\n    \r\n        \r\n    &lt;/ion-content&gt;\r\n\r\nWhen I call `{{weather$}}` it shows on the screen: `*Country: object Objects..*`\r\n\r\nHere is the screen of what I see with console.log \r\n\r\n[![CONSOLE PICTURE][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/Zq1Tg.png",
+            "link": "https://stackoverflow.com/questions/50357600/angular-ionic-observer-and-observable",
+            "title": "Angular / Ionic Observer and Observable",
+            "body": "<p>I don't know after reading pages &amp; pages of Doc on Observers how to manipulate it.\nI just would like to put on the screen the weather of the day using an external API.\nThe problem is, I got an Observable of my class I made but nothing work.</p>\n\n<p>This is my provider to take info from the API:</p>\n\n<pre><code>import { Injectable } from '@angular/core';\nimport { HttpClient } from '@angular/common/http';\nimport 'rxjs/add/operator/map';\n\nimport { Observable } from \"rxjs/Rx\";\nimport { Http, Response } from \"@angular/http\";\n\n\n@Injectable()\nexport class OpenWeatherProvider {\n  apikey = 'ea91a7eab8e8b73b433086eb0244fc94';\n  WeatherArr: Array&lt;String&gt; = [];\n\n\n  constructor(public http: HttpClient) {\n\n  }\n\n  getWeatherPerLatLng(lat,lng) {\n    return this.http.get&lt;Weather&gt;('http://api.openweathermap.org/data/2.5/weather?lat='+lat+'&amp;lon='+lng+'&amp;units=metric&amp;appid='+ this.apikey);\n  }\n}\n\nexport interface Weather{\n  coord: {\n    lon: number,\n    lat: number\n  },\n  weather: [\n    {\n      id: number,\n      main: String,\n      description: String,\n      icon: String\n    }\n  ],\n  base: String,\n  main: {\n    temp: number,\n    pressure: number,\n    humidity: number,\n    temp_min: number,\n    temp_max: number\n  },\n  visibility: number,\n  wind: {\n    speed: number,\n    deg: number\n  },\n  clouds: {\n    all: number\n  },\n  dt: number,\n  sys: {\n    type: number,\n    id: number,\n    message: number,\n    country: String,\n    sunrise: number,\n    sunset: number\n  },\n  id: number,\n  name: String,\n  cod: number\n}\n</code></pre>\n\n<p><strong>and this is my geoloc.ts to show the infos:</strong></p>\n\n<pre><code>import { Component } from '@angular/core';\nimport { NavController, Platform } from 'ionic-angular';\n\n // importation des plugins\nimport { Geolocation } from '@ionic-native/geolocation';\nimport { OpenWeatherProvider, Weather } from '../../providers/meteo/open-weather-provider'\nimport { Test } from '../test/test';\nimport { Subscription } from 'rxjs/Subscription';\nimport { Observable } from \"rxjs/Rx\"\n\n@Component({\n  selector: 'geoloc',\n  templateUrl: 'geoloc.html'\n})\nexport class Geoloc {   \n    public lng = 0;\n    public lat = 0;\n    public loading: boolean = false;\n    public weather$ : Observable&lt;Weather&gt;;\n\n  constructor(public navCtrl: NavController, private geolocation: Geolocation, public platform: Platform, public Pro: OpenWeatherProvider) {\n        platform.ready().then(() =&gt;{\n              this.loadPosition();\n              const component = this;\n        });\n    }\n\n    loadPosition(){\n        this.geolocation.getCurrentPosition().then((resp) =&gt; {\n        // resp.coords.latitude\n        //let userPosition: LatLng = news LatLng(resp.coords.latitude,resp.coords.longitude);\n        //console.log(resp.coords.latitude + ' ' + resp.coords.longitude);\\\n        this.lng = resp.coords.longitude;\n        this.lat = resp.coords.latitude;\n        this.weather$ = this.Pro.getWeatherPerLatLng(this.lat,this.lng);\n\n        console.log('Demande de GetWeatherPerLatLng',this.weather$);\n        });\n    }\n\n}\n</code></pre>\n\n<p><strong>And the HTML to interact:</strong></p>\n\n<pre class=\"lang-html prettyprint-override\"><code>&lt;ion-header&gt;\n    &lt;ion-navbar&gt;\n        &lt;button ion-button menuToggle&gt;\n            &lt;ion-icon name=\"menu\"&gt;&lt;/ion-icon&gt;\n          &lt;/button&gt;\n      &lt;ion-title&gt;Geolocalisation&lt;/ion-title&gt;\n    &lt;/ion-navbar&gt;\n  &lt;/ion-header&gt;\n\n  &lt;ion-content padding&gt;\n    &lt;h2&gt;{{ 'GPS' | translate}}&lt;/h2&gt;\n    &lt;p&gt;\n      Latitude {{ lat }}, Longitude{{ lng }}\n    &lt;/p&gt;\n    &lt;p &gt;\n      &lt;a href=\"../test/test.html\"&gt;{{ 'MAPS' | translate}}&lt;/a&gt;\n    &lt;/p&gt;\n    &lt;br/&gt;\n    &lt;p&gt;Country: {{weather$}}&lt;/p&gt;\n    &lt;p&gt;&lt;/p&gt;\n\n\n&lt;/ion-content&gt;\n</code></pre>\n\n<p>When I call <code>{{weather$}}</code> it shows on the screen: <code>*Country: object Objects..*</code></p>\n\n<p>Here is the screen of what I see with console.log </p>\n\n<p><a href=\"https://i.stack.imgur.com/Zq1Tg.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/Zq1Tg.png\" alt=\"CONSOLE PICTURE\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "asp.net",
+                "razor"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 4684143,
+                "user_type": "registered",
+                "accept_rate": 17,
+                "profile_image": "https://www.gravatar.com/avatar/2943ae4c04e127aaf9ebcd493be83b25?s=128&d=identicon&r=PG&f=1",
+                "display_name": "programming user",
+                "link": "https://stackoverflow.com/users/4684143/programming-user"
+            },
+            "is_answered": false,
+            "view_count": 27,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526449116,
+            "creation_date": 1432498573,
+            "last_edit_date": 1526449116,
+            "question_id": 30427890,
+            "body_markdown": "I am using VS 2013 community with recent update. I just started to deploy new vb asp.net mvc 5 and tried to create my views, unfortunately when trying to put foreach with @ the intellisense seems to not work. I went over google and tried lot of fixs available but not one seems to be work for me. Do you know what could be the reason of that and how to enable it?",
+            "link": "https://stackoverflow.com/questions/30427890/razor-intellisense-not-working",
+            "title": "Razor intellisense not working",
+            "body": "<p>I am using VS 2013 community with recent update. I just started to deploy new vb asp.net mvc 5 and tried to create my views, unfortunately when trying to put foreach with @ the intellisense seems to not work. I went over google and tried lot of fixs available but not one seems to be work for me. Do you know what could be the reason of that and how to enable it?</p>\n"
+        },
+        {
+            "tags": [
+                "iot",
+                "bigchaindb"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9793895,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-pwPVR1LsemU/AAAAAAAAAAI/AAAAAAAAAME/v1J-liMyVgU/photo.jpg?sz=128",
+                "display_name": "Likhitha Chandra Jami",
+                "link": "https://stackoverflow.com/users/9793895/likhitha-chandra-jami"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1526449108,
+            "creation_date": 1526385502,
+            "last_edit_date": 1526449108,
+            "question_id": 50349618,
+            "body_markdown": "We are working on a project which requires an IOT sensors to be connected Blockchain. I am unable to figure out how should I connect the sensor to BigchainDB and how can read the data.\r\n",
+            "link": "https://stackoverflow.com/questions/50349618/assert-as-an-iot-in-bigchaindb",
+            "title": "assert as an IOT in BigchainDB",
+            "body": "<p>We are working on a project which requires an IOT sensors to be connected Blockchain. I am unable to figure out how should I connect the sensor to BigchainDB and how can read the data.</p>\n"
+        },
+        {
+            "tags": [
+                "wordpress",
+                "angular",
+                "wordpress-theming"
+            ],
+            "owner": {
+                "reputation": 963,
+                "user_id": 1901312,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://www.gravatar.com/avatar/db3ddaed51d2971bbeb6241ba49666c1?s=128&d=identicon&r=PG",
+                "display_name": "bobsilon",
+                "link": "https://stackoverflow.com/users/1901312/bobsilon"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526449107,
+            "creation_date": 1526448672,
+            "last_edit_date": 1526449107,
+            "question_id": 50363066,
+            "body_markdown": "I interested if I spend time and energy on creating a full Angular theme for WordPress, then is it allowed to sell on famous WordPress theme marketplaces?\r\n\r\nSince the full Angular theme does not follow WordPress theme hierarchy and maybe there are conflicts with lots of WordPress plugins, going to be accepted these type of themes are very difficult.\r\n\r\n- Have you seen any such templates?\r\n- Is there any way to pass theme review tests for Angular themes?\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50363066/is-full-angular-theme-allowed-in-wordpress-marketplaces",
+            "title": "Is full Angular theme allowed in WordPress marketplaces?",
+            "body": "<p>I interested if I spend time and energy on creating a full Angular theme for WordPress, then is it allowed to sell on famous WordPress theme marketplaces?</p>\n\n<p>Since the full Angular theme does not follow WordPress theme hierarchy and maybe there are conflicts with lots of WordPress plugins, going to be accepted these type of themes are very difficult.</p>\n\n<ul>\n<li>Have you seen any such templates?</li>\n<li>Is there any way to pass theme review tests for Angular themes?</li>\n</ul>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "jquery",
+                "wordpress"
+            ],
+            "owner": {
+                "reputation": 20,
+                "user_id": 3556186,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/Jxqtw.jpg?s=128&g=1",
+                "display_name": "BigD",
+                "link": "https://stackoverflow.com/users/3556186/bigd"
+            },
+            "is_answered": false,
+            "view_count": 46,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526449101,
+            "creation_date": 1526428600,
+            "last_edit_date": 1526449101,
+            "question_id": 50360669,
+            "body_markdown": "I am working on a WordPress powered site that is failing to load its jQuery library properly. I am not sure where to look as I have worked mostly with Drupal and Laravel. \r\n\r\nI get the following error messages:\r\n\r\n`Uncaught TypeError: $ is not a function`&lt;br /&gt;\r\n`Uncaught TypeError: jQuery(...).directory is not a function`&lt;br /&gt;\r\n`Uncaught TypeError: jQuery(...).unslider is not a function`&lt;br /&gt;\r\n\r\nThe issue seems to be coming from `?code=23` which is in reference to the URL parameter: `/property/?code=23`\r\n\r\nI realize this isn&#39;t much help in solving the issue, but perhaps there is some direction I should generally be looking in for troubleshooting jQuery in WordPress.",
+            "link": "https://stackoverflow.com/questions/50360669/jquery-failing-on-wordpress-website",
+            "title": "jQuery failing on WordPress website",
+            "body": "<p>I am working on a WordPress powered site that is failing to load its jQuery library properly. I am not sure where to look as I have worked mostly with Drupal and Laravel. </p>\n\n<p>I get the following error messages:</p>\n\n<p><code>Uncaught TypeError: $ is not a function</code><br />\n<code>Uncaught TypeError: jQuery(...).directory is not a function</code><br />\n<code>Uncaught TypeError: jQuery(...).unslider is not a function</code><br /></p>\n\n<p>The issue seems to be coming from <code>?code=23</code> which is in reference to the URL parameter: <code>/property/?code=23</code></p>\n\n<p>I realize this isn't much help in solving the issue, but perhaps there is some direction I should generally be looking in for troubleshooting jQuery in WordPress.</p>\n"
+        },
+        {
+            "tags": [
+                "c#"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9774946,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-ptnRzIzcECY/AAAAAAAAAAI/AAAAAAAAAAo/XvblsEngXZk/photo.jpg?sz=128",
+                "display_name": "NamKyungMan",
+                "link": "https://stackoverflow.com/users/9774946/namkyungman"
+            },
+            "is_answered": false,
+            "view_count": 40,
+            "closed_date": 1526448507,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1526449099,
+            "creation_date": 1526446903,
+            "last_edit_date": 1526448337,
+            "question_id": 50362740,
+            "body_markdown": "   \r\n    int b=0;\r\n    for(int i=0;i&lt;100;i++)\r\n    {\r\n        a =  i+1;\r\n        b += (a*a);\r\n    }\r\n    int c =  b /100;\r\n    if(c&gt;500)\r\n    {\r\n        Console.Writeline(&quot;LOL&quot;+c);\r\n    }\r\n    else\r\n    {\r\n        Console.Writeline(&quot;Cry&quot;+c);\r\n    }\r\n\r\nHow to create a new array, then copy the values ​​of the old \r\n    array (but only get the LOL values ​​(&gt; 500))?",
+            "link": "https://stackoverflow.com/questions/50362740/copy-array-in-c",
+            "closed_reason": "unclear what you&#39;re asking",
+            "title": "Copy array in C#",
+            "body": "<pre><code>int b=0;\nfor(int i=0;i&lt;100;i++)\n{\n    a =  i+1;\n    b += (a*a);\n}\nint c =  b /100;\nif(c&gt;500)\n{\n    Console.Writeline(\"LOL\"+c);\n}\nelse\n{\n    Console.Writeline(\"Cry\"+c);\n}\n</code></pre>\n\n<p>How to create a new array, then copy the values ​​of the old \n    array (but only get the LOL values ​​(> 500))?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "apache-kafka"
+            ],
+            "owner": {
+                "reputation": 227,
+                "user_id": 3591792,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://i.stack.imgur.com/ple5h.jpg?s=128&g=1",
+                "display_name": "Luis Medina",
+                "link": "https://stackoverflow.com/users/3591792/luis-medina"
+            },
+            "is_answered": true,
+            "view_count": 17030,
+            "accepted_answer_id": 36649296,
+            "answer_count": 4,
+            "score": 18,
+            "last_activity_date": 1526449094,
+            "creation_date": 1419807787,
+            "question_id": 27681511,
+            "body_markdown": "I&#39;ve been experimenting with Kafka and saw from the documentation on the main site that you&#39;re able to set different options for the jvm like heap size and the garbage collector that it uses:\r\n\r\nhttp://kafka.apache.org/documentation.html#java\r\n\r\nWhat it doesn&#39;t say, however, is how/where to set these options. The application comes with a /config directory containing a lot of files used for configuration purposes but none that are for Java. It also comes with a /bin directory containing a bunch of scripts for Kafka but again, nothing really indicating how to configure Java.\r\n\r\nSo my question is, how do I configure the Java options that Kafka uses? Is it done through a file or is there a different way?",
+            "link": "https://stackoverflow.com/questions/27681511/how-do-i-set-the-java-options-for-kafka",
+            "title": "How do I set the Java options for Kafka?",
+            "body": "<p>I've been experimenting with Kafka and saw from the documentation on the main site that you're able to set different options for the jvm like heap size and the garbage collector that it uses:</p>\n\n<p><a href=\"http://kafka.apache.org/documentation.html#java\" rel=\"noreferrer\">http://kafka.apache.org/documentation.html#java</a></p>\n\n<p>What it doesn't say, however, is how/where to set these options. The application comes with a /config directory containing a lot of files used for configuration purposes but none that are for Java. It also comes with a /bin directory containing a bunch of scripts for Kafka but again, nothing really indicating how to configure Java.</p>\n\n<p>So my question is, how do I configure the Java options that Kafka uses? Is it done through a file or is there a different way?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "reactjs",
+                "class"
+            ],
+            "owner": {
+                "reputation": 418,
+                "user_id": 1682405,
+                "user_type": "registered",
+                "accept_rate": 76,
+                "profile_image": "https://i.stack.imgur.com/E626d.png?s=128&g=1",
+                "display_name": "sansSpoon",
+                "link": "https://stackoverflow.com/users/1682405/sansspoon"
+            },
+            "is_answered": true,
+            "view_count": 86,
+            "accepted_answer_id": 50363134,
+            "answer_count": 2,
+            "score": 4,
+            "last_activity_date": 1526449084,
+            "creation_date": 1526445409,
+            "last_edit_date": 1526449084,
+            "question_id": 50362535,
+            "body_markdown": "I&#39;m learning React 16.3, and it&#39;s new Context API. In particular [Updating Context from a Nested Component](https://reactjs.org/docs/context.html#dynamic-context). In their example they set a method that is defined in the constructor rather than a standard method.\r\n\r\n\tclass App extends React.Component {\r\n\t  constructor(props) {\r\n\t    super(props);\r\n\r\n        // What is the benefit of doing this here?\r\n\t    this.toggleTheme = () =&gt; {\r\n\t      this.setState(state =&gt; ({\r\n\t        theme:\r\n\t          state.theme === themes.dark\r\n\t            ? themes.light\r\n\t            : themes.dark,\r\n\t      }));\r\n\t    };\r\n\r\n\t    this.state = {\r\n\t      theme: themes.light,\r\n\t      toggleTheme: this.toggleTheme,\r\n\t    };\r\n\t  }\r\n\r\n\t  render() {\r\n\t    // The entire state is passed to the provider\r\n\t    return (\r\n\t      &lt;ThemeContext.Provider value={this.state}&gt;\r\n\t        &lt;Content /&gt;\r\n\t      &lt;/ThemeContext.Provider&gt;\r\n\t    );\r\n\t  }\r\n\t}\r\n\r\nEverything I&#39;ve read regarding lifting state up and passing methods down to children has been done using the below pattern. Why is the above preferred over the below? Are there any differences?\r\n\r\n\tclass App extends React.Component {\r\n\t  constructor(props) {\r\n\t    super(props);\r\n\r\n\t    this.state = {\r\n\t      theme: themes.light,\r\n\t      toggleTheme: this.toggleTheme,\r\n\t    };\r\n        this.toggleTheme = this.toggleTheme.bind(this);\r\n\r\n\t  }\r\n\r\n        // Could it be done here?\r\n\t\ttoggleTheme() {\r\n\t\t\tthis.setState(state =&gt; ({\r\n\t\t\t\ttheme:\r\n\t\t\t\t\tstate.theme === themes.dark\r\n\t\t\t\t\t? themes.light\r\n\t\t\t\t\t: themes.dark,\r\n\t\t\t}));\r\n\t\t};\r\n\r\n\r\n\t  render() {\r\n\t    // The entire state is passed to the provider\r\n\t    return (\r\n\t      &lt;ThemeContext.Provider value={this.state}&gt;\r\n\t        &lt;Content /&gt;\r\n\t      &lt;/ThemeContext.Provider&gt;\r\n\t    );\r\n\t  }\r\n\t}",
+            "link": "https://stackoverflow.com/questions/50362535/react-16-3-class-method-vs-constructor-method",
+            "title": "React 16.3 class method vs constructor method",
+            "body": "<p>I'm learning React 16.3, and it's new Context API. In particular <a href=\"https://reactjs.org/docs/context.html#dynamic-context\" rel=\"nofollow noreferrer\">Updating Context from a Nested Component</a>. In their example they set a method that is defined in the constructor rather than a standard method.</p>\n\n<pre><code>class App extends React.Component {\n  constructor(props) {\n    super(props);\n\n    // What is the benefit of doing this here?\n    this.toggleTheme = () =&gt; {\n      this.setState(state =&gt; ({\n        theme:\n          state.theme === themes.dark\n            ? themes.light\n            : themes.dark,\n      }));\n    };\n\n    this.state = {\n      theme: themes.light,\n      toggleTheme: this.toggleTheme,\n    };\n  }\n\n  render() {\n    // The entire state is passed to the provider\n    return (\n      &lt;ThemeContext.Provider value={this.state}&gt;\n        &lt;Content /&gt;\n      &lt;/ThemeContext.Provider&gt;\n    );\n  }\n}\n</code></pre>\n\n<p>Everything I've read regarding lifting state up and passing methods down to children has been done using the below pattern. Why is the above preferred over the below? Are there any differences?</p>\n\n<pre><code>class App extends React.Component {\n  constructor(props) {\n    super(props);\n\n    this.state = {\n      theme: themes.light,\n      toggleTheme: this.toggleTheme,\n    };\n    this.toggleTheme = this.toggleTheme.bind(this);\n\n  }\n\n    // Could it be done here?\n    toggleTheme() {\n        this.setState(state =&gt; ({\n            theme:\n                state.theme === themes.dark\n                ? themes.light\n                : themes.dark,\n        }));\n    };\n\n\n  render() {\n    // The entire state is passed to the provider\n    return (\n      &lt;ThemeContext.Provider value={this.state}&gt;\n        &lt;Content /&gt;\n      &lt;/ThemeContext.Provider&gt;\n    );\n  }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "entity-framework",
+                "repository-pattern"
+            ],
+            "owner": {
+                "reputation": 152,
+                "user_id": 1547252,
+                "user_type": "registered",
+                "accept_rate": 46,
+                "profile_image": "https://www.gravatar.com/avatar/2b9acd249c240f13006d48e679d4686a?s=128&d=identicon&r=PG",
+                "display_name": "vietvoquoc",
+                "link": "https://stackoverflow.com/users/1547252/vietvoquoc"
+            },
+            "is_answered": true,
+            "view_count": 60,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526449074,
+            "creation_date": 1526185010,
+            "last_edit_date": 1526193158,
+            "question_id": 50312714,
+            "body_markdown": "I are planning migrate our data access layer to using repository pattern and unit of work.\r\n\r\nI do know repository will help me to change persistence store (database, collection...etc) and technology such as EF to MongoDB easily. So I noticed some key points of implementation of a repository such as:\r\n\r\n1. Return `IEnumerable` instead of `IQueryable`\r\n2. Repository should take responsibilities for CRUD operations only\r\n3. Return type of repository method should be model (entity)\r\n4. Only implement repository for aggregate root\r\n\r\nIf I apply these key points during implement repository in my project, I totally lost how to deal with complex query in which related to multiple entities.\r\n\r\nCurrently what I already had was that on BLL library with a lot of services class will contact directly to `DbContext` and `DbSet` of EF and some of validation like this:\r\n\r\n    public IEnumerable&lt;ProjectDTO&gt; GetProjectWithDetails()\r\n\t{\r\n    \t// Validation\r\n  \r\n    \t// Logging\r\n\r\n    \t// Can be any logic need to before query data.\t\r\n\r\n    \tDbcontext.Projects.Where(p =&gt; \r\n\t\t// multiple of conditions go here follow business rules\r\n\t\t// conditions will need to check another entities (task, phase, employee...) such as:\r\n\t\t// 1. project have task status &#39;in-progress&#39; .. etc\r\n\t\t// 2. project have employeeid 1,2,3..\r\n\t\t// 3. project have stask start at some specific date.\r\n\t\t// 4....\t\r\n    \t)\r\n    \t.Select(p =&gt; new ProjectDTO\r\n\t\t{\r\n\t\t\tLabel = p.Label,\r\n\t\t\tPhase = new PhaseDTO{\r\n\t\t\t\tLabel = p.Phase.Label,\r\n\t\t\t\tTasks = p.Phase.Tasks.Select(t =&gt; new TaskDTO{\r\n\t\t\t\t\t// some related properties\r\n\t\t\t\t})\r\n\t\t\t}\r\n\t\t}).ToList();\r\n\t} \r\n\r\nI am currently using Data Transfer Object (DTO) to be the middle classes between model and viewmodel on controller and using Mapper to map properties.\r\n\r\nIf I keep key notes on repository above I need to do multiple round trip to database for getting data, and it will return whole model instead of useful columns. But if I migrate those kind of methods to repository I will broken repository pattern because it will contain business logic and return type not an model.\r\n\r\nSo question is what should I do in this case? Please give me some advise to put me on the right track.\r\n\r\nMany thanks.\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50312714/should-write-complex-query-in-repository-or-service-layer",
+            "title": "Should write complex query in Repository or Service layer?",
+            "body": "<p>I are planning migrate our data access layer to using repository pattern and unit of work.</p>\n\n<p>I do know repository will help me to change persistence store (database, collection...etc) and technology such as EF to MongoDB easily. So I noticed some key points of implementation of a repository such as:</p>\n\n<ol>\n<li>Return <code>IEnumerable</code> instead of <code>IQueryable</code></li>\n<li>Repository should take responsibilities for CRUD operations only</li>\n<li>Return type of repository method should be model (entity)</li>\n<li>Only implement repository for aggregate root</li>\n</ol>\n\n<p>If I apply these key points during implement repository in my project, I totally lost how to deal with complex query in which related to multiple entities.</p>\n\n<p>Currently what I already had was that on BLL library with a lot of services class will contact directly to <code>DbContext</code> and <code>DbSet</code> of EF and some of validation like this:</p>\n\n<pre><code>public IEnumerable&lt;ProjectDTO&gt; GetProjectWithDetails()\n{\n    // Validation\n\n    // Logging\n\n    // Can be any logic need to before query data.  \n\n    Dbcontext.Projects.Where(p =&gt; \n    // multiple of conditions go here follow business rules\n    // conditions will need to check another entities (task, phase, employee...) such as:\n    // 1. project have task status 'in-progress' .. etc\n    // 2. project have employeeid 1,2,3..\n    // 3. project have stask start at some specific date.\n    // 4....    \n    )\n    .Select(p =&gt; new ProjectDTO\n    {\n        Label = p.Label,\n        Phase = new PhaseDTO{\n            Label = p.Phase.Label,\n            Tasks = p.Phase.Tasks.Select(t =&gt; new TaskDTO{\n                // some related properties\n            })\n        }\n    }).ToList();\n} \n</code></pre>\n\n<p>I am currently using Data Transfer Object (DTO) to be the middle classes between model and viewmodel on controller and using Mapper to map properties.</p>\n\n<p>If I keep key notes on repository above I need to do multiple round trip to database for getting data, and it will return whole model instead of useful columns. But if I migrate those kind of methods to repository I will broken repository pattern because it will contain business logic and return type not an model.</p>\n\n<p>So question is what should I do in this case? Please give me some advise to put me on the right track.</p>\n\n<p>Many thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "cts",
+                "gts"
+            ],
+            "owner": {
+                "reputation": 514,
+                "user_id": 4628770,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/f3853e500af8b5ed3402bbf140ef6d78?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Sanyal",
+                "link": "https://stackoverflow.com/users/4628770/sanyal"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526449073,
+            "creation_date": 1526448398,
+            "last_edit_date": 1526449073,
+            "question_id": 50363005,
+            "body_markdown": "I have executed CTS in 2 different android devices (**Android phone** and **Android TV**), the number of test cases and modules differs for both .\r\nAs per my understanding the supported modules and related test are populated .\r\n\r\nI wish to know that how the modules and test counts are determined as soon as we start the **&quot;run cts&quot;** in cts-tradefed ??",
+            "link": "https://stackoverflow.com/questions/50363005/how-does-the-cts-tool-determines-the-modules-or-number-of-test-to-be-run-on-any",
+            "title": "How does the CTS tool determines the modules or number of test to be run on any particular android device?",
+            "body": "<p>I have executed CTS in 2 different android devices (<strong>Android phone</strong> and <strong>Android TV</strong>), the number of test cases and modules differs for both .\nAs per my understanding the supported modules and related test are populated .</p>\n\n<p>I wish to know that how the modules and test counts are determined as soon as we start the <strong>\"run cts\"</strong> in cts-tradefed ??</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "objective-c",
+                "apache-kafka"
+            ],
+            "owner": {
+                "reputation": 31,
+                "user_id": 1752035,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3eb402302b24b29289f6a604151491a6?s=128&d=identicon&r=PG",
+                "display_name": "iOS developer",
+                "link": "https://stackoverflow.com/users/1752035/ios-developer"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526449071,
+            "creation_date": 1526448437,
+            "last_edit_date": 1526449071,
+            "question_id": 50363015,
+            "body_markdown": "Has anyone integrated iOS devices as a producer for kafka ? is there any libraries in Obj-c or i can call same as normal api call. Please help me to how i can integrate apache kafka producer as iOS application. \r\n",
+            "link": "https://stackoverflow.com/questions/50363015/apache-kafka-ios-producer",
+            "title": "Apache Kafka - iOS producer",
+            "body": "<p>Has anyone integrated iOS devices as a producer for kafka ? is there any libraries in Obj-c or i can call same as normal api call. Please help me to how i can integrate apache kafka producer as iOS application. </p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net",
+                "html"
+            ],
+            "owner": {
+                "reputation": 4989,
+                "user_id": 5019,
+                "user_type": "registered",
+                "accept_rate": 89,
+                "profile_image": "https://www.gravatar.com/avatar/be89d119deda21038d8fa056043be97b?s=128&d=identicon&r=PG",
+                "display_name": "Stuart Helwig",
+                "link": "https://stackoverflow.com/users/5019/stuart-helwig"
+            },
+            "is_answered": true,
+            "view_count": 129411,
+            "accepted_answer_id": 286825,
+            "answer_count": 16,
+            "score": 66,
+            "last_activity_date": 1526449070,
+            "creation_date": 1226574027,
+            "last_edit_date": 1338145534,
+            "question_id": 286813,
+            "body_markdown": "I have snippets of Html stored in a table. *Not entire pages, no &lt;script&gt; tags or the like, just basic formatting.*\r\n\r\nI would like to be able to display that Html as text only, *no formatting*, on a given page (actually just the first 30 - 50 characters but that&#39;s the easy bit).\r\n\r\nHow do I place the &quot;text&quot; within that Html into a string as straight text?\r\n\r\nSo this piece of code.\r\n\r\n    &lt;b&gt;Hello World.&lt;/b&gt;&lt;br/&gt;&lt;p&gt;&lt;i&gt;Is there anyone out there?&lt;/i&gt;&lt;p&gt;\r\n\r\nBecomes:\r\n\r\nHello World. Is there anyone out there?\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/286813/how-do-you-convert-html-to-plain-text",
+            "title": "How do you convert Html to plain text?",
+            "body": "<p>I have snippets of Html stored in a table. <em>Not entire pages, no  tags or the like, just basic formatting.</em></p>\n\n<p>I would like to be able to display that Html as text only, <em>no formatting</em>, on a given page (actually just the first 30 - 50 characters but that's the easy bit).</p>\n\n<p>How do I place the \"text\" within that Html into a string as straight text?</p>\n\n<p>So this piece of code.</p>\n\n<pre><code>&lt;b&gt;Hello World.&lt;/b&gt;&lt;br/&gt;&lt;p&gt;&lt;i&gt;Is there anyone out there?&lt;/i&gt;&lt;p&gt;\n</code></pre>\n\n<p>Becomes:</p>\n\n<p>Hello World. Is there anyone out there?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "django",
+                "django-haystack",
+                "whoosh"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9514027,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/fb5bc2c6fa39be713faf10e0d7f14834?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Devya",
+                "link": "https://stackoverflow.com/users/9514027/devya"
+            },
+            "is_answered": false,
+            "view_count": 29,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526449055,
+            "creation_date": 1526403436,
+            "last_edit_date": 1526449055,
+            "question_id": 50355591,
+            "body_markdown": "I&#39;m trying to use Haystack-Whoosh for search in a Django application. I&#39;ve implemented code same as mentioned in documentation page: [django-haystack documentaation ][1] but still it is not working no search results were filtered.\r\n\r\nHere is my code:\r\n\r\nmodels.py\r\n\r\n    from django.db import models\r\n    from datetime import datetime\r\n\r\n    class Newcar(models.Model):\r\n\t  car_name = models.CharField(max_length=50)\r\n\t  carmodel = models.CharField(max_length=50)\r\n\t  car_logo = models.CharField(max_length=1000)\r\n      pub_date = models.DateTimeField(default=datetime.now())\r\n\t\r\n\t  def __str__(self):\r\n\t\t return self .car_name + &#39;-&#39; + self .carmodel\r\n\r\nsearch_indexes.py\r\n\r\n    import datetime\r\n    from haystack import indexes\r\n    from car.models import Newcar\r\n\r\n\r\n    class NewcarIndex(indexes.SearchIndex, indexes.Indexable):\r\n\t   text = indexes.CharField(document=True, use_template=True)\r\n\t   car_name = indexes.CharField(model_attr=&#39;car_name&#39;)\r\n\t   carmodel = indexes.CharField(model_attr=&#39;carmodel&#39;)\r\n\t   pub_date = indexes.DateTimeField(model_attr=&#39;pub_date&#39;)\r\n\t\r\n\r\n\t   def get_model(self):\r\n\t\t return Newcar\r\n\r\n\t   def index_queryset(self, using=None):\r\n        \r\n\t\t return self.get_model().objects.all()\r\n\r\nnewcar_text.txt\r\n\r\n    {{ object.car_name }}\r\n    {{ object.carmodel }}\r\n\r\nsearch.html\r\n\r\n    {% block content %}\r\n    &lt;h2&gt;Search&lt;/h2&gt;\r\n\r\n    &lt;form method=&quot;get&quot; action=&quot;.&quot;&gt;\r\n        &lt;table&gt;\r\n            {{ form.as_table }}\r\n            &lt;tr&gt;\r\n                &lt;td&gt;&amp;nbsp;&lt;/td&gt;\r\n                &lt;td&gt;\r\n                    &lt;input type=&quot;submit&quot; value=&quot;Search&quot;&gt;\r\n                &lt;/td&gt;\r\n            &lt;/tr&gt;\r\n        &lt;/table&gt;\r\n\r\n        {% if query %}\r\n            &lt;h3&gt;Results&lt;/h3&gt;\r\n\r\n            {% for result in page.object_list %}\r\n                &lt;p&gt;\r\n                    &lt;a href=&quot;{{ result.object.get_absolute_url }}&quot;&gt;{{ result.object.car_name }}&lt;/a&gt;\r\n                &lt;/p&gt;\r\n            {% empty %}\r\n                &lt;p&gt;No results found.&lt;/p&gt;\r\n            {% endfor %}\r\n\r\n            {% if page.has_previous or page.has_next %}\r\n                &lt;div&gt;\r\n                    {% if page.has_previous %}&lt;a href=&quot;?q={{ query }}&amp;amp;page={{ page.previous_page_number }}&quot;&gt;{% endif %}&amp;laquo; Previous{% if page.has_previous %}&lt;/a&gt;{% endif %}\r\n                    |\r\n                    {% if page.has_next %}&lt;a href=&quot;?q={{ query }}&amp;amp;page={{ page.next_page_number }}&quot;&gt;{% endif %}Next &amp;raquo;{% if page.has_next %}&lt;/a&gt;{% endif %}\r\n                &lt;/div&gt;\r\n            {% endif %}\r\n        {% else %}\r\n            \r\n        {% endif %}\r\n      &lt;/form&gt;\r\n    {% endblock %}\r\n\r\nhere is the error I&#39;m getting:\r\n\r\n      File &quot;C:\\Users\\hp\\ENV\\lib\\site-packages\\django\\core\\servers\\basehttp.py&quot;, line 88, in handle_error\r\n    super(ServerHandler, self).handle_error()\r\n     File &quot;c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\wsgiref\\handlers.py&quot;, line 368, in handle_error\r\n    self.finish_response()\r\n    File &quot;c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\wsgiref\\handlers.py&quot;, line 180, in finish_response\r\n     self.write(data)\r\n    File &quot;c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\wsgiref\\handlers.py&quot;, line 274, in write\r\n    self.send_headers()\r\n    File &quot;c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\wsgiref\\handlers.py&quot;, line 331, in send_headers\r\n    if not self.origin_server or self.client_is_modern():\r\n    File &quot;c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\wsgiref\\handlers.py&quot;, line 344, in client_is_modern\r\n    return self.environ[&#39;SERVER_PROTOCOL&#39;].upper() != &#39;HTTP/0.9&#39;\r\n    TypeError: &#39;NoneType&#39; object is not subscriptable\r\n\r\n     During handling of the above exception, another exception occurred:\r\n\r\n     Traceback (most recent call last):\r\n     File &quot;c:\\users\\hp\\appdata\\local\\programs\\python\\python36  \\Lib\\socketserver.py&quot;, line 639, in process_request_thread\r\n    self.finish_request(request, client_address)\r\n     File &quot;c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\socketserver.py&quot;, line 361, in finish_request\r\n    self.RequestHandlerClass(request, client_address, self)\r\n     File &quot;c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\socketserver.py&quot;, line 696, in __init__\r\n    self.handle()\r\n     File &quot;C:\\Users\\hp\\ENV\\lib\\site-packages\\django\\core\\servers\\basehttp.py&quot;, line 155, in handle\r\n    handler.run(self.server.get_app())\r\n     File &quot;c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\wsgiref\\handlers.py&quot;, line 144, in run\r\n    self.close()\r\n     File &quot;c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\wsgiref\\simple_server.py&quot;, line 35, in close\r\n    self.status.split(&#39; &#39;,1)[0], self.bytes_sent\r\n    AttributeError: &#39;NoneType&#39; object has no attribute &#39;split&#39;\r\n\r\n\r\n  [1]: http://django-haystack.readthedocs.io/en/master/tutorial.html\r\n  \r\n\r\n    ",
+            "link": "https://stackoverflow.com/questions/50355591/django-haystack-whoosh-is-giving-no-results",
+            "title": "Django-Haystack-Whoosh is giving no results",
+            "body": "<p>I'm trying to use Haystack-Whoosh for search in a Django application. I've implemented code same as mentioned in documentation page: <a href=\"http://django-haystack.readthedocs.io/en/master/tutorial.html\" rel=\"nofollow noreferrer\">django-haystack documentaation </a> but still it is not working no search results were filtered.</p>\n\n<p>Here is my code:</p>\n\n<p>models.py</p>\n\n<pre><code>from django.db import models\nfrom datetime import datetime\n\nclass Newcar(models.Model):\n  car_name = models.CharField(max_length=50)\n  carmodel = models.CharField(max_length=50)\n  car_logo = models.CharField(max_length=1000)\n  pub_date = models.DateTimeField(default=datetime.now())\n\n  def __str__(self):\n     return self .car_name + '-' + self .carmodel\n</code></pre>\n\n<p>search_indexes.py</p>\n\n<pre><code>import datetime\nfrom haystack import indexes\nfrom car.models import Newcar\n\n\nclass NewcarIndex(indexes.SearchIndex, indexes.Indexable):\n   text = indexes.CharField(document=True, use_template=True)\n   car_name = indexes.CharField(model_attr='car_name')\n   carmodel = indexes.CharField(model_attr='carmodel')\n   pub_date = indexes.DateTimeField(model_attr='pub_date')\n\n\n   def get_model(self):\n     return Newcar\n\n   def index_queryset(self, using=None):\n\n     return self.get_model().objects.all()\n</code></pre>\n\n<p>newcar_text.txt</p>\n\n<pre><code>{{ object.car_name }}\n{{ object.carmodel }}\n</code></pre>\n\n<p>search.html</p>\n\n<pre><code>{% block content %}\n&lt;h2&gt;Search&lt;/h2&gt;\n\n&lt;form method=\"get\" action=\".\"&gt;\n    &lt;table&gt;\n        {{ form.as_table }}\n        &lt;tr&gt;\n            &lt;td&gt;&amp;nbsp;&lt;/td&gt;\n            &lt;td&gt;\n                &lt;input type=\"submit\" value=\"Search\"&gt;\n            &lt;/td&gt;\n        &lt;/tr&gt;\n    &lt;/table&gt;\n\n    {% if query %}\n        &lt;h3&gt;Results&lt;/h3&gt;\n\n        {% for result in page.object_list %}\n            &lt;p&gt;\n                &lt;a href=\"{{ result.object.get_absolute_url }}\"&gt;{{ result.object.car_name }}&lt;/a&gt;\n            &lt;/p&gt;\n        {% empty %}\n            &lt;p&gt;No results found.&lt;/p&gt;\n        {% endfor %}\n\n        {% if page.has_previous or page.has_next %}\n            &lt;div&gt;\n                {% if page.has_previous %}&lt;a href=\"?q={{ query }}&amp;amp;page={{ page.previous_page_number }}\"&gt;{% endif %}&amp;laquo; Previous{% if page.has_previous %}&lt;/a&gt;{% endif %}\n                |\n                {% if page.has_next %}&lt;a href=\"?q={{ query }}&amp;amp;page={{ page.next_page_number }}\"&gt;{% endif %}Next &amp;raquo;{% if page.has_next %}&lt;/a&gt;{% endif %}\n            &lt;/div&gt;\n        {% endif %}\n    {% else %}\n\n    {% endif %}\n  &lt;/form&gt;\n{% endblock %}\n</code></pre>\n\n<p>here is the error I'm getting:</p>\n\n<pre><code>  File \"C:\\Users\\hp\\ENV\\lib\\site-packages\\django\\core\\servers\\basehttp.py\", line 88, in handle_error\nsuper(ServerHandler, self).handle_error()\n File \"c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\wsgiref\\handlers.py\", line 368, in handle_error\nself.finish_response()\nFile \"c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\wsgiref\\handlers.py\", line 180, in finish_response\n self.write(data)\nFile \"c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\wsgiref\\handlers.py\", line 274, in write\nself.send_headers()\nFile \"c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\wsgiref\\handlers.py\", line 331, in send_headers\nif not self.origin_server or self.client_is_modern():\nFile \"c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\wsgiref\\handlers.py\", line 344, in client_is_modern\nreturn self.environ['SERVER_PROTOCOL'].upper() != 'HTTP/0.9'\nTypeError: 'NoneType' object is not subscriptable\n\n During handling of the above exception, another exception occurred:\n\n Traceback (most recent call last):\n File \"c:\\users\\hp\\appdata\\local\\programs\\python\\python36  \\Lib\\socketserver.py\", line 639, in process_request_thread\nself.finish_request(request, client_address)\n File \"c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\socketserver.py\", line 361, in finish_request\nself.RequestHandlerClass(request, client_address, self)\n File \"c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\socketserver.py\", line 696, in __init__\nself.handle()\n File \"C:\\Users\\hp\\ENV\\lib\\site-packages\\django\\core\\servers\\basehttp.py\", line 155, in handle\nhandler.run(self.server.get_app())\n File \"c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\wsgiref\\handlers.py\", line 144, in run\nself.close()\n File \"c:\\users\\hp\\appdata\\local\\programs\\python\\python36\\Lib\\wsgiref\\simple_server.py\", line 35, in close\nself.status.split(' ',1)[0], self.bytes_sent\nAttributeError: 'NoneType' object has no attribute 'split'\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "opencv",
+                "tensorflow",
+                "object-detection-api"
+            ],
+            "owner": {
+                "reputation": 26,
+                "user_id": 7325366,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://graph.facebook.com/10207479134128913/picture?type=large",
+                "display_name": "Pranav Menon",
+                "link": "https://stackoverflow.com/users/7325366/pranav-menon"
+            },
+            "is_answered": false,
+            "view_count": 295,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526449033,
+            "creation_date": 1516679529,
+            "last_edit_date": 1526449033,
+            "question_id": 48393927,
+            "body_markdown": "I&#39;m using TF Object Detection API with Open CV. \r\n\r\nHow do I go about extracting the type of the object the video detects and have it copied to a .txt file? \r\n\r\nFor example, once the video in the Object Detection API detects a &#39;cell phone&#39;, how do I get &#39;cell phone&#39; to be written on a separate text file? \r\n\r\nHere&#39;s the code for reference: \r\n\r\n\r\n\r\n    \r\n    import sys\r\n    sys.executable\r\n    import numpy as np\r\n    import os\r\n    import six.moves.urllib as urllib\r\n    import sys\r\n    import tarfile\r\n    import tensorflow as tf\r\n    import zipfile\r\n    \r\n    from collections import defaultdict\r\n    from io import StringIO\r\n    from matplotlib import pyplot as plt\r\n    from PIL import Image\r\n    \r\n    sys.path.append(&#39;/usr/local/lib/python2.7/site-packages&#39;)\r\n    import cv2\r\n    \r\n    cap = cv2.VideoCapture(0)\r\n    \r\n    \r\n    # This is needed since the notebook is stored in the object_detection folder.\r\n    sys.path.append(&quot;..&quot;)\r\n    \r\n    \r\n    # ## Object detection imports\r\n    # Here are the imports from the object detection module.\r\n    \r\n    # In[3]:\r\n    \r\n    from utils import label_map_util\r\n    \r\n    from utils import visualization_utils as vis_util\r\n    \r\n    \r\n    # # Model preparation \r\n    \r\n    # ## Variables\r\n    # \r\n    # Any model exported using the `export_inference_graph.py` tool can be loaded here simply by changing `PATH_TO_CKPT` to point to a new .pb file.  \r\n    # \r\n    # By default we use an &quot;SSD with Mobilenet&quot; model here. See the [detection model zoo](https://github.com/tensorflow/models/blob/master/object_detection/g3doc/detection_model_zoo.md) for a list of other models that can be run out-of-the-box with varying speeds and accuracies.\r\n    \r\n    # In[4]:\r\n    \r\n    # What model to download.\r\n    MODEL_NAME = &#39;ssd_mobilenet_v1_coco_11_06_2017&#39;\r\n    MODEL_FILE = MODEL_NAME + &#39;.tar.gz&#39;\r\n    DOWNLOAD_BASE = &#39;http://download.tensorflow.org/models/object_detection/&#39;\r\n    \r\n    # Path to frozen detection graph. This is the actual model that is used for the object detection.\r\n    PATH_TO_CKPT = MODEL_NAME + &#39;/frozen_inference_graph.pb&#39;\r\n    \r\n    # List of the strings that is used to add correct label for each box.\r\n    PATH_TO_LABELS = os.path.join(&#39;data&#39;, &#39;mscoco_label_map.pbtxt&#39;)\r\n    \r\n    NUM_CLASSES = 90\r\n    \r\n    \r\n    # ## Download Model\r\n    \r\n    # In[5]:\r\n    \r\n    opener = urllib.request.URLopener()\r\n    opener.retrieve(DOWNLOAD_BASE + MODEL_FILE, MODEL_FILE)\r\n    tar_file = tarfile.open(MODEL_FILE)\r\n    for file in tar_file.getmembers():\r\n      file_name = os.path.basename(file.name)\r\n      if &#39;frozen_inference_graph.pb&#39; in file_name:\r\n        tar_file.extract(file, os.getcwd())\r\n    \r\n    \r\n    # ## Load a (frozen) Tensorflow model into memory.\r\n    \r\n    # In[6]:\r\n    \r\n    detection_graph = tf.Graph()\r\n    with detection_graph.as_default():\r\n      od_graph_def = tf.GraphDef()\r\n      with tf.gfile.GFile(PATH_TO_CKPT, &#39;rb&#39;) as fid:\r\n        serialized_graph = fid.read()\r\n        od_graph_def.ParseFromString(serialized_graph)\r\n        tf.import_graph_def(od_graph_def, name=&#39;&#39;)\r\n    \r\n    \r\n    # ## Loading label map\r\n    # Label maps map indices to category names, so that when our convolution network predicts `5`, we know that this corresponds to `airplane`.  Here we use internal utility functions, but anything that returns a dictionary mapping integers to appropriate string labels would be fine\r\n    \r\n    # In[7]:\r\n    \r\n    label_map = label_map_util.load_labelmap(PATH_TO_LABELS)\r\n    categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)\r\n    category_index = label_map_util.create_category_index(categories)\r\n    \r\n    \r\n    # ## Helper code\r\n    \r\n    # In[8]:\r\n    \r\n    def load_image_into_numpy_array(image):\r\n      (im_width, im_height) = image.size\r\n      return np.array(image.getdata()).reshape(\r\n          (im_height, im_width, 3)).astype(np.uint8)\r\n    \r\n    \r\n    # # Detection\r\n    \r\n    # In[9]:\r\n    \r\n    # For the sake of simplicity we will use only 2 images:\r\n    # image1.jpg\r\n    # image2.jpg\r\n    # If you want to test the code with your images, just add path to the images to the TEST_IMAGE_PATHS.\r\n    PATH_TO_TEST_IMAGES_DIR = &#39;test_images&#39;\r\n    TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, &#39;image{}.jpg&#39;.format(i)) for i in range(1, 3) ]\r\n    \r\n    # Size, in inches, of the output images.\r\n    IMAGE_SIZE = (12, 8)\r\n    \r\n    # In[10]:\r\n    \r\n    with detection_graph.as_default():\r\n      with tf.Session(graph=detection_graph) as sess:\r\n        while True:\r\n          ret, image_np = cap.read()\r\n          # Expand dimensions since the model expects images to have shape: [1, None, None, 3]\r\n          image_np_expanded = np.expand_dims(image_np, axis=0)\r\n          image_tensor = detection_graph.get_tensor_by_name(&#39;image_tensor:0&#39;)\r\n          # Each box represents a part of the image where a particular object was detected.\r\n          boxes = detection_graph.get_tensor_by_name(&#39;detection_boxes:0&#39;)\r\n          # Each score represent how level of confidence for each of the objects.\r\n          # Score is shown on the result image, together with the class label.\r\n          scores = detection_graph.get_tensor_by_name(&#39;detection_scores:0&#39;)\r\n          classes = detection_graph.get_tensor_by_name(&#39;detection_classes:0&#39;)\r\n          num_detections = detection_graph.get_tensor_by_name(&#39;num_detections:0&#39;)\r\n          # Actual detection.\r\n          (boxes, scores, classes, num_detections) = sess.run(\r\n              [boxes, scores, classes, num_detections],\r\n              feed_dict={image_tensor: image_np_expanded})\r\n          # Visualization of the results of a detection.\r\n          vis_util.visualize_boxes_and_labels_on_image_array(\r\n              image_np,\r\n              np.squeeze(boxes),\r\n              np.squeeze(classes).astype(np.int32),\r\n              np.squeeze(scores),\r\n              category_index,\r\n              use_normalized_coordinates=True,\r\n              line_thickness=8)\r\n    \r\n          cv2.imshow(&#39;object detection&#39;, cv2.resize(image_np, (800,600)))\r\n          if cv2.waitKey(25) &amp; 0xFF == ord(&#39;q&#39;):\r\n            cv2.destroyAllWindows()\r\n            break\r\n    \r\n           \r\n\r\nThanks in advance for your help!",
+            "link": "https://stackoverflow.com/questions/48393927/tensorflow-object-detection-api-return-text-from-object",
+            "title": "TensorFlow Object Detection API Return text from object",
+            "body": "<p>I'm using TF Object Detection API with Open CV. </p>\n\n<p>How do I go about extracting the type of the object the video detects and have it copied to a .txt file? </p>\n\n<p>For example, once the video in the Object Detection API detects a 'cell phone', how do I get 'cell phone' to be written on a separate text file? </p>\n\n<p>Here's the code for reference: </p>\n\n<pre><code>import sys\nsys.executable\nimport numpy as np\nimport os\nimport six.moves.urllib as urllib\nimport sys\nimport tarfile\nimport tensorflow as tf\nimport zipfile\n\nfrom collections import defaultdict\nfrom io import StringIO\nfrom matplotlib import pyplot as plt\nfrom PIL import Image\n\nsys.path.append('/usr/local/lib/python2.7/site-packages')\nimport cv2\n\ncap = cv2.VideoCapture(0)\n\n\n# This is needed since the notebook is stored in the object_detection folder.\nsys.path.append(\"..\")\n\n\n# ## Object detection imports\n# Here are the imports from the object detection module.\n\n# In[3]:\n\nfrom utils import label_map_util\n\nfrom utils import visualization_utils as vis_util\n\n\n# # Model preparation \n\n# ## Variables\n# \n# Any model exported using the `export_inference_graph.py` tool can be loaded here simply by changing `PATH_TO_CKPT` to point to a new .pb file.  \n# \n# By default we use an \"SSD with Mobilenet\" model here. See the [detection model zoo](https://github.com/tensorflow/models/blob/master/object_detection/g3doc/detection_model_zoo.md) for a list of other models that can be run out-of-the-box with varying speeds and accuracies.\n\n# In[4]:\n\n# What model to download.\nMODEL_NAME = 'ssd_mobilenet_v1_coco_11_06_2017'\nMODEL_FILE = MODEL_NAME + '.tar.gz'\nDOWNLOAD_BASE = 'http://download.tensorflow.org/models/object_detection/'\n\n# Path to frozen detection graph. This is the actual model that is used for the object detection.\nPATH_TO_CKPT = MODEL_NAME + '/frozen_inference_graph.pb'\n\n# List of the strings that is used to add correct label for each box.\nPATH_TO_LABELS = os.path.join('data', 'mscoco_label_map.pbtxt')\n\nNUM_CLASSES = 90\n\n\n# ## Download Model\n\n# In[5]:\n\nopener = urllib.request.URLopener()\nopener.retrieve(DOWNLOAD_BASE + MODEL_FILE, MODEL_FILE)\ntar_file = tarfile.open(MODEL_FILE)\nfor file in tar_file.getmembers():\n  file_name = os.path.basename(file.name)\n  if 'frozen_inference_graph.pb' in file_name:\n    tar_file.extract(file, os.getcwd())\n\n\n# ## Load a (frozen) Tensorflow model into memory.\n\n# In[6]:\n\ndetection_graph = tf.Graph()\nwith detection_graph.as_default():\n  od_graph_def = tf.GraphDef()\n  with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:\n    serialized_graph = fid.read()\n    od_graph_def.ParseFromString(serialized_graph)\n    tf.import_graph_def(od_graph_def, name='')\n\n\n# ## Loading label map\n# Label maps map indices to category names, so that when our convolution network predicts `5`, we know that this corresponds to `airplane`.  Here we use internal utility functions, but anything that returns a dictionary mapping integers to appropriate string labels would be fine\n\n# In[7]:\n\nlabel_map = label_map_util.load_labelmap(PATH_TO_LABELS)\ncategories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)\ncategory_index = label_map_util.create_category_index(categories)\n\n\n# ## Helper code\n\n# In[8]:\n\ndef load_image_into_numpy_array(image):\n  (im_width, im_height) = image.size\n  return np.array(image.getdata()).reshape(\n      (im_height, im_width, 3)).astype(np.uint8)\n\n\n# # Detection\n\n# In[9]:\n\n# For the sake of simplicity we will use only 2 images:\n# image1.jpg\n# image2.jpg\n# If you want to test the code with your images, just add path to the images to the TEST_IMAGE_PATHS.\nPATH_TO_TEST_IMAGES_DIR = 'test_images'\nTEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, 'image{}.jpg'.format(i)) for i in range(1, 3) ]\n\n# Size, in inches, of the output images.\nIMAGE_SIZE = (12, 8)\n\n# In[10]:\n\nwith detection_graph.as_default():\n  with tf.Session(graph=detection_graph) as sess:\n    while True:\n      ret, image_np = cap.read()\n      # Expand dimensions since the model expects images to have shape: [1, None, None, 3]\n      image_np_expanded = np.expand_dims(image_np, axis=0)\n      image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')\n      # Each box represents a part of the image where a particular object was detected.\n      boxes = detection_graph.get_tensor_by_name('detection_boxes:0')\n      # Each score represent how level of confidence for each of the objects.\n      # Score is shown on the result image, together with the class label.\n      scores = detection_graph.get_tensor_by_name('detection_scores:0')\n      classes = detection_graph.get_tensor_by_name('detection_classes:0')\n      num_detections = detection_graph.get_tensor_by_name('num_detections:0')\n      # Actual detection.\n      (boxes, scores, classes, num_detections) = sess.run(\n          [boxes, scores, classes, num_detections],\n          feed_dict={image_tensor: image_np_expanded})\n      # Visualization of the results of a detection.\n      vis_util.visualize_boxes_and_labels_on_image_array(\n          image_np,\n          np.squeeze(boxes),\n          np.squeeze(classes).astype(np.int32),\n          np.squeeze(scores),\n          category_index,\n          use_normalized_coordinates=True,\n          line_thickness=8)\n\n      cv2.imshow('object detection', cv2.resize(image_np, (800,600)))\n      if cv2.waitKey(25) &amp; 0xFF == ord('q'):\n        cv2.destroyAllWindows()\n        break\n</code></pre>\n\n<p>Thanks in advance for your help!</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "node.js",
+                "events",
+                "callback"
+            ],
+            "owner": {
+                "reputation": 729,
+                "user_id": 876444,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://www.gravatar.com/avatar/89afcd153eab644193014a3d66ac1aa0?s=128&d=identicon&r=PG",
+                "display_name": "Rishav Sharan",
+                "link": "https://stackoverflow.com/users/876444/rishav-sharan"
+            },
+            "is_answered": true,
+            "view_count": 102,
+            "accepted_answer_id": 24251447,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526449023,
+            "creation_date": 1402948324,
+            "last_edit_date": 1402989879,
+            "question_id": 24251135,
+            "body_markdown": "I have several functions which essentially prep up my app.\r\nonce these prep functions have finished, i want to run the main loop of my app.\r\n\r\nSo while the prep functions are async with each other, the main loop only runs when all the prep functions have been resolved.\r\n\r\n    function prep1(x) { do something };\r\n    function prep2(x) { do something };\r\n    function prep3(x) { do something };\r\n\r\n    function mainLoop(x) { only start this function when all 3 prep ones are resolved };\r\n\r\nI am basically learning controlflow in nodejs. My question here is how can one achieve what i require, using:\r\n\r\n 1. callbacks\r\n 2. events\r\n 3. promises (if a library is being used, the name will be sufficient)",
+            "link": "https://stackoverflow.com/questions/24251135/how-to-run-a-function-only-after-multiple-functions-have-been-resolved",
+            "title": "How to run a function only after multiple functions have been resolved?",
+            "body": "<p>I have several functions which essentially prep up my app.\nonce these prep functions have finished, i want to run the main loop of my app.</p>\n\n<p>So while the prep functions are async with each other, the main loop only runs when all the prep functions have been resolved.</p>\n\n<pre><code>function prep1(x) { do something };\nfunction prep2(x) { do something };\nfunction prep3(x) { do something };\n\nfunction mainLoop(x) { only start this function when all 3 prep ones are resolved };\n</code></pre>\n\n<p>I am basically learning controlflow in nodejs. My question here is how can one achieve what i require, using:</p>\n\n<ol>\n<li>callbacks</li>\n<li>events</li>\n<li>promises (if a library is being used, the name will be sufficient)</li>\n</ol>\n"
+        },
+        {
+            "tags": [
+                "node.js",
+                "mongoose",
+                "keystonejs"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 5138556,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/l4rVn.jpg?s=128&g=1",
+                "display_name": "Jorkab",
+                "link": "https://stackoverflow.com/users/5138556/jorkab"
+            },
+            "is_answered": false,
+            "view_count": 44,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526449020,
+            "creation_date": 1526381083,
+            "question_id": 50348240,
+            "body_markdown": "I would like to use a combobox at the adminUI with fields that come from a webservice. I was thinking on get the data with a pre &#39;find&#39; hook and then override the options atribute at the &#39;audience&#39; property in the Schema.\r\n\r\nSchema:\r\n\r\n    Compliance.add({\r\n      title: { type: Types.Text, required: true, initial: true, index: true }, \r\n      url: { type: Types.Url, required: true, initial: true },\r\n\t  position: { type: Types.Number, initial: true },\r\n\t  audience: { type: Types.Select, options: [], many: true, initial: true},\r\n    });\r\n\r\nHook:\r\n\r\n    Compliance.schema.pre(&#39;find&#39;, async function(next) {\r\n\t  let audiences = await audienceService.getAudiences();\r\n\t  next();\r\n    })\r\n\r\nBut I didn&#39;t find the way to bind the data. Any ideas how this can be done?\r\n\r\nThanks\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50348240/dynamic-type-select-in-keystonejs-model",
+            "title": "Dynamic type select in keystonejs model",
+            "body": "<p>I would like to use a combobox at the adminUI with fields that come from a webservice. I was thinking on get the data with a pre 'find' hook and then override the options atribute at the 'audience' property in the Schema.</p>\n\n<p>Schema:</p>\n\n<pre><code>Compliance.add({\n  title: { type: Types.Text, required: true, initial: true, index: true }, \n  url: { type: Types.Url, required: true, initial: true },\n  position: { type: Types.Number, initial: true },\n  audience: { type: Types.Select, options: [], many: true, initial: true},\n});\n</code></pre>\n\n<p>Hook:</p>\n\n<pre><code>Compliance.schema.pre('find', async function(next) {\n  let audiences = await audienceService.getAudiences();\n  next();\n})\n</code></pre>\n\n<p>But I didn't find the way to bind the data. Any ideas how this can be done?</p>\n\n<p>Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "google-apps-script",
+                "gmail-addons"
+            ],
+            "owner": {
+                "reputation": 18,
+                "user_id": 9774501,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-HvvfrMnWhv8/AAAAAAAAAAI/AAAAAAAAAA4/fDQcbtceT38/photo.jpg?sz=128",
+                "display_name": "Hari Balaji",
+                "link": "https://stackoverflow.com/users/9774501/hari-balaji"
+            },
+            "is_answered": true,
+            "view_count": 29,
+            "accepted_answer_id": 50363048,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1526449007,
+            "creation_date": 1526448402,
+            "question_id": 50363006,
+            "body_markdown": "Right now I use radio buttons instead of selectbox. But I prefer selectboxes. Do we have one for gmail add-ons ?",
+            "link": "https://stackoverflow.com/questions/50363006/do-we-have-a-selectbox-widget-for-gmail-add-ons",
+            "title": "Do we have a selectbox widget for gmail add-ons?",
+            "body": "<p>Right now I use radio buttons instead of selectbox. But I prefer selectboxes. Do we have one for gmail add-ons ?</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "broadcastreceiver"
+            ],
+            "owner": {
+                "reputation": 463,
+                "user_id": 7738246,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://i.stack.imgur.com/iNlR7.jpg?s=128&g=1",
+                "display_name": "Ghimire",
+                "link": "https://stackoverflow.com/users/7738246/ghimire"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526449007,
+            "creation_date": 1526449007,
+            "question_id": 50363131,
+            "body_markdown": "I am using the BroadCastReceiver to Show the Data of the battery PowerSource by which it is providing the Data. I have used Fragment to Show the Data. I am Able to get the Data and Set it to the Required field but it is not Refreshing on the Disconnect of the PowerSource.How can this issue be Solved?\r\n\r\n**BatteryFragment**\r\n\r\n    public class BatteryFragment extends Fragment{\r\n    \r\n        FragmentBatteryBinding fragmentBatteryBinding;\r\n        BatteryFragmentVm batteryFragmentVm;\r\n        List&lt;PojoMain&gt; batteryData;\r\n        RecyclerAdapter recyclerDeviceAdapter;\r\n    \r\n        @Nullable\r\n        @Override\r\n        public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {\r\n            super.onCreateView(inflater, container, savedInstanceState);\r\n            fragmentBatteryBinding = DataBindingUtil.inflate(inflater, R.layout.fragment_battery, container, false);\r\n            batteryFragmentVm = new BatteryFragmentVm(getContext());\r\n            fragmentBatteryBinding.setBatteryVm(batteryFragmentVm);\r\n   \r\n    \r\n    \r\n            retrieveBatteryData(getContext());\r\n            return fragmentBatteryBinding.getRoot();\r\n        }\r\n    \r\n    \r\n        \r\n    \r\n    \r\n        //get Battery Power Source\r\n        public static String isPlugged(Context context) {\r\n            Intent intent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));\r\n            int plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);\r\n    \r\n            String powerSource = &quot;&quot;;\r\n    \r\n            if (plugged == BatteryManager.BATTERY_PLUGGED_AC) {\r\n                powerSource = &quot;Plugged AC&quot;;\r\n            } else if (plugged == BatteryManager.BATTERY_PLUGGED_USB) {\r\n                powerSource = &quot;Plugged USB&quot;;\r\n            } else if (plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS) {\r\n                powerSource = &quot;PLugged Wireless&quot;;\r\n            } else if (plugged == BatteryManager.BATTERY_STATUS_DISCHARGING) {\r\n                powerSource = &quot;Discharging&quot;;\r\n            } else {\r\n                powerSource = &quot;status unknown&quot;;\r\n            }\r\n    \r\n            return powerSource;\r\n        }\r\n    \r\n    \r\n        public void retrieveBatteryData(Context context) {\r\n          //  batteryData.clear();\r\n            batteryData = new ArrayList&lt;&gt;();\r\n           \r\n            batteryData.add(new PojoMain(&quot;Power Source&quot;, isPlugged(context)));\r\n           \r\n    \r\n            batteryFragmentVm.loadBatteryData(batteryData)\r\n                    .observeOn(AndroidSchedulers.mainThread())\r\n                    .subscribe(pojoMains -&gt; {\r\n                        recyclerDeviceAdapter = new RecyclerAdapter(batteryData, getContext());\r\n                        fragmentBatteryBinding.batteryRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));\r\n                        fragmentBatteryBinding.batteryRecyclerView.setAdapter(recyclerDeviceAdapter);\r\n                    });\r\n    \r\n    \r\n        }\r\n    \r\n    \r\n    \r\n        @Override\r\n        public void onResume() {\r\n            super.onResume();\r\n        }\r\n    \r\n    \r\n    }\r\n\r\n**BatteryFragmentVm**\r\n\r\n    public class BatteryFragmentVm {\r\n        Context context;\r\n    \r\n        public BatteryFragmentVm(Context context) {\r\n            this.context = context;\r\n        }\r\n    \r\n    \r\n        public Observable&lt;List&lt;PojoMain&gt;&gt; loadBatteryData(List&lt;PojoMain&gt; string) {\r\n    \r\n            return Observable.just(string)\r\n                    .subscribeOn(Schedulers.newThread());\r\n        }\r\n    \r\n    \r\n    }\r\n\r\n&gt; Why the data received are not changed on the change of the power\r\n&gt; source?How can this issue be solved?\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50363131/broadcast-receiver-is-not-refreshing-the-data-on-the-change-of-powersource-of-mo",
+            "title": "BroadCast Receiver is not Refreshing the Data on the Change of PowerSource of Mobile Battery",
+            "body": "<p>I am using the BroadCastReceiver to Show the Data of the battery PowerSource by which it is providing the Data. I have used Fragment to Show the Data. I am Able to get the Data and Set it to the Required field but it is not Refreshing on the Disconnect of the PowerSource.How can this issue be Solved?</p>\n\n<p><strong>BatteryFragment</strong></p>\n\n<pre><code>public class BatteryFragment extends Fragment{\n\n    FragmentBatteryBinding fragmentBatteryBinding;\n    BatteryFragmentVm batteryFragmentVm;\n    List&lt;PojoMain&gt; batteryData;\n    RecyclerAdapter recyclerDeviceAdapter;\n\n    @Nullable\n    @Override\n    public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {\n        super.onCreateView(inflater, container, savedInstanceState);\n        fragmentBatteryBinding = DataBindingUtil.inflate(inflater, R.layout.fragment_battery, container, false);\n        batteryFragmentVm = new BatteryFragmentVm(getContext());\n        fragmentBatteryBinding.setBatteryVm(batteryFragmentVm);\n\n\n\n        retrieveBatteryData(getContext());\n        return fragmentBatteryBinding.getRoot();\n    }\n\n\n\n\n\n    //get Battery Power Source\n    public static String isPlugged(Context context) {\n        Intent intent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));\n        int plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);\n\n        String powerSource = \"\";\n\n        if (plugged == BatteryManager.BATTERY_PLUGGED_AC) {\n            powerSource = \"Plugged AC\";\n        } else if (plugged == BatteryManager.BATTERY_PLUGGED_USB) {\n            powerSource = \"Plugged USB\";\n        } else if (plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS) {\n            powerSource = \"PLugged Wireless\";\n        } else if (plugged == BatteryManager.BATTERY_STATUS_DISCHARGING) {\n            powerSource = \"Discharging\";\n        } else {\n            powerSource = \"status unknown\";\n        }\n\n        return powerSource;\n    }\n\n\n    public void retrieveBatteryData(Context context) {\n      //  batteryData.clear();\n        batteryData = new ArrayList&lt;&gt;();\n\n        batteryData.add(new PojoMain(\"Power Source\", isPlugged(context)));\n\n\n        batteryFragmentVm.loadBatteryData(batteryData)\n                .observeOn(AndroidSchedulers.mainThread())\n                .subscribe(pojoMains -&gt; {\n                    recyclerDeviceAdapter = new RecyclerAdapter(batteryData, getContext());\n                    fragmentBatteryBinding.batteryRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));\n                    fragmentBatteryBinding.batteryRecyclerView.setAdapter(recyclerDeviceAdapter);\n                });\n\n\n    }\n\n\n\n    @Override\n    public void onResume() {\n        super.onResume();\n    }\n\n\n}\n</code></pre>\n\n<p><strong>BatteryFragmentVm</strong></p>\n\n<pre><code>public class BatteryFragmentVm {\n    Context context;\n\n    public BatteryFragmentVm(Context context) {\n        this.context = context;\n    }\n\n\n    public Observable&lt;List&lt;PojoMain&gt;&gt; loadBatteryData(List&lt;PojoMain&gt; string) {\n\n        return Observable.just(string)\n                .subscribeOn(Schedulers.newThread());\n    }\n\n\n}\n</code></pre>\n\n<blockquote>\n  <p>Why the data received are not changed on the change of the power\n  source?How can this issue be solved?</p>\n</blockquote>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 18
+}

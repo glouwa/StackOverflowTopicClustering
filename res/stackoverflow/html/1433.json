@@ -1,0 +1,829 @@
+{
+    "items": [
+        {
+            "tags": [
+                "c#",
+                ".net-core",
+                "entity-framework-core"
+            ],
+            "owner": {
+                "reputation": 752,
+                "user_id": 1064481,
+                "user_type": "registered",
+                "accept_rate": 79,
+                "profile_image": "https://www.gravatar.com/avatar/daadd9de3308dd8aeecc21496fea358e?s=128&d=identicon&r=PG",
+                "display_name": "Giorgos Manoltzas",
+                "link": "https://stackoverflow.com/users/1064481/giorgos-manoltzas"
+            },
+            "is_answered": false,
+            "view_count": 93,
+            "answer_count": 1,
+            "score": 5,
+            "last_activity_date": 1526468151,
+            "creation_date": 1526420392,
+            "last_edit_date": 1526468151,
+            "question_id": 50359528,
+            "body_markdown": "I upgraded an ASP.NET Core project from version **2.0.x** to **2.1.0-rc1** by following the [official guide][1] from ASP.NET Blog. The **EF Core** packages were updated to the same version as well. The database provider that i am using is [Microsoft.EntityFrameworkCore.SqlServer][2]. I was waiting for this upgrade with anticipation since i needed a lot the [LINQ GroupBy translation][3] feature. One of my queries is the following:\r\n\r\n    await _db.Documents\r\n             .ApplyFilter(options)\r\n             .Where(x =&gt; x.SubscriptionId == subscriptionId &amp;&amp; x.Status != DocumentStatus.Deleted)\r\n             .GroupBy(document =&gt; new { document.SubscriptionId })\r\n             .Select(group =&gt; new {\r\n                Total = group.Sum(x =&gt; x.Total),\r\n                TotalDiscount = group.Sum(x =&gt; x.TotalDiscount),\r\n                TotalNet = group.Sum(x =&gt; x.TotalNet != null ? x.TotalNet.Value * (decimal)x.CurrencyRate : 0),\r\n                SubTotal = group.Sum(x =&gt; x.SubTotal != null ? x.SubTotal.Value * (decimal)x.CurrencyRate : 0),\r\n                TotalSalesTax = group.Sum(x =&gt; x.TotalSalesTax != null ? x.TotalSalesTax.Value * (decimal)x.CurrencyRate : 0),\r\n                TotalTax = group.Sum(x =&gt; x.TotalTax != null ? x.TotalTax.Value * (decimal)x.CurrencyRate : 0),\r\n                TotalPayable = group.Sum(x =&gt; x.TotalPayable != null ? x.TotalPayable.Value * (decimal)x.CurrencyRate : 0)\r\n            })\r\n            .ToListAsync();\r\n\r\nWhen this query runs i still receive a warning that states:\r\n\r\n&gt; EFCore Linq Query Could not be translated and will be evaluated locally.\r\n\r\nSo i would like to ask if am i doing something (terribly) wrong or this feature is not yet available as it is advertised? Has any of you tried something similar? Thank you in advance for your help.\r\n\r\n  [1]: https://blogs.msdn.microsoft.com/webdev/2018/05/07/asp-net-core-2-1-0-rc1-now-available/\r\n  [2]: https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.SqlServer\r\n  [3]: https://docs.microsoft.com/en-us/ef/core/what-is-new/ef-core-2.1\r\n----------\r\n## Edit ##\r\n\r\nFor the shake of testing the problem is tried the following query (removed the conditional checks from `Sum` method) as **Ivan Stoev** suggested in the comments, but the result is the same.\r\n\r\n    await _db.Documents\r\n             .ApplyFilter(options)\r\n             .Where(x =&gt; x.SubscriptionId == subscriptionId &amp;&amp; x.Status != DocumentStatus.Deleted)\r\n             .GroupBy(document =&gt; new { document.SubscriptionId })\r\n             .Select(group =&gt; new {\r\n                Total = group.Sum(x =&gt; x.Total),\r\n                TotalDiscount = group.Sum(x =&gt; x.TotalDiscount),\r\n                TotalNet = group.Sum(x =&gt; x.TotalNet),\r\n                SubTotal = group.Sum(x =&gt; x.SubTotal),\r\n                TotalSalesTax = group.Sum(x =&gt; x.TotalSalesTax),\r\n                TotalTax = group.Sum(x =&gt; x.TotalTax),\r\n                TotalPayable = group.Sum(x =&gt; x.TotalPayable)\r\n              })\r\n              .ToListAsync();\r\n\r\n----------\r\n## Solution ##\r\n\r\nAfter experimenting i figured out the following. I post it in case someone has the same problem. The following query in perfectly translated into a T-SQL statement and thus not evaluating on the client.\r\n\r\n    await (from d in _db.Documents.ApplyFilter(options)\r\n           where d.SubscriptionId == subscriptionId &amp;&amp; d.Status != DocumentStatus.Deleted\r\n           group d by d.SubscriptionId into g\r\n           select new {\r\n              Total = g.Sum(x =&gt; x.Total/* * Convert.ToDecimal(x.CurrencyRate)*/),\r\n              TotalDiscount = g.Sum(x =&gt; x.TotalDiscount/* * Convert.ToDecimal(x.CurrencyRate)*/),\r\n              TotalNet = g.Sum(x =&gt; x.TotalNet/* * Convert.ToDecimal(x.CurrencyRate)*/),\r\n              SubTotal = g.Sum(x =&gt; x.SubTotal/* * Convert.ToDecimal(x.CurrencyRate)*/),\r\n              TotalSalesTax = g.Sum(x =&gt; x.TotalSalesTax/* * Convert.ToDecimal(x.CurrencyRate)*/),\r\n              TotalTax = g.Sum(x =&gt; x.TotalTax/* * Convert.ToDecimal(x.CurrencyRate)*/),\r\n              TotalPayable = g.Sum(x =&gt; x.TotalPayable/* * Convert.ToDecimal(x.CurrencyRate)*/)\r\n           }).ToListAsync();\r\n\r\nThe obvious difference is that i use the **LINQ query syntax** instead of the **extension methods**. Also i commented out the multiplication with the `CurrencyRate` property as **it also results in evaluating the query locally**. This seems quite strange as the query syntax also translates in extension methods under the hood.\r\n\r\nI also opened an issue in the Github repository of Entity Framework Core\r\n which you can find [here](https://github.com/aspnet/EntityFrameworkCore/issues/12023)\r\n",
+            "link": "https://stackoverflow.com/questions/50359528/ef-core-2-1-rc-1-groupby-still-evaluates-locally",
+            "title": "EF Core 2.1 RC 1 GroupBy still evaluates locally",
+            "body": "<p>I upgraded an ASP.NET Core project from version <strong>2.0.x</strong> to <strong>2.1.0-rc1</strong> by following the <a href=\"https://blogs.msdn.microsoft.com/webdev/2018/05/07/asp-net-core-2-1-0-rc1-now-available/\" rel=\"nofollow noreferrer\">official guide</a> from ASP.NET Blog. The <strong>EF Core</strong> packages were updated to the same version as well. The database provider that i am using is <a href=\"https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.SqlServer\" rel=\"nofollow noreferrer\">Microsoft.EntityFrameworkCore.SqlServer</a>. I was waiting for this upgrade with anticipation since i needed a lot the <a href=\"https://docs.microsoft.com/en-us/ef/core/what-is-new/ef-core-2.1\" rel=\"nofollow noreferrer\">LINQ GroupBy translation</a> feature. One of my queries is the following:</p>\n\n<pre><code>await _db.Documents\n         .ApplyFilter(options)\n         .Where(x =&gt; x.SubscriptionId == subscriptionId &amp;&amp; x.Status != DocumentStatus.Deleted)\n         .GroupBy(document =&gt; new { document.SubscriptionId })\n         .Select(group =&gt; new {\n            Total = group.Sum(x =&gt; x.Total),\n            TotalDiscount = group.Sum(x =&gt; x.TotalDiscount),\n            TotalNet = group.Sum(x =&gt; x.TotalNet != null ? x.TotalNet.Value * (decimal)x.CurrencyRate : 0),\n            SubTotal = group.Sum(x =&gt; x.SubTotal != null ? x.SubTotal.Value * (decimal)x.CurrencyRate : 0),\n            TotalSalesTax = group.Sum(x =&gt; x.TotalSalesTax != null ? x.TotalSalesTax.Value * (decimal)x.CurrencyRate : 0),\n            TotalTax = group.Sum(x =&gt; x.TotalTax != null ? x.TotalTax.Value * (decimal)x.CurrencyRate : 0),\n            TotalPayable = group.Sum(x =&gt; x.TotalPayable != null ? x.TotalPayable.Value * (decimal)x.CurrencyRate : 0)\n        })\n        .ToListAsync();\n</code></pre>\n\n<p>When this query runs i still receive a warning that states:</p>\n\n<blockquote>\n  <p>EFCore Linq Query Could not be translated and will be evaluated locally.</p>\n</blockquote>\n\n<p>So i would like to ask if am i doing something (terribly) wrong or this feature is not yet available as it is advertised? Has any of you tried something similar? Thank you in advance for your help.</p>\n\n<hr>\n\n<h2>Edit</h2>\n\n<p>For the shake of testing the problem is tried the following query (removed the conditional checks from <code>Sum</code> method) as <strong>Ivan Stoev</strong> suggested in the comments, but the result is the same.</p>\n\n<pre><code>await _db.Documents\n         .ApplyFilter(options)\n         .Where(x =&gt; x.SubscriptionId == subscriptionId &amp;&amp; x.Status != DocumentStatus.Deleted)\n         .GroupBy(document =&gt; new { document.SubscriptionId })\n         .Select(group =&gt; new {\n            Total = group.Sum(x =&gt; x.Total),\n            TotalDiscount = group.Sum(x =&gt; x.TotalDiscount),\n            TotalNet = group.Sum(x =&gt; x.TotalNet),\n            SubTotal = group.Sum(x =&gt; x.SubTotal),\n            TotalSalesTax = group.Sum(x =&gt; x.TotalSalesTax),\n            TotalTax = group.Sum(x =&gt; x.TotalTax),\n            TotalPayable = group.Sum(x =&gt; x.TotalPayable)\n          })\n          .ToListAsync();\n</code></pre>\n\n<hr>\n\n<h2>Solution</h2>\n\n<p>After experimenting i figured out the following. I post it in case someone has the same problem. The following query in perfectly translated into a T-SQL statement and thus not evaluating on the client.</p>\n\n<pre><code>await (from d in _db.Documents.ApplyFilter(options)\n       where d.SubscriptionId == subscriptionId &amp;&amp; d.Status != DocumentStatus.Deleted\n       group d by d.SubscriptionId into g\n       select new {\n          Total = g.Sum(x =&gt; x.Total/* * Convert.ToDecimal(x.CurrencyRate)*/),\n          TotalDiscount = g.Sum(x =&gt; x.TotalDiscount/* * Convert.ToDecimal(x.CurrencyRate)*/),\n          TotalNet = g.Sum(x =&gt; x.TotalNet/* * Convert.ToDecimal(x.CurrencyRate)*/),\n          SubTotal = g.Sum(x =&gt; x.SubTotal/* * Convert.ToDecimal(x.CurrencyRate)*/),\n          TotalSalesTax = g.Sum(x =&gt; x.TotalSalesTax/* * Convert.ToDecimal(x.CurrencyRate)*/),\n          TotalTax = g.Sum(x =&gt; x.TotalTax/* * Convert.ToDecimal(x.CurrencyRate)*/),\n          TotalPayable = g.Sum(x =&gt; x.TotalPayable/* * Convert.ToDecimal(x.CurrencyRate)*/)\n       }).ToListAsync();\n</code></pre>\n\n<p>The obvious difference is that i use the <strong>LINQ query syntax</strong> instead of the <strong>extension methods</strong>. Also i commented out the multiplication with the <code>CurrencyRate</code> property as <strong>it also results in evaluating the query locally</strong>. This seems quite strange as the query syntax also translates in extension methods under the hood.</p>\n\n<p>I also opened an issue in the Github repository of Entity Framework Core\n which you can find <a href=\"https://github.com/aspnet/EntityFrameworkCore/issues/12023\" rel=\"nofollow noreferrer\">here</a></p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "get",
+                "doctrine"
+            ],
+            "owner": {
+                "reputation": 12,
+                "user_id": 9585263,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5d950a47ed2ea319a6a3d2906e468012?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Lara",
+                "link": "https://stackoverflow.com/users/9585263/lara"
+            },
+            "is_answered": true,
+            "view_count": 26,
+            "accepted_answer_id": 50368621,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526468151,
+            "creation_date": 1526466874,
+            "last_edit_date": 1526468151,
+            "question_id": 50368590,
+            "body_markdown": "I have some problems with `GET` request. This request has two parameters to filter:\r\n\r\n    $app-&gt;get(&#39;/api/v1/provider/{destination}/{weight}&#39;, function ($request, $response, $args) {\r\n    \r\n       $em = getEntityManager();\r\n       $destination = $em-&gt;getRepository(Transport::class)-&gt;findByDestination($args[&#39;destination&#39;]);\r\n       $weight = $em-&gt;getRepository(Transport::class)-&gt;findByWeight($args[&#39;weight&#39;]);\r\n    \r\n         $provider_filter = array_filter($destination, function ($data) {\r\n            return $data-&gt;weight == $weight;    \r\n        });\r\n    \r\n        return $response-&gt;withJson($provider_filter);\r\n    });\r\n\r\nFor example , if I write `$dato-&gt;weight == 3` instead of `$dato-&gt;weight == $weight`, I get correct result. The problem is in the variable `$weight`, due to which  `$weight` I get the error: `Undefined variable: weight`. The variable  `$weight` is defined outside the array_filter. Nevertheless, if I defined `$weight` inside the array I can&#39;t get the weight because of the error: `Undefined variable: args`.\r\n\r\nAny idea?",
+            "link": "https://stackoverflow.com/questions/50368590/use-array-filter-in-get",
+            "title": "Use array_filter in GET",
+            "body": "<p>I have some problems with <code>GET</code> request. This request has two parameters to filter:</p>\n\n<pre><code>$app-&gt;get('/api/v1/provider/{destination}/{weight}', function ($request, $response, $args) {\n\n   $em = getEntityManager();\n   $destination = $em-&gt;getRepository(Transport::class)-&gt;findByDestination($args['destination']);\n   $weight = $em-&gt;getRepository(Transport::class)-&gt;findByWeight($args['weight']);\n\n     $provider_filter = array_filter($destination, function ($data) {\n        return $data-&gt;weight == $weight;    \n    });\n\n    return $response-&gt;withJson($provider_filter);\n});\n</code></pre>\n\n<p>For example , if I write <code>$dato-&gt;weight == 3</code> instead of <code>$dato-&gt;weight == $weight</code>, I get correct result. The problem is in the variable <code>$weight</code>, due to which  <code>$weight</code> I get the error: <code>Undefined variable: weight</code>. The variable  <code>$weight</code> is defined outside the array_filter. Nevertheless, if I defined <code>$weight</code> inside the array I can't get the weight because of the error: <code>Undefined variable: args</code>.</p>\n\n<p>Any idea?</p>\n"
+        },
+        {
+            "tags": [
+                "php"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9798772,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/0f64797fc49981ba1282e0ab67c45f18?s=128&d=identicon&r=PG&f=1",
+                "display_name": "QwekuNsiah",
+                "link": "https://stackoverflow.com/users/9798772/qwekunsiah"
+            },
+            "is_answered": false,
+            "view_count": 30,
+            "closed_date": 1526462487,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1526468149,
+            "creation_date": 1526459773,
+            "last_edit_date": 1526468149,
+            "question_id": 50366039,
+            "body_markdown": "php mysqli ..i want a code which returns to or is redirected to page 2 if edit or update is done on page 2 or returns to page 3 if edit or update is done on a record on page 3 and the same for other page \r\n\r\n    $result = &quot;UPDATE acc SET System=&#39;$system&#39;,brand=&#39;$brand&#39;, model=&#39;$model&#39;, SerialNumber=&#39;$serial&#39;, Supplier=&#39;$supplier&#39;, DatePurchased=&#39;$date&#39;, DateDisposed=&#39;$Disposed&#39;, dept=&#39;$dept&#39;  WHERE ID=$id&quot;;\r\n        $query = mysqli_query($link, $result);\r\n\r\n         \r\n        \r\n\r\n        //redirecting to the display page. In our case, it is index.php\r\n        header(&#39;refresh: 1; url= ./newdisplay.php?page=2&#39;);\r\n\r\n    \r\n\r\n   \r\n\r\n  ",
+            "link": "https://stackoverflow.com/questions/50366039/php-mysqli-webpage-returns-to-1st-page-when-i-perform-an-edit-on-a-page",
+            "closed_reason": "too broad",
+            "title": "PHP: MySQLi webpage returns to 1st page when I perform an edit on a page",
+            "body": "<p>php mysqli ..i want a code which returns to or is redirected to page 2 if edit or update is done on page 2 or returns to page 3 if edit or update is done on a record on page 3 and the same for other page </p>\n\n<pre><code>$result = \"UPDATE acc SET System='$system',brand='$brand', model='$model', SerialNumber='$serial', Supplier='$supplier', DatePurchased='$date', DateDisposed='$Disposed', dept='$dept'  WHERE ID=$id\";\n    $query = mysqli_query($link, $result);\n\n\n\n\n    //redirecting to the display page. In our case, it is index.php\n    header('refresh: 1; url= ./newdisplay.php?page=2');\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "react-native"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 4363374,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/100004708958798/picture?type=large",
+                "display_name": "Mehmet Alp Albayraktaroğlu",
+                "link": "https://stackoverflow.com/users/4363374/mehmet-alp-albayraktaro%c4%9flu"
+            },
+            "is_answered": true,
+            "view_count": 769,
+            "answer_count": 4,
+            "score": 1,
+            "last_activity_date": 1526468147,
+            "creation_date": 1500985964,
+            "last_edit_date": 1500987064,
+            "question_id": 45303411,
+            "body_markdown": "I&#39;m having trouble accessing `this.state` in functions inside my component.\r\n\r\nAlways I get &quot;Undefined is not a object `this.state.username`, `this.state.password`&quot; error\r\n\r\n**SimpleForm.js**\r\n\r\n    import Expo from &#39;expo&#39;;\r\n    import React from &#39;react&#39;;\r\n    import { StackNavigator, DrawerNavigator } from &#39;react-navigation&#39;;\r\n    import App from &#39;./App&#39;;\r\n    import RegisterForm from &#39;./register&#39;;\r\n    import { View, Text, TextInput, Image, TouchableOpacity, AsyncStorage, StyleSheet } from &#39;react-native&#39;;\r\n    import { YourRestApi } from &#39;./constants/api3&#39;;\r\n    \r\n    class SimpleForm extends React.Component {\r\n      constructor(props) {\r\n        super(props);\r\n        this.state = { username: &#39;&#39;, password: &#39;&#39;, datas: &#39;&#39; };\r\n        this.login = this.login.bind(this, this.state.username, this.state.password);\r\n      }\r\n      componentWillMount() {\r\n        this.login();\r\n      }\r\n    \r\n      registerscreen = () =&gt; {\r\n        this.props.navigation.navigate(&#39;Register&#39;);\r\n      }\r\n    \r\n      \r\n       login() {\r\n        YourRestApi(this.state.username, this.state.password)\r\n          .then((response) =&gt; {\r\n            console.log(response.success);\r\n            this.setState({ loading: false, datas: response });\r\n          });\r\n        if (this.state.datas.success === true) {\r\n          const info = this.state.datas.message;\r\n    \r\n          AsyncStorage.setItem(&#39;info&#39;, JSON.stringify(info));\r\n          this.props.navigation.navigate(&#39;SecondScreen&#39;);\r\n        } else {\r\n          alert(this.state.datas.message);\r\n        } \r\n      }\r\n    \r\n       render() {\r\n        const { navigate } = this.props.navigation;\r\n        return (\r\n          &lt;View style={styles.container}&gt;\r\n            &lt;Image source={require(&#39;./assets/img/sd.png&#39;)} style={styles.backgroundImage}&gt;\r\n              &lt;View style={styles.content}&gt;\r\n                &lt;Text style={styles.logo}&gt;Toto Prediction &lt;/Text&gt;\r\n                &lt;View style={styles.inputContainer}&gt;\r\n    \r\n                  &lt;TextInput\r\n                    underlineColorAndroid=&#39;transparent&#39; style={styles.input}\r\n                    onChangeText={(username) =&gt; this.setState({ username })} \r\n                    value={this.state.username} placeholder=&#39;username&#39;\r\n                  /&gt; \r\n    \r\n                  &lt;TextInput\r\n                    secureTextEntry underlineColorAndroid=&#39;transparent&#39; style={styles.input}\r\n                    onChangeText={(password) =&gt; this.setState({ password })} \r\n                    value={this.state.password} placeholder=&#39;password&#39;\r\n                  /&gt; \r\n                &lt;/View&gt;\r\n                &lt;TouchableOpacity onPress={this.login} style={styles.buttonContainer}&gt;\r\n                  &lt;Text style={styles.buttonText}&gt;Login&lt;/Text&gt;\r\n                &lt;/TouchableOpacity&gt;\r\n                this._onPressGet.bind(this)\r\n                &lt;TouchableOpacity onPress={this.registerscreen} style={styles.buttonContainer}&gt;\r\n                  &lt;Text style={styles.buttonText}&gt;Register&lt;/Text&gt;\r\n                &lt;/TouchableOpacity&gt;\r\n              &lt;/View&gt;\r\n            &lt;/Image&gt;\r\n          &lt;/View&gt;\r\n    \r\n        );\r\n      }\r\n    }\r\n    const styles = StyleSheet.create({\r\n      container: {\r\n        flex: 1,\r\n      },\r\n      backgroundImage: {\r\n        flex: 1,\r\n        alignSelf: &#39;stretch&#39;,\r\n        width: null,\r\n        justifyContent: &#39;center&#39;, \r\n      },\r\n      content: {\r\n        alignItems: &#39;center&#39;,\r\n      },\r\n      logo: {\r\n        color: &#39;white&#39;,\r\n        fontSize: 40,\r\n        fontStyle: &#39;italic&#39;,\r\n        fontWeight: &#39;bold&#39;,\r\n        textShadowColor: &#39;#252525&#39;,\r\n        textShadowOffset: { width: 2, height: 2 },\r\n        textShadowRadius: 15,\r\n        marginBottom: 20,\r\n      },\r\n      inputContainer: {\r\n        margin: 20,\r\n        marginBottom: 0,\r\n        padding: 20,\r\n        paddingBottom: 10,\r\n        alignSelf: &#39;stretch&#39;,\r\n        borderWidth: 1,\r\n        borderColor: &#39;#fff&#39;,\r\n        backgroundColor: &#39;rgba(255,255,255,0.2)&#39;,\r\n      },\r\n      input: {\r\n        fontSize: 16,\r\n        height: 40,\r\n        padding: 10,\r\n        marginBottom: 10,\r\n        backgroundColor: &#39;rgba(255,255,255,1)&#39;,\r\n      },\r\n      buttonContainer: {\r\n        margin: 20,\r\n        padding: 20,\r\n        backgroundColor: &#39;blue&#39;,\r\n        borderWidth: 1,\r\n        borderColor: &#39;#fff&#39;,\r\n        backgroundColor: &#39;rgba(255,255,255,0.6)&#39;,\r\n      },\r\n      buttonText: {\r\n        fontSize: 16,\r\n        fontWeight: &#39;bold&#39;,\r\n        textAlign: &#39;center&#39;,\r\n      },\r\n    });\r\n    const SimpleApp = DrawerNavigator({\r\n      Onescreen: { screen: SimpleForm },\r\n      SecondScreen: { screen: App },\r\n      Register: { screen: RegisterForm },\r\n    });\r\n    Expo.registerRootComponent(SimpleApp);\r\n\r\n\r\n**Api3.js**\r\n\r\n    export function YourRestApi(username1, password1) {\r\n      fetchlogin(username1, password1);\r\n    }\r\n    function fetchlogin(username1, password1) {\r\n      const details = {\r\n        username: username1,\r\n        password: password1,\r\n      };\r\n      const formBody = Object.keys(details).map(key =&gt; `${encodeURIComponent(key)}=${encodeURIComponent(details[key])}`).join(&#39;&amp;&#39;);\r\n    \r\n      fetch(&#39;https://*********************&#39;, {\r\n        method: &#39;POST&#39;,\r\n        headers: {\r\n          Accept: &#39;application/json&#39;,\r\n          &#39;Content-Type&#39;: &#39;application/x-www-form-urlencoded&#39;,\r\n        },\r\n        body: formBody,\r\n      })\r\n        .then((response) =&gt; response.json())\r\n        .then((response) =&gt; {\r\n          console.log(&#39;requestAppInstallation success &#39;, response);\r\n          return response;\r\n        })\r\n        .done();\r\n    }\r\n\r\nI tried binding login to this.state but doesnt worked\r\n\r\nI already checked other questions but nothing is worked\r\n\r\nAny idea what could be causing this ?\r\n",
+            "link": "https://stackoverflow.com/questions/45303411/react-native-this-state-is-undefined-in-login-function",
+            "title": "react-native: `this.state` is undefined in login function",
+            "body": "<p>I'm having trouble accessing <code>this.state</code> in functions inside my component.</p>\n\n<p>Always I get \"Undefined is not a object <code>this.state.username</code>, <code>this.state.password</code>\" error</p>\n\n<p><strong>SimpleForm.js</strong></p>\n\n<pre><code>import Expo from 'expo';\nimport React from 'react';\nimport { StackNavigator, DrawerNavigator } from 'react-navigation';\nimport App from './App';\nimport RegisterForm from './register';\nimport { View, Text, TextInput, Image, TouchableOpacity, AsyncStorage, StyleSheet } from 'react-native';\nimport { YourRestApi } from './constants/api3';\n\nclass SimpleForm extends React.Component {\n  constructor(props) {\n    super(props);\n    this.state = { username: '', password: '', datas: '' };\n    this.login = this.login.bind(this, this.state.username, this.state.password);\n  }\n  componentWillMount() {\n    this.login();\n  }\n\n  registerscreen = () =&gt; {\n    this.props.navigation.navigate('Register');\n  }\n\n\n   login() {\n    YourRestApi(this.state.username, this.state.password)\n      .then((response) =&gt; {\n        console.log(response.success);\n        this.setState({ loading: false, datas: response });\n      });\n    if (this.state.datas.success === true) {\n      const info = this.state.datas.message;\n\n      AsyncStorage.setItem('info', JSON.stringify(info));\n      this.props.navigation.navigate('SecondScreen');\n    } else {\n      alert(this.state.datas.message);\n    } \n  }\n\n   render() {\n    const { navigate } = this.props.navigation;\n    return (\n      &lt;View style={styles.container}&gt;\n        &lt;Image source={require('./assets/img/sd.png')} style={styles.backgroundImage}&gt;\n          &lt;View style={styles.content}&gt;\n            &lt;Text style={styles.logo}&gt;Toto Prediction &lt;/Text&gt;\n            &lt;View style={styles.inputContainer}&gt;\n\n              &lt;TextInput\n                underlineColorAndroid='transparent' style={styles.input}\n                onChangeText={(username) =&gt; this.setState({ username })} \n                value={this.state.username} placeholder='username'\n              /&gt; \n\n              &lt;TextInput\n                secureTextEntry underlineColorAndroid='transparent' style={styles.input}\n                onChangeText={(password) =&gt; this.setState({ password })} \n                value={this.state.password} placeholder='password'\n              /&gt; \n            &lt;/View&gt;\n            &lt;TouchableOpacity onPress={this.login} style={styles.buttonContainer}&gt;\n              &lt;Text style={styles.buttonText}&gt;Login&lt;/Text&gt;\n            &lt;/TouchableOpacity&gt;\n            this._onPressGet.bind(this)\n            &lt;TouchableOpacity onPress={this.registerscreen} style={styles.buttonContainer}&gt;\n              &lt;Text style={styles.buttonText}&gt;Register&lt;/Text&gt;\n            &lt;/TouchableOpacity&gt;\n          &lt;/View&gt;\n        &lt;/Image&gt;\n      &lt;/View&gt;\n\n    );\n  }\n}\nconst styles = StyleSheet.create({\n  container: {\n    flex: 1,\n  },\n  backgroundImage: {\n    flex: 1,\n    alignSelf: 'stretch',\n    width: null,\n    justifyContent: 'center', \n  },\n  content: {\n    alignItems: 'center',\n  },\n  logo: {\n    color: 'white',\n    fontSize: 40,\n    fontStyle: 'italic',\n    fontWeight: 'bold',\n    textShadowColor: '#252525',\n    textShadowOffset: { width: 2, height: 2 },\n    textShadowRadius: 15,\n    marginBottom: 20,\n  },\n  inputContainer: {\n    margin: 20,\n    marginBottom: 0,\n    padding: 20,\n    paddingBottom: 10,\n    alignSelf: 'stretch',\n    borderWidth: 1,\n    borderColor: '#fff',\n    backgroundColor: 'rgba(255,255,255,0.2)',\n  },\n  input: {\n    fontSize: 16,\n    height: 40,\n    padding: 10,\n    marginBottom: 10,\n    backgroundColor: 'rgba(255,255,255,1)',\n  },\n  buttonContainer: {\n    margin: 20,\n    padding: 20,\n    backgroundColor: 'blue',\n    borderWidth: 1,\n    borderColor: '#fff',\n    backgroundColor: 'rgba(255,255,255,0.6)',\n  },\n  buttonText: {\n    fontSize: 16,\n    fontWeight: 'bold',\n    textAlign: 'center',\n  },\n});\nconst SimpleApp = DrawerNavigator({\n  Onescreen: { screen: SimpleForm },\n  SecondScreen: { screen: App },\n  Register: { screen: RegisterForm },\n});\nExpo.registerRootComponent(SimpleApp);\n</code></pre>\n\n<p><strong>Api3.js</strong></p>\n\n<pre><code>export function YourRestApi(username1, password1) {\n  fetchlogin(username1, password1);\n}\nfunction fetchlogin(username1, password1) {\n  const details = {\n    username: username1,\n    password: password1,\n  };\n  const formBody = Object.keys(details).map(key =&gt; `${encodeURIComponent(key)}=${encodeURIComponent(details[key])}`).join('&amp;');\n\n  fetch('https://*********************', {\n    method: 'POST',\n    headers: {\n      Accept: 'application/json',\n      'Content-Type': 'application/x-www-form-urlencoded',\n    },\n    body: formBody,\n  })\n    .then((response) =&gt; response.json())\n    .then((response) =&gt; {\n      console.log('requestAppInstallation success ', response);\n      return response;\n    })\n    .done();\n}\n</code></pre>\n\n<p>I tried binding login to this.state but doesnt worked</p>\n\n<p>I already checked other questions but nothing is worked</p>\n\n<p>Any idea what could be causing this ?</p>\n"
+        },
+        {
+            "tags": [
+                "excel-vba"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9792582,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-lKnt37FMcqo/AAAAAAAAAAI/AAAAAAAAAFc/vBHXqX5P-N0/photo.jpg?sz=128",
+                "display_name": "Hirva",
+                "link": "https://stackoverflow.com/users/9792582/hirva"
+            },
+            "is_answered": false,
+            "view_count": 23,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526468142,
+            "creation_date": 1526369574,
+            "question_id": 50344678,
+            "body_markdown": "I am new to VBA. And below is my code.What i am trying to do is copy data from one worksheet and paste it in another worksheet. The only problem with my code is that every time i try to copy a new file it overwrites the previous data . What i want is to paste data in new line. \r\n\r\n\r\n\r\n    Private Sub CommandButton1_Click()\r\n    Dim wb1 As Workbook\r\n    Dim wb2 As Workbook\r\n    Dim Sheet As Worksheet\r\n    Dim PasteStart As Range\r\n    Dim erow\r\n    Set wb1 = ActiveWorkbook\r\n    Set PasteStart = [Dominoes_Excel!A1]\r\n    FileToOpen = Application.GetOpenFilename\r\n    If FileToOpen = False Then\r\n        MsgBox (&quot;No File Specified.&quot;)\r\n        Exit Sub\r\n    Else\r\n        Set wb2 = Workbooks.Open(Filename:=FileToOpen)\r\n        For Each Sheet In wb2.Sheets\r\n            With Sheet.UsedRange\r\n            .Copy PasteStart\r\n            Set PasteStart = PasteStart.Offset(.Rows.Count)\r\n            End With\r\n        Next Sheet\r\n    End If\r\n        wb2.Close\r\n    End Sub\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50344678/excel-vba-copy-data-from-one-worksheet-to-another-worksheet-and-paste-in-new-row",
+            "title": "Excel-VBA Copy data from one worksheet to another worksheet and paste in new row",
+            "body": "<p>I am new to VBA. And below is my code.What i am trying to do is copy data from one worksheet and paste it in another worksheet. The only problem with my code is that every time i try to copy a new file it overwrites the previous data . What i want is to paste data in new line. </p>\n\n<pre><code>Private Sub CommandButton1_Click()\nDim wb1 As Workbook\nDim wb2 As Workbook\nDim Sheet As Worksheet\nDim PasteStart As Range\nDim erow\nSet wb1 = ActiveWorkbook\nSet PasteStart = [Dominoes_Excel!A1]\nFileToOpen = Application.GetOpenFilename\nIf FileToOpen = False Then\n    MsgBox (\"No File Specified.\")\n    Exit Sub\nElse\n    Set wb2 = Workbooks.Open(Filename:=FileToOpen)\n    For Each Sheet In wb2.Sheets\n        With Sheet.UsedRange\n        .Copy PasteStart\n        Set PasteStart = PasteStart.Offset(.Rows.Count)\n        End With\n    Next Sheet\nEnd If\n    wb2.Close\nEnd Sub\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "git"
+            ],
+            "owner": {
+                "reputation": 468,
+                "user_id": 9555647,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/81c525b41ac85e7c4352dcf4107309aa?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Tool",
+                "link": "https://stackoverflow.com/users/9555647/tool"
+            },
+            "is_answered": true,
+            "view_count": 30,
+            "accepted_answer_id": 50369027,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526468140,
+            "creation_date": 1526464834,
+            "question_id": 50367853,
+            "body_markdown": "I prepare a project to employ on Heroku,   \r\nafter `git add .` and `git commit -am &quot;well prepared to deploy&quot;`,  \r\nIt come to me forgetting add `.gitignore` file.\r\n\r\nHow could I revert the committed to unstaged status.  \r\n`git reset` does not help.",
+            "link": "https://stackoverflow.com/questions/50367853/revert-the-committed-to-unstaged-status",
+            "title": "Revert the committed to unstaged status",
+            "body": "<p>I prepare a project to employ on Heroku,<br>\nafter <code>git add .</code> and <code>git commit -am \"well prepared to deploy\"</code>,<br>\nIt come to me forgetting add <code>.gitignore</code> file.</p>\n\n<p>How could I revert the committed to unstaged status.<br>\n<code>git reset</code> does not help.</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "json",
+                "http",
+                "http-status-code-405"
+            ],
+            "owner": {
+                "reputation": 5,
+                "user_id": 9351774,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/c114a7faf63396a88ec852dce7bce5ac?s=128&d=identicon&r=PG&f=1",
+                "display_name": "kosteklvp",
+                "link": "https://stackoverflow.com/users/9351774/kosteklvp"
+            },
+            "is_answered": false,
+            "view_count": 25,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526468136,
+            "creation_date": 1526467851,
+            "question_id": 50368937,
+            "body_markdown": "I have to send url(&quot;http://example.com/api/users/xx&quot;) and get back JSON object on Android. When I&#39;m trying to do this with GET method, I&#39;m receiving 405 error. I want to do this like in my browser, where I&#39;m just typing my address and receiving full JSON. What method should I use?",
+            "link": "https://stackoverflow.com/questions/50368937/sending-basic-http-request",
+            "title": "Sending basic Http request",
+            "body": "<p>I have to send url(\"<a href=\"http://example.com/api/users/xx\" rel=\"nofollow noreferrer\">http://example.com/api/users/xx</a>\") and get back JSON object on Android. When I'm trying to do this with GET method, I'm receiving 405 error. I want to do this like in my browser, where I'm just typing my address and receiving full JSON. What method should I use?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "list"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 2263126,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a317a2568ab45ce6500b610fcd4a11dd?s=128&d=identicon&r=PG",
+                "display_name": "Abhishek Sharma",
+                "link": "https://stackoverflow.com/users/2263126/abhishek-sharma"
+            },
+            "is_answered": false,
+            "view_count": 42,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526468132,
+            "creation_date": 1526466563,
+            "last_edit_date": 1526466675,
+            "question_id": 50368478,
+            "body_markdown": "    _ID = &quot;000001234&quot;\r\n    f = open(&quot;Players.txt&quot;, &quot;r&quot;)\r\n    allLines = f.readlines()\r\n    nameList = [[] for i in range(1,len(allLines))]\r\n    for i in range(0,len(allLines)):\r\n        splitLine = allLines[i].split()\r\n        l = len(splitLine)\r\n        for name in range(1,l-3):\r\n            nameList[i].append(splitLine[name])\r\n        #print(nameList[i])\r\n    \r\n    for i in range(0, len(allLines)):\r\n        splitLine = allLines[i].split()\r\n        if splitLine[0] == _ID:\r\n            print(nameList[i])\r\n            break\r\n            \r\n    f.close()   \r\n\r\nData:\r\n\r\n    Player ID                      Player Name          Age   Height(cm)   Weight(kg)\r\n       000000001               Aaron Appindangoye           26      183         84.8\r\n       000000002                  Aaron Cresswell           28      170         66.2\r\n       000000003                      Aaron Doran           26      170         73.9\r\n       000000004                    Aaron Galindo           36      183         89.8\r\n       000000005                     Aaron Hughes           38      183         69.9\r\n       000000006                       Aaron Hunt           31      183         73.0",
+            "link": "https://stackoverflow.com/questions/50368478/why-is-this-giving-me-list-index-out-of-range-im-trying-to-find-names-in-a-l",
+            "title": "Why is this giving me &quot;list index out of range&quot;? I&#39;m trying to find names in a list and names can be two words long or more",
+            "body": "<pre><code>_ID = \"000001234\"\nf = open(\"Players.txt\", \"r\")\nallLines = f.readlines()\nnameList = [[] for i in range(1,len(allLines))]\nfor i in range(0,len(allLines)):\n    splitLine = allLines[i].split()\n    l = len(splitLine)\n    for name in range(1,l-3):\n        nameList[i].append(splitLine[name])\n    #print(nameList[i])\n\nfor i in range(0, len(allLines)):\n    splitLine = allLines[i].split()\n    if splitLine[0] == _ID:\n        print(nameList[i])\n        break\n\nf.close()   \n</code></pre>\n\n<p>Data:</p>\n\n<pre><code>Player ID                      Player Name          Age   Height(cm)   Weight(kg)\n   000000001               Aaron Appindangoye           26      183         84.8\n   000000002                  Aaron Cresswell           28      170         66.2\n   000000003                      Aaron Doran           26      170         73.9\n   000000004                    Aaron Galindo           36      183         89.8\n   000000005                     Aaron Hughes           38      183         69.9\n   000000006                       Aaron Hunt           31      183         73.0\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "google-api",
+                "google-drive-sdk",
+                "google-oauth2",
+                "google-api-python-client"
+            ],
+            "owner": {
+                "reputation": 41,
+                "user_id": 550620,
+                "user_type": "registered",
+                "accept_rate": 70,
+                "profile_image": "https://www.gravatar.com/avatar/ab0726f44642e7bf0e9d0cd10a69fbb4?s=128&d=identicon&r=PG",
+                "display_name": "Ron",
+                "link": "https://stackoverflow.com/users/550620/ron"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526468131,
+            "creation_date": 1526467694,
+            "last_edit_date": 1526468131,
+            "question_id": 50368883,
+            "body_markdown": "I am trying to connect to google drive using Oauth on my local machine. I initially tried to follow the quick start steps outlined here https://developers.google.com/drive/v3/web/quickstart/python but it wouldn&#39;t connect. I get prompted with the authorisation screen and click allow but I am then redirected to localhost:8080 with an error response message and the log says:\r\n\r\n   &gt;Your browser has been opened to visit:\r\n    &gt;\r\n    &gt;https://accounts.google.com/o/oauth2/auth?scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive.metadata.readonly&amp;redirect_uri=http%3A%2F%2Flocalhost%3A8080%2F&amp;response_type=code&amp;client_id=xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxx.apps.googleusercontent.com&amp;access_type=offline\r\n    &gt;\r\n    &gt;If your browser is on a different machine then exit and re-run this\r\n    &gt;application with the command-line parameter\r\n    &gt;\r\n    &gt;  --noauth_local_webserver\r\n\r\nI have subsequently tried to simply the code to work through it step by step but I keep encountering the same problem that no access code is returned and I can&#39;t progress with authentication. \r\n\r\n    from httplib2 import Http\r\n    from oauth2client import file, client, tools\r\n    from oauth2client.client import flow_from_clientsecrets\r\n    \r\n    store = file.Storage(&#39;credentials.json&#39;)\r\n    flow = flow_from_clientsecrets(&#39;client_secret.json&#39;,                        \r\n           scope=&#39;https://www.googleapis.com/auth/drive.metadata.readonly&#39;,                       \r\n           redirect_uri=&#39;http://example.com/auth_return&#39;)\r\n                               \r\n    print flow\r\n    creds = tools.run_flow(flow, store)\r\n    print &#39;access_token: {}&#39;.format(creds.access_token)\r\n    \r\n    service = build(&#39;drive&#39;, &#39;v3&#39;, http=creds.authorize(Http()))\r\n\r\n\r\nAny ideas please?",
+            "link": "https://stackoverflow.com/questions/50368883/error-connecting-to-google-drive-using-oauth-2-on-local-machine-with-python",
+            "title": "Error connecting to google drive using Oauth 2 on local machine with python",
+            "body": "<p>I am trying to connect to google drive using Oauth on my local machine. I initially tried to follow the quick start steps outlined here <a href=\"https://developers.google.com/drive/v3/web/quickstart/python\" rel=\"nofollow noreferrer\">https://developers.google.com/drive/v3/web/quickstart/python</a> but it wouldn't connect. I get prompted with the authorisation screen and click allow but I am then redirected to localhost:8080 with an error response message and the log says:</p>\n\n<blockquote>\n  <p>Your browser has been opened to visit:</p>\n  \n  <p><a href=\"https://accounts.google.com/o/oauth2/auth?scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive.metadata.readonly&amp;redirect_uri=http%3A%2F%2Flocalhost%3A8080%2F&amp;response_type=code&amp;client_id=xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxx.apps.googleusercontent.com&amp;access_type=offline\" rel=\"nofollow noreferrer\">https://accounts.google.com/o/oauth2/auth?scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive.metadata.readonly&amp;redirect_uri=http%3A%2F%2Flocalhost%3A8080%2F&amp;response_type=code&amp;client_id=xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxx.apps.googleusercontent.com&amp;access_type=offline</a></p>\n  \n  <p>If your browser is on a different machine then exit and re-run this\n  application with the command-line parameter</p>\n  \n  <p>--noauth_local_webserver</p>\n</blockquote>\n\n<p>I have subsequently tried to simply the code to work through it step by step but I keep encountering the same problem that no access code is returned and I can't progress with authentication. </p>\n\n<pre><code>from httplib2 import Http\nfrom oauth2client import file, client, tools\nfrom oauth2client.client import flow_from_clientsecrets\n\nstore = file.Storage('credentials.json')\nflow = flow_from_clientsecrets('client_secret.json',                        \n       scope='https://www.googleapis.com/auth/drive.metadata.readonly',                       \n       redirect_uri='http://example.com/auth_return')\n\nprint flow\ncreds = tools.run_flow(flow, store)\nprint 'access_token: {}'.format(creds.access_token)\n\nservice = build('drive', 'v3', http=creds.authorize(Http()))\n</code></pre>\n\n<p>Any ideas please?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "function",
+                "if-statement",
+                "return"
+            ],
+            "owner": {
+                "reputation": 77,
+                "user_id": 7388586,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1407333569318019/picture?type=large",
+                "display_name": "Salman Shaukat",
+                "link": "https://stackoverflow.com/users/7388586/salman-shaukat"
+            },
+            "is_answered": true,
+            "view_count": 47,
+            "accepted_answer_id": 50367776,
+            "answer_count": 3,
+            "score": -1,
+            "last_activity_date": 1526468120,
+            "creation_date": 1526464479,
+            "last_edit_date": 1526468120,
+            "question_id": 50367702,
+            "body_markdown": "Hi i have a simple function:\r\n\r\n    def check_val(value):\r\n        if value &lt; 10:\r\n            previous = value\r\n            return previous\r\n        else:\r\n            current  = value + 10\r\n            return current\r\n    \r\n    a = check_val(3)\r\n\r\n How can I know if `current`  or `previous` was returned?\r\n",
+            "link": "https://stackoverflow.com/questions/50367702/how-to-check-which-return-statement-was-executed-in-a-function",
+            "title": "How to check which return statement was executed in a function?",
+            "body": "<p>Hi i have a simple function:</p>\n\n<pre><code>def check_val(value):\n    if value &lt; 10:\n        previous = value\n        return previous\n    else:\n        current  = value + 10\n        return current\n\na = check_val(3)\n</code></pre>\n\n<p>How can I know if <code>current</code>  or <code>previous</code> was returned?</p>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "sql-server",
+                "aggregate-functions"
+            ],
+            "owner": {
+                "reputation": 1562,
+                "user_id": 1483190,
+                "user_type": "registered",
+                "accept_rate": 73,
+                "profile_image": "https://www.gravatar.com/avatar/65e2502f6831ba129bea2268a87e8366?s=128&d=identicon&r=PG",
+                "display_name": "Philip Stratford",
+                "link": "https://stackoverflow.com/users/1483190/philip-stratford"
+            },
+            "is_answered": true,
+            "view_count": 32,
+            "accepted_answer_id": 50368936,
+            "answer_count": 3,
+            "score": 1,
+            "last_activity_date": 1526468120,
+            "creation_date": 1526467474,
+            "question_id": 50368801,
+            "body_markdown": "Consider the following laughably simplified *Expenses* database table:\r\n\r\n    |------------------|--------------|--------|\r\n    |       Name       | Description  | Amount |\r\n    |------------------|--------------|--------|\r\n    |    John Smith    |    Hotel     |  &#163;100  |\r\n    |    John Smith    | Evening meal |   &#163;30  |\r\n    |   Claire Jones   |    Lunch     |   &#163;20  |\r\n    |    John Smith    |    Travel    |   &#163;80  |\r\n    |   Claire Jones   |    Hotel     |  &#163;150  |\r\n    |------------------|--------------|--------|\r\n\r\nUsing the SQL\r\n\r\n    SELECT [Name], SUM([Amount])\r\n    FROM [dbo].[Expenses]\r\n    GROUP BY [Name]\r\n\r\nI can get the results\r\n\r\n    |------------------|--------|\r\n    |    John Smith    |  &#163;210  |\r\n    |   Claire Jones   |  &#163;170  |\r\n    |------------------|--------|\r\n\r\nHowever, I&#39;m wondering how I can get the same results but with an additional *Description* column which just shows the value from the *Description* column of the base table for the first record in the aggregated group. For example:\r\n\r\n    |------------------|--------------|--------|\r\n    |       Name       | Description  | Amount |\r\n    |------------------|--------------|--------|\r\n    |    John Smith    |    Hotel     |  &#163;210  |\r\n    |   Claire Jones   |    Lunch     |  &#163;170  |\r\n    |------------------|--------------|--------|\r\n\r\nThis is obviously not the actual data I&#39;m working with, but I&#39;m wondering if it&#39;s possible to do this?",
+            "link": "https://stackoverflow.com/questions/50368801/get-value-from-first-record-in-group-in-aggregate-query",
+            "title": "Get value from first record in group in aggregate query",
+            "body": "<p>Consider the following laughably simplified <em>Expenses</em> database table:</p>\n\n<pre><code>|------------------|--------------|--------|\n|       Name       | Description  | Amount |\n|------------------|--------------|--------|\n|    John Smith    |    Hotel     |  £100  |\n|    John Smith    | Evening meal |   £30  |\n|   Claire Jones   |    Lunch     |   £20  |\n|    John Smith    |    Travel    |   £80  |\n|   Claire Jones   |    Hotel     |  £150  |\n|------------------|--------------|--------|\n</code></pre>\n\n<p>Using the SQL</p>\n\n<pre><code>SELECT [Name], SUM([Amount])\nFROM [dbo].[Expenses]\nGROUP BY [Name]\n</code></pre>\n\n<p>I can get the results</p>\n\n<pre><code>|------------------|--------|\n|    John Smith    |  £210  |\n|   Claire Jones   |  £170  |\n|------------------|--------|\n</code></pre>\n\n<p>However, I'm wondering how I can get the same results but with an additional <em>Description</em> column which just shows the value from the <em>Description</em> column of the base table for the first record in the aggregated group. For example:</p>\n\n<pre><code>|------------------|--------------|--------|\n|       Name       | Description  | Amount |\n|------------------|--------------|--------|\n|    John Smith    |    Hotel     |  £210  |\n|   Claire Jones   |    Lunch     |  £170  |\n|------------------|--------------|--------|\n</code></pre>\n\n<p>This is obviously not the actual data I'm working with, but I'm wondering if it's possible to do this?</p>\n"
+        },
+        {
+            "tags": [
+                "angularjs",
+                "nested",
+                "angularjs-ng-repeat",
+                "sql-order-by"
+            ],
+            "owner": {
+                "reputation": 42,
+                "user_id": 6219793,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/d93e601bd2b57d09d6cb66395908b1bc?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Em.C",
+                "link": "https://stackoverflow.com/users/6219793/em-c"
+            },
+            "is_answered": true,
+            "view_count": 29,
+            "accepted_answer_id": 50369022,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526468110,
+            "creation_date": 1526382592,
+            "last_edit_date": 1526392896,
+            "question_id": 50348691,
+            "body_markdown": "I have searched for a similar example and found lost of examples but none of them have the same datastructure as my json data so I have tried it all without success. This is my json data\r\n    \r\n    vm.result = [\r\n      {\r\n        &#39;first&#39;: [ \r\n          {&quot;indicate&quot;:&quot;all&quot;, &quot;text&quot;:&quot;All views&quot;},\r\n          {&quot;indicate&quot;:&quot;userview&quot;, &quot;text&quot;:&quot;User view&quot;},\r\n          {&quot;indicate&quot;:&quot;operatorview&quot;, &quot;text&quot;:&quot;Operator view&quot;}\r\n        ]\r\n      },\r\n      {\r\n        &#39;second&#39;: [ \r\n          {&quot;indicate&quot;:&quot;receipts&quot;,&quot;text&quot;:&quot;Receipts&quot;},\r\n          {&quot;indicate&quot;:&quot;other&quot;, &quot;text&quot;:&quot;Other&quot;},\r\n          {&quot;indicate&quot;:&quot;error&quot;, &quot;text&quot;:&quot;Error resolver&quot;}\r\n        ]\r\n      }\r\n    ];\r\n\r\nThis is my table\r\n\r\n    &lt;table class=&quot;table&quot; &gt;\r\n      &lt;thead&gt;\r\n        &lt;tr&gt;\r\n          &lt;th ng-show=&quot;column&quot;&gt;Key&lt;/th&gt;\r\n          &lt;th&gt;Master&lt;/th&gt;\r\n          &lt;th&gt;Editable&lt;/th&gt;\r\n        &lt;/tr&gt;\r\n      &lt;/thead&gt;\r\n      &lt;tbody ng-repeat=&quot;res in vm.result track by $index&quot;&gt;\r\n        &lt;tr  ng-repeat=&quot;ed in res.first | filter: searchfield | orderBy: &#39;indicate&#39;  track by $index&quot;&gt;\r\n          &lt;td {{ed.indicate}}&lt;/td&gt;\r\n          &lt;td&gt;{{ed.text}}&lt;/td&gt;\r\n          &lt;td&gt; {{vm.result[1].second[$index].indicate}}&lt;/td&gt;\r\n          &lt;td &gt; {{vm.result[1].second[$index].text}}&lt;/td&gt;               \r\n        &lt;/tr&gt;\r\n      &lt;/tbody&gt;\r\n    &lt;/table&gt;\r\n\r\nOrderBy only works for the first array but not the second and yes I have tried removing first after re in the second ng-repeat but then it cannot recognize it as an array. I need this structure in the table so that each array has its own columns for its data. So how to I add orderBy indicate for both arrays?\r\n\r\n\r\nExpected output:\r\n\r\n    Master           Editable\r\n    all      |   All      | receipts   | Receipts\r\n    userview | User view  | other      |Other",
+            "link": "https://stackoverflow.com/questions/50348691/how-to-sort-a-nested-table-that-has-multiple-ng-repeats-angularjs",
+            "title": "How to sort a nested table that has multiple ng-repeats angularjs",
+            "body": "<p>I have searched for a similar example and found lost of examples but none of them have the same datastructure as my json data so I have tried it all without success. This is my json data</p>\n\n<pre><code>vm.result = [\n  {\n    'first': [ \n      {\"indicate\":\"all\", \"text\":\"All views\"},\n      {\"indicate\":\"userview\", \"text\":\"User view\"},\n      {\"indicate\":\"operatorview\", \"text\":\"Operator view\"}\n    ]\n  },\n  {\n    'second': [ \n      {\"indicate\":\"receipts\",\"text\":\"Receipts\"},\n      {\"indicate\":\"other\", \"text\":\"Other\"},\n      {\"indicate\":\"error\", \"text\":\"Error resolver\"}\n    ]\n  }\n];\n</code></pre>\n\n<p>This is my table</p>\n\n<pre><code>&lt;table class=\"table\" &gt;\n  &lt;thead&gt;\n    &lt;tr&gt;\n      &lt;th ng-show=\"column\"&gt;Key&lt;/th&gt;\n      &lt;th&gt;Master&lt;/th&gt;\n      &lt;th&gt;Editable&lt;/th&gt;\n    &lt;/tr&gt;\n  &lt;/thead&gt;\n  &lt;tbody ng-repeat=\"res in vm.result track by $index\"&gt;\n    &lt;tr  ng-repeat=\"ed in res.first | filter: searchfield | orderBy: 'indicate'  track by $index\"&gt;\n      &lt;td {{ed.indicate}}&lt;/td&gt;\n      &lt;td&gt;{{ed.text}}&lt;/td&gt;\n      &lt;td&gt; {{vm.result[1].second[$index].indicate}}&lt;/td&gt;\n      &lt;td &gt; {{vm.result[1].second[$index].text}}&lt;/td&gt;               \n    &lt;/tr&gt;\n  &lt;/tbody&gt;\n&lt;/table&gt;\n</code></pre>\n\n<p>OrderBy only works for the first array but not the second and yes I have tried removing first after re in the second ng-repeat but then it cannot recognize it as an array. I need this structure in the table so that each array has its own columns for its data. So how to I add orderBy indicate for both arrays?</p>\n\n<p>Expected output:</p>\n\n<pre><code>Master           Editable\nall      |   All      | receipts   | Receipts\nuserview | User view  | other      |Other\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "drupal-8"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 3553452,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/100000265903448/picture?type=large",
+                "display_name": "Uzair Nouman",
+                "link": "https://stackoverflow.com/users/3553452/uzair-nouman"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526468109,
+            "creation_date": 1526455389,
+            "last_edit_date": 1526458959,
+            "question_id": 50364680,
+            "body_markdown": "I made a bootstrap subtheme &#39;mint&#39;, and in mint.libraries.yml :\r\n\r\n**mint.libraries.yml**\r\n\r\n[![enter image description here][1]][1]\r\n\r\nNow this &#39;framework&#39; styles are used in mint.info.yml :\r\n\r\n**mint.info.yml**\r\n\r\n[![enter image description here][2]][2]\r\n\r\nUntill I was adding some other modules of drupal this theme was working.When I made my own custom module,error appears saying :\r\n\r\nThe specified library &quot;mint/framework&quot; does not exist.\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/BZFB5.png\r\n  [2]: https://i.stack.imgur.com/JJnd0.png",
+            "link": "https://stackoverflow.com/questions/50364680/custom-module-not-working-with-custom-bootstrap-subtheme-drupal-8",
+            "title": "custom module not working with custom bootstrap subtheme - Drupal 8",
+            "body": "<p>I made a bootstrap subtheme 'mint', and in mint.libraries.yml :</p>\n\n<p><strong>mint.libraries.yml</strong></p>\n\n<p><a href=\"https://i.stack.imgur.com/BZFB5.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/BZFB5.png\" alt=\"enter image description here\"></a></p>\n\n<p>Now this 'framework' styles are used in mint.info.yml :</p>\n\n<p><strong>mint.info.yml</strong></p>\n\n<p><a href=\"https://i.stack.imgur.com/JJnd0.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/JJnd0.png\" alt=\"enter image description here\"></a></p>\n\n<p>Untill I was adding some other modules of drupal this theme was working.When I made my own custom module,error appears saying :</p>\n\n<p>The specified library \"mint/framework\" does not exist.</p>\n"
+        },
+        {
+            "tags": [
+                "windows",
+                "julia-lang"
+            ],
+            "owner": {
+                "reputation": 58,
+                "user_id": 8349897,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/b673dbb298169a23485d92ece24f8ac9?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Hamlet",
+                "link": "https://stackoverflow.com/users/8349897/hamlet"
+            },
+            "is_answered": false,
+            "view_count": 64,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526468104,
+            "creation_date": 1520333582,
+            "last_edit_date": 1520352462,
+            "question_id": 49129060,
+            "body_markdown": "When I want to use the GLM Package on Windows I get the problem\r\n\r\n    Rmath not properly installed. Please run Pkg.build(&quot;Rmath&quot;) and restart Julia.\r\n\r\nBut then the following error occurs:\r\n\r\n    Failed to precompile Rmath to ...\r\n\r\nwhich then produces the error notification\r\n\r\n&gt; Exception by Determining of &quot;SecurityProtocol&quot;: &quot;NULL can not\r\n&gt; converted to the type &quot;System.Net.SecurityProtocolType&quot; because it is\r\n&gt; not a possible value for enumerations values. Enter a possible value\r\n&gt; &quot;Ss13, Tls&quot;\r\n\r\nDo you know how to solve this problem?",
+            "link": "https://stackoverflow.com/questions/49129060/building-error-r-math-in-julia",
+            "title": "Building error R Math in Julia",
+            "body": "<p>When I want to use the GLM Package on Windows I get the problem</p>\n\n<pre><code>Rmath not properly installed. Please run Pkg.build(\"Rmath\") and restart Julia.\n</code></pre>\n\n<p>But then the following error occurs:</p>\n\n<pre><code>Failed to precompile Rmath to ...\n</code></pre>\n\n<p>which then produces the error notification</p>\n\n<blockquote>\n  <p>Exception by Determining of \"SecurityProtocol\": \"NULL can not\n  converted to the type \"System.Net.SecurityProtocolType\" because it is\n  not a possible value for enumerations values. Enter a possible value\n  \"Ss13, Tls\"</p>\n</blockquote>\n\n<p>Do you know how to solve this problem?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pytorch",
+                "gradients",
+                "autograd"
+            ],
+            "owner": {
+                "reputation": 342,
+                "user_id": 650261,
+                "user_type": "registered",
+                "accept_rate": 64,
+                "profile_image": "https://www.gravatar.com/avatar/17b8f98f99b006787b7e42aed572a23b?s=128&d=identicon&r=PG",
+                "display_name": "user650261",
+                "link": "https://stackoverflow.com/users/650261/user650261"
+            },
+            "is_answered": false,
+            "view_count": 46,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526468104,
+            "creation_date": 1526433612,
+            "last_edit_date": 1526444155,
+            "question_id": 50361177,
+            "body_markdown": "Pytorch version 0.3.1\r\n\r\nEDIT: I am rewriting this question to be simpler, as I&#39;ve narrowed down the bug.\r\n\r\nI have some variables:\r\n\r\n    x = ag.Variable(torch.ones(1, 1), requires_grad = True)\r\n    y = ag.Variable(torch.ones(1, 1), requires_grad = True)\r\n    z = ag.Variable(torch.ones(1, 1), requires_grad = True)\r\n\r\nI then create a variable representing their concatenation:\r\n\r\n    w = torch.cat([x, y, z])\r\n    f = x + y + z\r\n\r\nThen I try to take derivatives:\r\n\r\n    ag.grad(f, x, retain_graph=True, create_graph=True)\r\n\r\nThis is fine and returns 1, as expected. Same for y and z.\r\n\r\nHowever,\r\n\r\n    ag.grad(f, w, retain_graph=True, create_graph=True)\r\n\r\nReturns an error: RuntimeError: differentiated input is unreachable\r\n\r\nOf course that makes sense - w is not explicitly used in the declaration of `f`. However, I’d like a behavior where one line of code can generate something like `[1; 1; 1]` as output.\r\n\r\nLet’s say I wanted to conveniently batch my variables together, and then take the gradient of the whole shebang at once, rather than processing variables independently (which can make bookkeeping a nightmare). Is there any way to get the outcome I desire?",
+            "link": "https://stackoverflow.com/questions/50361177/pytorch-autograd-fails-with-runtimeerror-differentiated-input-is-unreachable",
+            "title": "Pytorch autograd fails with &quot;RuntimeError: differentiated input is unreachable&quot; after collecting inputs",
+            "body": "<p>Pytorch version 0.3.1</p>\n\n<p>EDIT: I am rewriting this question to be simpler, as I've narrowed down the bug.</p>\n\n<p>I have some variables:</p>\n\n<pre><code>x = ag.Variable(torch.ones(1, 1), requires_grad = True)\ny = ag.Variable(torch.ones(1, 1), requires_grad = True)\nz = ag.Variable(torch.ones(1, 1), requires_grad = True)\n</code></pre>\n\n<p>I then create a variable representing their concatenation:</p>\n\n<pre><code>w = torch.cat([x, y, z])\nf = x + y + z\n</code></pre>\n\n<p>Then I try to take derivatives:</p>\n\n<pre><code>ag.grad(f, x, retain_graph=True, create_graph=True)\n</code></pre>\n\n<p>This is fine and returns 1, as expected. Same for y and z.</p>\n\n<p>However,</p>\n\n<pre><code>ag.grad(f, w, retain_graph=True, create_graph=True)\n</code></pre>\n\n<p>Returns an error: RuntimeError: differentiated input is unreachable</p>\n\n<p>Of course that makes sense - w is not explicitly used in the declaration of <code>f</code>. However, I’d like a behavior where one line of code can generate something like <code>[1; 1; 1]</code> as output.</p>\n\n<p>Let’s say I wanted to conveniently batch my variables together, and then take the gradient of the whole shebang at once, rather than processing variables independently (which can make bookkeeping a nightmare). Is there any way to get the outcome I desire?</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "reactjs",
+                "laravel-5"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9794051,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "jasu nakum",
+                "link": "https://stackoverflow.com/users/9794051/jasu-nakum"
+            },
+            "is_answered": false,
+            "view_count": 29,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526468097,
+            "creation_date": 1526468097,
+            "question_id": 50369017,
+            "body_markdown": "I have install laravel 5.6.21 \r\n\r\nthan i have run \r\n\r\n&gt; php artisan preset react\r\n\r\n\r\nrun command \r\n\r\n&gt; **npm install &amp;&amp; npm run dev** its shows errors like this..\r\n&gt; \r\n\r\n\r\n    npm WARN deprecated gulp-util@3.0.8: gulp-util is deprecated - replace it, following the guidelines at https://medium.com/gulpjs/gulp-util-ca3b1f9f9ac5\r\n\r\n    &gt; node-sass@4.9.0 install C:\\wamp64\\www\\lara_react\\node_modules\\node-sass\r\n    &gt; node scripts/install.js\r\n    \r\n    Downloading binary from https://github.com/sass/node-sass/releases/download/v4.9.0/win32-x64-57_binding.node\r\n    assert.js:42\r\n      throw new errors.AssertionError({\r\n      ^\r\n    \r\n    AssertionError [ERR_ASSERTION]: 5604 == 0\r\n        at ClientRequest.onConnect (C:\\wamp64\\www\\lara_react\\node_modules\\tunnel-agent\\index.js:159:14)\r\n        at Object.onceWrapper (events.js:319:30)\r\n        at emitThree (events.js:136:13)\r\n        at ClientRequest.emit (events.js:217:7)\r\n        at Socket.socketOnData (_http_client.js:472:11)\r\n        at emitOne (events.js:116:13)\r\n        at Socket.emit (events.js:211:7)\r\n        at addChunk (_stream_readable.js:263:12)\r\n        at readableAddChunk (_stream_readable.js:250:11)\r\n        at Socket.Readable.push (_stream_readable.js:208:10)\r\n    npm WARN extract-text-webpack-plugin@3.0.2 requires a peer of webpack@^3.1.0 but none is installed. You must install peer dependencies yourself.\r\n    npm WARN webpack-dev-server@2.11.2 requires a peer of webpack@^2.2.0 || ^3.0.0 but none is installed. You must install peer dependencies yourself.\r\n    npm WARN webpack-dev-middleware@1.12.2 requires a peer of webpack@^1.0.0 || ^2.0.0 || ^3.0.0 but none is installed. You must install peer dependencies yourself.\r\n    npm WARN optional SKIPPING OPTIONAL DEPENDENCY: fsevents@1.2.3 (node_modules\\fsevents):\r\n    npm WARN notsup SKIPPING OPTIONAL DEPENDENCY: Unsupported platform for fsevents@1.2.3: wanted {&quot;os&quot;:&quot;darwin&quot;,&quot;arch&quot;:&quot;any&quot;} (current: {&quot;os&quot;:&quot;win32&quot;,&quot;arch&quot;:&quot;x64&quot;})\r\n    \r\n    npm ERR! code ELIFECYCLE\r\n    npm ERR! errno 1\r\n    npm ERR! node-sass@4.9.0 install: `node scripts/install.js`\r\n    npm ERR! Exit status 1\r\n    npm ERR!\r\n    npm ERR! Failed at the node-sass@4.9.0 install script.\r\n    npm ERR! This is probably not a problem with npm. There is likely additional logging output above.\r\n    \r\n    npm ERR! A complete log of this run can be found in:\r\n    npm ERR!     C:\\Users\\Jasu Nakum\\AppData\\Roaming\\npm-cache\\_logs\\2018-05-16T10_43_14_823Z-debug.log\r\n\r\n&gt; PHP version : 7.1.9\r\n&gt; \r\n&gt; NODE Version : v8.11.1\r\n&gt; \r\n&gt; NPM version :6.0.1",
+            "link": "https://stackoverflow.com/questions/50369017/not-able-to-install-reactjs-with-laravel-5-6-21",
+            "title": "Not able to install reactjs with laravel 5.6.21",
+            "body": "<p>I have install laravel 5.6.21 </p>\n\n<p>than i have run </p>\n\n<blockquote>\n  <p>php artisan preset react</p>\n</blockquote>\n\n<p>run command </p>\n\n<blockquote>\n  <p><strong>npm install &amp;&amp; npm run dev</strong> its shows errors like this..</p>\n</blockquote>\n\n<pre><code>npm WARN deprecated gulp-util@3.0.8: gulp-util is deprecated - replace it, following the guidelines at https://medium.com/gulpjs/gulp-util-ca3b1f9f9ac5\n\n&gt; node-sass@4.9.0 install C:\\wamp64\\www\\lara_react\\node_modules\\node-sass\n&gt; node scripts/install.js\n\nDownloading binary from https://github.com/sass/node-sass/releases/download/v4.9.0/win32-x64-57_binding.node\nassert.js:42\n  throw new errors.AssertionError({\n  ^\n\nAssertionError [ERR_ASSERTION]: 5604 == 0\n    at ClientRequest.onConnect (C:\\wamp64\\www\\lara_react\\node_modules\\tunnel-agent\\index.js:159:14)\n    at Object.onceWrapper (events.js:319:30)\n    at emitThree (events.js:136:13)\n    at ClientRequest.emit (events.js:217:7)\n    at Socket.socketOnData (_http_client.js:472:11)\n    at emitOne (events.js:116:13)\n    at Socket.emit (events.js:211:7)\n    at addChunk (_stream_readable.js:263:12)\n    at readableAddChunk (_stream_readable.js:250:11)\n    at Socket.Readable.push (_stream_readable.js:208:10)\nnpm WARN extract-text-webpack-plugin@3.0.2 requires a peer of webpack@^3.1.0 but none is installed. You must install peer dependencies yourself.\nnpm WARN webpack-dev-server@2.11.2 requires a peer of webpack@^2.2.0 || ^3.0.0 but none is installed. You must install peer dependencies yourself.\nnpm WARN webpack-dev-middleware@1.12.2 requires a peer of webpack@^1.0.0 || ^2.0.0 || ^3.0.0 but none is installed. You must install peer dependencies yourself.\nnpm WARN optional SKIPPING OPTIONAL DEPENDENCY: fsevents@1.2.3 (node_modules\\fsevents):\nnpm WARN notsup SKIPPING OPTIONAL DEPENDENCY: Unsupported platform for fsevents@1.2.3: wanted {\"os\":\"darwin\",\"arch\":\"any\"} (current: {\"os\":\"win32\",\"arch\":\"x64\"})\n\nnpm ERR! code ELIFECYCLE\nnpm ERR! errno 1\nnpm ERR! node-sass@4.9.0 install: `node scripts/install.js`\nnpm ERR! Exit status 1\nnpm ERR!\nnpm ERR! Failed at the node-sass@4.9.0 install script.\nnpm ERR! This is probably not a problem with npm. There is likely additional logging output above.\n\nnpm ERR! A complete log of this run can be found in:\nnpm ERR!     C:\\Users\\Jasu Nakum\\AppData\\Roaming\\npm-cache\\_logs\\2018-05-16T10_43_14_823Z-debug.log\n</code></pre>\n\n<blockquote>\n  <p>PHP version : 7.1.9</p>\n  \n  <p>NODE Version : v8.11.1</p>\n  \n  <p>NPM version :6.0.1</p>\n</blockquote>\n"
+        },
+        {
+            "tags": [
+                "performance",
+                "opencv",
+                "parameters",
+                "surf"
+            ],
+            "owner": {
+                "user_type": "does_not_exist",
+                "display_name": "user1128760"
+            },
+            "is_answered": true,
+            "view_count": 2031,
+            "accepted_answer_id": 8723835,
+            "answer_count": 4,
+            "score": 3,
+            "last_activity_date": 1526468091,
+            "creation_date": 1325628183,
+            "last_edit_date": 1383501163,
+            "question_id": 8719261,
+            "body_markdown": "I was looking to extract SURF features (or something similar) in an application that gets new images at 25 FPS. I thought feature extracting would be possible at least close to real time. I tried OpenSURF with the same parameters that are supplied by the demo file, and was quite devastated to see that at a resolution of 640x480 my 2 GHz Core2 Duo takes 5 to 8 seconds for a single image.\r\n\r\n1) Is that normal?\r\n\r\n2) Can I adjust parameters to get worse results but faster execution time?\r\n\r\n3) I actually do not require scale / rotation invariance, just good features to track between frames (the camera is in a fixed position) / between different lighting conditions. Is there a viable alternative that might run (near) real time?",
+            "link": "https://stackoverflow.com/questions/8719261/detecting-surf-features-disappointed-by-the-performance",
+            "title": "Detecting SURF features - disappointed by the performance",
+            "body": "<p>I was looking to extract SURF features (or something similar) in an application that gets new images at 25 FPS. I thought feature extracting would be possible at least close to real time. I tried OpenSURF with the same parameters that are supplied by the demo file, and was quite devastated to see that at a resolution of 640x480 my 2 GHz Core2 Duo takes 5 to 8 seconds for a single image.</p>\n\n<p>1) Is that normal?</p>\n\n<p>2) Can I adjust parameters to get worse results but faster execution time?</p>\n\n<p>3) I actually do not require scale / rotation invariance, just good features to track between frames (the camera is in a fixed position) / between different lighting conditions. Is there a viable alternative that might run (near) real time?</p>\n"
+        },
+        {
+            "tags": [
+                "azure",
+                "azure-keyvault",
+                "arm-template"
+            ],
+            "owner": {
+                "reputation": 17,
+                "user_id": 7738334,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/CswVM.jpg?s=128&g=1",
+                "display_name": "TheFreeman",
+                "link": "https://stackoverflow.com/users/7738334/thefreeman"
+            },
+            "is_answered": false,
+            "view_count": 30,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526468078,
+            "creation_date": 1526362636,
+            "last_edit_date": 1526468078,
+            "question_id": 50342983,
+            "body_markdown": "I am using ARM Templates to create both Azure Key Vault and Keys required to be pre-set. What I have noticed is that each time the ARM template is run, even if the Keys are the same, it is creating a new secret thus increasing the version.\r\n\r\nIs it possible to avoid this through the ARM template? To only create the Secret if keys/passwords have changed?\r\n\r\nThanks!",
+            "link": "https://stackoverflow.com/questions/50342983/azure-key-vault-arm-template",
+            "title": "Azure Key Vault - ARM Template",
+            "body": "<p>I am using ARM Templates to create both Azure Key Vault and Keys required to be pre-set. What I have noticed is that each time the ARM template is run, even if the Keys are the same, it is creating a new secret thus increasing the version.</p>\n\n<p>Is it possible to avoid this through the ARM template? To only create the Secret if keys/passwords have changed?</p>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "arrays",
+                "swift",
+                "struct",
+                "realm"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 5393763,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-qfAhN7vpYXU/AAAAAAAAAAI/AAAAAAAAAtI/1Ur55DqExpw/photo.jpg?sz=128",
+                "display_name": "Michael Pohl",
+                "link": "https://stackoverflow.com/users/5393763/michael-pohl"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526468070,
+            "creation_date": 1526459372,
+            "question_id": 50365906,
+            "body_markdown": "i created data persistent layer in struct according to [this guide][1], but i also need to create some realm object with struct and add it to another Realm object in struct, like array. I mean something like that:\r\n\r\n    public struct Publisher {\r\n        public let identifier: Int\r\n        public let name: String\r\n    }\r\n\r\n    public struct Character {\r\n        public let identifier: Int\r\n        public let name: String\r\n        public let realName: String\r\n        var publisherArray: [Publisher]\r\n    }\r\n\r\n    final class PublisherObject: Object {\r\n        dynamic var identifier = 0\r\n        dynamic var name = &quot;&quot;\r\n\r\n        override static func primaryKey() -&gt; String? {\r\n            return &quot;identifier&quot;\r\n        }\r\n    }\r\n\r\n    final class CharacterObject: Object {\r\n        dynamic var identifier = 0\r\n        dynamic var name = &quot;&quot;\r\n        dynamic var realName = &quot;&quot;\r\n        var publisherArray: List&lt;PublisherObject&gt;?\r\n   \r\n        override static func primaryKey() -&gt; String? {\r\n            return &quot;identifier&quot;\r\n        }\r\n    }\r\n\r\nIn above guide, author added to struct only one another struct, not array.\r\nI got to this point:\r\n\r\n    extension Character: Persistable {\r\n        public init(managedObject: CharacterObject) {\r\n            identifier = managedObject.identifier\r\n            name = managedObject.name\r\n            realName = managedObject.realName\r\n            publisherArray = managedObject.publisherArray\r\n                .compactMap(Publisher.init(managedObject:))\r\n        }\r\n    }\r\n\r\nbut i don&#39;t know, what i must type here:\r\n\r\n    public func managedObject() -&gt; CharacterObject {\r\n            let character = CharacterObject()\r\n                character.identifier = identifier\r\n                character.name = name\r\n                character.realName = realName\r\n                // here must be something like that, but for array\r\n                // character.publisherArray = publisherArray.managedObject()\r\n                return character\r\n            }\r\nThanks all of you for help :-)\r\n\r\n\r\n  [1]: https://medium.com/@gonzalezreal/using-realm-with-value-types-b69947741e8b",
+            "link": "https://stackoverflow.com/questions/50365906/how-to-save-struct-to-realm-with-list-of-another-struct",
+            "title": "How to save struct to Realm, with list of another struct",
+            "body": "<p>i created data persistent layer in struct according to <a href=\"https://medium.com/@gonzalezreal/using-realm-with-value-types-b69947741e8b\" rel=\"nofollow noreferrer\">this guide</a>, but i also need to create some realm object with struct and add it to another Realm object in struct, like array. I mean something like that:</p>\n\n<pre><code>public struct Publisher {\n    public let identifier: Int\n    public let name: String\n}\n\npublic struct Character {\n    public let identifier: Int\n    public let name: String\n    public let realName: String\n    var publisherArray: [Publisher]\n}\n\nfinal class PublisherObject: Object {\n    dynamic var identifier = 0\n    dynamic var name = \"\"\n\n    override static func primaryKey() -&gt; String? {\n        return \"identifier\"\n    }\n}\n\nfinal class CharacterObject: Object {\n    dynamic var identifier = 0\n    dynamic var name = \"\"\n    dynamic var realName = \"\"\n    var publisherArray: List&lt;PublisherObject&gt;?\n\n    override static func primaryKey() -&gt; String? {\n        return \"identifier\"\n    }\n}\n</code></pre>\n\n<p>In above guide, author added to struct only one another struct, not array.\nI got to this point:</p>\n\n<pre><code>extension Character: Persistable {\n    public init(managedObject: CharacterObject) {\n        identifier = managedObject.identifier\n        name = managedObject.name\n        realName = managedObject.realName\n        publisherArray = managedObject.publisherArray\n            .compactMap(Publisher.init(managedObject:))\n    }\n}\n</code></pre>\n\n<p>but i don't know, what i must type here:</p>\n\n<pre><code>public func managedObject() -&gt; CharacterObject {\n        let character = CharacterObject()\n            character.identifier = identifier\n            character.name = name\n            character.realName = realName\n            // here must be something like that, but for array\n            // character.publisherArray = publisherArray.managedObject()\n            return character\n        }\n</code></pre>\n\n<p>Thanks all of you for help :-)</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "xamarin.android",
+                "mvvmcross"
+            ],
+            "owner": {
+                "reputation": 25,
+                "user_id": 6825552,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://www.gravatar.com/avatar/6c8e9578166c458efea648f324b2399a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Chanki",
+                "link": "https://stackoverflow.com/users/6825552/chanki"
+            },
+            "is_answered": false,
+            "view_count": 34,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526468063,
+            "creation_date": 1525960112,
+            "last_edit_date": 1526468063,
+            "question_id": 50274462,
+            "body_markdown": "Can anyone please help me to address below issue.\r\n\r\nI&#39;m trying to update Activity theme from fragment using below code in MvvmCross.\r\n\r\n**Code**\r\n\r\n    public override View OnCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)\r\n            {\r\n                View view=null;\r\n                if(FragmentId==Resource.Layout.my_form)\r\n                {\r\n                    Context contextThemeWrapper = new ContextThemeWrapper(Activity, Resource.Style.MyTheme_IntakeForm);\r\n    \r\n                    // clone the inflater using the ContextThemeWrapper\r\n                    LayoutInflater localInflater = inflater.CloneInContext(contextThemeWrapper);\r\n    \r\n                    view=localInflater.Inflate(Resource.Layout.my_form, container, false);\r\n    \r\n                }\r\n\r\n**Exception**\r\n\r\n    Could not activate JNI Handle 0xbfa862c8 (key_handle 0x58f5101) of Java type &#39;mvvmcross/binding/droid/views/MvxSpinner&#39; as managed type &#39;MvvmCross.Binding.Droid.Views.MvxSpinner&#39;.\r\n\r\n**Inner Exception**  \r\n\r\n            {MvvmCross.Platform.Exceptions.MvxException: bindingContext is null during MvxAdapter creation - Adapter&#39;s should only be created when a specific binding context has been placed on the stack\r\n          at MvvmCross.Binding.Droid.Views.MvxAdapter..ctor (Android.Content.Context context, MvvmCross.Binding.Droid.BindingContext.IMvxAndroidBindingContext bindingContext) [0x00032] in C:\\projects\\mvvmcross\\MvvmCross\\Binding\\Droid\\Views\\MvxAdapter.cs:54 \r\n          at MvvmCross.Binding.Droid.Views.MvxAdapter..ctor (Android.Content.Context context) [0x00000] in C:\\projects\\mvvmcross\\MvvmCross\\Binding\\Droid\\Views\\MvxAdapter.cs:44 \r\n          at MvvmCross.Binding.Droid.Views.MvxSpinner..ctor (Android.Content.Context context, Android.Util.IAttributeSet attrs) [0x00000] in C:\\projects\\mvvmcross\\MvvmCross\\Binding\\Droid\\Views\\MvxSpinner.cs:23 \r\n          at (wrapper dynamic-method) System.Object.5e8d0b16-077f-459f-9215-45a9d71443b1(intptr,object[])\r\n          at Java.Interop.TypeManager.n_Activate (System.IntPtr jnienv, System.IntPtr jclass, System.IntPtr typename_ptr, System.IntPtr signature_ptr, System.IntPtr jobject, System.IntPtr parameters_ptr) [0x000df] in &lt;ff199c98c3f84852925dd37a0ef6113a&gt;:0 }\r\n\r\nThanks,\r\n",
+            "link": "https://stackoverflow.com/questions/50274462/mvvmcross-exception-during-inflate",
+            "title": "MvvmCross Exception During Inflate",
+            "body": "<p>Can anyone please help me to address below issue.</p>\n\n<p>I'm trying to update Activity theme from fragment using below code in MvvmCross.</p>\n\n<p><strong>Code</strong></p>\n\n<pre><code>public override View OnCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)\n        {\n            View view=null;\n            if(FragmentId==Resource.Layout.my_form)\n            {\n                Context contextThemeWrapper = new ContextThemeWrapper(Activity, Resource.Style.MyTheme_IntakeForm);\n\n                // clone the inflater using the ContextThemeWrapper\n                LayoutInflater localInflater = inflater.CloneInContext(contextThemeWrapper);\n\n                view=localInflater.Inflate(Resource.Layout.my_form, container, false);\n\n            }\n</code></pre>\n\n<p><strong>Exception</strong></p>\n\n<pre><code>Could not activate JNI Handle 0xbfa862c8 (key_handle 0x58f5101) of Java type 'mvvmcross/binding/droid/views/MvxSpinner' as managed type 'MvvmCross.Binding.Droid.Views.MvxSpinner'.\n</code></pre>\n\n<p><strong>Inner Exception</strong>  </p>\n\n<pre><code>        {MvvmCross.Platform.Exceptions.MvxException: bindingContext is null during MvxAdapter creation - Adapter's should only be created when a specific binding context has been placed on the stack\n      at MvvmCross.Binding.Droid.Views.MvxAdapter..ctor (Android.Content.Context context, MvvmCross.Binding.Droid.BindingContext.IMvxAndroidBindingContext bindingContext) [0x00032] in C:\\projects\\mvvmcross\\MvvmCross\\Binding\\Droid\\Views\\MvxAdapter.cs:54 \n      at MvvmCross.Binding.Droid.Views.MvxAdapter..ctor (Android.Content.Context context) [0x00000] in C:\\projects\\mvvmcross\\MvvmCross\\Binding\\Droid\\Views\\MvxAdapter.cs:44 \n      at MvvmCross.Binding.Droid.Views.MvxSpinner..ctor (Android.Content.Context context, Android.Util.IAttributeSet attrs) [0x00000] in C:\\projects\\mvvmcross\\MvvmCross\\Binding\\Droid\\Views\\MvxSpinner.cs:23 \n      at (wrapper dynamic-method) System.Object.5e8d0b16-077f-459f-9215-45a9d71443b1(intptr,object[])\n      at Java.Interop.TypeManager.n_Activate (System.IntPtr jnienv, System.IntPtr jclass, System.IntPtr typename_ptr, System.IntPtr signature_ptr, System.IntPtr jobject, System.IntPtr parameters_ptr) [0x000df] in &lt;ff199c98c3f84852925dd37a0ef6113a&gt;:0 }\n</code></pre>\n\n<p>Thanks,</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "google-fit"
+            ],
+            "owner": {
+                "reputation": 285,
+                "user_id": 2017230,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://www.gravatar.com/avatar/1755af1209fd422b5b6b626fc89b76cc?s=128&d=identicon&r=PG",
+                "display_name": "Partha Chakraborty",
+                "link": "https://stackoverflow.com/users/2017230/partha-chakraborty"
+            },
+            "is_answered": false,
+            "view_count": 56,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1526468061,
+            "creation_date": 1524826140,
+            "last_edit_date": 1524827076,
+            "question_id": 50060795,
+            "body_markdown": "There are various fitness activities in Google Fit API such as Aerobics, Badminton, Boxing, Weight Lifting, etc. How do I get the readings of the steps counted and the calories burnt for each of these activities using Google Fit API? Any sort of suggestions are most welcome. Thanks in advance.",
+            "link": "https://stackoverflow.com/questions/50060795/how-do-i-get-the-readings-of-various-fitness-activities-using-google-fit-api",
+            "title": "How do I get the readings of various fitness activities using Google Fit API?",
+            "body": "<p>There are various fitness activities in Google Fit API such as Aerobics, Badminton, Boxing, Weight Lifting, etc. How do I get the readings of the steps counted and the calories burnt for each of these activities using Google Fit API? Any sort of suggestions are most welcome. Thanks in advance.</p>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "casting",
+                "function-pointers"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9787198,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3cf6e2038d77967f72d1b1b66bee0055?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Citdar",
+                "link": "https://stackoverflow.com/users/9787198/citdar"
+            },
+            "is_answered": false,
+            "view_count": 72,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526468054,
+            "creation_date": 1526464281,
+            "last_edit_date": 1526468054,
+            "question_id": 50367631,
+            "body_markdown": "I have a simple question which is breaking my mind.\r\nOn my solution, I&#39;m working with a DLL that offers me the following function:\r\n\r\n    int RegisterCallback(TCallbackType CallbackType, void *pLLTProfileCallback, void *pUserData);\r\n\r\nFor more information, the parameter pLLTProfileCallback is a function type defined as:\r\n\r\n    typedef void (__stdcall *TNewProfile_s)(const unsigned char *pData,\r\n    unsigned int nSize, void *pUserData);\r\n\r\nI&#39;m trying to insert my function &#39;NewProfile&#39; in this parameter as follows:\r\n\r\n    RegisterCallback(STD_CALL, (void*)NewProfile, m_pLLT1);\r\n\r\nBut it says: &#39;Error: invalid type conversion&#39;.\r\n\r\nThe function definition for &#39;NewProfile&#39; is:\r\n\r\n    void __stdcall NewProfile(const unsigned char* pucData, unsigned int uiSize, void* pUserData){...}\r\n\r\nWhere is my error exactly? What can I do in order to fix it?",
+            "link": "https://stackoverflow.com/questions/50367631/cast-function-pointer-to-void",
+            "title": "Cast function pointer to (void*)",
+            "body": "<p>I have a simple question which is breaking my mind.\nOn my solution, I'm working with a DLL that offers me the following function:</p>\n\n<pre><code>int RegisterCallback(TCallbackType CallbackType, void *pLLTProfileCallback, void *pUserData);\n</code></pre>\n\n<p>For more information, the parameter pLLTProfileCallback is a function type defined as:</p>\n\n<pre><code>typedef void (__stdcall *TNewProfile_s)(const unsigned char *pData,\nunsigned int nSize, void *pUserData);\n</code></pre>\n\n<p>I'm trying to insert my function 'NewProfile' in this parameter as follows:</p>\n\n<pre><code>RegisterCallback(STD_CALL, (void*)NewProfile, m_pLLT1);\n</code></pre>\n\n<p>But it says: 'Error: invalid type conversion'.</p>\n\n<p>The function definition for 'NewProfile' is:</p>\n\n<pre><code>void __stdcall NewProfile(const unsigned char* pucData, unsigned int uiSize, void* pUserData){...}\n</code></pre>\n\n<p>Where is my error exactly? What can I do in order to fix it?</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "jquery",
+                "phpmailer"
+            ],
+            "owner": {
+                "reputation": 176,
+                "user_id": 3509450,
+                "user_type": "registered",
+                "accept_rate": 51,
+                "profile_image": "https://i.stack.imgur.com/baR6b.jpg?s=128&g=1",
+                "display_name": "Aishwaryas",
+                "link": "https://stackoverflow.com/users/3509450/aishwaryas"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "closed_date": 1526468432,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526468052,
+            "creation_date": 1526467391,
+            "last_edit_date": 1526468052,
+            "question_id": 50368764,
+            "body_markdown": "I am trying to send an email with attachment in php using PHPMailer and JQuery.post method. When I try to post the data, email sents without attachment and shows `couldnot access the file`. \r\n\r\n    var file_data = $(&#39;#filemove&#39;).prop(&#39;files&#39;)[0];   //this is how I get the file \r\n\r\nin php Page:\r\n\r\n    if(!empty($_FILES[&#39;file_data&#39;][&#39;name&#39;])){\r\n\t\t\t\t \r\n\t\t\t$jcv_name = $_FILES[&#39;file_data&#39;][&#39;name&#39;];\t\r\n\t\t\t$strFileName = basename($jcv_name);\r\n\t\t\t$strFileSuffix = substr($strFileName, strrpos($strFileName, &quot;.&quot;) + 1);\r\n\t\t\t$strFileNameNoExt = basename($strFileName, &quot;.{$strFileSuffix}&quot;);\r\n\t\t\t\r\n\r\n\t\t\t$strImgOrig = &quot;images/cv/&quot; . &quot;{$strFileNameNoExt}_jcv_{$curtime}.{$strFileSuffix}&quot;;\r\n\t\t\t$dbFileName = &quot;{$strFileNameNoExt}_jcv_{$curtime}.{$strFileSuffix}&quot;;\r\n\t\t\tif(move_uploaded_file($_FILES[&quot;file_data&quot;][&quot;tmp_name&quot;], $strImgOrig)) {\r\n\t\t\t\t$applicantcv = $dbFileName;\r\n\t\t\t}\r\n\r\nDo I need to use file API inorder to get the file input type in jquery.post method?\r\n\r\nEdit 1\r\n\r\n    \t\t\t&lt;?php\r\n\t\t\tif(isset($_POST[&#39;file_data&#39;])) { $file_data= $_POST[&#39;file_data&#39;]; } else { $file_data=&quot;&quot;; }\r\n\t\t\tinclude_once(&quot;class/class.phpmailer.php&quot;);\r\n\t\t\tif(!empty($_FILES[&#39;file_data&#39;][&#39;name&#39;])){\r\n\t\t\t$jcv_name = $_FILES[&#39;file_data&#39;][&#39;name&#39;];\t\r\n\t\t\t$strFileName = basename($jcv_name);\r\n\t\t\t$strFileSuffix = substr($strFileName, strrpos($strFileName, &quot;.&quot;) + 1);\r\n\t\t\t$strFileNameNoExt = basename($strFileName, &quot;.{$strFileSuffix}&quot;);\r\n\t\t\t$strImgOrig = &quot;images/cv/&quot; . &quot;{$strFileNameNoExt}_jcv_{$curtime}.{$strFileSuffix}&quot;;\r\n\t\t\t$dbFileName = &quot;{$strFileNameNoExt}_jcv_{$curtime}.{$strFileSuffix}&quot;;\r\n\t\t\tif(move_uploaded_file($_FILES[&quot;file_data&quot;][&quot;tmp_name&quot;], $strImgOrig)) {\r\n\t\t\t$applicantcv = $dbFileName;\r\n\t\t\t}\r\n\t\t\t}\r\n\t\t\t$subject = &quot;subject&quot;;\t\t\r\n\t\t\t$strMsg = &quot;message&quot;;\r\n\t\t\t$to=&quot;abc@ud.com&quot;\r\n\r\n\t\t\t$objMail = new PHPMailer();\r\n\t\t\t$objMail-&gt;From = $email;\t\t\t\t\t\t\t\t//\tMessage From\r\n\t\t\t$objMail-&gt;AddAddress($to);\t\t\t\t\t\t\t//  Message To\r\n\t\t\t$objMail-&gt;Subject = $subject;\t\t\t\t\t\t//  Message Subject\r\n\t\t\t$objMail-&gt;Body = $strMsg;\t\t\t\t\t\t\t\t//  Message Body/Content\r\n\t\t\t$objMail-&gt;IsHTML(true);\t\t\t\t\t\t\t\t\t//  Message type to HTML.\r\n\t\t\t$objMail-&gt;AddAttachment($strImgOrig);\r\n\t\t\t$objMail-&gt;Send();\r\n\r\n\t\t\t?&gt;\r\nScript:\r\n\r\n    \t\t\tfunction send_email()\r\n\t\t\t{\r\n\t\t\tvar name=$(&quot;#fullname&quot;).val();\r\n\t\t\tvar email=$(&quot;#cemail&quot;).val();\r\n\t\t\tvar file_data = $(&#39;#filemove&#39;).prop(&#39;files&#39;)[0];\r\n\t\t\t$.post(&#39;send_emailfun.php&#39;,{name:&quot;&quot;+name+&quot;&quot;,email:&quot;&quot;+email+&quot;&quot;,file_data:&quot;&quot;+file_data+&quot;&quot;},function(data){\r\n\t\t\t$(&quot;#enquiry_success&quot;).modal(&quot;show&quot;);\r\n\t\t\t});\r\n\t\t\t}\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50368764/do-i-need-to-use-file-api-inorder-to-get-the-file-input-type-in-jquery-post-meth",
+            "closed_reason": "duplicate",
+            "title": "Do I need to use file API inorder to get the file input type in jquery.post method?",
+            "body": "<p>I am trying to send an email with attachment in php using PHPMailer and JQuery.post method. When I try to post the data, email sents without attachment and shows <code>couldnot access the file</code>. </p>\n\n<pre><code>var file_data = $('#filemove').prop('files')[0];   //this is how I get the file \n</code></pre>\n\n<p>in php Page:</p>\n\n<pre><code>if(!empty($_FILES['file_data']['name'])){\n\n        $jcv_name = $_FILES['file_data']['name'];   \n        $strFileName = basename($jcv_name);\n        $strFileSuffix = substr($strFileName, strrpos($strFileName, \".\") + 1);\n        $strFileNameNoExt = basename($strFileName, \".{$strFileSuffix}\");\n\n\n        $strImgOrig = \"images/cv/\" . \"{$strFileNameNoExt}_jcv_{$curtime}.{$strFileSuffix}\";\n        $dbFileName = \"{$strFileNameNoExt}_jcv_{$curtime}.{$strFileSuffix}\";\n        if(move_uploaded_file($_FILES[\"file_data\"][\"tmp_name\"], $strImgOrig)) {\n            $applicantcv = $dbFileName;\n        }\n</code></pre>\n\n<p>Do I need to use file API inorder to get the file input type in jquery.post method?</p>\n\n<p>Edit 1</p>\n\n<pre><code>            &lt;?php\n        if(isset($_POST['file_data'])) { $file_data= $_POST['file_data']; } else { $file_data=\"\"; }\n        include_once(\"class/class.phpmailer.php\");\n        if(!empty($_FILES['file_data']['name'])){\n        $jcv_name = $_FILES['file_data']['name'];   \n        $strFileName = basename($jcv_name);\n        $strFileSuffix = substr($strFileName, strrpos($strFileName, \".\") + 1);\n        $strFileNameNoExt = basename($strFileName, \".{$strFileSuffix}\");\n        $strImgOrig = \"images/cv/\" . \"{$strFileNameNoExt}_jcv_{$curtime}.{$strFileSuffix}\";\n        $dbFileName = \"{$strFileNameNoExt}_jcv_{$curtime}.{$strFileSuffix}\";\n        if(move_uploaded_file($_FILES[\"file_data\"][\"tmp_name\"], $strImgOrig)) {\n        $applicantcv = $dbFileName;\n        }\n        }\n        $subject = \"subject\";       \n        $strMsg = \"message\";\n        $to=\"abc@ud.com\"\n\n        $objMail = new PHPMailer();\n        $objMail-&gt;From = $email;                                //  Message From\n        $objMail-&gt;AddAddress($to);                          //  Message To\n        $objMail-&gt;Subject = $subject;                       //  Message Subject\n        $objMail-&gt;Body = $strMsg;                               //  Message Body/Content\n        $objMail-&gt;IsHTML(true);                                 //  Message type to HTML.\n        $objMail-&gt;AddAttachment($strImgOrig);\n        $objMail-&gt;Send();\n\n        ?&gt;\n</code></pre>\n\n<p>Script:</p>\n\n<pre><code>            function send_email()\n        {\n        var name=$(\"#fullname\").val();\n        var email=$(\"#cemail\").val();\n        var file_data = $('#filemove').prop('files')[0];\n        $.post('send_emailfun.php',{name:\"\"+name+\"\",email:\"\"+email+\"\",file_data:\"\"+file_data+\"\"},function(data){\n        $(\"#enquiry_success\").modal(\"show\");\n        });\n        }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "transform",
+                "3d",
+                "plane"
+            ],
+            "owner": {
+                "reputation": 4876,
+                "user_id": 294632,
+                "user_type": "registered",
+                "accept_rate": 84,
+                "profile_image": "https://www.gravatar.com/avatar/827d1f54ddb67b01ceae7192c367978d?s=128&d=identicon&r=PG",
+                "display_name": "Thijs Koerselman",
+                "link": "https://stackoverflow.com/users/294632/thijs-koerselman"
+            },
+            "is_answered": true,
+            "view_count": 10618,
+            "accepted_answer_id": 48408289,
+            "answer_count": 3,
+            "score": 15,
+            "last_activity_date": 1526468052,
+            "creation_date": 1317980383,
+            "last_edit_date": 1515245562,
+            "question_id": 7685495,
+            "body_markdown": "I have a shape made out of several triangles which is positioned somewhere in world space with scale, rotate, translate. I also have a plane on which I would like to project (orthogonal) the shape.\r\n\r\nI could multiply every vertex of every triangle in the shape with the objects transformation matrix to find out where it is located in world coordinates, and then project this point onto the plane. \r\n\r\nBut I don&#39;t need to draw the projection, and instead I would like to transform the plane with the inverse transformation matrix of the shape, and then project all the vertices onto the (inverse transformed) plane. Since it only requires me to transform the plane once and not every vertex.\r\n\r\nMy plane has a normal (xyz) and a distance (d). How do I multiply it with a 4x4 transformation matrix so that it turns out ok? \r\n\r\nCan you create a vec4 as xyzd and multiply that? Or maybe create a vector xyz1 and then what to do with d?\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/7685495/transforming-a-3d-plane-using-a-4x4-matrix",
+            "title": "Transforming a 3D plane using a 4x4 matrix",
+            "body": "<p>I have a shape made out of several triangles which is positioned somewhere in world space with scale, rotate, translate. I also have a plane on which I would like to project (orthogonal) the shape.</p>\n\n<p>I could multiply every vertex of every triangle in the shape with the objects transformation matrix to find out where it is located in world coordinates, and then project this point onto the plane. </p>\n\n<p>But I don't need to draw the projection, and instead I would like to transform the plane with the inverse transformation matrix of the shape, and then project all the vertices onto the (inverse transformed) plane. Since it only requires me to transform the plane once and not every vertex.</p>\n\n<p>My plane has a normal (xyz) and a distance (d). How do I multiply it with a 4x4 transformation matrix so that it turns out ok? </p>\n\n<p>Can you create a vec4 as xyzd and multiply that? Or maybe create a vector xyz1 and then what to do with d?</p>\n"
+        },
+        {
+            "tags": [
+                "c",
+                "stm32",
+                "freertos",
+                "hal",
+                "real-time-clock"
+            ],
+            "owner": {
+                "reputation": 120,
+                "user_id": 3990801,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://www.gravatar.com/avatar/6fba76487c37b838fb4de5f51aaf1f59?s=128&d=identicon&r=PG&f=1",
+                "display_name": "taquionbcn",
+                "link": "https://stackoverflow.com/users/3990801/taquionbcn"
+            },
+            "is_answered": true,
+            "view_count": 599,
+            "accepted_answer_id": 47071333,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1526468051,
+            "creation_date": 1509466849,
+            "last_edit_date": 1509957963,
+            "question_id": 47040039,
+            "body_markdown": "I&#39;m having a strange behavior with the RTC on a stm32L476 with FreeRTOS.\r\n\r\nIt only reads the first time in RUN mode, RTC is working, because from run to run it saves the value of the internal register and is going up.\r\n\r\nAlso if I do DEBUG when I put breakpoint at stm32l4xx_hal_rtc.c at line 583:\r\n\r\n&lt;!-- language: c --&gt;\r\n\r\n    tmpreg = (uint32_t)(hrtc-&gt;Instance-&gt;TR &amp; RTC_TR_RESERVED_MASK);    \r\n    *breakpoint* sTime-&gt;Hours = (uint8_t)((tmpreg &amp; (RTC_TR_HT | RTC_TR_HU)) &gt;&gt; 16);\r\n\r\nI can see the tmpreg and TR register how they update, and then when I click jump to next breakpoint witch is the same I saw the display updated.\r\n\r\nSo why it&#39;s not working when normal RUN?\r\n\r\nInit code (cube MX generated):\r\n\r\n&lt;!-- language: c --&gt;\r\n\r\n    void MX_RTC_Init(void)\r\n    {\r\n      RTC_TimeTypeDef sTime;\r\n      RTC_DateTypeDef sDate;\r\n    \r\n        /**Initialize RTC Only \r\n        */\r\n      hrtc.Instance = RTC;\r\n      hrtc.Init.HourFormat = RTC_HOURFORMAT_24;\r\n      hrtc.Init.AsynchPrediv = 127;\r\n      hrtc.Init.SynchPrediv = 255;\r\n      hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;\r\n      hrtc.Init.OutPutRemap = RTC_OUTPUT_REMAP_NONE;\r\n      hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;\r\n      hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;\r\n      if (HAL_RTC_Init(&amp;hrtc) != HAL_OK)\r\n      {\r\n        _Error_Handler(__FILE__, __LINE__);\r\n      }\r\n    \r\n        /**Initialize RTC and set the Time and Date \r\n        */\r\n      if(HAL_RTCEx_BKUPRead(&amp;hrtc, RTC_BKP_DR0) != 0x32F2){\r\n      sTime.Hours = 0;\r\n      sTime.Minutes = 0;\r\n      sTime.Seconds = 0;\r\n      sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;\r\n      sTime.StoreOperation = RTC_STOREOPERATION_RESET;\r\n      if (HAL_RTC_SetTime(&amp;hrtc, &amp;sTime, RTC_FORMAT_BIN) != HAL_OK)\r\n      {\r\n        _Error_Handler(__FILE__, __LINE__);\r\n      }\r\n    \r\n      sDate.WeekDay = RTC_WEEKDAY_MONDAY;\r\n      sDate.Month = RTC_MONTH_JANUARY;\r\n      sDate.Date = 1;\r\n      sDate.Year = 0;\r\n    \r\n      if (HAL_RTC_SetDate(&amp;hrtc, &amp;sDate, RTC_FORMAT_BIN) != HAL_OK)\r\n      {\r\n        _Error_Handler(__FILE__, __LINE__);\r\n      }\r\n    \r\n        HAL_RTCEx_BKUPWrite(&amp;hrtc,RTC_BKP_DR0,0x32F2);\r\n      }\r\n    \r\n    }\r\n    \r\n    void HAL_RTC_MspInit(RTC_HandleTypeDef* rtcHandle)\r\n    {\r\n    \r\n      if(rtcHandle-&gt;Instance==RTC)\r\n      {\r\n      /* USER CODE BEGIN RTC_MspInit 0 */\r\n    \r\n      /* USER CODE END RTC_MspInit 0 */\r\n        /* RTC clock enable */\r\n        __HAL_RCC_RTC_ENABLE();\r\n      /* USER CODE BEGIN RTC_MspInit 1 */\r\n    \r\n      /* USER CODE END RTC_MspInit 1 */\r\n      }\r\n    }\r\n\r\n\r\ntask where clock is readed and printed all this task and functions are at the same menu.c:\r\n\r\n&lt;!-- language: c --&gt;\r\n\r\n    void MenuTask(void const *argument){\r\n    \tfor(;;){\r\n    \r\n    \t\t/*\r\n    \t\t * Menus\r\n    \t\t */\r\n    \t\tDrawMenu();\r\n    \r\n    \t\tosDelay(100);\r\n    \t}\r\n    }\r\n\r\n    void DrawMenu(){\r\n    \tswitch(menuTaskStatus){\r\n    \r\n    /* Not important code */\r\n    \r\n    \tcase MENU_INFO:\r\n    \t\tmenuInfoBar();\r\n    \t\t\r\n    \t\tbreak;\r\n    \r\n    \t}\r\n    }\r\n\r\nI print on the LCD a bar with the clock in the middle\r\n\r\n&lt;!-- language: c --&gt;\r\n\r\n    void menuInfoBar(){\r\n    \r\n    \t//Clock\r\n    \tCheckClock();\r\n    \tif(updateNeeded.Clock){\r\n    \t\tDrawClock();\r\n    \t\tupdateNeeded.Clock = 0;\r\n    \t}\r\n    \r\n    }\r\n\r\nHere is the problematic part, as you can see I have tried a wait for synchro but also didn&#39;t work. I have some doubts of how does this syncro and RTC reading works.\r\n\r\n&lt;!-- language: c --&gt;\r\n\r\n    void CheckClock(){\r\n    \tRTC_TimeTypeDef timeVar;\r\n    \t//\tHAL_GPIO_TogglePin(LEDR_GPIO_Port, LEDR_Pin);\r\n    //\tif(HAL_RTC_WaitForSynchro(&amp;hrtc) == HAL_OK){\r\n    \t\twhile(HAL_RTC_GetTime(&amp;hrtc,&amp;timeVar,RTC_FORMAT_BIN)!= HAL_OK);\r\n    \t\tif(timeVar.Seconds != timeVarAnt.Seconds){\r\n    \t\t\ttimeVarAnt.Minutes = timeVar.Minutes;\r\n    \t\t\ttimeVarAnt.Hours = timeVar.Hours;\r\n    \t\t\ttimeVarAnt.Seconds = timeVar.Seconds;\r\n    \t\t\tupdateNeeded.Clock = 1;\r\n    \t\t}\r\n    //\t}\r\n    }\r\n\r\nHere I only draw the clock on my display\r\n\r\n&lt;!-- language: c --&gt;\r\n\r\n    void DrawClock(){\r\n    \tDISP_locate(49,0);\r\n    \tsprintf((char *)stringBuffer,&quot;%02d:%02d:%02d&quot;,(int)timeVarAnt.Hours,(int)timeVarAnt.Minutes,(int)timeVarAnt.Seconds);\r\n    \tDISP_puts((char *)stringBuffer);\r\n    }\r\n\r\nIt&#39;s possible I can&#39;t read the RTC fast as 100ms?\r\nsome one could explain to me why is needed a syncronitzation? datasheet explains that if the clock is 7 time faster is ok, I&#39;m using an 80Mhz APB1 clock\r\n\r\nsome tutorials and examples I&#39;ve found the do the exact same I do, but they read on the main loop with osDelay() of many values. Is a problem using freeRTOS and reading from a task?\r\n\r\ntime has nothing to do I&#39;ve tried with 5s delay and also don&#39;t works\r\n\r\nThanks",
+            "link": "https://stackoverflow.com/questions/47040039/stm32l4-rtc-hal-not-working",
+            "title": "stm32l4 RTC HAL not working",
+            "body": "<p>I'm having a strange behavior with the RTC on a stm32L476 with FreeRTOS.</p>\n\n<p>It only reads the first time in RUN mode, RTC is working, because from run to run it saves the value of the internal register and is going up.</p>\n\n<p>Also if I do DEBUG when I put breakpoint at stm32l4xx_hal_rtc.c at line 583:</p>\n\n<pre class=\"lang-c prettyprint-override\"><code>tmpreg = (uint32_t)(hrtc-&gt;Instance-&gt;TR &amp; RTC_TR_RESERVED_MASK);    \n*breakpoint* sTime-&gt;Hours = (uint8_t)((tmpreg &amp; (RTC_TR_HT | RTC_TR_HU)) &gt;&gt; 16);\n</code></pre>\n\n<p>I can see the tmpreg and TR register how they update, and then when I click jump to next breakpoint witch is the same I saw the display updated.</p>\n\n<p>So why it's not working when normal RUN?</p>\n\n<p>Init code (cube MX generated):</p>\n\n<pre class=\"lang-c prettyprint-override\"><code>void MX_RTC_Init(void)\n{\n  RTC_TimeTypeDef sTime;\n  RTC_DateTypeDef sDate;\n\n    /**Initialize RTC Only \n    */\n  hrtc.Instance = RTC;\n  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;\n  hrtc.Init.AsynchPrediv = 127;\n  hrtc.Init.SynchPrediv = 255;\n  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;\n  hrtc.Init.OutPutRemap = RTC_OUTPUT_REMAP_NONE;\n  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;\n  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;\n  if (HAL_RTC_Init(&amp;hrtc) != HAL_OK)\n  {\n    _Error_Handler(__FILE__, __LINE__);\n  }\n\n    /**Initialize RTC and set the Time and Date \n    */\n  if(HAL_RTCEx_BKUPRead(&amp;hrtc, RTC_BKP_DR0) != 0x32F2){\n  sTime.Hours = 0;\n  sTime.Minutes = 0;\n  sTime.Seconds = 0;\n  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;\n  sTime.StoreOperation = RTC_STOREOPERATION_RESET;\n  if (HAL_RTC_SetTime(&amp;hrtc, &amp;sTime, RTC_FORMAT_BIN) != HAL_OK)\n  {\n    _Error_Handler(__FILE__, __LINE__);\n  }\n\n  sDate.WeekDay = RTC_WEEKDAY_MONDAY;\n  sDate.Month = RTC_MONTH_JANUARY;\n  sDate.Date = 1;\n  sDate.Year = 0;\n\n  if (HAL_RTC_SetDate(&amp;hrtc, &amp;sDate, RTC_FORMAT_BIN) != HAL_OK)\n  {\n    _Error_Handler(__FILE__, __LINE__);\n  }\n\n    HAL_RTCEx_BKUPWrite(&amp;hrtc,RTC_BKP_DR0,0x32F2);\n  }\n\n}\n\nvoid HAL_RTC_MspInit(RTC_HandleTypeDef* rtcHandle)\n{\n\n  if(rtcHandle-&gt;Instance==RTC)\n  {\n  /* USER CODE BEGIN RTC_MspInit 0 */\n\n  /* USER CODE END RTC_MspInit 0 */\n    /* RTC clock enable */\n    __HAL_RCC_RTC_ENABLE();\n  /* USER CODE BEGIN RTC_MspInit 1 */\n\n  /* USER CODE END RTC_MspInit 1 */\n  }\n}\n</code></pre>\n\n<p>task where clock is readed and printed all this task and functions are at the same menu.c:</p>\n\n<pre class=\"lang-c prettyprint-override\"><code>void MenuTask(void const *argument){\n    for(;;){\n\n        /*\n         * Menus\n         */\n        DrawMenu();\n\n        osDelay(100);\n    }\n}\n\nvoid DrawMenu(){\n    switch(menuTaskStatus){\n\n/* Not important code */\n\n    case MENU_INFO:\n        menuInfoBar();\n\n        break;\n\n    }\n}\n</code></pre>\n\n<p>I print on the LCD a bar with the clock in the middle</p>\n\n<pre class=\"lang-c prettyprint-override\"><code>void menuInfoBar(){\n\n    //Clock\n    CheckClock();\n    if(updateNeeded.Clock){\n        DrawClock();\n        updateNeeded.Clock = 0;\n    }\n\n}\n</code></pre>\n\n<p>Here is the problematic part, as you can see I have tried a wait for synchro but also didn't work. I have some doubts of how does this syncro and RTC reading works.</p>\n\n<pre class=\"lang-c prettyprint-override\"><code>void CheckClock(){\n    RTC_TimeTypeDef timeVar;\n    //  HAL_GPIO_TogglePin(LEDR_GPIO_Port, LEDR_Pin);\n//  if(HAL_RTC_WaitForSynchro(&amp;hrtc) == HAL_OK){\n        while(HAL_RTC_GetTime(&amp;hrtc,&amp;timeVar,RTC_FORMAT_BIN)!= HAL_OK);\n        if(timeVar.Seconds != timeVarAnt.Seconds){\n            timeVarAnt.Minutes = timeVar.Minutes;\n            timeVarAnt.Hours = timeVar.Hours;\n            timeVarAnt.Seconds = timeVar.Seconds;\n            updateNeeded.Clock = 1;\n        }\n//  }\n}\n</code></pre>\n\n<p>Here I only draw the clock on my display</p>\n\n<pre class=\"lang-c prettyprint-override\"><code>void DrawClock(){\n    DISP_locate(49,0);\n    sprintf((char *)stringBuffer,\"%02d:%02d:%02d\",(int)timeVarAnt.Hours,(int)timeVarAnt.Minutes,(int)timeVarAnt.Seconds);\n    DISP_puts((char *)stringBuffer);\n}\n</code></pre>\n\n<p>It's possible I can't read the RTC fast as 100ms?\nsome one could explain to me why is needed a syncronitzation? datasheet explains that if the clock is 7 time faster is ok, I'm using an 80Mhz APB1 clock</p>\n\n<p>some tutorials and examples I've found the do the exact same I do, but they read on the main loop with osDelay() of many values. Is a problem using freeRTOS and reading from a task?</p>\n\n<p>time has nothing to do I've tried with 5s delay and also don't works</p>\n\n<p>Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "django",
+                "heroku",
+                "internal-server-error",
+                "uploadcare"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9157983,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/80242d7789c73a1da5f255fc6d7d1bfc?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Dj.usagi",
+                "link": "https://stackoverflow.com/users/9157983/dj-usagi"
+            },
+            "is_answered": false,
+            "view_count": 79,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526468049,
+            "creation_date": 1514710244,
+            "question_id": 48041190,
+            "body_markdown": "   I have made an instagram like django app that works perfectly fine locally, however after I deployed the app to heroku, whenever I try to upload and save a photo, I get an internal server error(500). I am using the Uploadcare API to upload and save photos. I am not sure how to fix this problem.\r\n\r\n\r\nthe photos below are the heroku logs i get.\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/7xNgl.jpg\r\n  [2]: https://i.stack.imgur.com/6Ct2A.jpg\r\n\r\nthis is my models.py\r\n\r\n        from django.db import models\r\n    \r\n    class ValidationInfo(models.Model):\r\n        val_school_id = models.CharField(max_length=5)\r\n        val_school_pass = models.CharField(max_length=10)\r\n    \r\n    class User(models.Model):\r\n        is_authenticated = True\r\n        school_name = models.CharField(max_length=50,default=&quot;&quot;)\r\n        school_id = models.CharField(max_length=50,default=&quot;&quot;)\r\n        password = models.CharField(max_length=100)\r\n        email = models.CharField(max_length=100)\r\n        username = models.CharField(max_length=20)\r\n        sign_up_date = models.DateTimeField(auto_now=True)\r\n        last_login = models.DateTimeField(auto_now=True)\r\n        profilepic = models.CharField(max_length=255, default=&quot;&quot;)\r\n    \r\n    \r\n    class Photo(models.Model):\r\n        baseurl = models.CharField(max_length=255)\r\n        url = models.CharField(max_length=255)\r\n        date_uploaded = models.DateTimeField(auto_now=True)\r\n        owner = models.CharField(max_length=20)\r\n        likes = models.IntegerField()\r\n        caption = models.CharField(max_length=140, default=&quot;&quot;)\r\n        tags = models.IntegerField(default=0)\r\n        main_colour = models.CharField(max_length=15, default=&quot;&quot;)\r\n        owner_school = models.CharField(max_length=30, default=&quot;&quot;)\r\n    \r\n    \r\n    class PhotoLikes(models.Model):\r\n        postid = models.IntegerField()\r\n        liker = models.CharField(max_length=20)\r\n    \r\n    \r\n    class Followers(models.Model):\r\n        user = models.CharField(max_length=20, default=&quot;&quot;)\r\n        follower = models.CharField(max_length=20, default=&quot;&quot;)\r\n    \r\n    class PhotoTag(models.Model):\r\n        photoid = models.IntegerField()\r\n        coords = models.CharField(max_length=40)\r\n        tagged_user = models.CharField(max_length=20, default=&quot;&quot;)\r\n        tagged_by = models.CharField(max_length=20, default=&quot;&quot;)\r\n\r\nthis is my Ajax and AjaxSavePhoto class in forms.py\r\n\r\n    class Ajax(forms.Form):\r\n        args = []\r\n        user = []\r\n    \r\n        def __init__(self, *args, **kwargs):\r\n    \r\n            self.args = args\r\n            if len(args) &gt; 1:\r\n                self.user = args[1]\r\n                if self.user.id == None:\r\n                    self.user = &quot;NL&quot;\r\n    \r\n        def error(self, message):\r\n            return json.dumps({ &quot;Status&quot;: &quot;Error&quot;, &quot;Message&quot;: message }, ensure_ascii=False)\r\n    \r\n        def success(self, message):\r\n            return json.dumps({ &quot;Status&quot;: &quot;Success&quot;, &quot;Message&quot;: message }, ensure_ascii=False)\r\n    \r\n        def items(self, json):\r\n            return json\r\n    \r\n        def output(self):\r\n            return self.validate()\r\n    \r\n    class AjaxSavePhoto(Ajax):\r\n        def validate(self):\r\n            try:\r\n                self.url = self.args[0][&quot;url&quot;]\r\n                self.baseurl = self.args[0][&quot;baseurl&quot;]\r\n                self.caption = self.args[0][&quot;caption&quot;]\r\n            except Exception as e:\r\n                return self.error(&quot;問題が発生しました。やり直してください。&quot;)\r\n    \r\n            if self.user == &quot;NL&quot;:\r\n                return self.error(&quot;写真をアップロードするにはログインしてください。&quot;)\r\n    \r\n            if len(self.caption) &gt; 140:\r\n                    return self.error(&quot;キャプションは140文字以内である必要があります。&quot;)\r\n    \r\n            if self.url[0:20] != &quot;https://ucarecdn.com&quot; or self.baseurl[0:20] != &quot;https://ucarecdn.com&quot;:\r\n                return self.error(&quot;Invalid image URL&quot;)\r\n    \r\n            result = urlopen(self.baseurl+&quot;-/preview/-/main_colors/3/&quot;)\r\n            data = result.read()\r\n            data = json.loads(data.decode(&#39;utf-8&#39;))\r\n    \r\n            main_colour = &quot;&quot;\r\n            if data[&quot;main_colors&quot;] != []:\r\n                for colour in data[&quot;main_colors&quot;][randint(0, 2)]:\r\n                    main_colour = main_colour + str(colour) + &quot;,&quot;\r\n                main_colour = main_colour[:-1]\r\n    \r\n            result = urlopen(self.baseurl+&quot;detect_faces/&quot;)\r\n            data = result.read()\r\n            data = json.loads(data.decode(&#39;utf-8&#39;))\r\n    \r\n            tag_count = 0\r\n            p = Photo(url=self.url, baseurl=self.baseurl, owner=self.user.username, owner_school=self.user.school_name, likes=0, caption=self.caption, main_colour=main_colour)\r\n            p.save()\r\n            if data[&quot;faces&quot;] != []:\r\n                for face in data[&quot;faces&quot;]:\r\n                    tag = PhotoTag(photoid=p.id, coords=face).save()\r\n            tag_count = len(data[&quot;faces&quot;])\r\n            p.tags = tag_count\r\n            p.save()\r\n    \r\n            return self.success(&quot;Image Uploaded&quot;)\r\n\r\n\r\n\r\nand this is my settings.py\r\n\r\n    &quot;&quot;&quot;\r\n    Django settings for instapic project.\r\n    \r\n    Generated by &#39;django-admin startproject&#39; using Django 1.11.6.\r\n    \r\n    For more information on this file, see\r\n    https://docs.djangoproject.com/en/1.11/topics/settings/\r\n    \r\n    For the full list of settings and their values, see\r\n    https://docs.djangoproject.com/en/1.11/ref/settings/\r\n    &quot;&quot;&quot;\r\n    \r\n    import os\r\n    \r\n    # Build paths inside the project like this: os.path.join(BASE_DIR, ...)\r\n    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))\r\n    \r\n    \r\n    # Quick-start development settings - unsuitable for production\r\n    # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/\r\n    \r\n    # SECURITY WARNING: keep the secret key used in production secret!\r\n    SECRET_KEY = &#39;er7!))(no=x)g%y(qi1x*jj3*9)y-#3__0bwa*_j0d_l-r_%9q&#39;\r\n    \r\n    # SECURITY WARNING: don&#39;t run with debug turned on in production!\r\n    DEBUG = True\r\n    \r\n    ALLOWED_HOSTS = [&#39;*&#39;]\r\n    \r\n    \r\n    # Application definition\r\n    \r\n    INSTALLED_APPS = [\r\n        &#39;instapic&#39;,\r\n        &#39;django.contrib.admin&#39;,\r\n        &#39;django.contrib.auth&#39;,\r\n        &#39;django.contrib.contenttypes&#39;,\r\n        &#39;django.contrib.sessions&#39;,\r\n        &#39;django.contrib.messages&#39;,\r\n        &#39;django.contrib.staticfiles&#39;,\r\n    ]\r\n    \r\n    MIDDLEWARE = [\r\n        &#39;django.middleware.security.SecurityMiddleware&#39;,\r\n        &#39;whitenoise.middleware.WhiteNoiseMiddleware&#39;,\r\n        &#39;django.contrib.sessions.middleware.SessionMiddleware&#39;,\r\n        &#39;django.middleware.common.CommonMiddleware&#39;,\r\n        &#39;django.middleware.csrf.CsrfViewMiddleware&#39;,\r\n        &#39;django.contrib.auth.middleware.AuthenticationMiddleware&#39;,\r\n        &#39;django.contrib.messages.middleware.MessageMiddleware&#39;,\r\n        &#39;django.middleware.clickjacking.XFrameOptionsMiddleware&#39;,\r\n    ]\r\n    \r\n    ROOT_URLCONF = &#39;instapic.urls&#39;\r\n    \r\n    TEMPLATES = [\r\n        {\r\n            &#39;BACKEND&#39;: &#39;django.template.backends.django.DjangoTemplates&#39;,\r\n            &#39;DIRS&#39;: [os.path.join(BASE_DIR, &#39;templates&#39;)],\r\n            &#39;APP_DIRS&#39;: True,\r\n            &#39;OPTIONS&#39;: {\r\n                &#39;context_processors&#39;: [\r\n                    &#39;django.template.context_processors.debug&#39;,\r\n                    &#39;django.template.context_processors.request&#39;,\r\n                    &#39;django.contrib.auth.context_processors.auth&#39;,\r\n                    &#39;django.contrib.messages.context_processors.messages&#39;,\r\n                ],\r\n            },\r\n        },\r\n    ]\r\n    \r\n    WSGI_APPLICATION = &#39;instapic.wsgi.application&#39;\r\n    \r\n    \r\n    # Database\r\n    # https://docs.djangoproject.com/en/1.11/ref/settings/#databases\r\n    \r\n    DATABASES = {\r\n        &quot;default&quot;: {\r\n            &quot;ENGINE&quot;: &quot;django.db.backends.postgresql_psycopg2&quot;,\r\n            &quot;NAME&quot;: &quot;instapic&quot;,\r\n            &quot;USER&quot;: &quot;dj.usagi&quot;,\r\n            &quot;PASSWORD&quot;: &quot;drsm0619&quot;,\r\n            &quot;HOST&quot;: &quot;localhost&quot;,\r\n            &quot;PORT&quot;: &quot;&quot;,\r\n        }\r\n    }\r\n    \r\n    \r\n    \r\n    \r\n    \r\n    \r\n    # Password validation\r\n    # https://docs.djangoproject.com/en/1.11/ref/settings/#auth-password-validators\r\n    \r\n    AUTH_PASSWORD_VALIDATORS = [\r\n        {\r\n            &#39;NAME&#39;: &#39;django.contrib.auth.password_validation.UserAttributeSimilarityValidator&#39;,\r\n        },\r\n        {\r\n            &#39;NAME&#39;: &#39;django.contrib.auth.password_validation.MinimumLengthValidator&#39;,\r\n        },\r\n        {\r\n            &#39;NAME&#39;: &#39;django.contrib.auth.password_validation.CommonPasswordValidator&#39;,\r\n        },\r\n        {\r\n            &#39;NAME&#39;: &#39;django.contrib.auth.password_validation.NumericPasswordValidator&#39;,\r\n        },\r\n    ]\r\n    \r\n    \r\n    # Internationalization\r\n    # https://docs.djangoproject.com/en/1.11/topics/i18n/\r\n    \r\n    LANGUAGE_CODE = &#39;ja&#39;\r\n    \r\n    TIME_ZONE = &#39;Asia/Tokyo&#39;\r\n    \r\n    USE_I18N = True\r\n    \r\n    USE_L10N = True\r\n    \r\n    USE_TZ = True\r\n    \r\n    \r\n    # Static files (CSS, JavaScript, Images)\r\n    # https://docs.djangoproject.com/en/1.11/howto/static-files/\r\n    \r\n    STATIC_URL = &#39;/static/&#39;\r\n    \r\n    STATICFILES_DIRS = [\r\n        os.path.join(BASE_DIR, &quot;static&quot;)\r\n    ]\r\n    \r\n    STATIC_ROOT = os.path.join(BASE_DIR, &#39;staticfiles&#39;)\r\n    \r\n    \r\n    AUTHENTICATION_BACKENDS = ( &#39;instapic.authb.AuthB&#39;, )\r\n    \r\n    # Heroku: Update database configuration from $DATABASE_URL.\r\n    import dj_database_url\r\n    db_from_env = dj_database_url.config(conn_max_age=500)\r\n    DATABASES[&#39;default&#39;].update(db_from_env)\r\n    \r\n    \r\n    # Simplified static file serving.\r\n    # https://warehouse.python.org/project/whitenoise/\r\n    STATICFILES_STORAGE = &#39;whitenoise.storage.CompressedManifestStaticFilesStorage&#39;\r\n\r\n\r\nThank you in advance.",
+            "link": "https://stackoverflow.com/questions/48041190/i-have-an-internal-server-error-when-using-django-app-deployed-to-heroku-the-ap",
+            "title": "I have an internal server error when using Django app deployed to Heroku. The app works locally",
+            "body": "<p>I have made an instagram like django app that works perfectly fine locally, however after I deployed the app to heroku, whenever I try to upload and save a photo, I get an internal server error(500). I am using the Uploadcare API to upload and save photos. I am not sure how to fix this problem.</p>\n\n<p>the photos below are the heroku logs i get.</p>\n\n<p>this is my models.py</p>\n\n<pre><code>    from django.db import models\n\nclass ValidationInfo(models.Model):\n    val_school_id = models.CharField(max_length=5)\n    val_school_pass = models.CharField(max_length=10)\n\nclass User(models.Model):\n    is_authenticated = True\n    school_name = models.CharField(max_length=50,default=\"\")\n    school_id = models.CharField(max_length=50,default=\"\")\n    password = models.CharField(max_length=100)\n    email = models.CharField(max_length=100)\n    username = models.CharField(max_length=20)\n    sign_up_date = models.DateTimeField(auto_now=True)\n    last_login = models.DateTimeField(auto_now=True)\n    profilepic = models.CharField(max_length=255, default=\"\")\n\n\nclass Photo(models.Model):\n    baseurl = models.CharField(max_length=255)\n    url = models.CharField(max_length=255)\n    date_uploaded = models.DateTimeField(auto_now=True)\n    owner = models.CharField(max_length=20)\n    likes = models.IntegerField()\n    caption = models.CharField(max_length=140, default=\"\")\n    tags = models.IntegerField(default=0)\n    main_colour = models.CharField(max_length=15, default=\"\")\n    owner_school = models.CharField(max_length=30, default=\"\")\n\n\nclass PhotoLikes(models.Model):\n    postid = models.IntegerField()\n    liker = models.CharField(max_length=20)\n\n\nclass Followers(models.Model):\n    user = models.CharField(max_length=20, default=\"\")\n    follower = models.CharField(max_length=20, default=\"\")\n\nclass PhotoTag(models.Model):\n    photoid = models.IntegerField()\n    coords = models.CharField(max_length=40)\n    tagged_user = models.CharField(max_length=20, default=\"\")\n    tagged_by = models.CharField(max_length=20, default=\"\")\n</code></pre>\n\n<p>this is my Ajax and AjaxSavePhoto class in forms.py</p>\n\n<pre><code>class Ajax(forms.Form):\n    args = []\n    user = []\n\n    def __init__(self, *args, **kwargs):\n\n        self.args = args\n        if len(args) &gt; 1:\n            self.user = args[1]\n            if self.user.id == None:\n                self.user = \"NL\"\n\n    def error(self, message):\n        return json.dumps({ \"Status\": \"Error\", \"Message\": message }, ensure_ascii=False)\n\n    def success(self, message):\n        return json.dumps({ \"Status\": \"Success\", \"Message\": message }, ensure_ascii=False)\n\n    def items(self, json):\n        return json\n\n    def output(self):\n        return self.validate()\n\nclass AjaxSavePhoto(Ajax):\n    def validate(self):\n        try:\n            self.url = self.args[0][\"url\"]\n            self.baseurl = self.args[0][\"baseurl\"]\n            self.caption = self.args[0][\"caption\"]\n        except Exception as e:\n            return self.error(\"問題が発生しました。やり直してください。\")\n\n        if self.user == \"NL\":\n            return self.error(\"写真をアップロードするにはログインしてください。\")\n\n        if len(self.caption) &gt; 140:\n                return self.error(\"キャプションは140文字以内である必要があります。\")\n\n        if self.url[0:20] != \"https://ucarecdn.com\" or self.baseurl[0:20] != \"https://ucarecdn.com\":\n            return self.error(\"Invalid image URL\")\n\n        result = urlopen(self.baseurl+\"-/preview/-/main_colors/3/\")\n        data = result.read()\n        data = json.loads(data.decode('utf-8'))\n\n        main_colour = \"\"\n        if data[\"main_colors\"] != []:\n            for colour in data[\"main_colors\"][randint(0, 2)]:\n                main_colour = main_colour + str(colour) + \",\"\n            main_colour = main_colour[:-1]\n\n        result = urlopen(self.baseurl+\"detect_faces/\")\n        data = result.read()\n        data = json.loads(data.decode('utf-8'))\n\n        tag_count = 0\n        p = Photo(url=self.url, baseurl=self.baseurl, owner=self.user.username, owner_school=self.user.school_name, likes=0, caption=self.caption, main_colour=main_colour)\n        p.save()\n        if data[\"faces\"] != []:\n            for face in data[\"faces\"]:\n                tag = PhotoTag(photoid=p.id, coords=face).save()\n        tag_count = len(data[\"faces\"])\n        p.tags = tag_count\n        p.save()\n\n        return self.success(\"Image Uploaded\")\n</code></pre>\n\n<p>and this is my settings.py</p>\n\n<pre><code>\"\"\"\nDjango settings for instapic project.\n\nGenerated by 'django-admin startproject' using Django 1.11.6.\n\nFor more information on this file, see\nhttps://docs.djangoproject.com/en/1.11/topics/settings/\n\nFor the full list of settings and their values, see\nhttps://docs.djangoproject.com/en/1.11/ref/settings/\n\"\"\"\n\nimport os\n\n# Build paths inside the project like this: os.path.join(BASE_DIR, ...)\nBASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))\n\n\n# Quick-start development settings - unsuitable for production\n# See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/\n\n# SECURITY WARNING: keep the secret key used in production secret!\nSECRET_KEY = 'er7!))(no=x)g%y(qi1x*jj3*9)y-#3__0bwa*_j0d_l-r_%9q'\n\n# SECURITY WARNING: don't run with debug turned on in production!\nDEBUG = True\n\nALLOWED_HOSTS = ['*']\n\n\n# Application definition\n\nINSTALLED_APPS = [\n    'instapic',\n    'django.contrib.admin',\n    'django.contrib.auth',\n    'django.contrib.contenttypes',\n    'django.contrib.sessions',\n    'django.contrib.messages',\n    'django.contrib.staticfiles',\n]\n\nMIDDLEWARE = [\n    'django.middleware.security.SecurityMiddleware',\n    'whitenoise.middleware.WhiteNoiseMiddleware',\n    'django.contrib.sessions.middleware.SessionMiddleware',\n    'django.middleware.common.CommonMiddleware',\n    'django.middleware.csrf.CsrfViewMiddleware',\n    'django.contrib.auth.middleware.AuthenticationMiddleware',\n    'django.contrib.messages.middleware.MessageMiddleware',\n    'django.middleware.clickjacking.XFrameOptionsMiddleware',\n]\n\nROOT_URLCONF = 'instapic.urls'\n\nTEMPLATES = [\n    {\n        'BACKEND': 'django.template.backends.django.DjangoTemplates',\n        'DIRS': [os.path.join(BASE_DIR, 'templates')],\n        'APP_DIRS': True,\n        'OPTIONS': {\n            'context_processors': [\n                'django.template.context_processors.debug',\n                'django.template.context_processors.request',\n                'django.contrib.auth.context_processors.auth',\n                'django.contrib.messages.context_processors.messages',\n            ],\n        },\n    },\n]\n\nWSGI_APPLICATION = 'instapic.wsgi.application'\n\n\n# Database\n# https://docs.djangoproject.com/en/1.11/ref/settings/#databases\n\nDATABASES = {\n    \"default\": {\n        \"ENGINE\": \"django.db.backends.postgresql_psycopg2\",\n        \"NAME\": \"instapic\",\n        \"USER\": \"dj.usagi\",\n        \"PASSWORD\": \"drsm0619\",\n        \"HOST\": \"localhost\",\n        \"PORT\": \"\",\n    }\n}\n\n\n\n\n\n\n# Password validation\n# https://docs.djangoproject.com/en/1.11/ref/settings/#auth-password-validators\n\nAUTH_PASSWORD_VALIDATORS = [\n    {\n        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',\n    },\n    {\n        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',\n    },\n    {\n        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',\n    },\n    {\n        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',\n    },\n]\n\n\n# Internationalization\n# https://docs.djangoproject.com/en/1.11/topics/i18n/\n\nLANGUAGE_CODE = 'ja'\n\nTIME_ZONE = 'Asia/Tokyo'\n\nUSE_I18N = True\n\nUSE_L10N = True\n\nUSE_TZ = True\n\n\n# Static files (CSS, JavaScript, Images)\n# https://docs.djangoproject.com/en/1.11/howto/static-files/\n\nSTATIC_URL = '/static/'\n\nSTATICFILES_DIRS = [\n    os.path.join(BASE_DIR, \"static\")\n]\n\nSTATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')\n\n\nAUTHENTICATION_BACKENDS = ( 'instapic.authb.AuthB', )\n\n# Heroku: Update database configuration from $DATABASE_URL.\nimport dj_database_url\ndb_from_env = dj_database_url.config(conn_max_age=500)\nDATABASES['default'].update(db_from_env)\n\n\n# Simplified static file serving.\n# https://warehouse.python.org/project/whitenoise/\nSTATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'\n</code></pre>\n\n<p>Thank you in advance.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "swing",
+                "jframe",
+                "jtree"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9786935,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "shaun Tait",
+                "link": "https://stackoverflow.com/users/9786935/shaun-tait"
+            },
+            "is_answered": false,
+            "view_count": 23,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1526468048,
+            "creation_date": 1526468048,
+            "question_id": 50369006,
+            "body_markdown": " -\r\n\r\n 1. I have make a `Dynamic Jtree` which take `values` from `user` and\r\n        add it into the `Jtree` as it&#39;s `node`.\r\n 2. Now i want to add `a frame` into the **existing Jframe in which jtree already\r\n   exist**.\r\n 3. Then i want to **link that frame with the specific node** of\r\n   **jtree**.\r\n 4. How can i do it, i search all over the internet but unable to find\r\n    the solution.\r\n    \r\nLet me tell you my question in a simple way, just imagine i click a particular node and display it in a textfield, then after that how can i link it to a jframe, since i am new to jtree it will be great if u can explain it with the code.",
+            "link": "https://stackoverflow.com/questions/50369006/specific-jtree-node-link-with-jframe",
+            "title": "Specific Jtree node link with Jframe",
+            "body": "<p>-</p>\n\n<ol>\n<li>I have make a <code>Dynamic Jtree</code> which take <code>values</code> from <code>user</code> and\n    add it into the <code>Jtree</code> as it's <code>node</code>.</li>\n<li>Now i want to add <code>a frame</code> into the <strong>existing Jframe in which jtree already\nexist</strong>.</li>\n<li>Then i want to <strong>link that frame with the specific node</strong> of\n<strong>jtree</strong>.</li>\n<li>How can i do it, i search all over the internet but unable to find\nthe solution.</li>\n</ol>\n\n<p>Let me tell you my question in a simple way, just imagine i click a particular node and display it in a textfield, then after that how can i link it to a jframe, since i am new to jtree it will be great if u can explain it with the code.</p>\n"
+        },
+        {
+            "tags": [
+                "objective-c",
+                "macos",
+                "terminal",
+                "homebrew"
+            ],
+            "owner": {
+                "reputation": 1652,
+                "user_id": 4384775,
+                "user_type": "registered",
+                "accept_rate": 44,
+                "profile_image": "https://www.gravatar.com/avatar/9dd6074fd9d12dca9b2700542bbc8142?s=128&d=identicon&r=PG&f=1",
+                "display_name": "McDonal_11",
+                "link": "https://stackoverflow.com/users/4384775/mcdonal-11"
+            },
+            "is_answered": true,
+            "view_count": 21,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526468028,
+            "creation_date": 1526461470,
+            "last_edit_date": 1526462972,
+            "question_id": 50366603,
+            "body_markdown": "I have searched many answers. But, none of them solved my issues.\r\n\r\nI have tried to install `homebrew` via terminal, by using `/usr/bin/ruby -e &quot;$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)&quot;`\r\n\r\nFollowing error received:\r\n\r\n**Attempt 1:**\r\n\r\n    Donal-Mac-mini:~ mymac$ ruby -e &quot;$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)&quot;\r\n    ==&gt; This script will install:\r\n    /usr/local/bin/brew\r\n    /usr/local/share/doc/homebrew\r\n    /usr/local/share/man/man1/brew.1\r\n    /usr/local/share/zsh/site-functions/_brew\r\n    /usr/local/etc/bash_completion.d/brew\r\n    /usr/local/Homebrew\r\n    \r\n    Press RETURN to continue or any other key to abort\r\n    ==&gt; Downloading and installing Homebrew...\r\n    ssh_exchange_identification: read: Operation timed out\r\n    fatal: Could not read from remote repository.\r\n    \r\n    Please make sure you have the correct access rights\r\n    and the repository exists.\r\n    Failed during: git fetch origin master:refs/remotes/origin/master --tags --force\r\n    Donal-Mac-mini:~ mymac$ \r\n\r\n\r\n**Attempt 2:**\r\n\r\n    Donal-Mac-mini:~ mymac$ git clone https://github.com/Homebrew/homebrew.git\r\n    Cloning into &#39;homebrew&#39;...\r\n    ssh_exchange_identification: read: Operation timed out\r\n    fatal: Could not read from remote repository.\r\n    \r\n    Please make sure you have the correct access rights\r\n    and the repository exists.\r\n    Donal-Mac-mini:~ mymac$ ",
+            "link": "https://stackoverflow.com/questions/50366603/terminal-issue-raising-when-trying-to-install-homebrew-in-my-macos-sierra-10-12",
+            "title": "Terminal issue raising when trying to install Homebrew in my macOS Sierra 10.12.6",
+            "body": "<p>I have searched many answers. But, none of them solved my issues.</p>\n\n<p>I have tried to install <code>homebrew</code> via terminal, by using <code>/usr/bin/ruby -e \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)\"</code></p>\n\n<p>Following error received:</p>\n\n<p><strong>Attempt 1:</strong></p>\n\n<pre><code>Donal-Mac-mini:~ mymac$ ruby -e \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)\"\n==&gt; This script will install:\n/usr/local/bin/brew\n/usr/local/share/doc/homebrew\n/usr/local/share/man/man1/brew.1\n/usr/local/share/zsh/site-functions/_brew\n/usr/local/etc/bash_completion.d/brew\n/usr/local/Homebrew\n\nPress RETURN to continue or any other key to abort\n==&gt; Downloading and installing Homebrew...\nssh_exchange_identification: read: Operation timed out\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\nFailed during: git fetch origin master:refs/remotes/origin/master --tags --force\nDonal-Mac-mini:~ mymac$ \n</code></pre>\n\n<p><strong>Attempt 2:</strong></p>\n\n<pre><code>Donal-Mac-mini:~ mymac$ git clone https://github.com/Homebrew/homebrew.git\nCloning into 'homebrew'...\nssh_exchange_identification: read: Operation timed out\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\nDonal-Mac-mini:~ mymac$ \n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "jenkins",
+                "jenkins-plugins"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 9328718,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/1663fc98483be4023c4a2e353dff2887?s=128&d=identicon&r=PG&f=1",
+                "display_name": "KicksheepSon",
+                "link": "https://stackoverflow.com/users/9328718/kicksheepson"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526468022,
+            "creation_date": 1526468022,
+            "question_id": 50369002,
+            "body_markdown": "i have got an Jenkins job which is executed as an Parameterized Build. \r\nEvery time a user starts the Job he has to change the path of the file and \r\nthe Value of some enviorment Variables. How to make this process more user friendly ?\r\n\r\nScrolling through the whole job configuration is confusing and multiple choices for editing \r\nEnviroment-Variables could lead to mistakes.",
+            "link": "https://stackoverflow.com/questions/50369002/is-there-any-user-friendly-jenkins-job-configuration-ui",
+            "title": "is there any user friendly Jenkins Job configuration ui?",
+            "body": "<p>i have got an Jenkins job which is executed as an Parameterized Build. \nEvery time a user starts the Job he has to change the path of the file and \nthe Value of some enviorment Variables. How to make this process more user friendly ?</p>\n\n<p>Scrolling through the whole job configuration is confusing and multiple choices for editing \nEnviroment-Variables could lead to mistakes.</p>\n"
+        },
+        {
+            "tags": [
+                "c#"
+            ],
+            "owner": {
+                "reputation": 1678,
+                "user_id": 1423007,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/dae4360418f32e3a8cff3833f732a0b1?s=128&d=identicon&r=PG",
+                "display_name": "Dharmendra Kumar Singh",
+                "link": "https://stackoverflow.com/users/1423007/dharmendra-kumar-singh"
+            },
+            "is_answered": true,
+            "view_count": 33363,
+            "accepted_answer_id": 23926253,
+            "answer_count": 6,
+            "score": 10,
+            "last_activity_date": 1526468017,
+            "creation_date": 1401340546,
+            "last_edit_date": 1488960906,
+            "question_id": 23926141,
+            "body_markdown": "I had created a windows service and i want that the service will Schedule to run daily at 6:00 Am.\r\nBelow is the code which i had written:-\r\n\r\n    public Service1()\r\n    {\r\n        InitializeComponent();\r\n    }\r\n\r\n    protected override void OnStart(string[] args)\r\n    {\r\n        try\r\n        {\r\n            ExtractDataFromSharePoint();\r\n        }\r\n        catch (Exception ex)\r\n        {\r\n            //Displays and Logs Message\r\n            _loggerDetails.LogMessage = ex.ToString();\r\n            _writeLog.LogDetails(_loggerDetails.LogLevel_Error, _loggerDetails.LogMessage);\r\n        }\r\n    }\r\n\r\nIn the above code you can see that in `OnStart` Method of service i am calling a Function `ExtractDataFromSharePoint()`. How i will schedule this to run  daily morning at 6:00 AM.",
+            "link": "https://stackoverflow.com/questions/23926141/windows-service-scheduling-to-run-daily-once-a-day-at-600-am",
+            "title": "Windows service scheduling to run daily once a day at 6:00 AM",
+            "body": "<p>I had created a windows service and i want that the service will Schedule to run daily at 6:00 Am.\nBelow is the code which i had written:-</p>\n\n<pre><code>public Service1()\n{\n    InitializeComponent();\n}\n\nprotected override void OnStart(string[] args)\n{\n    try\n    {\n        ExtractDataFromSharePoint();\n    }\n    catch (Exception ex)\n    {\n        //Displays and Logs Message\n        _loggerDetails.LogMessage = ex.ToString();\n        _writeLog.LogDetails(_loggerDetails.LogLevel_Error, _loggerDetails.LogMessage);\n    }\n}\n</code></pre>\n\n<p>In the above code you can see that in <code>OnStart</code> Method of service i am calling a Function <code>ExtractDataFromSharePoint()</code>. How i will schedule this to run  daily morning at 6:00 AM.</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 262
+}

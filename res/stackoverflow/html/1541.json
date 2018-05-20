@@ -1,0 +1,823 @@
+{
+    "items": [
+        {
+            "tags": [
+                "android",
+                "opencv"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9786592,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-o498cB9QHv0/AAAAAAAAAAI/AAAAAAAAARc/sg1GJ0EPcFA/photo.jpg?sz=128",
+                "display_name": "Carl Est",
+                "link": "https://stackoverflow.com/users/9786592/carl-est"
+            },
+            "is_answered": false,
+            "view_count": 31,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526451820,
+            "creation_date": 1526281870,
+            "last_edit_date": 1526285420,
+            "question_id": 50324806,
+            "body_markdown": "Is there any new or recent tutorials about using openCv in android studio. I would like to use that to create our capstone project. It is an app that should detect bills using its camera (or using an image) and determine its value. \r\n\r\nI&#39;ve created an app but now I&#39;m stuck on how to use opencv because I don&#39;t have any experience using it before and I can&#39;t get any decent tutorials. \r\n\r\nThese is what I have created so far. (ignore the comments, me and my brother are trying to code this and he said that it is better to comment out some lines rather than erasing it).\r\n\r\nactivity_convert.xml\r\n\r\n  \r\n\r\n      &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;\r\n    &lt;android.support.constraint.ConstraintLayout xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;\r\n        xmlns:app=&quot;http://schemas.android.com/apk/res-auto&quot;\r\n        xmlns:tools=&quot;http://schemas.android.com/tools&quot;\r\n        android:layout_width=&quot;match_parent&quot;\r\n        android:layout_height=&quot;match_parent&quot;\r\n        tools:context=&quot;.Convert&quot;&gt;\r\n    \r\n        &lt;org.opencv.android.JavaCameraView\r\n            android:id=&quot;@+id/cView&quot;\r\n            android:layout_width=&quot;343dp&quot;\r\n            android:layout_height=&quot;303dp&quot;\r\n            android:layout_marginBottom=&quot;8dp&quot;\r\n            android:layout_marginEnd=&quot;8dp&quot;\r\n            android:layout_marginStart=&quot;8dp&quot;\r\n            android:layout_marginTop=&quot;4dp&quot;\r\n            app:layout_constraintBottom_toBottomOf=&quot;parent&quot;\r\n            app:layout_constraintEnd_toEndOf=&quot;parent&quot;\r\n            app:layout_constraintHorizontal_bias=&quot;0.52&quot;\r\n            app:layout_constraintStart_toStartOf=&quot;parent&quot;\r\n            app:layout_constraintTop_toTopOf=&quot;parent&quot;\r\n            app:layout_constraintVertical_bias=&quot;0.043&quot; /&gt;\r\n    \r\n    \r\n    \r\n    &lt;/android.support.constraint.ConstraintLayout&gt;\r\n\r\n\r\n\r\n\r\nConvert.java\r\n\r\n    package com.example.carlo.thesis;\r\n    \r\n    import android.hardware.Camera;\r\n    import android.support.v7.app.AppCompatActivity;\r\n    import android.os.Bundle;\r\n    import android.util.Log;\r\n    import android.view.SurfaceView;\r\n    \r\n    import org.opencv.android.BaseLoaderCallback;\r\n    import org.opencv.android.CameraBridgeViewBase;\r\n    import org.opencv.android.JavaCameraView;\r\n    import org.opencv.android.LoaderCallbackInterface;\r\n    import org.opencv.android.OpenCVLoader;\r\n    import org.opencv.core.Core;\r\n    import org.opencv.core.CvType;\r\n    import org.opencv.core.Mat;\r\n    import org.opencv.core.MatOfPoint;\r\n    import org.opencv.core.Scalar;\r\n    import org.opencv.imgproc.Imgproc;\r\n    \r\n    import java.util.ArrayList;\r\n    import java.util.List;\r\n    \r\n    public class Convert extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {\r\n    \r\n        private static String TAG = &quot;Convert&quot;;\r\n        JavaCameraView jview;\r\n        Mat mRgba, imgGray, imgCanny, mHierarchy;\r\n        Scalar CONTOUR_COLOR = new Scalar(255,0,0,255);\r\n        static {\r\n            if(OpenCVLoader.initDebug()){\r\n                Log.i(TAG, &quot;OpenCV loaded.&quot;);\r\n            }else{\r\n                Log.i(TAG, &quot;OpenCV not loaded.&quot;);\r\n            }\r\n        }\r\n        BaseLoaderCallback mLoaderCallBack = new BaseLoaderCallback(this) {\r\n            @Override\r\n            public void onManagerConnected(int status) {\r\n                switch (status){\r\n                    case BaseLoaderCallback.SUCCESS:{\r\n                        jview.enableView();\r\n    \r\n                        break;\r\n                    }\r\n                    default:{\r\n                        super.onManagerConnected(status);\r\n                        break;\r\n                    }\r\n                }\r\n    \r\n            }\r\n        };\r\n    \r\n        @Override\r\n        protected void onCreate(Bundle savedInstanceState) {\r\n            super.onCreate(savedInstanceState);\r\n            setContentView(R.layout.activity_convert);\r\n    \r\n            jview = findViewById(R.id.cView);\r\n    \r\n            jview.setVisibility(SurfaceView.VISIBLE);\r\n            jview.setCvCameraViewListener(this);\r\n    \r\n    \r\n        }\r\n    \r\n        @Override\r\n        protected void onPause(){\r\n            super.onPause();\r\n                if(jview!=null){\r\n                    jview.disableView();\r\n                }\r\n        }\r\n    \r\n        @Override\r\n        protected void onDestroy(){\r\n            super.onDestroy();\r\n            if(jview!=null){\r\n                jview.disableView();\r\n            }\r\n        }\r\n    \r\n        @Override\r\n        protected void onResume(){\r\n            super.onResume();\r\n                if (OpenCVLoader.initDebug()){\r\n                    Log.i(TAG, &quot;OpenCV loaded&quot;);\r\n                    mLoaderCallBack.onManagerConnected(LoaderCallbackInterface.SUCCESS);\r\n                }else{\r\n                    Log.i(TAG, &quot;OpenCV not loaded&quot;);\r\n                    OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_9, this, mLoaderCallBack);\r\n                }\r\n    \r\n        }\r\n    \r\n        @Override\r\n        public void onCameraViewStarted(int width, int height) {\r\n            mHierarchy = new Mat();\r\n    \r\n    \r\n            mRgba = new Mat(height, width, CvType.CV_8UC4);\r\n            imgGray = new Mat(height, width, CvType.CV_8UC1);\r\n            imgCanny = new Mat(height, width, CvType.CV_8UC1);\r\n        }\r\n    \r\n        @Override\r\n        public void onCameraViewStopped() {\r\n            mRgba.release();\r\n        }\r\n    \r\n        @Override\r\n        public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {\r\n    \r\n           // List&lt;MatOfPoint&gt; contours = new ArrayList&lt;MatOfPoint&gt;();\r\n    \r\n            mRgba = inputFrame.rgba();\r\n            final Mat dst = new Mat(mRgba.rows(), mRgba.cols(), mRgba.type());\r\n            mRgba.copyTo(dst);\r\n    \r\n            Imgproc.cvtColor(dst, dst, Imgproc.COLOR_BGR2GRAY);\r\n    \r\n            final List&lt;MatOfPoint&gt; points = new ArrayList&lt;&gt;();\r\n            final Mat hierarchy = new Mat();\r\n    \r\n            Imgproc.findContours(dst, points, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);\r\n    \r\n            Imgproc.cvtColor(dst, dst, Imgproc.COLOR_GRAY2BGR);\r\n           /* Imgproc.Canny(mRgba, imgCanny, 50, 100);\r\n            //Imgproc.cvtColor(imgCanny, imgGray, Imgproc.COLOR_RGB2GRAY);\r\n    \r\n            Imgproc.findContours(imgCanny, contours, mHierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);\r\n    \r\n            Imgproc.drawContours(imgCanny, contours, -1, CONTOUR_COLOR);\r\n    \r\n    \r\n            //Imgproc.findContours(mRgba, contours, mHierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);\r\n    \r\n    \r\n    \r\n    \r\n            return contours.get(1);\r\n    \r\n            //return imgCanny;*/\r\n    \r\n            Mat mRgbaT = mRgba.t();\r\n            Core.flip(mRgba.t(), mRgbaT, 1);\r\n            Imgproc.resize(mRgbaT, mRgbaT, mRgba.size());\r\n    \r\n            return mRgbaT;\r\n        }\r\n    \r\n    \r\n    }\r\n\r\nThank you in advance!",
+            "link": "https://stackoverflow.com/questions/50324806/detecting-bills-by-using-opencv",
+            "title": "Detecting bills by using OpenCV",
+            "body": "<p>Is there any new or recent tutorials about using openCv in android studio. I would like to use that to create our capstone project. It is an app that should detect bills using its camera (or using an image) and determine its value. </p>\n\n<p>I've created an app but now I'm stuck on how to use opencv because I don't have any experience using it before and I can't get any decent tutorials. </p>\n\n<p>These is what I have created so far. (ignore the comments, me and my brother are trying to code this and he said that it is better to comment out some lines rather than erasing it).</p>\n\n<p>activity_convert.xml</p>\n\n<pre><code>  &lt;?xml version=\"1.0\" encoding=\"utf-8\"?&gt;\n&lt;android.support.constraint.ConstraintLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:app=\"http://schemas.android.com/apk/res-auto\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    android:layout_width=\"match_parent\"\n    android:layout_height=\"match_parent\"\n    tools:context=\".Convert\"&gt;\n\n    &lt;org.opencv.android.JavaCameraView\n        android:id=\"@+id/cView\"\n        android:layout_width=\"343dp\"\n        android:layout_height=\"303dp\"\n        android:layout_marginBottom=\"8dp\"\n        android:layout_marginEnd=\"8dp\"\n        android:layout_marginStart=\"8dp\"\n        android:layout_marginTop=\"4dp\"\n        app:layout_constraintBottom_toBottomOf=\"parent\"\n        app:layout_constraintEnd_toEndOf=\"parent\"\n        app:layout_constraintHorizontal_bias=\"0.52\"\n        app:layout_constraintStart_toStartOf=\"parent\"\n        app:layout_constraintTop_toTopOf=\"parent\"\n        app:layout_constraintVertical_bias=\"0.043\" /&gt;\n\n\n\n&lt;/android.support.constraint.ConstraintLayout&gt;\n</code></pre>\n\n<p>Convert.java</p>\n\n<pre><code>package com.example.carlo.thesis;\n\nimport android.hardware.Camera;\nimport android.support.v7.app.AppCompatActivity;\nimport android.os.Bundle;\nimport android.util.Log;\nimport android.view.SurfaceView;\n\nimport org.opencv.android.BaseLoaderCallback;\nimport org.opencv.android.CameraBridgeViewBase;\nimport org.opencv.android.JavaCameraView;\nimport org.opencv.android.LoaderCallbackInterface;\nimport org.opencv.android.OpenCVLoader;\nimport org.opencv.core.Core;\nimport org.opencv.core.CvType;\nimport org.opencv.core.Mat;\nimport org.opencv.core.MatOfPoint;\nimport org.opencv.core.Scalar;\nimport org.opencv.imgproc.Imgproc;\n\nimport java.util.ArrayList;\nimport java.util.List;\n\npublic class Convert extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {\n\n    private static String TAG = \"Convert\";\n    JavaCameraView jview;\n    Mat mRgba, imgGray, imgCanny, mHierarchy;\n    Scalar CONTOUR_COLOR = new Scalar(255,0,0,255);\n    static {\n        if(OpenCVLoader.initDebug()){\n            Log.i(TAG, \"OpenCV loaded.\");\n        }else{\n            Log.i(TAG, \"OpenCV not loaded.\");\n        }\n    }\n    BaseLoaderCallback mLoaderCallBack = new BaseLoaderCallback(this) {\n        @Override\n        public void onManagerConnected(int status) {\n            switch (status){\n                case BaseLoaderCallback.SUCCESS:{\n                    jview.enableView();\n\n                    break;\n                }\n                default:{\n                    super.onManagerConnected(status);\n                    break;\n                }\n            }\n\n        }\n    };\n\n    @Override\n    protected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        setContentView(R.layout.activity_convert);\n\n        jview = findViewById(R.id.cView);\n\n        jview.setVisibility(SurfaceView.VISIBLE);\n        jview.setCvCameraViewListener(this);\n\n\n    }\n\n    @Override\n    protected void onPause(){\n        super.onPause();\n            if(jview!=null){\n                jview.disableView();\n            }\n    }\n\n    @Override\n    protected void onDestroy(){\n        super.onDestroy();\n        if(jview!=null){\n            jview.disableView();\n        }\n    }\n\n    @Override\n    protected void onResume(){\n        super.onResume();\n            if (OpenCVLoader.initDebug()){\n                Log.i(TAG, \"OpenCV loaded\");\n                mLoaderCallBack.onManagerConnected(LoaderCallbackInterface.SUCCESS);\n            }else{\n                Log.i(TAG, \"OpenCV not loaded\");\n                OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_9, this, mLoaderCallBack);\n            }\n\n    }\n\n    @Override\n    public void onCameraViewStarted(int width, int height) {\n        mHierarchy = new Mat();\n\n\n        mRgba = new Mat(height, width, CvType.CV_8UC4);\n        imgGray = new Mat(height, width, CvType.CV_8UC1);\n        imgCanny = new Mat(height, width, CvType.CV_8UC1);\n    }\n\n    @Override\n    public void onCameraViewStopped() {\n        mRgba.release();\n    }\n\n    @Override\n    public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {\n\n       // List&lt;MatOfPoint&gt; contours = new ArrayList&lt;MatOfPoint&gt;();\n\n        mRgba = inputFrame.rgba();\n        final Mat dst = new Mat(mRgba.rows(), mRgba.cols(), mRgba.type());\n        mRgba.copyTo(dst);\n\n        Imgproc.cvtColor(dst, dst, Imgproc.COLOR_BGR2GRAY);\n\n        final List&lt;MatOfPoint&gt; points = new ArrayList&lt;&gt;();\n        final Mat hierarchy = new Mat();\n\n        Imgproc.findContours(dst, points, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);\n\n        Imgproc.cvtColor(dst, dst, Imgproc.COLOR_GRAY2BGR);\n       /* Imgproc.Canny(mRgba, imgCanny, 50, 100);\n        //Imgproc.cvtColor(imgCanny, imgGray, Imgproc.COLOR_RGB2GRAY);\n\n        Imgproc.findContours(imgCanny, contours, mHierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);\n\n        Imgproc.drawContours(imgCanny, contours, -1, CONTOUR_COLOR);\n\n\n        //Imgproc.findContours(mRgba, contours, mHierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);\n\n\n\n\n        return contours.get(1);\n\n        //return imgCanny;*/\n\n        Mat mRgbaT = mRgba.t();\n        Core.flip(mRgba.t(), mRgbaT, 1);\n        Imgproc.resize(mRgbaT, mRgbaT, mRgba.size());\n\n        return mRgbaT;\n    }\n\n\n}\n</code></pre>\n\n<p>Thank you in advance!</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "jmeter"
+            ],
+            "owner": {
+                "reputation": 20836,
+                "user_id": 438742,
+                "user_type": "registered",
+                "accept_rate": 73,
+                "profile_image": "https://www.gravatar.com/avatar/494813afd4e0cd46557683b853899981?s=128&d=identicon&r=PG",
+                "display_name": "kan",
+                "link": "https://stackoverflow.com/users/438742/kan"
+            },
+            "is_answered": true,
+            "view_count": 11069,
+            "answer_count": 6,
+            "score": 8,
+            "last_activity_date": 1526451813,
+            "creation_date": 1395241487,
+            "question_id": 22509990,
+            "body_markdown": "I have several JMeter test plans which should be executed in different environments, say Dev, Test, UAT, Live. In each test plan I would like to have a simple way to specify which environment to use. Each environment has a lot of configuration such as hostname, port, ssl-cert, user name, password, account numbers and other test data.\r\n\r\nOne thing I&#39;m trying to achieve is the ease of switching environments while using JMeter GUI or running scenarios from build scripts.\r\n\r\nOne of my ideas is to use the &quot;Include Controller&quot; to include another jmx file which has list of User Defined Variables and other config elements. However, JMeter does not support variables in the included file name, so I cannot parametrise  the scenario by an environment name. Include Controller supports JMeter parameter &quot;includecontroller.prefix&quot;, but it is not very flexible, e.g. I cannot change it from JMeter GUI, I should change JMeter config files and restart it.\r\n\r\nI&#39;ve tried to use Switch Controller, but no luck, it doesn&#39;t switch configuration elements, only samplers.\r\n\r\nWhat is the best practice to externalise environment specific configuration from test scenarios and share it between several scenarios?",
+            "link": "https://stackoverflow.com/questions/22509990/jmeter-environment-specific-configuration",
+            "title": "JMeter environment specific configuration",
+            "body": "<p>I have several JMeter test plans which should be executed in different environments, say Dev, Test, UAT, Live. In each test plan I would like to have a simple way to specify which environment to use. Each environment has a lot of configuration such as hostname, port, ssl-cert, user name, password, account numbers and other test data.</p>\n\n<p>One thing I'm trying to achieve is the ease of switching environments while using JMeter GUI or running scenarios from build scripts.</p>\n\n<p>One of my ideas is to use the \"Include Controller\" to include another jmx file which has list of User Defined Variables and other config elements. However, JMeter does not support variables in the included file name, so I cannot parametrise  the scenario by an environment name. Include Controller supports JMeter parameter \"includecontroller.prefix\", but it is not very flexible, e.g. I cannot change it from JMeter GUI, I should change JMeter config files and restart it.</p>\n\n<p>I've tried to use Switch Controller, but no luck, it doesn't switch configuration elements, only samplers.</p>\n\n<p>What is the best practice to externalise environment specific configuration from test scenarios and share it between several scenarios?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "reactjs",
+                "user-interface"
+            ],
+            "owner": {
+                "reputation": 21,
+                "user_id": 6629091,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/fcb0f3a355d4f22732e724e5eb4df661?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Magdalena Rumakowicz",
+                "link": "https://stackoverflow.com/users/6629091/magdalena-rumakowicz"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "closed_date": 1526451846,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526451803,
+            "creation_date": 1526451803,
+            "question_id": 50363729,
+            "body_markdown": "I actually write simple webservice using java technology(java, springboot, jpa. h2) - rest controller + crud. I need to chose technologu to create user interface, but i never wrote with front-end. What technology U suggest me to use. First my idea is to take react js. Any opinions, advice?",
+            "link": "https://stackoverflow.com/questions/50363729/what-technology-should-i-take-to-create-ui-for-java-websrevice",
+            "closed_reason": "primarily opinion-based",
+            "title": "What technology should i take to create UI for java websrevice",
+            "body": "<p>I actually write simple webservice using java technology(java, springboot, jpa. h2) - rest controller + crud. I need to chose technologu to create user interface, but i never wrote with front-end. What technology U suggest me to use. First my idea is to take react js. Any opinions, advice?</p>\n"
+        },
+        {
+            "tags": [
+                "jquery",
+                "asp.net",
+                "client-side"
+            ],
+            "owner": {
+                "reputation": 2137,
+                "user_id": 495670,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/7e82a64e87140a3e0eb0eeca115780e3?s=128&d=identicon&r=PG",
+                "display_name": "Sarawut Positwinyu",
+                "link": "https://stackoverflow.com/users/495670/sarawut-positwinyu"
+            },
+            "is_answered": true,
+            "view_count": 23457,
+            "accepted_answer_id": 6057576,
+            "answer_count": 2,
+            "score": 27,
+            "last_activity_date": 1526451782,
+            "creation_date": 1305802198,
+            "question_id": 6057490,
+            "body_markdown": "I am working on asp.net project and each time i need to use jquery identifier $(#&quot;objectID&quot;). I have to change the ClientIDMode on each object to be static. Since I have noticed that the default client ID mode is Inherit so i set the MainContent Client ID mode to be static and i have found that all the object became static.\r\n\r\nThis will sure save a lot of time when working with jquery, but i just want to know is there any drawback from this and is there any reason why shouldn&#39;t ClientIDMode set to be static at the first place ?",
+            "link": "https://stackoverflow.com/questions/6057490/is-there-any-drawback-to-set-clientidmode-static-on-every-object-set-on-main",
+            "title": "Is there any drawback to set ClientIDMode = Static on every object ( set on maincontent of master page)",
+            "body": "<p>I am working on asp.net project and each time i need to use jquery identifier $(#\"objectID\"). I have to change the ClientIDMode on each object to be static. Since I have noticed that the default client ID mode is Inherit so i set the MainContent Client ID mode to be static and i have found that all the object became static.</p>\n\n<p>This will sure save a lot of time when working with jquery, but i just want to know is there any drawback from this and is there any reason why shouldn't ClientIDMode set to be static at the first place ?</p>\n"
+        },
+        {
+            "tags": [
+                "ipython-notebook",
+                "jupyter"
+            ],
+            "owner": {
+                "reputation": 21,
+                "user_id": 2380110,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/91e066295a5948ceed66fa48d46edaf9?s=128&d=identicon&r=PG",
+                "display_name": "luisfciencias",
+                "link": "https://stackoverflow.com/users/2380110/luisfciencias"
+            },
+            "is_answered": false,
+            "view_count": 959,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1526451763,
+            "creation_date": 1443151895,
+            "question_id": 32774352,
+            "body_markdown": "In ipython notebook / jupyter (3.1.0) in the options of &quot;new&quot; you can open a terminal. In MacOsx 10.8, the default is white letters in dark background. \r\n\r\nQuestion: is there a way to change/configure this?",
+            "link": "https://stackoverflow.com/questions/32774352/change-background-color-of-the-terminal-in-ipython-notebook-jupyter",
+            "title": "Change background color of the terminal in ipython notebook / jupyter",
+            "body": "<p>In ipython notebook / jupyter (3.1.0) in the options of \"new\" you can open a terminal. In MacOsx 10.8, the default is white letters in dark background. </p>\n\n<p>Question: is there a way to change/configure this?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "ssh",
+                "pickle",
+                "paramiko",
+                "shelve"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 6532976,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/8a90b5bf3841a906bea513d22170ee5f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "greymatter",
+                "link": "https://stackoverflow.com/users/6532976/greymatter"
+            },
+            "is_answered": false,
+            "view_count": 22,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526451762,
+            "creation_date": 1526450542,
+            "last_edit_date": 1526451762,
+            "question_id": 50363444,
+            "body_markdown": "Lets say I have 6 servers and I&#39;m connecting to all of them using `paramiko.SSHClient()` objects. I have 6 `paramiko.SSHClient()` objects corresponding to these 6 servers.\r\nThe problem is, the setting up of all these connections takes me roughly 30 seconds. Also I need to make these connections often. Everytime I try to connect, I have to wait 30 seconds. Is there a way to store these `SSHClient()` objects? I&#39;ve tried storing them using persistent dictionary of `shelve` module but I&#39;m getting this error:\r\n\r\n    TypeError: can&#39;t pickle lock objects\r\n\r\nSo, is there any other way I can store these ssh connections(paramiko connection objects) persistently for future use?",
+            "link": "https://stackoverflow.com/questions/50363444/storing-a-ssh-connection",
+            "title": "Storing a ssh connection",
+            "body": "<p>Lets say I have 6 servers and I'm connecting to all of them using <code>paramiko.SSHClient()</code> objects. I have 6 <code>paramiko.SSHClient()</code> objects corresponding to these 6 servers.\nThe problem is, the setting up of all these connections takes me roughly 30 seconds. Also I need to make these connections often. Everytime I try to connect, I have to wait 30 seconds. Is there a way to store these <code>SSHClient()</code> objects? I've tried storing them using persistent dictionary of <code>shelve</code> module but I'm getting this error:</p>\n\n<pre><code>TypeError: can't pickle lock objects\n</code></pre>\n\n<p>So, is there any other way I can store these ssh connections(paramiko connection objects) persistently for future use?</p>\n"
+        },
+        {
+            "tags": [
+                "opencv",
+                "bitwise-and"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 4331525,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/8e8bdb6b350722f5435015ea17078662?s=128&d=identicon&r=PG&f=1",
+                "display_name": "SACHIN",
+                "link": "https://stackoverflow.com/users/4331525/sachin"
+            },
+            "is_answered": true,
+            "view_count": 4918,
+            "answer_count": 4,
+            "score": 1,
+            "last_activity_date": 1526451756,
+            "creation_date": 1443156280,
+            "last_edit_date": 1526451756,
+            "question_id": 32774956,
+            "body_markdown": "I am trying to extract blue colour of an input image. For that I create a blue HSV colour boundary and threshold HSV image by using the command \r\n\r\n`mask_img = cv2.inRange(hsv, lower_blue, upper_blue)`\r\n \r\nAfter that I used a bitwise_and on the input image and the threshold image by using\r\n \r\n`res = cv2.bitwise_and(img,img,mask = mask_img)`\r\n\r\nWhere &#39;img&#39; is the input image. This code I got from the opencv. But I didn&#39;t understand why three arguments used in bitwise_and and what is actually each arguments mean? Why the same image is used at src1 and src2 ?\r\n\r\n And also what is the use of mask keyword here? Please help me to find out the answer",
+            "link": "https://stackoverflow.com/questions/32774956/can-anybody-help-me-to-explain-arguments-meaning-in-res-cv2-bitwise-andimg-im",
+            "title": "Can anybody help me to explain arguments meaning in res = cv2.bitwise_and(img,img,mask = mask)",
+            "body": "<p>I am trying to extract blue colour of an input image. For that I create a blue HSV colour boundary and threshold HSV image by using the command </p>\n\n<p><code>mask_img = cv2.inRange(hsv, lower_blue, upper_blue)</code></p>\n\n<p>After that I used a bitwise_and on the input image and the threshold image by using</p>\n\n<p><code>res = cv2.bitwise_and(img,img,mask = mask_img)</code></p>\n\n<p>Where 'img' is the input image. This code I got from the opencv. But I didn't understand why three arguments used in bitwise_and and what is actually each arguments mean? Why the same image is used at src1 and src2 ?</p>\n\n<p>And also what is the use of mask keyword here? Please help me to find out the answer</p>\n"
+        },
+        {
+            "tags": [
+                "angularjs"
+            ],
+            "owner": {
+                "reputation": 616,
+                "user_id": 5357758,
+                "user_type": "registered",
+                "accept_rate": 56,
+                "profile_image": "https://www.gravatar.com/avatar/266d83febb1a6e98f03837ea1ad3c411?s=128&d=identicon&r=PG&f=1",
+                "display_name": "yavg",
+                "link": "https://stackoverflow.com/users/5357758/yavg"
+            },
+            "is_answered": false,
+            "view_count": 22,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526451744,
+            "creation_date": 1526421506,
+            "question_id": 50359725,
+            "body_markdown": "I want to perform a validation, that if there are no elements when making a filter, hide a div otherwise it will be displayed. This is my code:\r\n\r\n    &lt;!-- show/hide this div depends if exist coincidence on the filter --&gt;\r\n    &lt;p class=&quot;text-center txt_color_azul_oscuro tip_fuen_roboto_l txt_sm&quot;&gt;elements:&lt;/p&gt;\r\n              \r\n\r\n    &lt;div class=&quot;col-12 col-sm-12 col-md-6 col-lg-6&quot; ng-repeat=&quot;item in faqs&quot; ng-show=&quot;([item] | filter: search).length &quot;&gt;\r\n    .\r\n    .\r\n    .\r\n    &lt;/div&gt;\r\n\r\n    &lt;input class=&quot;field&quot; type=&quot;text&quot; type=&quot;text&quot; ng-model=&quot;search&quot; required&gt;\r\n",
+            "link": "https://stackoverflow.com/questions/50359725/how-can-i-know-the-number-of-elements-in-a-filter-filter-foo",
+            "title": "how can I know the number of elements in a filter ( | filter: foo)",
+            "body": "<p>I want to perform a validation, that if there are no elements when making a filter, hide a div otherwise it will be displayed. This is my code:</p>\n\n<pre><code>&lt;!-- show/hide this div depends if exist coincidence on the filter --&gt;\n&lt;p class=\"text-center txt_color_azul_oscuro tip_fuen_roboto_l txt_sm\"&gt;elements:&lt;/p&gt;\n\n\n&lt;div class=\"col-12 col-sm-12 col-md-6 col-lg-6\" ng-repeat=\"item in faqs\" ng-show=\"([item] | filter: search).length \"&gt;\n.\n.\n.\n&lt;/div&gt;\n\n&lt;input class=\"field\" type=\"text\" type=\"text\" ng-model=\"search\" required&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "actions-on-google",
+                "dialogflow"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9786197,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3464f554b5d4984d320ee313ca76fb4e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Rainmaker",
+                "link": "https://stackoverflow.com/users/9786197/rainmaker"
+            },
+            "is_answered": false,
+            "view_count": 30,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526451734,
+            "creation_date": 1526273945,
+            "question_id": 50323345,
+            "body_markdown": "I&#39;ve come across this User Entities on DialogFlow v2.\r\n\r\nhttps://dialogflow.com/docs/reference/api-v2/rest/v2/projects.agent.sessions.entityTypes/create\r\n\r\nDoes anyone know or can point out some example code on how to use this to pass custom data back to DialogFlow&#39;s User Entities?",
+            "link": "https://stackoverflow.com/questions/50323345/aog-nodejs-to-dialogflow-user-entities",
+            "title": "AoG: NodeJS to DialogFlow User Entities",
+            "body": "<p>I've come across this User Entities on DialogFlow v2.</p>\n\n<p><a href=\"https://dialogflow.com/docs/reference/api-v2/rest/v2/projects.agent.sessions.entityTypes/create\" rel=\"nofollow noreferrer\">https://dialogflow.com/docs/reference/api-v2/rest/v2/projects.agent.sessions.entityTypes/create</a></p>\n\n<p>Does anyone know or can point out some example code on how to use this to pass custom data back to DialogFlow's User Entities?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "node.js",
+                "express"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 3428220,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e2564afe15fdae59dba35373b757251f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3428220",
+                "link": "https://stackoverflow.com/users/3428220/user3428220"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526451732,
+            "creation_date": 1526447005,
+            "last_edit_date": 1526451732,
+            "question_id": 50362757,
+            "body_markdown": "I know this is a basic question but I am not quite able to figure out how to overcome this condition.\r\n\r\nIn my api I have the following code:\r\n\r\n    var express = require(&#39;express&#39;);\r\n    var unless = require(&#39;express-unless&#39;);\r\n    var router = express.Router();\r\n    \r\n    // Controllers\r\n    var globalController = require(&#39;../controllers/global&#39;);\r\n    router.use(globalController.authorizeToken.unless({path: [&#39;/users&#39;, &#39;/pages&#39;], method: &#39;GET&#39;}));\r\n\r\nNow I get this error in nodejs.                          \r\n\r\n&gt; TypeError: globalController.authorizeToken.unless is not a function\r\n\r\nHow do I overcome this? Any help would be appreciated.\r\n\r\nThanks.",
+            "link": "https://stackoverflow.com/questions/50362757/express-unless-on-a-controller-function-in-javascript",
+            "title": "express-unless on a controller function in javascript",
+            "body": "<p>I know this is a basic question but I am not quite able to figure out how to overcome this condition.</p>\n\n<p>In my api I have the following code:</p>\n\n<pre><code>var express = require('express');\nvar unless = require('express-unless');\nvar router = express.Router();\n\n// Controllers\nvar globalController = require('../controllers/global');\nrouter.use(globalController.authorizeToken.unless({path: ['/users', '/pages'], method: 'GET'}));\n</code></pre>\n\n<p>Now I get this error in nodejs.                          </p>\n\n<blockquote>\n  <p>TypeError: globalController.authorizeToken.unless is not a function</p>\n</blockquote>\n\n<p>How do I overcome this? Any help would be appreciated.</p>\n\n<p>Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "r"
+            ],
+            "owner": {
+                "reputation": 21,
+                "user_id": 8236171,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/b5edacc8036fb815a54aa8fcd82bee1b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Etchr",
+                "link": "https://stackoverflow.com/users/8236171/etchr"
+            },
+            "is_answered": true,
+            "view_count": 46,
+            "answer_count": 3,
+            "score": 4,
+            "last_activity_date": 1526451732,
+            "creation_date": 1526441049,
+            "last_edit_date": 1526442969,
+            "question_id": 50362032,
+            "body_markdown": "I have a dataset that includes a vote result `r` for each voter `v` on a particular decision `d`. My data thus looks like:\r\n\r\n    d &lt;- c(1,1,1,1,2,2,2,2,3,3,3,4,4,4,4)\r\n    v &lt;- c(6,7,8,9,6,7,8,9,6,7,9,6,7,8,9)\r\n    r &lt;- c(y,y,n,n,n,n,n,n,y,y,y,y,y,a,y)\r\n    df &lt;- data.frame(d,v,r)\r\n\r\nNot every voter votes in every election. What I want to do is see if other voters make the same call as a particular voter (let&#39;s say `v == 8`). Normally I would just use `dplyr`:\r\n\r\n    df %&gt;% group_by(d) %&gt;% mutate(like8 = ifelse(r == r[v == 8], 1, 0))\r\n\r\nThe problem that I have is that that particular voter `v == 8` doesn&#39;t have a recorded vote for each decision (which is distinct from abstaining votes, which are recorded). Because of this I get the following error.\r\n\r\n&gt;Error in mutate_impl(.data, dots) : \r\n    Column `like8` must be length 3 (the group size) or one, not 0\r\n\r\nWhat I&#39;ve done so far is to write up a combination of ifelse and looping in order to get around this issue.\r\n\r\n    with(df,\r\n        for (i in unique(d)) {\r\n            if(8 %in% v){ \r\n                for (j in r[d == i]) {\r\n                df$like8[d == i &amp; r == j] &lt;- ifelse(j == r[v == 8], 1, 0)\r\n                                     }\r\n                        } else {\r\n                for (j in r[d == i]){\r\n                df$like8[d == i &amp; r == j] &lt;- NA\r\n                                    } \r\n                               }\r\n                             }\r\n    )\r\n\r\n --note: I&#39;ve never been formally instructed in &#39;good&#39; programming conventions, so my bracket placement is probably unclear and open to suggestions.\r\n\r\nThe problem I have is that my actual dataset has over 500,000 observations, and this is extremely slow. I&#39;ve seen [here](https://stackoverflow.com/questions/31529630/r-by-group-test-if-for-each-value-of-one-variable-that-value-exists-in-anothe) solutions using `data.table` for when the value isn&#39;t missing, but I don&#39;t understand `data.table` enough to know how to make it work for my case. \r\n ",
+            "link": "https://stackoverflow.com/questions/50362032/by-group-match-values-to-a-particular-value",
+            "title": "By group, match values to a particular value",
+            "body": "<p>I have a dataset that includes a vote result <code>r</code> for each voter <code>v</code> on a particular decision <code>d</code>. My data thus looks like:</p>\n\n<pre><code>d &lt;- c(1,1,1,1,2,2,2,2,3,3,3,4,4,4,4)\nv &lt;- c(6,7,8,9,6,7,8,9,6,7,9,6,7,8,9)\nr &lt;- c(y,y,n,n,n,n,n,n,y,y,y,y,y,a,y)\ndf &lt;- data.frame(d,v,r)\n</code></pre>\n\n<p>Not every voter votes in every election. What I want to do is see if other voters make the same call as a particular voter (let's say <code>v == 8</code>). Normally I would just use <code>dplyr</code>:</p>\n\n<pre><code>df %&gt;% group_by(d) %&gt;% mutate(like8 = ifelse(r == r[v == 8], 1, 0))\n</code></pre>\n\n<p>The problem that I have is that that particular voter <code>v == 8</code> doesn't have a recorded vote for each decision (which is distinct from abstaining votes, which are recorded). Because of this I get the following error.</p>\n\n<blockquote>\n  <p>Error in mutate_impl(.data, dots) : \n      Column <code>like8</code> must be length 3 (the group size) or one, not 0</p>\n</blockquote>\n\n<p>What I've done so far is to write up a combination of ifelse and looping in order to get around this issue.</p>\n\n<pre><code>with(df,\n    for (i in unique(d)) {\n        if(8 %in% v){ \n            for (j in r[d == i]) {\n            df$like8[d == i &amp; r == j] &lt;- ifelse(j == r[v == 8], 1, 0)\n                                 }\n                    } else {\n            for (j in r[d == i]){\n            df$like8[d == i &amp; r == j] &lt;- NA\n                                } \n                           }\n                         }\n)\n</code></pre>\n\n<p>--note: I've never been formally instructed in 'good' programming conventions, so my bracket placement is probably unclear and open to suggestions.</p>\n\n<p>The problem I have is that my actual dataset has over 500,000 observations, and this is extremely slow. I've seen <a href=\"https://stackoverflow.com/questions/31529630/r-by-group-test-if-for-each-value-of-one-variable-that-value-exists-in-anothe\">here</a> solutions using <code>data.table</code> for when the value isn't missing, but I don't understand <code>data.table</code> enough to know how to make it work for my case. </p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "django",
+                "django-models",
+                "django-admin",
+                "django-email"
+            ],
+            "owner": {
+                "reputation": 35,
+                "user_id": 9598271,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e7a47bb44513e52c59777dc5d4bf16c3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Shadowwz",
+                "link": "https://stackoverflow.com/users/9598271/shadowwz"
+            },
+            "is_answered": true,
+            "view_count": 40,
+            "accepted_answer_id": 50363706,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1526451718,
+            "creation_date": 1525923982,
+            "last_edit_date": 1525938806,
+            "question_id": 50265160,
+            "body_markdown": "I have a simple banning function that sets user active to false and a basic emailing function to send emails. The tables I am working with are `User`,`Profile`,`Report` &amp; `Banned_User` Table.\r\n\r\nI am looking to:\r\n\r\n 1. add the user `Profile`,`Reason_reported` from `Report` table and `datetime` that they were banned into the Banned_User table once banned.   \r\n 2. send these details to the users email\r\n\r\n                                                                \r\n\r\nCurrently I am recieving a &#39;**`Attribute Error at /admin/api/profile/: WSGIRequest&#39; object has no attribute &#39;report&#39;&#39;`**\r\nand not sure how to go about doing these 2 things.\r\n\r\n\r\n    def banning_users(self, request, queryset):\r\n\r\n\tfor obj in queryset:\r\n\t\tif hasattr(obj, &#39;user&#39;):\r\n\t\t\t# This object is a Profile, so lookup the user\r\n\t\t\tobj = obj.user\r\n\t\tobj.is_active = False\r\n\t\t\r\n        #email function\r\n\t\tbanned_user = Banned_User.objects.create(profile=request.user.profile, report_reasons=request.report.report_reason)\r\n\t\tbanned_user.save()\r\n\t\t#Sends ban email to user,does not send through the variables yet\r\n\t\tsubject = &#39;Ban&#39;\r\n\t\tmessage =   &#39;You have been banned&#39;\r\n\t\temail_from = settings.EMAIL_HOST_USER\r\n\t\trecipient_list = [obj.email]\r\n\t\tsend_mail( subject, message,email_from, recipient_list )\r\n\t\tobj.save()\r\n\r\n\r\n\tself.message_user(request, &quot;User is banned and Email has been sent&quot;)\r\n\r\n\r\n**Tables are below:**\r\n\r\n**Report Table**\r\n\r\n    class Report(models.Model):\r\n\tdef __str__(self):\r\n\t\treturn str.join(str(self.user_reported), str(self.datetime_sent))\r\n\r\n\tTOXICITY = &#39;Toxicity&#39;\r\n\tSPORTSMANSHIP = &#39;Poor sportsmanship&#39;\r\n\r\n\tREPORT_REASON_CHOICES = (\r\n\t\t(TOXICITY, &#39;Toxicity&#39;),\r\n\t\t(SPORTSMANSHIP, &#39;Unsportsmanlike Behaviour&#39;),\r\n\t)\r\n\r\n\tsession = models.ForeignKey(\r\n\t\t&#39;Session&#39;,\r\n\t\ton_delete=models.PROTECT,\r\n\t\tblank=False,\r\n\t\tnull=False,\r\n\t)\r\n\r\n\tuser_reported = models.ForeignKey(\r\n\t\t&#39;Profile&#39;,\r\n\t\ton_delete=models.PROTECT,\r\n\t\tblank=False,\r\n\t\tnull=False,\r\n\t\trelated_name=&#39;user_reported_report&#39;,\r\n\t)\r\n\r\n\tsent_by = models.ForeignKey(\r\n\t\t&#39;Profile&#39;,\r\n\t\ton_delete=models.PROTECT,\r\n\t\tblank=False,\r\n\t\tnull=False,\r\n\t\trelated_name=&#39;sent_by_report&#39;,\r\n\t)\r\n\r\n\treport_reason = models.CharField(\r\n\t\tmax_length=255,\r\n\t\tchoices=REPORT_REASON_CHOICES,\r\n\t\tdefault=TOXICITY,\r\n\t)\r\n\r\n\tdatetime_sent = models.DateTimeField(auto_now_add=True,)\r\n\r\n**Banned User Table**\r\n\r\n    class Banned_User(models.Model):\r\n\tdef __str__(self):\r\n\t\treturn self.user.get_username\r\n\r\n\tprofile = models.ForeignKey(\r\n\t\t&#39;Profile&#39;,\r\n\t\ton_delete=models.PROTECT,\r\n\t\tblank=False,\r\n\t\tnull=False,\r\n\t\trelated_name=&#39;banned_profile&#39;\r\n\t)\r\n\r\n\treport_reason = models.ForeignKey(\r\n\t\t&#39;Report&#39;,\r\n\t\ton_delete=models.PROTECT,\r\n\t\tblank=True,\r\n\t\tnull=True,\r\n\t)\r\n\r\n\tdate_banned = models.DateField(null=True, blank=False,)\r\n\r\n**PROFILE:**\r\n\r\n    class Profile(models.Model):\r\n\tuser = models.OneToOneField(User, on_delete=models.PROTECT)\r\n\r\n\tdef __str__(self):\r\n\t\treturn self.user.username\r\n\r\n\tUSWEST = &#39;US-West&#39;\r\n\tUSEAST = &#39;US-East&#39;\r\n\tEUROPE = &#39;Europe&#39;\r\n\tOCEANIA = &#39;Oceania&#39;\r\n\tASIA = &#39;Asia&#39;\r\n\tSOUTHAMERICA = &#39;South America&#39;\r\n\tSOUTHAFRICA = &#39;South Africa&#39;\r\n\tMIDDLEEAST = &#39;Middle-East&#39;\r\n\r\n\tPREF_SERVER_CHOICES = (\r\n\t\t(USWEST, &#39;US-West&#39;),\r\n\t\t(USEAST, &#39;US-East&#39;),\r\n\t\t(EUROPE, &#39;Europe&#39;),\r\n\t\t(OCEANIA, &#39;Oceania&#39;),\r\n\t\t(ASIA, &#39;Asia&#39;),\r\n\t\t(SOUTHAMERICA, &#39;South America&#39;),\r\n\t\t(SOUTHAFRICA, &#39;South Africa&#39;),\r\n\t\t(MIDDLEEAST, &#39;Middle-East&#39;),\r\n\t)\r\n\r\n\tpref_server = models.CharField(\r\n\t\tmax_length=20,\r\n\t\tchoices=PREF_SERVER_CHOICES,\r\n\t\tdefault=USWEST,\r\n\t)\r\n\r\n\tTEAMWORK = &#39;Teamwork&#39;\r\n\tCOMMUNICATION = &#39;Communication&#39;\r\n\tSKILL = &#39;Skill&#39;\r\n\tSPORTSMANSHIP = &#39;Sportsmanship&#39;\r\n\r\n\tCOMMENDS_CHOICES = (\r\n\t\t(TEAMWORK, &#39;Teamwork&#39;),\r\n\t\t(COMMUNICATION, &#39;Communication&#39;),\r\n\t\t(SKILL, &#39;Skill&#39;),\r\n\t\t(SPORTSMANSHIP, &#39;Sportsmanship&#39;),\r\n\t)\r\n\tteamwork_commends = models.IntegerField(null=False, blank=False, default=&#39;0&#39;,)\r\n\tcommunication_commends = models.IntegerField(null=False, blank=False, default=&#39;0&#39;,)\r\n\tskill_commends = models.IntegerField(null=False, blank=False, default=&#39;0&#39;,)\r\n\tsportsmanship_commends = models.IntegerField(null=False, blank=False, default=&#39;0&#39;,)\r\n\r\n\t# Weighting of commends\r\n\tcommend_priority_1 = models.CharField(null=False, blank=False, max_length=20, default=TEAMWORK, choices=COMMENDS_CHOICES,)\r\n\tcommend_priority_2 = models.CharField(null=False, blank=False, max_length=20, default=COMMUNICATION, choices=COMMENDS_CHOICES,)\r\n\tcommend_priority_3 = models.CharField(null=False, blank=False, max_length=20, default=SKILL, choices=COMMENDS_CHOICES,)\r\n\tcommend_priority_4 = models.CharField(null=False, blank=False, max_length=20, default=SPORTSMANSHIP, choices=COMMENDS_CHOICES,)\r\n\r\n\t# Other details\r\n\tbirth_date = models.DateField(null=True, blank=False,)\r\n\tsessions_played = models.IntegerField(null=False, blank=False, default=0,)\r\n\treceived_ratings = models.IntegerField(null=False, blank=False, default=0,)\r\n\tin_queue = models.BooleanField(null=False, blank=False, default=False,)\r\n\r\n\t# The users id on discord, which will never change. Current max length is 19, but set to 20 for safe measure (64bit Integer)\r\n\tdiscord_id = models.CharField(max_length=20, null=True, blank=True,)\r\n\r\n**TRACEBACK:**\r\n\r\n    AttributeError at /admin/api/profile/\r\n\r\n    &#39;WSGIRequest&#39; object has no attribute &#39;report&#39;\r\n\r\n    Request Method: \tPOST\r\n    Request URL: \thttp://127.0.0.1/admin/api/profile/\r\n    Django Version: \t2.0.5\r\n    Exception Type: \tAttributeError\r\n    Exception Value: \t\r\n\r\n    &#39;WSGIRequest&#39; object has no attribute &#39;report&#39;\r\n\r\n    Exception Location: \t/home/mihir/Capstone-Project/siteroot/apps/api/admin.py in banning_users, line 31\r\n    Python Executable: \t/usr/bin/python3.6\r\n    Python Version: \t3.6.5\r\n    Python Path: \t\r\n\r\n    [&#39;/home/mihir/Capstone-Project/siteroot&#39;,\r\n     &#39;/usr/lib/python36.zip&#39;,\r\n     &#39;/usr/lib/python3.6&#39;,\r\n     &#39;/usr/lib/python3.6/lib-dynload&#39;,\r\n     &#39;/usr/local/lib/python3.6/dist-packages&#39;,\r\n     &#39;/usr/lib/python3/dist-packages&#39;,\r\n     &#39;/var/www/CapstoneProject/siteroot&#39;,\r\n     &#39;/var/www/CapstoneProject/siteroot/mysite&#39;]\r\n\r\n    Server time: \tThu, 10 May 2018 03:36:51 +0000\r\n\r\n\r\n**new code:**\r\n\r\n        def banning_users(self, request, queryset):\r\n\r\n        for obj in queryset:\r\n            if hasattr(obj, &#39;user&#39;):\r\n                # This object is a Profile, so lookup the user\r\n                obj = obj.user\r\n            obj.is_active = False\r\n            \r\n            banned_user = Banned_User.objects.create(profile=request.user.profile)\r\n            banned_user.report_reason.add(request.user.profile.user_reported_report.all())\r\n            banned_user.save()\r\n            #Sends ban email to user,does not send through the variables yet\r\n            subject = &#39;Ban&#39;\r\n            message =   &#39;You have been banned for being trash&#39;\r\n            email_from = settings.EMAIL_HOST_USER\r\n            recipient_list = [obj.email]\r\n            send_mail( subject, message,email_from, recipient_list )\r\n            obj.save()",
+            "link": "https://stackoverflow.com/questions/50265160/how-to-add-banned-users-to-table-and-send-details-to-users-email-within-django",
+            "title": "How to add Banned Users to table,and send details to user&#39;s email within Django Admin",
+            "body": "<p>I have a simple banning function that sets user active to false and a basic emailing function to send emails. The tables I am working with are <code>User</code>,<code>Profile</code>,<code>Report</code> &amp; <code>Banned_User</code> Table.</p>\n\n<p>I am looking to:</p>\n\n<ol>\n<li>add the user <code>Profile</code>,<code>Reason_reported</code> from <code>Report</code> table and <code>datetime</code> that they were banned into the Banned_User table once banned.   </li>\n<li>send these details to the users email</li>\n</ol>\n\n<p>Currently I am recieving a '<strong><code>Attribute Error at /admin/api/profile/: WSGIRequest' object has no attribute 'report''</code></strong>\nand not sure how to go about doing these 2 things.</p>\n\n<pre><code>def banning_users(self, request, queryset):\n\nfor obj in queryset:\n    if hasattr(obj, 'user'):\n        # This object is a Profile, so lookup the user\n        obj = obj.user\n    obj.is_active = False\n\n    #email function\n    banned_user = Banned_User.objects.create(profile=request.user.profile, report_reasons=request.report.report_reason)\n    banned_user.save()\n    #Sends ban email to user,does not send through the variables yet\n    subject = 'Ban'\n    message =   'You have been banned'\n    email_from = settings.EMAIL_HOST_USER\n    recipient_list = [obj.email]\n    send_mail( subject, message,email_from, recipient_list )\n    obj.save()\n\n\nself.message_user(request, \"User is banned and Email has been sent\")\n</code></pre>\n\n<p><strong>Tables are below:</strong></p>\n\n<p><strong>Report Table</strong></p>\n\n<pre><code>class Report(models.Model):\ndef __str__(self):\n    return str.join(str(self.user_reported), str(self.datetime_sent))\n\nTOXICITY = 'Toxicity'\nSPORTSMANSHIP = 'Poor sportsmanship'\n\nREPORT_REASON_CHOICES = (\n    (TOXICITY, 'Toxicity'),\n    (SPORTSMANSHIP, 'Unsportsmanlike Behaviour'),\n)\n\nsession = models.ForeignKey(\n    'Session',\n    on_delete=models.PROTECT,\n    blank=False,\n    null=False,\n)\n\nuser_reported = models.ForeignKey(\n    'Profile',\n    on_delete=models.PROTECT,\n    blank=False,\n    null=False,\n    related_name='user_reported_report',\n)\n\nsent_by = models.ForeignKey(\n    'Profile',\n    on_delete=models.PROTECT,\n    blank=False,\n    null=False,\n    related_name='sent_by_report',\n)\n\nreport_reason = models.CharField(\n    max_length=255,\n    choices=REPORT_REASON_CHOICES,\n    default=TOXICITY,\n)\n\ndatetime_sent = models.DateTimeField(auto_now_add=True,)\n</code></pre>\n\n<p><strong>Banned User Table</strong></p>\n\n<pre><code>class Banned_User(models.Model):\ndef __str__(self):\n    return self.user.get_username\n\nprofile = models.ForeignKey(\n    'Profile',\n    on_delete=models.PROTECT,\n    blank=False,\n    null=False,\n    related_name='banned_profile'\n)\n\nreport_reason = models.ForeignKey(\n    'Report',\n    on_delete=models.PROTECT,\n    blank=True,\n    null=True,\n)\n\ndate_banned = models.DateField(null=True, blank=False,)\n</code></pre>\n\n<p><strong>PROFILE:</strong></p>\n\n<pre><code>class Profile(models.Model):\nuser = models.OneToOneField(User, on_delete=models.PROTECT)\n\ndef __str__(self):\n    return self.user.username\n\nUSWEST = 'US-West'\nUSEAST = 'US-East'\nEUROPE = 'Europe'\nOCEANIA = 'Oceania'\nASIA = 'Asia'\nSOUTHAMERICA = 'South America'\nSOUTHAFRICA = 'South Africa'\nMIDDLEEAST = 'Middle-East'\n\nPREF_SERVER_CHOICES = (\n    (USWEST, 'US-West'),\n    (USEAST, 'US-East'),\n    (EUROPE, 'Europe'),\n    (OCEANIA, 'Oceania'),\n    (ASIA, 'Asia'),\n    (SOUTHAMERICA, 'South America'),\n    (SOUTHAFRICA, 'South Africa'),\n    (MIDDLEEAST, 'Middle-East'),\n)\n\npref_server = models.CharField(\n    max_length=20,\n    choices=PREF_SERVER_CHOICES,\n    default=USWEST,\n)\n\nTEAMWORK = 'Teamwork'\nCOMMUNICATION = 'Communication'\nSKILL = 'Skill'\nSPORTSMANSHIP = 'Sportsmanship'\n\nCOMMENDS_CHOICES = (\n    (TEAMWORK, 'Teamwork'),\n    (COMMUNICATION, 'Communication'),\n    (SKILL, 'Skill'),\n    (SPORTSMANSHIP, 'Sportsmanship'),\n)\nteamwork_commends = models.IntegerField(null=False, blank=False, default='0',)\ncommunication_commends = models.IntegerField(null=False, blank=False, default='0',)\nskill_commends = models.IntegerField(null=False, blank=False, default='0',)\nsportsmanship_commends = models.IntegerField(null=False, blank=False, default='0',)\n\n# Weighting of commends\ncommend_priority_1 = models.CharField(null=False, blank=False, max_length=20, default=TEAMWORK, choices=COMMENDS_CHOICES,)\ncommend_priority_2 = models.CharField(null=False, blank=False, max_length=20, default=COMMUNICATION, choices=COMMENDS_CHOICES,)\ncommend_priority_3 = models.CharField(null=False, blank=False, max_length=20, default=SKILL, choices=COMMENDS_CHOICES,)\ncommend_priority_4 = models.CharField(null=False, blank=False, max_length=20, default=SPORTSMANSHIP, choices=COMMENDS_CHOICES,)\n\n# Other details\nbirth_date = models.DateField(null=True, blank=False,)\nsessions_played = models.IntegerField(null=False, blank=False, default=0,)\nreceived_ratings = models.IntegerField(null=False, blank=False, default=0,)\nin_queue = models.BooleanField(null=False, blank=False, default=False,)\n\n# The users id on discord, which will never change. Current max length is 19, but set to 20 for safe measure (64bit Integer)\ndiscord_id = models.CharField(max_length=20, null=True, blank=True,)\n</code></pre>\n\n<p><strong>TRACEBACK:</strong></p>\n\n<pre><code>AttributeError at /admin/api/profile/\n\n'WSGIRequest' object has no attribute 'report'\n\nRequest Method:     POST\nRequest URL:    http://127.0.0.1/admin/api/profile/\nDjango Version:     2.0.5\nException Type:     AttributeError\nException Value:    \n\n'WSGIRequest' object has no attribute 'report'\n\nException Location:     /home/mihir/Capstone-Project/siteroot/apps/api/admin.py in banning_users, line 31\nPython Executable:  /usr/bin/python3.6\nPython Version:     3.6.5\nPython Path:    \n\n['/home/mihir/Capstone-Project/siteroot',\n '/usr/lib/python36.zip',\n '/usr/lib/python3.6',\n '/usr/lib/python3.6/lib-dynload',\n '/usr/local/lib/python3.6/dist-packages',\n '/usr/lib/python3/dist-packages',\n '/var/www/CapstoneProject/siteroot',\n '/var/www/CapstoneProject/siteroot/mysite']\n\nServer time:    Thu, 10 May 2018 03:36:51 +0000\n</code></pre>\n\n<p><strong>new code:</strong></p>\n\n<pre><code>    def banning_users(self, request, queryset):\n\n    for obj in queryset:\n        if hasattr(obj, 'user'):\n            # This object is a Profile, so lookup the user\n            obj = obj.user\n        obj.is_active = False\n\n        banned_user = Banned_User.objects.create(profile=request.user.profile)\n        banned_user.report_reason.add(request.user.profile.user_reported_report.all())\n        banned_user.save()\n        #Sends ban email to user,does not send through the variables yet\n        subject = 'Ban'\n        message =   'You have been banned for being trash'\n        email_from = settings.EMAIL_HOST_USER\n        recipient_list = [obj.email]\n        send_mail( subject, message,email_from, recipient_list )\n        obj.save()\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "ubuntu-14.04",
+                "ros",
+                "apt-get"
+            ],
+            "owner": {
+                "reputation": 1922,
+                "user_id": 1175065,
+                "user_type": "registered",
+                "accept_rate": 77,
+                "profile_image": "https://www.gravatar.com/avatar/5d39d28e20ba99165ad648135d853ff3?s=128&d=identicon&r=PG",
+                "display_name": "Ravi Joshi",
+                "link": "https://stackoverflow.com/users/1175065/ravi-joshi"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526451716,
+            "creation_date": 1526451716,
+            "question_id": 50363704,
+            "body_markdown": "This question may appear duplicate of others however, I have tried their solutions but couldn&#39;t get any success. I recently removed ROS Indigo using the following command-\r\n\r\n    ravi@lab:~$ sudo apt-get remove ros-*\r\n    0 upgraded, 0 newly installed, 0 to remove and 12 not upgraded.\r\n\r\nNow, I needed it. So I tried installing it again using the following command-\r\n\r\n    ravi@lab:~$ sudo apt-get install ros-indigo-desktop-full\r\n    Reading package lists... Done\r\n    Building dependency tree\r\n    Reading state information... Done\r\n    Some packages could not be installed. This may mean that you have\r\n    requested an impossible situation or if you are using the unstable\r\n    distribution that some required packages have not yet been created\r\n    or been moved out of Incoming.\r\n    The following information may help to resolve the situation:\r\n    \r\n    The following packages have unmet dependencies:\r\n     ros-indigo-desktop-full : Depends: ros-indigo-perception but it is not going to be installed\r\n    E: Unable to correct problems, you have held broken packages\r\n\r\n.\r\nUnfortunately, the above didn&#39;t work. So I tried installing dependencies but got no success-\r\n\r\n    ravi@lab:~$ sudo apt-get install -f\r\n    Reading package lists... Done\r\n    Building dependency tree\r\n    Reading state information... Done\r\n    0 upgraded, 0 newly installed, 0 to remove and 12 not upgraded.\r\n    ravi@lab:~$ sudo dpkg --configure -a\r\n    ravi@lab:~$ sudo apt-get install -f\r\n    Reading package lists... Done\r\n    Building dependency tree\r\n    Reading state information... Done\r\n    0 upgraded, 0 newly installed, 0 to remove and 12 not upgraded.\r\n\r\nI tried installing the dependency `ros-indigo-perception` manually but no chance-\r\n\r\n    ravi@lab:~$ sudo apt-get install ros-indigo-perception\r\n    Reading package lists... Done\r\n    Building dependency tree\r\n    Reading state information... Done\r\n    Some packages could not be installed. This may mean that you have\r\n    requested an impossible situation or if you are using the unstable\r\n    distribution that some required packages have not yet been created\r\n    or been moved out of Incoming.\r\n    The following information may help to resolve the situation:\r\n    \r\n    The following packages have unmet dependencies:\r\n     ros-indigo-perception : Depends: ros-indigo-perception-pcl but it is not going to be installed\r\n    E: Unable to correct problems, you have held broken packages.\r\n\r\nI tried more and thought of installing another dependency `ros-indigo-perception-pcl` but got in vain-\r\n\r\n    ravi@lab:~$ sudo apt-get install ros-indigo-perception-pcl\r\n    Reading package lists... Done\r\n    Building dependency tree\r\n    Reading state information... Done\r\n    Some packages could not be installed. This may mean that you have\r\n    requested an impossible situation or if you are using the unstable\r\n    distribution that some required packages have not yet been created\r\n    or been moved out of Incoming.\r\n    The following information may help to resolve the situation:\r\n    \r\n    The following packages have unmet dependencies:\r\n     ros-indigo-perception-pcl : Depends: ros-indigo-pcl-conversions but it is not going to be installed\r\n                                 Depends: ros-indigo-pcl-ros but it is not going to be installed\r\n    E: Unable to correct problems, you have held broken packages.\r\n\r\nStill trying without any success -\r\n\r\n    ravi@lab:~$ sudo apt-get install ros-indigo-pcl-conversions\r\n    Reading package lists... Done\r\n    Building dependency tree\r\n    Reading state information... Done\r\n    Some packages could not be installed. This may mean that you have\r\n    requested an impossible situation or if you are using the unstable\r\n    distribution that some required packages have not yet been created\r\n    or been moved out of Incoming.\r\n    The following information may help to resolve the situation:\r\n    \r\n    The following packages have unmet dependencies:\r\n     ros-indigo-pcl-conversions : Depends: libpcl-1.7-all but it is not going to be installed\r\n                                  Depends: libpcl-1.7-all-dev but it is not going to be installed\r\n    E: Unable to correct problems, you have held broken packages.\r\n    \r\n    ravi@lab:~$ sudo apt-get install libpcl-1.7-all\r\n    Reading package lists... Done\r\n    Building dependency tree\r\n    Reading state information... Done\r\n    Some packages could not be installed. This may mean that you have\r\n    requested an impossible situation or if you are using the unstable\r\n    distribution that some required packages have not yet been created\r\n    or been moved out of Incoming.\r\n    The following information may help to resolve the situation:\r\n    \r\n    The following packages have unmet dependencies:\r\n     libpcl-1.7-all : Depends: libpcl-1.7-all-dev but it is not going to be installed\r\n    E: Unable to correct problems, you have held broken packages.\r\n    \r\n    ravi@lab:~$ sudo apt-get install libpcl-1.7-all-dev\r\n    Reading package lists... Done\r\n    Building dependency tree\r\n    Reading state information... Done\r\n    Some packages could not be installed. This may mean that you have\r\n    requested an impossible situation or if you are using the unstable\r\n    distribution that some required packages have not yet been created\r\n    or been moved out of Incoming.\r\n    The following information may help to resolve the situation:\r\n    \r\n    The following packages have unmet dependencies:\r\n     libpcl-1.7-all-dev : Depends: libpcl-apps-1.7-dev but it is not going to be installed\r\n                          Depends: libpcl-io-1.7-dev but it is not going to be installed\r\n                          Depends: libpcl-outofcore-1.7-dev but it is not going to be installed\r\n                          Depends: libpcl-people-1.7-dev but it is not going to be installed\r\n                          Depends: libpcl-recognition-1.7-dev but it is not going to be installed\r\n                          Depends: libpcl-visualization-1.7-dev but it is not going to be installed\r\n    E: Unable to correct problems, you have held broken packages.\r\n\r\n**My objective is to install ROS Indigo on my Ubuntu 14.04 LTS PC** (without formatting it :D )\r\n\r\nAny workaround, please?",
+            "link": "https://stackoverflow.com/questions/50363704/stuck-in-infinite-loop-of-unmet-dependencies-due-to-broken-packages",
+            "title": "Stuck in infinite loop of unmet dependencies due to broken packages",
+            "body": "<p>This question may appear duplicate of others however, I have tried their solutions but couldn't get any success. I recently removed ROS Indigo using the following command-</p>\n\n<pre><code>ravi@lab:~$ sudo apt-get remove ros-*\n0 upgraded, 0 newly installed, 0 to remove and 12 not upgraded.\n</code></pre>\n\n<p>Now, I needed it. So I tried installing it again using the following command-</p>\n\n<pre><code>ravi@lab:~$ sudo apt-get install ros-indigo-desktop-full\nReading package lists... Done\nBuilding dependency tree\nReading state information... Done\nSome packages could not be installed. This may mean that you have\nrequested an impossible situation or if you are using the unstable\ndistribution that some required packages have not yet been created\nor been moved out of Incoming.\nThe following information may help to resolve the situation:\n\nThe following packages have unmet dependencies:\n ros-indigo-desktop-full : Depends: ros-indigo-perception but it is not going to be installed\nE: Unable to correct problems, you have held broken packages\n</code></pre>\n\n<p>.\nUnfortunately, the above didn't work. So I tried installing dependencies but got no success-</p>\n\n<pre><code>ravi@lab:~$ sudo apt-get install -f\nReading package lists... Done\nBuilding dependency tree\nReading state information... Done\n0 upgraded, 0 newly installed, 0 to remove and 12 not upgraded.\nravi@lab:~$ sudo dpkg --configure -a\nravi@lab:~$ sudo apt-get install -f\nReading package lists... Done\nBuilding dependency tree\nReading state information... Done\n0 upgraded, 0 newly installed, 0 to remove and 12 not upgraded.\n</code></pre>\n\n<p>I tried installing the dependency <code>ros-indigo-perception</code> manually but no chance-</p>\n\n<pre><code>ravi@lab:~$ sudo apt-get install ros-indigo-perception\nReading package lists... Done\nBuilding dependency tree\nReading state information... Done\nSome packages could not be installed. This may mean that you have\nrequested an impossible situation or if you are using the unstable\ndistribution that some required packages have not yet been created\nor been moved out of Incoming.\nThe following information may help to resolve the situation:\n\nThe following packages have unmet dependencies:\n ros-indigo-perception : Depends: ros-indigo-perception-pcl but it is not going to be installed\nE: Unable to correct problems, you have held broken packages.\n</code></pre>\n\n<p>I tried more and thought of installing another dependency <code>ros-indigo-perception-pcl</code> but got in vain-</p>\n\n<pre><code>ravi@lab:~$ sudo apt-get install ros-indigo-perception-pcl\nReading package lists... Done\nBuilding dependency tree\nReading state information... Done\nSome packages could not be installed. This may mean that you have\nrequested an impossible situation or if you are using the unstable\ndistribution that some required packages have not yet been created\nor been moved out of Incoming.\nThe following information may help to resolve the situation:\n\nThe following packages have unmet dependencies:\n ros-indigo-perception-pcl : Depends: ros-indigo-pcl-conversions but it is not going to be installed\n                             Depends: ros-indigo-pcl-ros but it is not going to be installed\nE: Unable to correct problems, you have held broken packages.\n</code></pre>\n\n<p>Still trying without any success -</p>\n\n<pre><code>ravi@lab:~$ sudo apt-get install ros-indigo-pcl-conversions\nReading package lists... Done\nBuilding dependency tree\nReading state information... Done\nSome packages could not be installed. This may mean that you have\nrequested an impossible situation or if you are using the unstable\ndistribution that some required packages have not yet been created\nor been moved out of Incoming.\nThe following information may help to resolve the situation:\n\nThe following packages have unmet dependencies:\n ros-indigo-pcl-conversions : Depends: libpcl-1.7-all but it is not going to be installed\n                              Depends: libpcl-1.7-all-dev but it is not going to be installed\nE: Unable to correct problems, you have held broken packages.\n\nravi@lab:~$ sudo apt-get install libpcl-1.7-all\nReading package lists... Done\nBuilding dependency tree\nReading state information... Done\nSome packages could not be installed. This may mean that you have\nrequested an impossible situation or if you are using the unstable\ndistribution that some required packages have not yet been created\nor been moved out of Incoming.\nThe following information may help to resolve the situation:\n\nThe following packages have unmet dependencies:\n libpcl-1.7-all : Depends: libpcl-1.7-all-dev but it is not going to be installed\nE: Unable to correct problems, you have held broken packages.\n\nravi@lab:~$ sudo apt-get install libpcl-1.7-all-dev\nReading package lists... Done\nBuilding dependency tree\nReading state information... Done\nSome packages could not be installed. This may mean that you have\nrequested an impossible situation or if you are using the unstable\ndistribution that some required packages have not yet been created\nor been moved out of Incoming.\nThe following information may help to resolve the situation:\n\nThe following packages have unmet dependencies:\n libpcl-1.7-all-dev : Depends: libpcl-apps-1.7-dev but it is not going to be installed\n                      Depends: libpcl-io-1.7-dev but it is not going to be installed\n                      Depends: libpcl-outofcore-1.7-dev but it is not going to be installed\n                      Depends: libpcl-people-1.7-dev but it is not going to be installed\n                      Depends: libpcl-recognition-1.7-dev but it is not going to be installed\n                      Depends: libpcl-visualization-1.7-dev but it is not going to be installed\nE: Unable to correct problems, you have held broken packages.\n</code></pre>\n\n<p><strong>My objective is to install ROS Indigo on my Ubuntu 14.04 LTS PC</strong> (without formatting it :D )</p>\n\n<p>Any workaround, please?</p>\n"
+        },
+        {
+            "tags": [
+                "powershell",
+                "http-status-code-401",
+                "http-response-codes"
+            ],
+            "owner": {
+                "reputation": 247,
+                "user_id": 6171936,
+                "user_type": "registered",
+                "accept_rate": 64,
+                "profile_image": "https://www.gravatar.com/avatar/20ddbe93be7c219306744ac0d7408228?s=128&d=identicon&r=PG&f=1",
+                "display_name": "JDGEEK",
+                "link": "https://stackoverflow.com/users/6171936/jdgeek"
+            },
+            "is_answered": true,
+            "view_count": 211,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526451710,
+            "creation_date": 1506604125,
+            "question_id": 46470005,
+            "body_markdown": "I&#39;m using a standard `[System.Net.WebRequest]` class to return the HTTP response code of a given URL. \r\n\r\nThe URL points to an internal web application server, which returns a &quot;401 Unauthorised&quot; error. This is actually OK as the service account running the script doesn&#39;t have a valid account to the application. However, I am more interested that the website is responding. However, I assumed that this is a HTTP Response in itself so I could manage this, but instead it returned as a null value.\r\n\r\n    $HTTP_Request = [System.Net.WebRequest]::Create(&#39;http://google.com&#39;)\r\n    $HTTP_Response = $HTTP_Request.GetResponse()\r\n    $HTTP_Status = [int]$HTTP_Response.StatusCode\r\n\r\n&gt; Exception calling &quot;GetResponse&quot; with &quot;0&quot; argument(s): &quot;The remote\r\n&gt; server  returned an error: (407) Proxy Authentication Required.&quot; \r\n\r\n(I&#39;m using Google in this example, which our servers are blocked from accessing external sites).\r\n\r\nSo I can&#39;t get as far as `$HTTP_Status = [int]$HTTP_Response.StatusCode` in the code because it won&#39;t accept 400 errors as a code.\r\n\r\nHow can I accept a 401 (or 407 in this example) in the query?\r\n\r\nThanks\r\n",
+            "link": "https://stackoverflow.com/questions/46470005/powershell-querying-url-with-login-and-returning-http-status",
+            "title": "Powershell - Querying URL with login and returning HTTP Status",
+            "body": "<p>I'm using a standard <code>[System.Net.WebRequest]</code> class to return the HTTP response code of a given URL. </p>\n\n<p>The URL points to an internal web application server, which returns a \"401 Unauthorised\" error. This is actually OK as the service account running the script doesn't have a valid account to the application. However, I am more interested that the website is responding. However, I assumed that this is a HTTP Response in itself so I could manage this, but instead it returned as a null value.</p>\n\n<pre><code>$HTTP_Request = [System.Net.WebRequest]::Create('http://google.com')\n$HTTP_Response = $HTTP_Request.GetResponse()\n$HTTP_Status = [int]$HTTP_Response.StatusCode\n</code></pre>\n\n<blockquote>\n  <p>Exception calling \"GetResponse\" with \"0\" argument(s): \"The remote\n  server  returned an error: (407) Proxy Authentication Required.\" </p>\n</blockquote>\n\n<p>(I'm using Google in this example, which our servers are blocked from accessing external sites).</p>\n\n<p>So I can't get as far as <code>$HTTP_Status = [int]$HTTP_Response.StatusCode</code> in the code because it won't accept 400 errors as a code.</p>\n\n<p>How can I accept a 401 (or 407 in this example) in the query?</p>\n\n<p>Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "json",
+                "hadoop",
+                "apache-pig",
+                "hadoop2"
+            ],
+            "owner": {
+                "reputation": 955,
+                "user_id": 4078424,
+                "user_type": "registered",
+                "accept_rate": 44,
+                "profile_image": "https://i.stack.imgur.com/hEuMg.png?s=128&g=1",
+                "display_name": "Bector",
+                "link": "https://stackoverflow.com/users/4078424/bector"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526451699,
+            "creation_date": 1526063263,
+            "question_id": 50298219,
+            "body_markdown": "I have a json and value out of json\r\n\r\n&gt; 000000,{&quot;000&quot;:{&quot;phoneNumber&quot;:null,&quot;firstName&quot;:&quot;xyz&quot;,&quot;lastName&quot;:&quot;pqr&quot;,&quot;email&quot;:&quot;email@xyz.com&quot;,&quot;alternatePickup&quot;:true,&quot;sendTextNotification&quot;:false,&quot;isSendTextNotification&quot;:false,&quot;isAlternatePickup&quot;:true}}\r\n\r\nI&#39;m trying to load this json in pig using elephant bird json loader but unable to do that.&lt;br&gt;\r\nI&#39;m  able to load the following json \r\n&gt;{&quot;000&quot;:{&quot;phoneNumber&quot;:null,&quot;firstName&quot;:&quot;xyz&quot;,&quot;lastName&quot;:&quot;pqr&quot;,&quot;email&quot;:&quot;email@xyz.com&quot;,&quot;alternatePickup&quot;:true,&quot;sendTextNotification&quot;:false,&quot;isSendTextNotification&quot;:false,&quot;isAlternatePickup&quot;:true}}\r\n\r\nUsing following script -\r\n\r\n    REGISTER json-simple-1.1.1.jar;\r\n    REGISTER elephant-bird-pig-4.3.jar;\r\n    REGISTER elephant-bird-hadoop-compat-4.3.jar;\r\n    \r\n    json_data = load &#39;ek.json&#39; using com.twitter.elephantbird.pig.load.JsonLoader() AS (json_key: [(phoneNumber:chararray,firstName:chararray,lastName:chararray,email:chararray,alternatePickup:boolean,sendTextNotification:boolean,isSendTextNotification:boolean,isAlternatePickup:boolean)]);\r\n    \r\n    dump json_data;\r\nBut when I include value out of json\r\n\r\n    json_data = load &#39;ek.json&#39; using com.twitter.elephantbird.pig.load.JsonLoader() AS (id:int,json_key: [(phoneNumber:chararray,firstName:chararray,lastName:chararray,email:chararray,alternatePickup:boolean,sendTextNotification:boolean,isSendTextNotification:boolean,isAlternatePickup:boolean)]);\r\n\r\nit is not working!! Appreciate the help in advance.",
+            "link": "https://stackoverflow.com/questions/50298219/how-to-load-json-and-value-out-of-json-in-pig",
+            "title": "How to load json and value out of json in Pig?",
+            "body": "<p>I have a json and value out of json</p>\n\n<blockquote>\n  <p>000000,{\"000\":{\"phoneNumber\":null,\"firstName\":\"xyz\",\"lastName\":\"pqr\",\"email\":\"email@xyz.com\",\"alternatePickup\":true,\"sendTextNotification\":false,\"isSendTextNotification\":false,\"isAlternatePickup\":true}}</p>\n</blockquote>\n\n<p>I'm trying to load this json in pig using elephant bird json loader but unable to do that.<br>\nI'm  able to load the following json </p>\n\n<blockquote>\n  <p>{\"000\":{\"phoneNumber\":null,\"firstName\":\"xyz\",\"lastName\":\"pqr\",\"email\":\"email@xyz.com\",\"alternatePickup\":true,\"sendTextNotification\":false,\"isSendTextNotification\":false,\"isAlternatePickup\":true}}</p>\n</blockquote>\n\n<p>Using following script -</p>\n\n<pre><code>REGISTER json-simple-1.1.1.jar;\nREGISTER elephant-bird-pig-4.3.jar;\nREGISTER elephant-bird-hadoop-compat-4.3.jar;\n\njson_data = load 'ek.json' using com.twitter.elephantbird.pig.load.JsonLoader() AS (json_key: [(phoneNumber:chararray,firstName:chararray,lastName:chararray,email:chararray,alternatePickup:boolean,sendTextNotification:boolean,isSendTextNotification:boolean,isAlternatePickup:boolean)]);\n\ndump json_data;\n</code></pre>\n\n<p>But when I include value out of json</p>\n\n<pre><code>json_data = load 'ek.json' using com.twitter.elephantbird.pig.load.JsonLoader() AS (id:int,json_key: [(phoneNumber:chararray,firstName:chararray,lastName:chararray,email:chararray,alternatePickup:boolean,sendTextNotification:boolean,isSendTextNotification:boolean,isAlternatePickup:boolean)]);\n</code></pre>\n\n<p>it is not working!! Appreciate the help in advance.</p>\n"
+        },
+        {
+            "tags": [
+                "slurm"
+            ],
+            "owner": {
+                "reputation": 275,
+                "user_id": 7498328,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/1c2dd368382879485b3e6b60a0c3ba65?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user321627",
+                "link": "https://stackoverflow.com/users/7498328/user321627"
+            },
+            "is_answered": true,
+            "view_count": 13,
+            "accepted_answer_id": 50363696,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526451672,
+            "creation_date": 1526347226,
+            "question_id": 50341040,
+            "body_markdown": "I ran a job in a SLURM cluster, and for a while, the job was running just fine. The last time I used the queue command `squeue` it reported:\r\n\r\n    JOBID   PARTITION NAME     USER    ST     TIME  NODES NODELIST(REASON)\r\n    2394852 serial_re CombineP user_1  R      22:29 1     bigcluster112\r\n\r\nHowever, I just checked it and it now says:\r\n\r\n    JOBID   PARTITION NAME     USER    ST     TIME  NODES NODELIST(REASON)\r\n    2394852 serial_re CombineP user_1  PD     0:00      1 (Priority)\r\n\r\nand I got an email saying the job has been &quot;PREEMPTED&quot;. I searched online and it says that when there is a high priority job, the low priority one will stop while the high priority one runs. This is on a shared university cluster. I didn&#39;t run any other jobs. Does this mean someone else just ran a job that now put mine into a low priority one? How does one set or beat that priority? Thanks!",
+            "link": "https://stackoverflow.com/questions/50341040/i-have-a-job-in-a-slurm-cluster-that-stopped-and-now-says-preempted-what-does",
+            "title": "I have a job in a SLURM cluster that stopped and now says &quot;PREEMPTED&quot;, what does that mean?",
+            "body": "<p>I ran a job in a SLURM cluster, and for a while, the job was running just fine. The last time I used the queue command <code>squeue</code> it reported:</p>\n\n<pre><code>JOBID   PARTITION NAME     USER    ST     TIME  NODES NODELIST(REASON)\n2394852 serial_re CombineP user_1  R      22:29 1     bigcluster112\n</code></pre>\n\n<p>However, I just checked it and it now says:</p>\n\n<pre><code>JOBID   PARTITION NAME     USER    ST     TIME  NODES NODELIST(REASON)\n2394852 serial_re CombineP user_1  PD     0:00      1 (Priority)\n</code></pre>\n\n<p>and I got an email saying the job has been \"PREEMPTED\". I searched online and it says that when there is a high priority job, the low priority one will stop while the high priority one runs. This is on a shared university cluster. I didn't run any other jobs. Does this mean someone else just ran a job that now put mine into a low priority one? How does one set or beat that priority? Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "debugging",
+                "yajsw",
+                "tanuki"
+            ],
+            "owner": {
+                "reputation": 708,
+                "user_id": 6931023,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://lh5.googleusercontent.com/-EiLv4g19Qow/AAAAAAAAAAI/AAAAAAAACsM/Il7t_fB4s00/photo.jpg?sz=128",
+                "display_name": "gladiator",
+                "link": "https://stackoverflow.com/users/6931023/gladiator"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526451671,
+            "creation_date": 1526451403,
+            "question_id": 50363648,
+            "body_markdown": "I have started java app with YAJSW but not able to remote debug , Have tried passing paramters in wrapper.app.additional as well as parameter but still not working when I pass from setenv then YAJSW starts in debug mode but not my applicaiton \r\n\r\n    wrapper.app.parameter.2 = -Xdebug\r\n    wrapper.app.parameter.3 = -Xrunjdwp:transport=dt_socket\\\\,address=8888\\\\,server=y\\\\,suspend=n",
+            "link": "https://stackoverflow.com/questions/50363648/yajsw-remote-debug-the-application",
+            "title": "YAJSW remote debug the application",
+            "body": "<p>I have started java app with YAJSW but not able to remote debug , Have tried passing paramters in wrapper.app.additional as well as parameter but still not working when I pass from setenv then YAJSW starts in debug mode but not my applicaiton </p>\n\n<pre><code>wrapper.app.parameter.2 = -Xdebug\nwrapper.app.parameter.3 = -Xrunjdwp:transport=dt_socket\\\\,address=8888\\\\,server=y\\\\,suspend=n\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "ip",
+                "subnet"
+            ],
+            "owner": {
+                "reputation": 197,
+                "user_id": 2361308,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://www.gravatar.com/avatar/99484dc9d142352778e01ac0c4948c1d?s=128&d=identicon&r=PG",
+                "display_name": "Hearen",
+                "link": "https://stackoverflow.com/users/2361308/hearen"
+            },
+            "is_answered": true,
+            "view_count": 26,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526451657,
+            "creation_date": 1522287084,
+            "last_edit_date": 1522288074,
+            "question_id": 49546667,
+            "body_markdown": "There are lots of smaller subnets and several bigger subnets. I want to group them. \r\n\r\nFor example: \r\n\r\n`172.16.21.0/24` belongs to `172.16.0.0/16`\r\n\r\nI checked [SubnetUtils](https://commons.apache.org/proper/commons-net/apidocs/org/apache/commons/net/util/SubnetUtils.html), but it seems it can only be used to check whether a IP address belongs to a subnet: \r\n\r\n`172.16.12.3` belongs to `172.16.0.0/16`\r\n\r\nI tried to use `bits` to check it as follows: \r\n\r\n    private String convertIpToBinary(String ip) {\r\n        Long ret = 0L;\r\n        String[] tokens = ip.split(&quot;\\\\.&quot;);\r\n        for (int i = 0; i &lt; 4; ++i) {\r\n            ret |= Long.parseLong(tokens[i]);\r\n            ret &lt;&lt;= 8;\r\n        }\r\n        return Long.toBinaryString(ret);\r\n    }\r\n\r\n    private boolean isIncluded(String cidrIp, String ignoredNet) {\r\n        String[] cidrSubnetTokens = cidrIp.split(&quot;/&quot;);\r\n        String[] ignoredSubnetTokens = ignoredNet.split(&quot;/&quot;);\r\n        Integer ignoredLeadingWidth = Integer.parseInt(ignoredSubnetTokens[1]);\r\n        if (Integer.parseInt(cidrSubnetTokens[1]) &lt; ignoredLeadingWidth) {\r\n            return false;\r\n        }\r\n        String cidrBinaryStr = convertIpToBinary(cidrSubnetTokens[0]);\r\n        String ignoredBinaryStr = convertIpToBinary(ignoredSubnetTokens[0]);\r\n        for (int i = 0; i &lt; ignoredLeadingWidth; ++i) {\r\n            if (ignoredBinaryStr.charAt(i) != cidrBinaryStr.charAt(i)) {\r\n                return false;\r\n            }\r\n        }\r\n        return true;\r\n    }\r\n\r\nThis the unit test I have:\r\n\r\n      System.out.println(isIncluded(&quot;172.16.2.0/24&quot;, &quot;172.16.0.0/16&quot;)); //true\r\n      System.out.println(isIncluded(&quot;172.16.2.0/20&quot;, &quot;172.16.0.0/16&quot;)); //true\r\n      System.out.println(isIncluded(&quot;172.16.2.0/26&quot;, &quot;172.16.0.0/16&quot;)); //true\r\n      System.out.println(isIncluded(&quot;172.17.0.0/12&quot;, &quot;172.16.0.0/12&quot;)); //true\r\n      System.out.println(isIncluded(&quot;172.16.1.0/12&quot;, &quot;172.16.0.0/12&quot;)); //true\r\n      System.out.println(isIncluded(&quot;172.16.2.0/2&quot;, &quot;172.16.0.0/16&quot;));  //false\r\n      System.out.println(isIncluded(&quot;172.17.0.0/16&quot;, &quot;172.16.0.0/16&quot;)); //false\r\n\r\nNo other choice other than bits to check this belonging relationship? I just not quite sure its correctness. Is there any library I can use directly to solve this issue? \r\n\r\nIf there is any useful idea, please share your advice on this? \r\n\r\nThanks a lot. \r\n\r\nUpdated 2018-03-29\r\n\r\nI just add IP to the subnet belonging relationship as follows. It seems I do not need to `import` org.apache.commons.net.util.SubnetUtils any more.\r\n\r\n    public class IpTest {\r\n        private String convertIpToBinary(String ip) {\r\n            Long ret = 0L;\r\n            String[] tokens = ip.split(&quot;\\\\.&quot;);\r\n            for (int i = 0; i &lt; 4; ++i) {\r\n                ret |= Long.parseLong(tokens[i]);\r\n                ret &lt;&lt;= 8;\r\n            }\r\n            return Long.toBinaryString(ret);\r\n        }\r\n    \r\n        private String formatIpBinary(String ipBinary) {\r\n            String s = &quot;&quot;;\r\n            for (int i = 1; i &lt;= 32; ++i) {\r\n                s += ipBinary.charAt(i - 1);\r\n                if (i % 8 == 0 &amp;&amp; i &lt; 32) {\r\n                    s += &quot;.&quot;;\r\n                }\r\n            }\r\n            return s;\r\n        }\r\n    \r\n        private boolean isIncluded(String smallerNetOrIp, String biggerNet) {\r\n            String[] sNetTokens = smallerNetOrIp.split(&quot;/&quot;);\r\n            String[] bNetTokens = biggerNet.split(&quot;/&quot;);\r\n            Integer sPrefixWidth = 32;\r\n            if (smallerNetOrIp.contains(&quot;/&quot;)) {\r\n                sPrefixWidth = Integer.parseInt(sNetTokens[1]);\r\n            }\r\n            Integer bPrefixWidth = Integer.parseInt(bNetTokens[1]);\r\n            if (sPrefixWidth &lt; bPrefixWidth) {\r\n                return false;\r\n            }\r\n            String sBinaryStr = convertIpToBinary(sNetTokens[0]);\r\n            String bBinaryStr = convertIpToBinary(bNetTokens[0]);\r\n            System.out.println(&quot;Checking result: &quot;);\r\n            System.out.println(&quot;IP: &quot; + smallerNetOrIp + &quot;\\n -&gt; Binary: &quot; + formatIpBinary(sBinaryStr));\r\n            System.out.println(&quot;IP: &quot; + biggerNet + &quot;\\n -&gt; Binary: &quot; + formatIpBinary(bBinaryStr));\r\n            for (int i = 0; i &lt; bPrefixWidth; ++i) {\r\n                if (bBinaryStr.charAt(i) != sBinaryStr.charAt(i)) {\r\n                    return false;\r\n                }\r\n            }\r\n            return true;\r\n        }\r\n    \r\n        @Test\r\n        public void testIp() {\r\n            System.out.println(isIncluded(&quot;172.16.2.0/24&quot;, &quot;172.16.0.0/16&quot;)); //true\r\n            System.out.println(isIncluded(&quot;172.16.2.0/20&quot;, &quot;172.16.0.0/16&quot;)); //true\r\n            System.out.println(isIncluded(&quot;172.16.2.0/26&quot;, &quot;172.16.0.0/16&quot;)); //true\r\n            System.out.println(isIncluded(&quot;172.17.0.0/12&quot;, &quot;172.16.0.0/12&quot;)); //true\r\n            System.out.println(isIncluded(&quot;172.16.1.0/12&quot;, &quot;172.16.0.0/12&quot;)); //true\r\n            System.out.println(isIncluded(&quot;172.31.2.0&quot;, &quot;172.16.0.0/12&quot;));    //true\r\n            System.out.println(isIncluded(&quot;172.16.2.0&quot;, &quot;172.16.0.0/16&quot;));    //true\r\n            System.out.println(isIncluded(&quot;172.16.2.0/2&quot;, &quot;172.16.0.0/16&quot;));  //false\r\n            System.out.println(isIncluded(&quot;172.17.0.0/16&quot;, &quot;172.16.0.0/16&quot;)); //false\r\n        }\r\n    }",
+            "link": "https://stackoverflow.com/questions/49546667/how-effectively-and-accurately-check-ips-and-smaller-subnets-belong-to-bigger-su",
+            "title": "How effectively and accurately check IPs and smaller subnets belong to bigger subnets",
+            "body": "<p>There are lots of smaller subnets and several bigger subnets. I want to group them. </p>\n\n<p>For example: </p>\n\n<p><code>172.16.21.0/24</code> belongs to <code>172.16.0.0/16</code></p>\n\n<p>I checked <a href=\"https://commons.apache.org/proper/commons-net/apidocs/org/apache/commons/net/util/SubnetUtils.html\" rel=\"nofollow noreferrer\">SubnetUtils</a>, but it seems it can only be used to check whether a IP address belongs to a subnet: </p>\n\n<p><code>172.16.12.3</code> belongs to <code>172.16.0.0/16</code></p>\n\n<p>I tried to use <code>bits</code> to check it as follows: </p>\n\n<pre><code>private String convertIpToBinary(String ip) {\n    Long ret = 0L;\n    String[] tokens = ip.split(\"\\\\.\");\n    for (int i = 0; i &lt; 4; ++i) {\n        ret |= Long.parseLong(tokens[i]);\n        ret &lt;&lt;= 8;\n    }\n    return Long.toBinaryString(ret);\n}\n\nprivate boolean isIncluded(String cidrIp, String ignoredNet) {\n    String[] cidrSubnetTokens = cidrIp.split(\"/\");\n    String[] ignoredSubnetTokens = ignoredNet.split(\"/\");\n    Integer ignoredLeadingWidth = Integer.parseInt(ignoredSubnetTokens[1]);\n    if (Integer.parseInt(cidrSubnetTokens[1]) &lt; ignoredLeadingWidth) {\n        return false;\n    }\n    String cidrBinaryStr = convertIpToBinary(cidrSubnetTokens[0]);\n    String ignoredBinaryStr = convertIpToBinary(ignoredSubnetTokens[0]);\n    for (int i = 0; i &lt; ignoredLeadingWidth; ++i) {\n        if (ignoredBinaryStr.charAt(i) != cidrBinaryStr.charAt(i)) {\n            return false;\n        }\n    }\n    return true;\n}\n</code></pre>\n\n<p>This the unit test I have:</p>\n\n<pre><code>  System.out.println(isIncluded(\"172.16.2.0/24\", \"172.16.0.0/16\")); //true\n  System.out.println(isIncluded(\"172.16.2.0/20\", \"172.16.0.0/16\")); //true\n  System.out.println(isIncluded(\"172.16.2.0/26\", \"172.16.0.0/16\")); //true\n  System.out.println(isIncluded(\"172.17.0.0/12\", \"172.16.0.0/12\")); //true\n  System.out.println(isIncluded(\"172.16.1.0/12\", \"172.16.0.0/12\")); //true\n  System.out.println(isIncluded(\"172.16.2.0/2\", \"172.16.0.0/16\"));  //false\n  System.out.println(isIncluded(\"172.17.0.0/16\", \"172.16.0.0/16\")); //false\n</code></pre>\n\n<p>No other choice other than bits to check this belonging relationship? I just not quite sure its correctness. Is there any library I can use directly to solve this issue? </p>\n\n<p>If there is any useful idea, please share your advice on this? </p>\n\n<p>Thanks a lot. </p>\n\n<p>Updated 2018-03-29</p>\n\n<p>I just add IP to the subnet belonging relationship as follows. It seems I do not need to <code>import</code> org.apache.commons.net.util.SubnetUtils any more.</p>\n\n<pre><code>public class IpTest {\n    private String convertIpToBinary(String ip) {\n        Long ret = 0L;\n        String[] tokens = ip.split(\"\\\\.\");\n        for (int i = 0; i &lt; 4; ++i) {\n            ret |= Long.parseLong(tokens[i]);\n            ret &lt;&lt;= 8;\n        }\n        return Long.toBinaryString(ret);\n    }\n\n    private String formatIpBinary(String ipBinary) {\n        String s = \"\";\n        for (int i = 1; i &lt;= 32; ++i) {\n            s += ipBinary.charAt(i - 1);\n            if (i % 8 == 0 &amp;&amp; i &lt; 32) {\n                s += \".\";\n            }\n        }\n        return s;\n    }\n\n    private boolean isIncluded(String smallerNetOrIp, String biggerNet) {\n        String[] sNetTokens = smallerNetOrIp.split(\"/\");\n        String[] bNetTokens = biggerNet.split(\"/\");\n        Integer sPrefixWidth = 32;\n        if (smallerNetOrIp.contains(\"/\")) {\n            sPrefixWidth = Integer.parseInt(sNetTokens[1]);\n        }\n        Integer bPrefixWidth = Integer.parseInt(bNetTokens[1]);\n        if (sPrefixWidth &lt; bPrefixWidth) {\n            return false;\n        }\n        String sBinaryStr = convertIpToBinary(sNetTokens[0]);\n        String bBinaryStr = convertIpToBinary(bNetTokens[0]);\n        System.out.println(\"Checking result: \");\n        System.out.println(\"IP: \" + smallerNetOrIp + \"\\n -&gt; Binary: \" + formatIpBinary(sBinaryStr));\n        System.out.println(\"IP: \" + biggerNet + \"\\n -&gt; Binary: \" + formatIpBinary(bBinaryStr));\n        for (int i = 0; i &lt; bPrefixWidth; ++i) {\n            if (bBinaryStr.charAt(i) != sBinaryStr.charAt(i)) {\n                return false;\n            }\n        }\n        return true;\n    }\n\n    @Test\n    public void testIp() {\n        System.out.println(isIncluded(\"172.16.2.0/24\", \"172.16.0.0/16\")); //true\n        System.out.println(isIncluded(\"172.16.2.0/20\", \"172.16.0.0/16\")); //true\n        System.out.println(isIncluded(\"172.16.2.0/26\", \"172.16.0.0/16\")); //true\n        System.out.println(isIncluded(\"172.17.0.0/12\", \"172.16.0.0/12\")); //true\n        System.out.println(isIncluded(\"172.16.1.0/12\", \"172.16.0.0/12\")); //true\n        System.out.println(isIncluded(\"172.31.2.0\", \"172.16.0.0/12\"));    //true\n        System.out.println(isIncluded(\"172.16.2.0\", \"172.16.0.0/16\"));    //true\n        System.out.println(isIncluded(\"172.16.2.0/2\", \"172.16.0.0/16\"));  //false\n        System.out.println(isIncluded(\"172.17.0.0/16\", \"172.16.0.0/16\")); //false\n    }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "google-tag-manager"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9794444,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-ThaNEtlk61g/AAAAAAAAAAI/AAAAAAAAABM/_AGP7smKFNY/photo.jpg?sz=128",
+                "display_name": "Dmitry Orlov",
+                "link": "https://stackoverflow.com/users/9794444/dmitry-orlov"
+            },
+            "is_answered": false,
+            "view_count": 12,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526451652,
+            "creation_date": 1526390882,
+            "last_edit_date": 1526451652,
+            "question_id": 50351494,
+            "body_markdown": "Is it possible to create new GTM (Google Tag Manager) account via API? Or maybe there is any workaround for creating Accounts programmatically?",
+            "link": "https://stackoverflow.com/questions/50351494/how-to-create-gtm-google-tag-manager-account-via-api",
+            "title": "How to create GTM (Google Tag Manager) account via API",
+            "body": "<p>Is it possible to create new GTM (Google Tag Manager) account via API? Or maybe there is any workaround for creating Accounts programmatically?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "android",
+                "android-activity"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 9794270,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/40bac3df386cbb5bd6bc68363a8e7017?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Baskya Visuk",
+                "link": "https://stackoverflow.com/users/9794270/baskya-visuk"
+            },
+            "is_answered": true,
+            "view_count": 36,
+            "answer_count": 1,
+            "score": 3,
+            "last_activity_date": 1526451649,
+            "creation_date": 1526444385,
+            "last_edit_date": 1526451649,
+            "question_id": 50362411,
+            "body_markdown": "\r\n\r\n    public class MainActivity extends AppCompatActivity {\r\n    \r\n        @Override\r\n        protected void onCreate(Bundle savedInstanceState) {\r\n            super.onCreate(savedInstanceState);\r\n            setContentView(R.layout.activity_main);\r\n            getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);\r\n        }\r\n    }\r\n\r\nif i press button back, app is stunt on 10-15 seconds. \r\nin log write:\r\n\r\n    D/ANRAppManager: !!! It is not under singleton mode, U can&#39;t use it. !!!\r\n    I/dalvikvm: threadid=3: reacting to signal 3\r\n    D/dalvikvm: dump native stack for : main\r\n    D/dalvikvm: unwind backtrace\r\n    D/dalvikvm: get native symbol\r\n    D/dalvikvm: format backtrace line\r\n    D/dalvikvm: get native done\r\n    D/dalvikvm: dump native stack for : Thread-7090\r\n    D/dalvikvm: unwind backtrace\r\n    D/dalvikvm: get native symbol\r\n    D/dalvikvm: format backtrace line\r\n    D/dalvikvm: get native done\r\n    D/dalvikvm: dump native stack for : Binder_2\r\n    D/dalvikvm: unwind backtrace\r\n    D/dalvikvm: get native symbol\r\n    D/dalvikvm: format backtrace line\r\n    D/dalvikvm: get native done\r\n    D/dalvikvm: dump native stack for : Binder_1\r\n    D/dalvikvm: unwind backtrace\r\n    D/dalvikvm: get native symbol\r\n    D/dalvikvm: format backtrace line\r\n    D/dalvikvm: get native done\r\n    D/dalvikvm: dump native stack for : Compiler\r\n    D/dalvikvm: unwind backtrace\r\n    D/dalvikvm: get native symbol\r\n    D/dalvikvm: format backtrace line\r\n    D/dalvikvm: get native done\r\n    D/dalvikvm: dump native stack for : JDWP\r\n    D/dalvikvm: unwind backtrace\r\n    D/dalvikvm: get native symbol\r\n    D/dalvikvm: format backtrace line\r\n    D/dalvikvm: get native done\r\n    D/dalvikvm: dump native stack for : GC\r\n    D/dalvikvm: unwind backtrace\r\n    D/dalvikvm: get native symbol\r\n    D/dalvikvm: format backtrace line\r\n    D/dalvikvm: get native done\r\n    D/dalvikvm: Prepare stack traces for &#39;/data/anr/traces.txt&#39; done\r\n    I/dalvikvm: Wrote stack traces to &#39;/data/anr/traces.txt&#39;\r\n\r\nand app crash.\r\n\r\nin this file /data/anr/traces.txt: [https://pastebin.com/J6qdJjU7][1]\r\n\r\n\r\n  [1]: https://pastebin.com/J6qdJjU7\r\n\r\nI&#39;m doing something like AppLocker. I want that when the button is pressed back, the activity(app) that is behind this activity closes, and the `activity` that is behind my activity of another application.\r\n\r\nany ways to do this functional, not necessary with `FLAG_NOT_FOCUSABLE`. how it make?",
+            "link": "https://stackoverflow.com/questions/50362411/flag-not-focusable-on-activity",
+            "title": "FLAG_NOT_FOCUSABLE on activity",
+            "body": "<pre><code>public class MainActivity extends AppCompatActivity {\n\n    @Override\n    protected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        setContentView(R.layout.activity_main);\n        getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);\n    }\n}\n</code></pre>\n\n<p>if i press button back, app is stunt on 10-15 seconds. \nin log write:</p>\n\n<pre><code>D/ANRAppManager: !!! It is not under singleton mode, U can't use it. !!!\nI/dalvikvm: threadid=3: reacting to signal 3\nD/dalvikvm: dump native stack for : main\nD/dalvikvm: unwind backtrace\nD/dalvikvm: get native symbol\nD/dalvikvm: format backtrace line\nD/dalvikvm: get native done\nD/dalvikvm: dump native stack for : Thread-7090\nD/dalvikvm: unwind backtrace\nD/dalvikvm: get native symbol\nD/dalvikvm: format backtrace line\nD/dalvikvm: get native done\nD/dalvikvm: dump native stack for : Binder_2\nD/dalvikvm: unwind backtrace\nD/dalvikvm: get native symbol\nD/dalvikvm: format backtrace line\nD/dalvikvm: get native done\nD/dalvikvm: dump native stack for : Binder_1\nD/dalvikvm: unwind backtrace\nD/dalvikvm: get native symbol\nD/dalvikvm: format backtrace line\nD/dalvikvm: get native done\nD/dalvikvm: dump native stack for : Compiler\nD/dalvikvm: unwind backtrace\nD/dalvikvm: get native symbol\nD/dalvikvm: format backtrace line\nD/dalvikvm: get native done\nD/dalvikvm: dump native stack for : JDWP\nD/dalvikvm: unwind backtrace\nD/dalvikvm: get native symbol\nD/dalvikvm: format backtrace line\nD/dalvikvm: get native done\nD/dalvikvm: dump native stack for : GC\nD/dalvikvm: unwind backtrace\nD/dalvikvm: get native symbol\nD/dalvikvm: format backtrace line\nD/dalvikvm: get native done\nD/dalvikvm: Prepare stack traces for '/data/anr/traces.txt' done\nI/dalvikvm: Wrote stack traces to '/data/anr/traces.txt'\n</code></pre>\n\n<p>and app crash.</p>\n\n<p>in this file /data/anr/traces.txt: <a href=\"https://pastebin.com/J6qdJjU7\" rel=\"nofollow noreferrer\">https://pastebin.com/J6qdJjU7</a></p>\n\n<p>I'm doing something like AppLocker. I want that when the button is pressed back, the activity(app) that is behind this activity closes, and the <code>activity</code> that is behind my activity of another application.</p>\n\n<p>any ways to do this functional, not necessary with <code>FLAG_NOT_FOCUSABLE</code>. how it make?</p>\n"
+        },
+        {
+            "tags": [
+                "typescript"
+            ],
+            "owner": {
+                "reputation": 37,
+                "user_id": 4266698,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/7ec5d8479e52e6ee0581b28c4eb6f09d?s=128&d=identicon&r=PG",
+                "display_name": "Bast",
+                "link": "https://stackoverflow.com/users/4266698/bast"
+            },
+            "is_answered": true,
+            "view_count": 36,
+            "accepted_answer_id": 50363140,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1526451647,
+            "creation_date": 1526439036,
+            "last_edit_date": 1526440112,
+            "question_id": 50361791,
+            "body_markdown": "I&#39;m trying to create an image loading class but in the array definition it throws an error saying `name &quot;Image&quot; not found`, despite creating an image object later in the code.\r\n\r\n    class ImageLoader {\r\n    static toLoadCount:number = 0;\r\n\r\n    private static images = Array&lt;Image&gt;();\r\n\r\n    static onAllLoaded() {};\r\n\r\n    static onImageLoad() {\r\n        --Images.toLoadCount;\r\n\r\n        if(Images.toLoadCount == 0)\r\n            Images.onAllLoaded();\r\n    }\r\n\r\n    static load(path: string) {\r\n        ++Images.toLoadCount;\r\n        let img = new Image();\r\n        img.src = &quot;Images/&quot; + path;\r\n        img.onload = Images.onImageLoad;\r\n        Images.images[path.substring(0, path.length - 4)] = img;\r\n        return img;\r\n    }\r\n\r\n    static allImagesLoaded() {\r\n        return (Images.toLoadCount == 0);\r\n    }\r\n\r\n    [key: string]: any;\r\n    }",
+            "link": "https://stackoverflow.com/questions/50361791/typescript-name-image-not-found",
+            "title": "TypeScript - Name &quot;Image&quot; Not Found",
+            "body": "<p>I'm trying to create an image loading class but in the array definition it throws an error saying <code>name \"Image\" not found</code>, despite creating an image object later in the code.</p>\n\n<pre><code>class ImageLoader {\nstatic toLoadCount:number = 0;\n\nprivate static images = Array&lt;Image&gt;();\n\nstatic onAllLoaded() {};\n\nstatic onImageLoad() {\n    --Images.toLoadCount;\n\n    if(Images.toLoadCount == 0)\n        Images.onAllLoaded();\n}\n\nstatic load(path: string) {\n    ++Images.toLoadCount;\n    let img = new Image();\n    img.src = \"Images/\" + path;\n    img.onload = Images.onImageLoad;\n    Images.images[path.substring(0, path.length - 4)] = img;\n    return img;\n}\n\nstatic allImagesLoaded() {\n    return (Images.toLoadCount == 0);\n}\n\n[key: string]: any;\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "vsts",
+                "vsts-build"
+            ],
+            "owner": {
+                "reputation": 98,
+                "user_id": 177142,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/6566604651d281d81e2a33845627722f?s=128&d=identicon&r=PG",
+                "display_name": "Patrick",
+                "link": "https://stackoverflow.com/users/177142/patrick"
+            },
+            "is_answered": true,
+            "view_count": 16,
+            "accepted_answer_id": 50363689,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1526451642,
+            "creation_date": 1526372288,
+            "last_edit_date": 1526407100,
+            "question_id": 50345450,
+            "body_markdown": "I have a build setup in VSTS and i have a couple of class diagrams that I maintain in my code.  \r\n\r\nEverytime i run a build, I would like to publish these class diagrams to the TFS project page (dashboard, wiki or home page) for our analysts and testers to review and use.  \r\n\r\nIs there a simple way to retrieve the diagrams from code after a build and how should i publish these?",
+            "link": "https://stackoverflow.com/questions/50345450/publish-class-diagram-in-vsts-build",
+            "title": "Publish class diagram in VSTS build",
+            "body": "<p>I have a build setup in VSTS and i have a couple of class diagrams that I maintain in my code.  </p>\n\n<p>Everytime i run a build, I would like to publish these class diagrams to the TFS project page (dashboard, wiki or home page) for our analysts and testers to review and use.  </p>\n\n<p>Is there a simple way to retrieve the diagrams from code after a build and how should i publish these?</p>\n"
+        },
+        {
+            "tags": [
+                "scala",
+                "gson",
+                "to-json"
+            ],
+            "owner": {
+                "reputation": 753,
+                "user_id": 7082628,
+                "user_type": "registered",
+                "accept_rate": 72,
+                "profile_image": "https://www.gravatar.com/avatar/001b3b26760ae03253305b8948994ce7?s=128&d=identicon&r=PG&f=1",
+                "display_name": "NateH06",
+                "link": "https://stackoverflow.com/users/7082628/nateh06"
+            },
+            "is_answered": true,
+            "view_count": 20,
+            "accepted_answer_id": 50359284,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526451633,
+            "creation_date": 1526415914,
+            "question_id": 50358652,
+            "body_markdown": "I&#39;m using Scala, but this applies to Java as well - it appears Gson is having issues converting a List nested within a case class/within another object: \r\n\r\n    case class Candy(name:String, price:Double)\r\n    case class PersonCandy(name:String, age:Int, candyList:List[Candy])\r\n    \r\n    val candies = List(Candy(&quot;M&amp;M&#39;s&quot;, 1.99), Candy(&quot;Snickers&quot;, 1.59), Candy(&quot;Butterfinger&quot;, 2.33))\r\n    val personC = PersonCandy(&quot;Mark&quot;, 19, candies)\r\n    \r\n    val pollAsJson = new Gson().toJson(personC)\r\n\r\nThe REPL shows the resulting `pollAsJson` as follows: \r\n\r\n`pollAsJson: String = {&quot;name&quot;:&quot;Mark&quot;,&quot;age&quot;:19,&quot;candyList&quot;:{}}`\r\n\r\n\r\nMy workaround could be to convert the nested candyList, convert the `personC` and then since both are just Strings, manually hack them toether, but this is less than ideal. Reading blogs and usages and the like seems that Gson can extract and convert nested inner classes just fine, but when a Collection is the nested class, it seems to have issues. Any idea?",
+            "link": "https://stackoverflow.com/questions/50358652/converting-a-nested-list-in-using-gson-tojson",
+            "title": "Converting a nested List in using Gson.tojson",
+            "body": "<p>I'm using Scala, but this applies to Java as well - it appears Gson is having issues converting a List nested within a case class/within another object: </p>\n\n<pre><code>case class Candy(name:String, price:Double)\ncase class PersonCandy(name:String, age:Int, candyList:List[Candy])\n\nval candies = List(Candy(\"M&amp;M's\", 1.99), Candy(\"Snickers\", 1.59), Candy(\"Butterfinger\", 2.33))\nval personC = PersonCandy(\"Mark\", 19, candies)\n\nval pollAsJson = new Gson().toJson(personC)\n</code></pre>\n\n<p>The REPL shows the resulting <code>pollAsJson</code> as follows: </p>\n\n<p><code>pollAsJson: String = {\"name\":\"Mark\",\"age\":19,\"candyList\":{}}</code></p>\n\n<p>My workaround could be to convert the nested candyList, convert the <code>personC</code> and then since both are just Strings, manually hack them toether, but this is less than ideal. Reading blogs and usages and the like seems that Gson can extract and convert nested inner classes just fine, but when a Collection is the nested class, it seems to have issues. Any idea?</p>\n"
+        },
+        {
+            "tags": [
+                "html",
+                "css",
+                "image"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9781932,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a379d60593474bf88f230b0d7ef447ee?s=128&d=identicon&r=PG&f=1",
+                "display_name": "lilboy",
+                "link": "https://stackoverflow.com/users/9781932/lilboy"
+            },
+            "is_answered": true,
+            "view_count": 49,
+            "accepted_answer_id": 50362430,
+            "answer_count": 4,
+            "score": 1,
+            "last_activity_date": 1526451631,
+            "creation_date": 1526443201,
+            "last_edit_date": 1526451631,
+            "question_id": 50362274,
+            "body_markdown": "Which is better:\r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;img src=&quot;http://placehold.it/300x200&quot; alt=&quot;&quot;&gt;\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\nor:\r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-css --&gt;\r\n\r\n    .img {\r\n      content: url(http://placehold.it/300x200); /* or background-image */\r\n    }\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;div class=&quot;img&quot;&gt;&lt;/div&gt;\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\nConsider loading times and which is better to stop users to be able to highlight the image, (I don&#39;t know why I just don&#39;t like people highlighting images) which above option is better?",
+            "link": "https://stackoverflow.com/questions/50362274/which-is-better-with-html-css-to-show-an-img",
+            "title": "Which is better with HTML/CSS to show an img?",
+            "body": "<p>Which is better:</p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>&lt;img src=\"http://placehold.it/300x200\" alt=\"\"&gt;</code></pre>\r\n</div>\r\n</div>\r\n</p>\n\n<p>or:</p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-css lang-css prettyprint-override\"><code>.img {\r\n  content: url(http://placehold.it/300x200); /* or background-image */\r\n}</code></pre>\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>&lt;div class=\"img\"&gt;&lt;/div&gt;</code></pre>\r\n</div>\r\n</div>\r\n</p>\n\n<p>Consider loading times and which is better to stop users to be able to highlight the image, (I don't know why I just don't like people highlighting images) which above option is better?</p>\n"
+        },
+        {
+            "tags": [
+                "appscript"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 9797985,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "tico chu",
+                "link": "https://stackoverflow.com/users/9797985/tico-chu"
+            },
+            "is_answered": false,
+            "view_count": 9,
+            "answer_count": 0,
+            "score": 2,
+            "last_activity_date": 1526451629,
+            "creation_date": 1526451629,
+            "question_id": 50363686,
+            "body_markdown": "here is my script\r\n\r\n`var timeZone = Session.getScriptTimeZone();\r\n var date_1  =  parseInt(Utilities.formatDate(new Date(date_1_post), timeZone , &quot;Y&quot;));`\r\n\r\nthe value of date_1_post is submitted from form,but when i enter the last 2 dates of year(31/12/2018 &amp; 30/12/2018 ),date_1 will return 2019 not 2018.\r\nthis problem only appear by form submit,when i try to get date_1 in spearsheet in value (31/12/2018 &amp; 30/12/2018 ),that will return 2018.\r\ni can&#39;t figure out what&#39;s wrong of the script,Thanks\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50363686/about-formatdate-in-google-appscript",
+            "title": "about formatDate in google appScript",
+            "body": "<p>here is my script</p>\n\n<p><code>var timeZone = Session.getScriptTimeZone();\n var date_1  =  parseInt(Utilities.formatDate(new Date(date_1_post), timeZone , \"Y\"));</code></p>\n\n<p>the value of date_1_post is submitted from form,but when i enter the last 2 dates of year(31/12/2018 &amp; 30/12/2018 ),date_1 will return 2019 not 2018.\nthis problem only appear by form submit,when i try to get date_1 in spearsheet in value (31/12/2018 &amp; 30/12/2018 ),that will return 2018.\ni can't figure out what's wrong of the script,Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "location",
+                "compass-geolocation",
+                "heading",
+                "bearing"
+            ],
+            "owner": {
+                "reputation": 6454,
+                "user_id": 227228,
+                "user_type": "registered",
+                "accept_rate": 90,
+                "profile_image": "https://www.gravatar.com/avatar/e997e8d7aee8ffbd192220257e5027be?s=128&d=identicon&r=PG",
+                "display_name": "Damian",
+                "link": "https://stackoverflow.com/users/227228/damian"
+            },
+            "is_answered": true,
+            "view_count": 92058,
+            "accepted_answer_id": 4316717,
+            "answer_count": 12,
+            "score": 46,
+            "last_activity_date": 1526451622,
+            "creation_date": 1291065909,
+            "question_id": 4308262,
+            "body_markdown": "I want to display an arrow at my location on a google map view that displays my direction relative to a destination location (instead of north).\r\n\r\na) I have calculated north using the sensor values from the magnetometer and accelerometer. I know this is correct because it lines up with the compass used on the Google Map view.\r\n\r\nb) I have calculated the initial bearing from my location to the destination location by using myLocation.bearingTo(destLocation); \r\n\r\nI&#39;m missing the last step; from these two values (a &amp; b) what formula do I use to get the  direction in which the phone is pointing relative to the destination location?\r\n\r\nAppreciate any help for an addled mind!   ",
+            "link": "https://stackoverflow.com/questions/4308262/calculate-compass-bearing-heading-to-location-in-android",
+            "title": "Calculate compass bearing / heading to location in Android",
+            "body": "<p>I want to display an arrow at my location on a google map view that displays my direction relative to a destination location (instead of north).</p>\n\n<p>a) I have calculated north using the sensor values from the magnetometer and accelerometer. I know this is correct because it lines up with the compass used on the Google Map view.</p>\n\n<p>b) I have calculated the initial bearing from my location to the destination location by using myLocation.bearingTo(destLocation); </p>\n\n<p>I'm missing the last step; from these two values (a &amp; b) what formula do I use to get the  direction in which the phone is pointing relative to the destination location?</p>\n\n<p>Appreciate any help for an addled mind!   </p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "udp",
+                "wireshark",
+                "packet",
+                "packet-sniffers"
+            ],
+            "owner": {
+                "reputation": 15,
+                "user_id": 7576812,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5e1d80fb38bfadc8d5fab154998fc45e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Newbee",
+                "link": "https://stackoverflow.com/users/7576812/newbee"
+            },
+            "is_answered": false,
+            "view_count": 31,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526451620,
+            "creation_date": 1526398142,
+            "last_edit_date": 1526451620,
+            "question_id": 50354009,
+            "body_markdown": "So , below is my code. I have tried to build a specific UDP packet to be sent over ethernet. \r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    import socket\r\n\r\n    UDP_IP = &quot;0.0.0.0&quot;   #I have used the actual Ip address here\r\n    UDP_PORT = 8543\r\n    MESSAGE = None\r\n    print &quot;UDP target IP:&quot;, UDP_IP\r\n    print &quot;UDP target port:&quot;, UDP_PORT\r\n    print &quot;message:&quot;, MESSAGE ,&quot;\\n&quot;\r\n    sock = socket.socket(socket.AF_INET, # Internet\r\n    socket.SOCK_DGRAM) # UDP\r\n\r\n    # struct of a first block \r\n    dict1 = {&#39;ID&#39;: &#39;&#39;}\r\n    data_20 = 200\r\n    data_200 = hex(data_20)\r\n    print data_200, &#39;\\n&#39;\r\n\r\n    # struct of 2nd block\r\n    dict2 = {&#39;Cmd&#39;: &#39;&#39;, &#39;channel&#39;: &#39;&#39;, &#39;k&#39;: &#39;&#39;}\r\n    data_S = &#39;0x2 0x0 0x0&#39;\r\n    data_arr1 = data_S.split(&#39; &#39;)\r\n    print data_arr1, &#39;\\n&#39;\r\n    dict2[&#39;Cmd&#39;]  = data_arr1[0]\r\n    dict2[&#39;channel&#39;] = data_arr1[1]\r\n    dict2[&#39;k&#39;]     = data_arr1[2]\r\n    print &#39;k =&#39;,dict2[&#39;k&#39;], &#39;; Cmd = &#39;, dict2 [&#39;Cmd&#39;], &#39;; channel = &#39;,dict2 [&#39;channel&#39;],&quot;\\n&quot;\r\n\r\n\r\n    MESSAGE = data_200 + &#39; &#39; + data_S\r\n    print &quot;message:&quot;, MESSAGE ,&quot;\\n&quot;\r\n\r\n    sock.sendto(str(MESSAGE), (UDP_IP, UDP_PORT)) #Even if I remove the &#39;str&#39; for the message I still read the same message over wireshark\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\nHere is the output for the same (I have removed the IP address)\r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    UDP target port: 8543\r\n    message: None \r\n\r\n    0xc8 \r\n\r\n    [&#39;0x2&#39;, &#39;0x0&#39;, &#39;0x0&#39;] \r\n\r\n    k = 0x0 ; Cmd =  0x2 ; channel =  0x0 \r\n\r\n    message: 0xc8 0x2 0x0 0x0 \r\n\r\n\r\n    Process finished with exit code 0\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\nAnd the wireshark data for the same \r\n\r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    0020               30 78 63 38 20 30                         0xc8 0\r\n    0030   78 32 20 30 78 30 20 30 78 30                     x2 0x0 0x0\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\nI don&#39;t get the same value as I tried to send in the packet. Hence I tried with a slightly different approach, the code for the same is below\r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    import socket\r\n\r\n    UDP_IP = &quot;0.0.0.0&quot;   #I have used the actual Ip address here\r\n    UDP_PORT = 8543\r\n    MESSAGE = None\r\n    print &quot;UDP target IP:&quot;, UDP_IP\r\n    print &quot;UDP target port:&quot;, UDP_PORT\r\n    print &quot;message:&quot;, MESSAGE ,&quot;\\n&quot;\r\n    sock = socket.socket(socket.AF_INET, # Internet\r\n    socket.SOCK_DGRAM) # UDP\r\n\r\n    # struct of first block\r\n    dict1 = {&#39;ID&#39;: &#39;&#39;}\r\n    data_20 = 200\r\n    data_200 = hex(data_20)\r\n    print data_200, &#39;\\n&#39;\r\n\r\n    # struct of 2nd block\r\n    dict2 = {&#39;Cmd&#39;: &#39;&#39;, &#39;channel&#39;: &#39;&#39;, &#39;k&#39;: &#39;&#39;}\r\n    #data_S = &#39;0x2 0x0 0x0&#39;\r\n    data_S = [0x02, 0x00, 0x00]\r\n    #data_arr1 = data_S.split(&#39; &#39;)\r\n    print data_S, &#39;\\n&#39;\r\n    dict2[&#39;Cmd&#39;]  = data_S[0]\r\n    dict2[&#39;channel&#39;] = data_S[1]\r\n    dict2[&#39;k&#39;]     = data_S[2]\r\n    print &#39;k =&#39;,dict2[&#39;k&#39;], &#39;; Cmd = &#39;, dict2 [&#39;Cmd&#39;], &#39;; channel = &#39;,dict2 [&#39;channel&#39;],&quot;\\n&quot;\r\n\r\n\r\n    MESSAGE = data_200 + &#39; &#39; + data_S #Evem if I remove the &#39;&#39; in the line I still get the same error\r\n    print &quot;message:&quot;, MESSAGE ,&quot;\\n&quot;\r\n\r\n    sock.sendto(str(MESSAGE), (UDP_IP, UDP_PORT))\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\nSo in the above approach, I have tried to use values as list for the keys and later later assigned the list for the keys. But I get the error like this \r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n     MESSAGE = data_200 + &#39; &#39; + data_S\r\n    TypeError: cannot concatenate &#39;str&#39; and &#39;list&#39; objects\r\n\r\n    Process finished with exit code 1\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\nSo, now getting to the point, I want to see the data I send over in packet on wireshark as well. How to send? What should I do?",
+            "link": "https://stackoverflow.com/questions/50354009/python-udp-packet-not-same-in-wireshark",
+            "title": "Python UDP packet not same in wireshark",
+            "body": "<p>So , below is my code. I have tried to build a specific UDP packet to be sent over ethernet. </p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>import socket\r\n\r\nUDP_IP = \"0.0.0.0\"   #I have used the actual Ip address here\r\nUDP_PORT = 8543\r\nMESSAGE = None\r\nprint \"UDP target IP:\", UDP_IP\r\nprint \"UDP target port:\", UDP_PORT\r\nprint \"message:\", MESSAGE ,\"\\n\"\r\nsock = socket.socket(socket.AF_INET, # Internet\r\nsocket.SOCK_DGRAM) # UDP\r\n\r\n# struct of a first block \r\ndict1 = {'ID': ''}\r\ndata_20 = 200\r\ndata_200 = hex(data_20)\r\nprint data_200, '\\n'\r\n\r\n# struct of 2nd block\r\ndict2 = {'Cmd': '', 'channel': '', 'k': ''}\r\ndata_S = '0x2 0x0 0x0'\r\ndata_arr1 = data_S.split(' ')\r\nprint data_arr1, '\\n'\r\ndict2['Cmd']  = data_arr1[0]\r\ndict2['channel'] = data_arr1[1]\r\ndict2['k']     = data_arr1[2]\r\nprint 'k =',dict2['k'], '; Cmd = ', dict2 ['Cmd'], '; channel = ',dict2 ['channel'],\"\\n\"\r\n\r\n\r\nMESSAGE = data_200 + ' ' + data_S\r\nprint \"message:\", MESSAGE ,\"\\n\"\r\n\r\nsock.sendto(str(MESSAGE), (UDP_IP, UDP_PORT)) #Even if I remove the 'str' for the message I still read the same message over wireshark</code></pre>\r\n</div>\r\n</div>\r\n</p>\n\n<p>Here is the output for the same (I have removed the IP address)</p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>UDP target port: 8543\r\nmessage: None \r\n\r\n0xc8 \r\n\r\n['0x2', '0x0', '0x0'] \r\n\r\nk = 0x0 ; Cmd =  0x2 ; channel =  0x0 \r\n\r\nmessage: 0xc8 0x2 0x0 0x0 \r\n\r\n\r\nProcess finished with exit code 0</code></pre>\r\n</div>\r\n</div>\r\n</p>\n\n<p>And the wireshark data for the same </p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>0020               30 78 63 38 20 30                         0xc8 0\r\n0030   78 32 20 30 78 30 20 30 78 30                     x2 0x0 0x0</code></pre>\r\n</div>\r\n</div>\r\n</p>\n\n<p>I don't get the same value as I tried to send in the packet. Hence I tried with a slightly different approach, the code for the same is below</p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code>import socket\r\n\r\nUDP_IP = \"0.0.0.0\"   #I have used the actual Ip address here\r\nUDP_PORT = 8543\r\nMESSAGE = None\r\nprint \"UDP target IP:\", UDP_IP\r\nprint \"UDP target port:\", UDP_PORT\r\nprint \"message:\", MESSAGE ,\"\\n\"\r\nsock = socket.socket(socket.AF_INET, # Internet\r\nsocket.SOCK_DGRAM) # UDP\r\n\r\n# struct of first block\r\ndict1 = {'ID': ''}\r\ndata_20 = 200\r\ndata_200 = hex(data_20)\r\nprint data_200, '\\n'\r\n\r\n# struct of 2nd block\r\ndict2 = {'Cmd': '', 'channel': '', 'k': ''}\r\n#data_S = '0x2 0x0 0x0'\r\ndata_S = [0x02, 0x00, 0x00]\r\n#data_arr1 = data_S.split(' ')\r\nprint data_S, '\\n'\r\ndict2['Cmd']  = data_S[0]\r\ndict2['channel'] = data_S[1]\r\ndict2['k']     = data_S[2]\r\nprint 'k =',dict2['k'], '; Cmd = ', dict2 ['Cmd'], '; channel = ',dict2 ['channel'],\"\\n\"\r\n\r\n\r\nMESSAGE = data_200 + ' ' + data_S #Evem if I remove the '' in the line I still get the same error\r\nprint \"message:\", MESSAGE ,\"\\n\"\r\n\r\nsock.sendto(str(MESSAGE), (UDP_IP, UDP_PORT))</code></pre>\r\n</div>\r\n</div>\r\n</p>\n\n<p>So in the above approach, I have tried to use values as list for the keys and later later assigned the list for the keys. But I get the error like this </p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-html lang-html prettyprint-override\"><code> MESSAGE = data_200 + ' ' + data_S\r\nTypeError: cannot concatenate 'str' and 'list' objects\r\n\r\nProcess finished with exit code 1</code></pre>\r\n</div>\r\n</div>\r\n</p>\n\n<p>So, now getting to the point, I want to see the data I send over in packet on wireshark as well. How to send? What should I do?</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "ubuntu",
+                "asp.net-core-mvc",
+                "asp.net-core-2.0",
+                "asp.net-core-webapi"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9798047,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/86647a9f893725d0726b34b5411f009a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "J. Doe",
+                "link": "https://stackoverflow.com/users/9798047/j-doe"
+            },
+            "is_answered": false,
+            "view_count": 28,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526451619,
+            "creation_date": 1526449260,
+            "last_edit_date": 1526451619,
+            "question_id": 50363172,
+            "body_markdown": "I have an ASP.NET Core API project. Previously I was able to successfully run it on Linux(ubuntu): \r\n\r\n    sudo dotnet Project.dll\r\n\r\nI was also able to run it under Windows\r\n\r\nNow something strange has been changed, I guess, and when I run the command: \r\n\r\n    sudo dotnet Project.dll\r\n\r\nI am getting the exception: \r\n\r\n    Unhandled Exception: System.ArgumentException: An item with the same key has already been added. Key: environment\r\n       at System.ThrowHelper.ThrowAddingDuplicateWithKeyArgumentException(Object key)\r\n       at System.Collections.Generic.Dictionary`2.TryInsert(TKey key, TValue value, InsertionBehavior behavior)\r\n       at System.Collections.Generic.Dictionary`2.Add(TKey key, TValue value)\r\n       at Microsoft.Extensions.Configuration.Memory.MemoryConfigurationProvider..ctor(MemoryConfigurationSource source)\r\n       at Microsoft.Extensions.Configuration.Memory.MemoryConfigurationSource.Build(IConfigurationBuilder builder)\r\n       at Microsoft.Extensions.Configuration.ConfigurationBuilder.Build()\r\n       at Microsoft.AspNetCore.Hosting.WebHostBuilder.BuildCommonServices(AggregateException&amp; hostingStartupErrors)\r\n       at Microsoft.AspNetCore.Hosting.WebHostBuilder.Build()\r\n\r\nAnd then it points to the line  \r\n\r\n    var host = new WebHostBuilder() \r\n\r\nin my `Program.cs` file, here it is:\r\n\r\n\r\n    public static void Main(string[] args)\r\n    {\r\n        var config = new ConfigurationBuilder()\r\n                        .SetBasePath(Directory.GetCurrentDirectory())\r\n                        .AddJsonFile(&quot;host.json&quot;, optional: true)\r\n                        .AddJsonFile(&quot;appsettings.json&quot;, optional: true)\r\n                        .Build();\r\n\r\n        var host = new WebHostBuilder()\r\n            .UseKestrel()\r\n            .UseConfiguration(config)\r\n            .UseContentRoot(Directory.GetCurrentDirectory())\r\n            .UseIISIntegration()\r\n            .UseStartup&lt;Startup&gt;()\r\n            .Build();\r\n\r\n        host.Run();\r\n    }\r\n\r\n\r\nI have already rolled back Startup.cs to the point when it was successfully running but still getting this exception. At the same time I have no problem running this code under Windows. Please advise.",
+            "link": "https://stackoverflow.com/questions/50363172/asp-net-core-exception-the-same-key-has-been-already-added-when-running-under",
+            "title": "ASP.NET Core exception (the same key has been already added) when running under Linux",
+            "body": "<p>I have an ASP.NET Core API project. Previously I was able to successfully run it on Linux(ubuntu): </p>\n\n<pre><code>sudo dotnet Project.dll\n</code></pre>\n\n<p>I was also able to run it under Windows</p>\n\n<p>Now something strange has been changed, I guess, and when I run the command: </p>\n\n<pre><code>sudo dotnet Project.dll\n</code></pre>\n\n<p>I am getting the exception: </p>\n\n<pre><code>Unhandled Exception: System.ArgumentException: An item with the same key has already been added. Key: environment\n   at System.ThrowHelper.ThrowAddingDuplicateWithKeyArgumentException(Object key)\n   at System.Collections.Generic.Dictionary`2.TryInsert(TKey key, TValue value, InsertionBehavior behavior)\n   at System.Collections.Generic.Dictionary`2.Add(TKey key, TValue value)\n   at Microsoft.Extensions.Configuration.Memory.MemoryConfigurationProvider..ctor(MemoryConfigurationSource source)\n   at Microsoft.Extensions.Configuration.Memory.MemoryConfigurationSource.Build(IConfigurationBuilder builder)\n   at Microsoft.Extensions.Configuration.ConfigurationBuilder.Build()\n   at Microsoft.AspNetCore.Hosting.WebHostBuilder.BuildCommonServices(AggregateException&amp; hostingStartupErrors)\n   at Microsoft.AspNetCore.Hosting.WebHostBuilder.Build()\n</code></pre>\n\n<p>And then it points to the line  </p>\n\n<pre><code>var host = new WebHostBuilder() \n</code></pre>\n\n<p>in my <code>Program.cs</code> file, here it is:</p>\n\n<pre><code>public static void Main(string[] args)\n{\n    var config = new ConfigurationBuilder()\n                    .SetBasePath(Directory.GetCurrentDirectory())\n                    .AddJsonFile(\"host.json\", optional: true)\n                    .AddJsonFile(\"appsettings.json\", optional: true)\n                    .Build();\n\n    var host = new WebHostBuilder()\n        .UseKestrel()\n        .UseConfiguration(config)\n        .UseContentRoot(Directory.GetCurrentDirectory())\n        .UseIISIntegration()\n        .UseStartup&lt;Startup&gt;()\n        .Build();\n\n    host.Run();\n}\n</code></pre>\n\n<p>I have already rolled back Startup.cs to the point when it was successfully running but still getting this exception. At the same time I have no problem running this code under Windows. Please advise.</p>\n"
+        },
+        {
+            "tags": [
+                "bash",
+                "shell",
+                "awk",
+                "text-processing"
+            ],
+            "owner": {
+                "reputation": 45,
+                "user_id": 8518878,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://lh3.googleusercontent.com/-uJn1-r7Lxwk/AAAAAAAAAAI/AAAAAAAAHZ8/oY6tCYHpT1U/photo.jpg?sz=128",
+                "display_name": "cheapcoder",
+                "link": "https://stackoverflow.com/users/8518878/cheapcoder"
+            },
+            "is_answered": true,
+            "view_count": 39,
+            "accepted_answer_id": 50361859,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526451618,
+            "creation_date": 1526431215,
+            "question_id": 50360942,
+            "body_markdown": "I have two sorted files in question  \r\n\r\n    1)one is a control file(ctrl.txt) which is external process generated\r\n    2)and other is line count file(count.txt) that I generate using `wc -l`\r\n\r\n$more ctrl.txt\r\n\r\n    Thunderbird|1000\r\n    Mustang|2000\r\n    Hurricane|3000\r\n$more count.txt\r\n\r\n    Thunder_bird|1000\r\n    MUSTANG|2000\r\n    Hurricane|3001\r\nI want to compare these two files ignoring wrinkles in column1(filenames) such as **&quot;_&quot;** (for Thunder_bird) or **&quot;upper case&quot;** (for MUSTANG) so that my output only shows below file as the only real different file for which counts dont match.\r\n\r\n    Hurricane|3000\r\n\r\n**I have this idea to only compare second column from both the files and output whole line if they are different** \r\n\r\nI have seen other examples in AWK but I could not get anything to work.\r\n",
+            "link": "https://stackoverflow.com/questions/50360942/how-to-compare-two-files-line-by-line-and-output-the-whole-line-if-different",
+            "title": "How to Compare two files line by line and output the whole line if different",
+            "body": "<p>I have two sorted files in question  </p>\n\n<pre><code>1)one is a control file(ctrl.txt) which is external process generated\n2)and other is line count file(count.txt) that I generate using `wc -l`\n</code></pre>\n\n<p>$more ctrl.txt</p>\n\n<pre><code>Thunderbird|1000\nMustang|2000\nHurricane|3000\n</code></pre>\n\n<p>$more count.txt</p>\n\n<pre><code>Thunder_bird|1000\nMUSTANG|2000\nHurricane|3001\n</code></pre>\n\n<p>I want to compare these two files ignoring wrinkles in column1(filenames) such as <strong>\"_\"</strong> (for Thunder_bird) or <strong>\"upper case\"</strong> (for MUSTANG) so that my output only shows below file as the only real different file for which counts dont match.</p>\n\n<pre><code>Hurricane|3000\n</code></pre>\n\n<p><strong>I have this idea to only compare second column from both the files and output whole line if they are different</strong> </p>\n\n<p>I have seen other examples in AWK but I could not get anything to work.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "wav",
+                "naudio",
+                "asio"
+            ],
+            "owner": {
+                "reputation": 13,
+                "user_id": 1935660,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/4fd50cbb37b8db407871e3974815e7fe?s=128&d=identicon&r=PG",
+                "display_name": "Dylan B",
+                "link": "https://stackoverflow.com/users/1935660/dylan-b"
+            },
+            "is_answered": true,
+            "view_count": 523,
+            "accepted_answer_id": 14079883,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1526451610,
+            "creation_date": 1356742945,
+            "last_edit_date": 1526451610,
+            "question_id": 14077743,
+            "body_markdown": "I&#39;m trying to record 3-4 streams of audio and write them to separate wav files.  I&#39;m using NAudio&#39;s asioOut to capture the audio.  At first I was just writing a 3 or 4 channel wav file.  So I searched questions here and thought I founded an [answer][1], but I still can&#39;t figure it out.  Now I can write the separate wav files but they have multiple channels in each file.\r\n\r\nchannel_1.wav --------&gt; has channel 1 and 2\r\n\r\nchannel_2.wav --------&gt; has channel 1 and 3\r\n\r\nchannel_3.wav --------&gt; has channel 2 and 3\r\n\r\nI think there is a problem when I try to parse the *GetAsInterleavedSamples()*.\r\n\r\n\r\nThis is my asioOut_AudioAvailable()\r\n\r\n\r\n        void asioOut_AudioAvailable(object sender, AsioAudioAvailableEventArgs e)\r\n        {     \r\n    \r\n            float[] samples = new float[2 * 44100 * GetUserSpecifiedChannelCount()];\r\n    \r\n            samples = e.GetAsInterleavedSamples();\r\n\r\n            int offset = 0;\r\n            while (offset &lt; samples.Length)\r\n            {\r\n                for (int n = 0; n &lt; this.writers.Length; n++)\r\n                {\r\n                    this.writers[n].WriteSamples(samples, offset, 2);\r\n                    offset += 2;\r\n                }\r\n            }\r\n\r\n        }\r\n\r\nI&#39;m new at this so I&#39;m just learning as a go, any help would be greatly appreciated.  \r\n\r\nThanks.  \r\n\r\n[1]: https://stackoverflow.com/questions/12075062/saving-each-wav-channel-as-a-mono-channel-wav-file-using-naudio",
+            "link": "https://stackoverflow.com/questions/14077743/writing-multiple-wav-files-from-naudio-asioout",
+            "title": "Writing multiple wav files from NAudio asioOut",
+            "body": "<p>I'm trying to record 3-4 streams of audio and write them to separate wav files.  I'm using NAudio's asioOut to capture the audio.  At first I was just writing a 3 or 4 channel wav file.  So I searched questions here and thought I founded an <a href=\"https://stackoverflow.com/questions/12075062/saving-each-wav-channel-as-a-mono-channel-wav-file-using-naudio\">answer</a>, but I still can't figure it out.  Now I can write the separate wav files but they have multiple channels in each file.</p>\n\n<p>channel_1.wav --------> has channel 1 and 2</p>\n\n<p>channel_2.wav --------> has channel 1 and 3</p>\n\n<p>channel_3.wav --------> has channel 2 and 3</p>\n\n<p>I think there is a problem when I try to parse the <em>GetAsInterleavedSamples()</em>.</p>\n\n<p>This is my asioOut_AudioAvailable()</p>\n\n<pre><code>    void asioOut_AudioAvailable(object sender, AsioAudioAvailableEventArgs e)\n    {     \n\n        float[] samples = new float[2 * 44100 * GetUserSpecifiedChannelCount()];\n\n        samples = e.GetAsInterleavedSamples();\n\n        int offset = 0;\n        while (offset &lt; samples.Length)\n        {\n            for (int n = 0; n &lt; this.writers.Length; n++)\n            {\n                this.writers[n].WriteSamples(samples, offset, 2);\n                offset += 2;\n            }\n        }\n\n    }\n</code></pre>\n\n<p>I'm new at this so I'm just learning as a go, any help would be greatly appreciated.  </p>\n\n<p>Thanks.  </p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 172
+}

@@ -27,34 +27,30 @@ class DocumentSpace:
     w=None
     def __init__(self, docs, docraw, docstr, tfmode, idfmode):        
         self.documents = docs  #[d.split(' ') for d in doc] #np.array(list(map((lambda d: d.split(' ')), doc)))        
-        self.termssorted = sorted(set(functools.reduce((lambda x, y: x+y), self.documents)))        
-        """
-        termdf = {}
-        for d in self.documents:
-            thisdoccounted = False
-            for t in d:  
-                if not thisdoccounted:
-                    termdf[t] = termdf.get(t, 0) + 1
-                    thisdoccounted = True
-
-        termsfilterd = { k:v for k,v in termdf.items() if v > 2 }
-        self.termssorted = list(sorted(termsfilterd.keys()))
-        """        
+        #self.termssorted = sorted(set(functools.reduce((lambda x, y: x+y), self.documents)))        
+        termf = {}
+        for d in self.documents:            
+            for t in d:                  
+                termf[t] = termf.get(t, 0) + 1
         
+        termsfilterd = { k:v for k,v in termf.items() if v > 20 }
+        self.termssorted = list(sorted(termsfilterd.keys()))
+                
         self.doctermRaw = np.zeros((len(self.termssorted), len(self.documents)))
         for didx, d in enumerate(self.documents):
-            for t in d:    
-                t_idx = self.termssorted.index(t)
-                self.doctermRaw[t_idx][didx] = self.doctermRaw[t_idx][didx] + 1
+            for t in d:  
+                if t in self.termssorted:  
+                    t_idx = self.termssorted.index(t)
+                    self.doctermRaw[t_idx][didx] = self.doctermRaw[t_idx][didx] + 1
         print("doctermshape", self.doctermRaw.shape)
 
         
-        termfilter = np.sum(self.doctermRaw, axis=1) > 5
+        termfilter = (sum(self.doctermRaw.T > 0) > 3) & (np.sum(self.doctermRaw, axis=1) > 20) 
         print("tfilter", len(termfilter))
         self.doctermRaw = self.doctermRaw[termfilter]
         print("doctermshape", self.doctermRaw.shape)
                 
-        docfilter = np.sum(self.doctermRaw, axis=0) > 2
+        docfilter = (sum(self.doctermRaw > 0) > 3) #np.sum(self.doctermRaw, axis=0) > 5 # sum(self.doctermRaw.T > 0) > 5
         print("dfilter", len(docfilter))
         self.doctermRaw = self.doctermRaw[:,docfilter]
         self.documentsraw_ = np.array(docraw)[docfilter]
@@ -145,18 +141,21 @@ class StackoverflowCorpus(DocumentSpace):
         docid = 0
         for dkey, _ in docmap.items():
             currentdocterms = []
-            currentdocstr = []
+            #currentdocstr = []
             for f in feature:
                 for sentence in docmap[dkey]['terms'][f]:            
-                    currentdocstr.append(' '.join(sentence))
+                    #currentdocstr.append(' '.join(sentence))
                     for term in sentence:
                         currentdocterms.append(term)
             docarray.append(currentdocterms)            
-            docarraystr.append('. '.join(currentdocstr))
+            #docarraystr.append('. '.join(currentdocstr))
             docarrayraw.append(docmap[dkey])            
             docid += 1
         
         DocumentSpace.__init__(self, docarray, docarrayraw, docarraystr, tfmode, idfmode)
+
+    def labelstr(self):
+        return [1 if tag in doc['terms']['tags'][0] else 0 for doc in self.documentsraw_]
 
     def labels(self, tag):
         return [1 if tag in doc['terms']['tags'][0] else 0 for doc in self.documentsraw]

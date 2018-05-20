@@ -11,7 +11,7 @@ from sklearn import pipeline
 from sklearn import decomposition
 
 wordtype = 'lemma'
-topfeature = ['title']
+topfeature = ['title', 'body']
 tfidfcfg= [3, 2] # 11 wolkig aber gelb, 32 beste klassifikations aber nix gelb, 00 separiert gut sonst bullshit
 corpus = StackoverflowCorpus('bag-of-words/stackoverflow-' + wordtype, topfeature, tfidfcfg[0], tfidfcfg[1])
 print("Corpus", len(corpus.documents), len(corpus.termssorted))
@@ -26,7 +26,9 @@ def top(component, feature_names, n_top_words):
 def createhierarchy(algo, preprocess, interndim):
     X_ = np.matrix(corpus.w.T)
 
-    if preprocess == 'PCA':
+    if preprocess == 'LDA':
+        prepro = decomposition.LatentDirichletAllocation(n_components=interndim, learning_method='batch')
+    elif preprocess == 'PCA':        
         prepro = decomposition.PCA(n_components=interndim) 
     else:
         prepro = decomposition.TruncatedSVD(n_components=interndim)
@@ -82,7 +84,7 @@ def createhierarchy(algo, preprocess, interndim):
             id = node.get_id()      
             nodemap[id] = {
                 "name": top(XL[id], F, 3),
-                "numLeafs": node.get_count()
+                "numLeafs": node.get_count()-1
             }
         else:        
             id = node.get_id()
@@ -93,7 +95,7 @@ def createhierarchy(algo, preprocess, interndim):
             right = nodemap[rid] if rid < n else nodemap[rid-n]        
             nodemap[id-n] = {
                 "name": top(nodeMat[id-n], F, 3),
-                "numLeafs": node.get_count(),
+                "numLeafs": node.get_count()-1,
                 "children": [ left, right ]
             }
 
@@ -104,8 +106,10 @@ def createhierarchy(algo, preprocess, interndim):
         json.dump(jsf, outfile, indent=4)
 
 createhierarchy('ward', 'SVD', 10)
+createhierarchy('ward', 'SVD', 20)
+createhierarchy('ward', 'LDA', 10)
+createhierarchy('ward', 'LDA', 20)
 createhierarchy('ward', 'PCA', 10)
-createhierarchy('ward', 'PCA', 100)
 
 """
 def llf(id):

@@ -41,42 +41,52 @@ clustervis_pipelines = {
 }
 
 featuredim = 40
+decomp = decomposition.PCA(n_components=featuredim)
+#decomp = decomposition.TruncatedSVD(featuredim)
+#decomp = decomposition.LatentDirichletAllocation(n_components=featuredim, learning_method='batch')
+#decomp = decomposition.NMF(n_components=featuredim, random_state=1, alpha=.1, l1_ratio=.5)
+
 clustercount = 15
 cluster_pipelines = {            
     'Agglo': Pipeline([                                
-        ('sca', preprocessing.MaxAbsScaler()),
-        ('pca', decomposition.PCA(n_components=10)),
+        ('sca', preprocessing.MaxAbsScaler(copy=False)),
+        ('pca', decomp),
+        ('norm', preprocessing.MaxAbsScaler(copy=False)),
         ('clu', cluster.AgglomerativeClustering(n_clusters=clustercount, linkage='ward')),
     ]),    
-}
-"""
     'Kmeans': Pipeline([                
-        ('sca', decomposition.TruncatedSVD(featuredim)),
+        ('sca', preprocessing.MaxAbsScaler(copy=False)),
+        ('decomp', decomp),
         ('norm', preprocessing.MaxAbsScaler(copy=False)),
         ('clu', cluster.KMeans(n_clusters=clustercount, init='k-means++', max_iter=100, n_init=1)),
     ]),
     'LDA': Pipeline([                
-        ('sca', preprocessing.MaxAbsScaler()),
-        #('nmf', decomposition.NMF(n_components=featuredim, random_state=1, alpha=.1, l1_ratio=.5)),
-        ('lda', decomposition.LatentDirichletAllocation(n_components=featuredim, learning_method='batch')),
+        ('sca', preprocessing.MaxAbsScaler(copy=False)),        
+        ('lda', decomp),
+        ('norm', preprocessing.MaxAbsScaler(copy=False)),
         ('clu', cluster.KMeans(n_clusters=clustercount, init='k-means++')),
         #('clu', neighbors.NearestNeighbors()),
     ]),
     'GMM': Pipeline([                        
-        ('sca', preprocessing.MaxAbsScaler()),
+        ('sca', preprocessing.MaxAbsScaler(copy=False)),
         ('pca', decomposition.PCA(n_components=featuredim)),
+        ('norm', preprocessing.MaxAbsScaler(copy=False)),
         ('clu', mixture.GaussianMixture(n_components=clustercount)),
-    ]),       
+    ]),
     'DBScan': Pipeline([          
-        ('sca', preprocessing.MaxAbsScaler()),
+        ('sca', preprocessing.MaxAbsScaler(copy=False)),
         ('pca', decomposition.PCA(n_components=4)),
+        ('norm', preprocessing.MaxAbsScaler(copy=False)),
         ('clu', cluster.DBSCAN(eps=0.1, min_samples=20)),
-    ]),        
-    'AffPro': Pipeline([                                
+    ]), 
+    
+}
+"""
+   'AffPro': Pipeline([                                
         ('sca', preprocessing.MaxAbsScaler()),
         ('pca', decomposition.PCA(n_components=3)),
         ('clu', cluster.AffinityPropagation(max_iter=50)),
-    ]),
+    ]), 
 
 """
 """

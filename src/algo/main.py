@@ -1,19 +1,12 @@
 import plots 
 import numpy as np
 import matplotlib.pyplot as plt
-from tfidf import StackoverflowCorpus
 from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
-from sklearn.feature_extraction import text
-from sparse2dense import DenseTransformer
 from numpy.random import RandomState
-
-from sklearn import feature_selection
 
 from classify.pipelines import classify_pre_pipeline
 from classify.pipelines import classify_pipelines
 from cluster.pipelines import clustervis_pipelines, cluster_pipelines
-figuresize = (18, 12)
 
 def classify(ax, X_train, X_test, Y_train, Y_test):
     classify_pre_pipeline.fit(X_train, Y_train)
@@ -57,15 +50,13 @@ def cluster(fig, X, T, F):
         #ax = fig.add_subplot(2, 3, p)
         p+=1
         plots.clustervis(ax, label, T['pipeline'], T['projected'], T['features'], Y_pred)  
+from sklearn import utils
 
 def classifyVisualizeCluster(X, Y, F, label, classifySubplot):
     X_ = X
+    Y_ = Y
     F_ = F
-    #fs = feature_selection.SelectKBest(feature_selection.mutual_info_classif, k=500).fit(X, Y)
-    #X_ = fs.transform(X)    
-    #F_ = F[fs.get_support()]
-
-    X_train, X_test, Y_train, Y_test = train_test_split(X_, Y, test_size=.3, random_state=0)
+    X_train, X_test, Y_train, Y_test = train_test_split(X_, Y_, test_size=.3, random_state=0)
     print(X_train.shape, len(Y_train))
     print(classifySubplot)
     ax = f1.add_subplot(classifySubplot[0], classifySubplot[1], classifySubplot[2])
@@ -75,52 +66,41 @@ def classifyVisualizeCluster(X, Y, F, label, classifySubplot):
     plt.tight_layout()
     f1.savefig('img/classify.png')
 
+    """
     fig = plt.figure(figsize=figuresize)
     fig.suptitle(label)
     T = {}
-    clustervis(fig, X_, Y, F_, T)
+    clustervis(fig, X_test, Y_test, F_, T)
     plt.tight_layout()
     fig.savefig('img/{}-clustervis.png'.format(label))
     plt.close(fig)
 
     fig = plt.figure(figsize=figuresize)
     fig.suptitle('clusterd ({})'.format(label))
-    cluster(fig, X_, T['PCA'], F_)
+    cluster(fig, X_test, T['PCA'], F_)
     plt.tight_layout()
     fig.savefig('img/{}-cluster.png'.format(label))
     plt.close(fig)
+    """
 
-""" load data """
-wordtype = 'lemma'
-topfeature = ['title']
-tfidfcfg= [3, 2] # 11 wolkig aber gelb, 32 beste klassifikations aber nix gelb, 00 separiert gut sonst bullshit
-corpus = StackoverflowCorpus('bag-of-words/stackoverflow-' + wordtype, topfeature, tfidfcfg[0], tfidfcfg[1])
-print("\n")
+from sklearn.externals import joblib
+tags = ['python', 'php', 'html', 'android', 'javascript', 'sql']
 
-""" we are better than sklearn """
-X = np.matrix(corpus.w.T)
-F = corpus.termssorted
-print("nltk reduced", X.shape)
-
-""" sklearn is also cool """
-pipeline = Pipeline([
-    ('vect', text.CountVectorizer(stop_words='english', min_df=8, max_df=.9, binary=False, ngram_range=(1, 2))),
-    ('tfidf', text.TfidfTransformer(sublinear_tf=True)), # smooth_idf=True
-    ('dense', DenseTransformer()),
-])
-X2 = pipeline.fit_transform(corpus.documentsstr)
-F2 = pipeline.named_steps['vect'].get_feature_names()
-print("sklearn reduced", X2.shape, len(F2))
-
+figuresize = (18, 12)
 def analyseOneTag(tag, idx):
-    Y = corpus.labels_(tag) 
-    Y2 = corpus.labels(tag) 
-    assert(len(Y) == len(X))   
-    assert(len(Y2) == len(X2))   
-    print("{} Classifying '{}' or not, in {} {}".format(idx, tag, topfeature, wordtype))
-    print("Y01", np.count_nonzero(Y), len(Y)-np.count_nonzero(Y))
-    classifyVisualizeCluster(X, Y, F, '{} nltk {}{}'.format(tag, tfidfcfg[0], tfidfcfg[1]), [4, 3, idx+1]) #43
-    classifyVisualizeCluster(X2, Y2, F2, '{} sklearn'.format(tag), [4, 3, idx+1+6]) #6
+    #Y = corpus.labels_(tag) 
+    #Y2 = corpus.labels(tag) 
+    #assert(len(Y) == len(X))   
+    #assert(len(Y2) == len(X2))   
+    #print("{} Classifying '{}' or not, in {} {}".format(idx, tag, topfeature, wordtype))
+    #print("Y01", np.count_nonzero(Y), len(Y)-np.count_nonzero(Y))
+    tfidf = "32_code_body"
+    fsel = "chi2"
+    X = joblib.load('./dist/data/tf-idf/{}/nltk-X-{}-{}.pkl'.format(tfidf, tag, fsel))
+    F = joblib.load('./dist/data/tf-idf/{}/nltk-F-{}-{}.pkl'.format(tfidf, tag, fsel))
+    Y = joblib.load('./dist/data/tf-idf/{}/nltk-Y-{}.pkl'.format(tfidf, tag))
+    classifyVisualizeCluster(X, Y, F, '{} nltk {}'.format(tag, tfidf), [4, 3, idx+1]) #43
+    #classifyVisualizeCluster(X2, Y2, F2, '{} sklearn'.format(tag), [4, 3, idx+1+6]) #6
 
 f1 = plt.figure(figsize=figuresize)
 plt.tight_layout()

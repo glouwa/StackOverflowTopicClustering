@@ -18,9 +18,9 @@ def splitone(result, qkey, tkey, sentence):
         if featurefilter(tkey):
             fterms = []
             for pair in nltk.pos_tag(terms, tagset='universal'):  
-                if pair[0] in whitelist:
-                    fterms.append(pair[0])              
-                elif filterraw(pair[0]):                                     
+                if pair[0].lower() in whitelist:
+                    fterms.append(pair[0].lower())              
+                elif filterraw(pair[0].lower()):                                     
                     if pair[1] == 'NOUN':                        
                         fterms.append(pair[0].lower())
         else:

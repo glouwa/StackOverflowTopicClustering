@@ -4,6 +4,7 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import wordnet
 from nltk.tag import pos_tag
+from nltk.util import ngrams
 
 from wordfilter import whitelist
 from wordfilter import filterraw
@@ -19,26 +20,25 @@ outputfeature = 'terms'
 
 u = {}
 
-def splitone(result, qkey, tkey, sentence):    
+def splitone(result, qkey, tkey, sentence):        
     terms = nltk.word_tokenize(sentence)
     if len(terms) > 0:
         if featurefilter(tkey):   
             fterms = []
-            for pair in nltk.pos_tag(terms, tagset='universal'):                
-                if pair[0] in whitelist:
-                    fterms.append(pair[0])
-                elif filterraw(pair[0]):
-                    """
-                    postag = convert_tagset3(pair[1])                    
-                        if postag.startswith('n'):
-                        fterms.append(pair[0])
-                    """
+            for pair in nltk.pos_tag(terms, tagset='universal'):
+                if pair[0].lower() in whitelist:
+                    fterms.append(pair[0].lower())
+                elif filterraw(pair[0].lower()):                    
                     u[pair[1]] = True
                     postag = convert_tagset3(pair[1])                                        
                     if pair[1] == 'NOUN':
                         lemterm = lemmatizer.lemmatize(pair[0], postag).lower()
                         if filterlemmed(lemterm):
                             fterms.append(lemterm)                    
+            
+            ngram = ngrams(fterms, 2)    
+            ngram = [' '.join(str(i) for i in tupl) for tupl in ngram if tupl[0] != tupl[1]]
+            fterms.extend(ngram)
         else:
             fterms = terms
         result[qkey][outputfeature][tkey].append(fterms)

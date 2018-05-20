@@ -1,0 +1,852 @@
+{
+    "items": [
+        {
+            "tags": [
+                "javascript",
+                "reactjs",
+                "redux",
+                "race-condition",
+                "event-propagation"
+            ],
+            "owner": {
+                "reputation": 3268,
+                "user_id": 45974,
+                "user_type": "registered",
+                "accept_rate": 86,
+                "profile_image": "https://www.gravatar.com/avatar/04361eba6e039eecdd3458e2545f03e6?s=128&d=identicon&r=PG",
+                "display_name": "Tom",
+                "link": "https://stackoverflow.com/users/45974/tom"
+            },
+            "is_answered": true,
+            "view_count": 87,
+            "bounty_amount": 250,
+            "bounty_closes_date": 1527037993,
+            "answer_count": 2,
+            "score": 3,
+            "last_activity_date": 1526441479,
+            "creation_date": 1526064209,
+            "last_edit_date": 1526065613,
+            "question_id": 50298440,
+            "body_markdown": "Consider the following typical React document structure:\r\n\r\n*Component.jsx*\r\n\r\n    &lt;OuterClickableArea&gt;\r\n        &lt;InnerClickableArea&gt;\r\n            content\r\n        &lt;/InnerClickableArea&gt;\r\n    &lt;/OuterClickableArea&gt;\r\n\r\nWhere these components are composed as follows:\r\n\r\n*OuterClickableArea.js*\r\n\r\n    export default class OuterClickableArea extends React.Component {\r\n        constructor(props) {\r\n            super(props)\r\n    \r\n            this.state = {\r\n                clicking: false\r\n            }\r\n            \r\n            this.onMouseDown = this.onMouseDown.bind(this)\r\n            this.onMouseUp = this.onMouseUp.bind(this)\r\n        }\r\n\r\n        onMouseDown() {\r\n            if (!this.state.clicking) {\r\n                this.setState({ clicking: true })\r\n            }\r\n        }\r\n\r\n        onMouseUp() {\r\n            if (this.state.clicking) {\r\n                this.setState({ clicking: false })\r\n                this.props.onClick &amp;&amp; this.props.onClick.apply(this, arguments)\r\n                console.log(&#39;outer area click&#39;)\r\n            }\r\n        }\r\n\r\n        render() {\r\n            return (\r\n                &lt;div\r\n                    onMouseDown={this.onMouseDown}\r\n                    onMouseUp={this.onMouseUp}\r\n                &gt;\r\n                    { this.props.children }\r\n                &lt;/div&gt;\r\n            )\r\n        }\r\n    }\r\n\r\nWith, for the sake of this argument, InnerClickableArea.js having pretty much the same code except for the class name and the console log statement.\r\n\r\nNow if you were to run this app and a user would click inside the inner clickable area, the following would happen (as expected):\r\n\r\n1. outer area registers mouse event handlers\r\n2. inner area registers mouse event handlers\r\n3. user presses mouse down in inner area\r\n4. inner area&#39;s mouseDown listener triggers\r\n5. outer area&#39;s mouseDown listener triggers\r\n6. user releases mouse up\r\n7. inner area&#39;s mouseUp listener triggers\r\n8. console logs &quot;inner area click&quot;\r\n9. outer area&#39;s mouseUp listener triggers\r\n10. console logs &quot;outer area click&quot;\r\n\r\nThis displays typical event bubbling / propagation -- no surprises so far.\r\n\r\nIt will output:\r\n\r\n    inner area click\r\n    outer area click\r\n\r\nNow what if we are creating an app where only a single interaction can happen at a time? For example, imagine an editor where elements could be selected with mouse clicks. When pressed inside the inner area, we would only want to select the inner element.\r\n\r\nThe simple and obvious solution would be to add a stopPropagation inside the InnerArea component:\r\n\r\n*InnerClickableArea.js*\r\n\r\n        onMouseDown(e) {\r\n            if (!this.state.clicking) {\r\n                e.stopPropagation()\r\n                this.setState({ clicking: true })\r\n            }\r\n        }\r\n\r\nThis works as expected. It will output:\r\n\r\n    inner area click\r\n\r\n**The problem?**\r\n\r\n`InnerClickableArea` hereby implicitly chose for `OuterClickableArea` (and all other parents) not to be able to receive an event. Even though `InnerClickableArea` is not supposed to know about the existence of `OuterClickableArea`. Just like `OuterClickableArea` does not know about `InnerClickableArea` (following separation of concerns and reusability concepts). We created an implicit dependency between the two components where `OuterClickableArea` &quot;knows&quot; that it won&#39;t mistakenly have its listeners fired because it &quot;remembers&quot; that InnerClickableArea would stop any event propagation. This seems wrong.\r\n\r\nI&#39;m trying not to use stopPropagation to make the app more scalable, because it would be easier to add new features that rely on events without having to remember which components use `stopPropagation` at which time.\r\n\r\nInstead I would like to make the above logic more declarative, e.g. by defining declaratively inside `Component.jsx` whether each of the areas are currently clickable or not. I would make it app state aware, passing down whether the areas are clickable or not, and rename it to `Container.jsx`. Something like this:\r\n\r\n*Container.jsx*\r\n\r\n    &lt;OuterClickableArea\r\n        clickable={!this.state.interactionBusy}\r\n        onClicking={this.props.setInteractionBusy.bind(this, true)} /&gt;\r\n        \r\n        &lt;InnerClickableArea\r\n            clickable={!this.state.interactionBusy}\r\n            onClicking={this.props.setInteractionBusy.bind(this, true)} /&gt;\r\n\r\n                content\r\n\r\n        &lt;/InnerClickableArea&gt;\r\n\r\n    &lt;/OuterClickableArea&gt;\r\n\r\nWhere `this.props.setInteractionBusy` is a redux action that would cause the app state to be updated. Also this container would have the app state mapped to its props (not shown above), so `this.state.ineractionBusy` will be defined.\r\n\r\n*OuterClickableArea.js* (almost same for InnerClickableArea.js)\r\n\r\n    export default class OuterClickableArea extends React.Component {\r\n        constructor(props) {\r\n            super(props)\r\n    \r\n            this.state = {\r\n                clicking: false\r\n            }\r\n            \r\n            this.onMouseDown = this.onMouseDown.bind(this)\r\n            this.onMouseUp = this.onMouseUp.bind(this)\r\n        }\r\n\r\n        onMouseDown() {\r\n            if (this.props.clickable &amp;&amp; !this.state.clicking) {\r\n                this.setState({ clicking: true })\r\n                this.props.onClicking &amp;&amp; this.props.onClicking.apply(this, arguments)\r\n            }\r\n        }\r\n\r\n        onMouseUp() {\r\n            if (this.state.clicking) {\r\n                this.setState({ clicking: false })\r\n                this.props.onClick &amp;&amp; this.props.onClick.apply(this, arguments)\r\n                console.log(&#39;outer area click&#39;)\r\n            }\r\n        }\r\n\r\n        render() {\r\n            return (\r\n                &lt;div\r\n                    onMouseDown={this.onMouseDown}\r\n                    onMouseUp={this.onMouseUp}\r\n                &gt;\r\n                    { this.props.children }\r\n                &lt;/div&gt;\r\n            )\r\n        }\r\n    }\r\n\r\nThe problem is that the Javascript event loop seems to run these operations in the following order:\r\n\r\n1. both `OuterClickableArea` and `InnerClickableArea` are created with prop `clickable` equal to `true` (because app state interactionBusy defaults to false)\r\n2. outer area registers mouse event handlers\r\n3. inner area registers mouse event handlers\r\n4. user presses mouse down in inner area\r\n5. inner area&#39;s mouseDown listener triggers\r\n6. inner area&#39;s onClicking is fired\r\n7. container runs &#39;setInteractionBusy&#39; action\r\n8. redux app state `interactionBusy` is set to `true`\r\n9. outer area&#39;s mouseDown listener triggers (it&#39;s `clickable` prop is still `true` because even though the app state `interactionBusy` is `true`, react did not yet cause a re-render; the render operation is put at the end of the Javascript event loop)\r\n10. user releases mouse up\r\n11. inner area&#39;s mouseUp listener triggers\r\n12. console logs &quot;inner area click&quot;\r\n13. outer area&#39;s mouseUp listener triggers\r\n14. console logs &quot;outer area click&quot;\r\n15. react re-renders `Component.jsx` and passes in `clickable` as `false` to both components; but by now this is too late\r\n\r\nThis will output:\r\n\r\n    inner area click\r\n    outer area click\r\n\r\nWhereas the desired output is:\r\n\r\n    inner area click\r\n\r\nApp state therefore does not help in trying to make these components more independent and reuseable. The reason seems to be that even though the state is updated, the container only re-renders at the end of the event loop, and the mouse event propagation triggers are already queued in the event loop.\r\n\r\n**My question therefore is**: is there an alternative to using app state to be able to work with mouse event propagation in a declarative manner, or is there a better way to implement / execute my above setup with app (redux) state?",
+            "link": "https://stackoverflow.com/questions/50298440/how-to-achieve-re-useable-components-with-react-and-mouse-event-propagation",
+            "title": "How to achieve re-useable components with React and mouse event propagation?",
+            "body": "<p>Consider the following typical React document structure:</p>\n\n<p><em>Component.jsx</em></p>\n\n<pre><code>&lt;OuterClickableArea&gt;\n    &lt;InnerClickableArea&gt;\n        content\n    &lt;/InnerClickableArea&gt;\n&lt;/OuterClickableArea&gt;\n</code></pre>\n\n<p>Where these components are composed as follows:</p>\n\n<p><em>OuterClickableArea.js</em></p>\n\n<pre><code>export default class OuterClickableArea extends React.Component {\n    constructor(props) {\n        super(props)\n\n        this.state = {\n            clicking: false\n        }\n\n        this.onMouseDown = this.onMouseDown.bind(this)\n        this.onMouseUp = this.onMouseUp.bind(this)\n    }\n\n    onMouseDown() {\n        if (!this.state.clicking) {\n            this.setState({ clicking: true })\n        }\n    }\n\n    onMouseUp() {\n        if (this.state.clicking) {\n            this.setState({ clicking: false })\n            this.props.onClick &amp;&amp; this.props.onClick.apply(this, arguments)\n            console.log('outer area click')\n        }\n    }\n\n    render() {\n        return (\n            &lt;div\n                onMouseDown={this.onMouseDown}\n                onMouseUp={this.onMouseUp}\n            &gt;\n                { this.props.children }\n            &lt;/div&gt;\n        )\n    }\n}\n</code></pre>\n\n<p>With, for the sake of this argument, InnerClickableArea.js having pretty much the same code except for the class name and the console log statement.</p>\n\n<p>Now if you were to run this app and a user would click inside the inner clickable area, the following would happen (as expected):</p>\n\n<ol>\n<li>outer area registers mouse event handlers</li>\n<li>inner area registers mouse event handlers</li>\n<li>user presses mouse down in inner area</li>\n<li>inner area's mouseDown listener triggers</li>\n<li>outer area's mouseDown listener triggers</li>\n<li>user releases mouse up</li>\n<li>inner area's mouseUp listener triggers</li>\n<li>console logs \"inner area click\"</li>\n<li>outer area's mouseUp listener triggers</li>\n<li>console logs \"outer area click\"</li>\n</ol>\n\n<p>This displays typical event bubbling / propagation -- no surprises so far.</p>\n\n<p>It will output:</p>\n\n<pre><code>inner area click\nouter area click\n</code></pre>\n\n<p>Now what if we are creating an app where only a single interaction can happen at a time? For example, imagine an editor where elements could be selected with mouse clicks. When pressed inside the inner area, we would only want to select the inner element.</p>\n\n<p>The simple and obvious solution would be to add a stopPropagation inside the InnerArea component:</p>\n\n<p><em>InnerClickableArea.js</em></p>\n\n<pre><code>    onMouseDown(e) {\n        if (!this.state.clicking) {\n            e.stopPropagation()\n            this.setState({ clicking: true })\n        }\n    }\n</code></pre>\n\n<p>This works as expected. It will output:</p>\n\n<pre><code>inner area click\n</code></pre>\n\n<p><strong>The problem?</strong></p>\n\n<p><code>InnerClickableArea</code> hereby implicitly chose for <code>OuterClickableArea</code> (and all other parents) not to be able to receive an event. Even though <code>InnerClickableArea</code> is not supposed to know about the existence of <code>OuterClickableArea</code>. Just like <code>OuterClickableArea</code> does not know about <code>InnerClickableArea</code> (following separation of concerns and reusability concepts). We created an implicit dependency between the two components where <code>OuterClickableArea</code> \"knows\" that it won't mistakenly have its listeners fired because it \"remembers\" that InnerClickableArea would stop any event propagation. This seems wrong.</p>\n\n<p>I'm trying not to use stopPropagation to make the app more scalable, because it would be easier to add new features that rely on events without having to remember which components use <code>stopPropagation</code> at which time.</p>\n\n<p>Instead I would like to make the above logic more declarative, e.g. by defining declaratively inside <code>Component.jsx</code> whether each of the areas are currently clickable or not. I would make it app state aware, passing down whether the areas are clickable or not, and rename it to <code>Container.jsx</code>. Something like this:</p>\n\n<p><em>Container.jsx</em></p>\n\n<pre><code>&lt;OuterClickableArea\n    clickable={!this.state.interactionBusy}\n    onClicking={this.props.setInteractionBusy.bind(this, true)} /&gt;\n\n    &lt;InnerClickableArea\n        clickable={!this.state.interactionBusy}\n        onClicking={this.props.setInteractionBusy.bind(this, true)} /&gt;\n\n            content\n\n    &lt;/InnerClickableArea&gt;\n\n&lt;/OuterClickableArea&gt;\n</code></pre>\n\n<p>Where <code>this.props.setInteractionBusy</code> is a redux action that would cause the app state to be updated. Also this container would have the app state mapped to its props (not shown above), so <code>this.state.ineractionBusy</code> will be defined.</p>\n\n<p><em>OuterClickableArea.js</em> (almost same for InnerClickableArea.js)</p>\n\n<pre><code>export default class OuterClickableArea extends React.Component {\n    constructor(props) {\n        super(props)\n\n        this.state = {\n            clicking: false\n        }\n\n        this.onMouseDown = this.onMouseDown.bind(this)\n        this.onMouseUp = this.onMouseUp.bind(this)\n    }\n\n    onMouseDown() {\n        if (this.props.clickable &amp;&amp; !this.state.clicking) {\n            this.setState({ clicking: true })\n            this.props.onClicking &amp;&amp; this.props.onClicking.apply(this, arguments)\n        }\n    }\n\n    onMouseUp() {\n        if (this.state.clicking) {\n            this.setState({ clicking: false })\n            this.props.onClick &amp;&amp; this.props.onClick.apply(this, arguments)\n            console.log('outer area click')\n        }\n    }\n\n    render() {\n        return (\n            &lt;div\n                onMouseDown={this.onMouseDown}\n                onMouseUp={this.onMouseUp}\n            &gt;\n                { this.props.children }\n            &lt;/div&gt;\n        )\n    }\n}\n</code></pre>\n\n<p>The problem is that the Javascript event loop seems to run these operations in the following order:</p>\n\n<ol>\n<li>both <code>OuterClickableArea</code> and <code>InnerClickableArea</code> are created with prop <code>clickable</code> equal to <code>true</code> (because app state interactionBusy defaults to false)</li>\n<li>outer area registers mouse event handlers</li>\n<li>inner area registers mouse event handlers</li>\n<li>user presses mouse down in inner area</li>\n<li>inner area's mouseDown listener triggers</li>\n<li>inner area's onClicking is fired</li>\n<li>container runs 'setInteractionBusy' action</li>\n<li>redux app state <code>interactionBusy</code> is set to <code>true</code></li>\n<li>outer area's mouseDown listener triggers (it's <code>clickable</code> prop is still <code>true</code> because even though the app state <code>interactionBusy</code> is <code>true</code>, react did not yet cause a re-render; the render operation is put at the end of the Javascript event loop)</li>\n<li>user releases mouse up</li>\n<li>inner area's mouseUp listener triggers</li>\n<li>console logs \"inner area click\"</li>\n<li>outer area's mouseUp listener triggers</li>\n<li>console logs \"outer area click\"</li>\n<li>react re-renders <code>Component.jsx</code> and passes in <code>clickable</code> as <code>false</code> to both components; but by now this is too late</li>\n</ol>\n\n<p>This will output:</p>\n\n<pre><code>inner area click\nouter area click\n</code></pre>\n\n<p>Whereas the desired output is:</p>\n\n<pre><code>inner area click\n</code></pre>\n\n<p>App state therefore does not help in trying to make these components more independent and reuseable. The reason seems to be that even though the state is updated, the container only re-renders at the end of the event loop, and the mouse event propagation triggers are already queued in the event loop.</p>\n\n<p><strong>My question therefore is</strong>: is there an alternative to using app state to be able to work with mouse event propagation in a declarative manner, or is there a better way to implement / execute my above setup with app (redux) state?</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "laravel",
+                "eloquent"
+            ],
+            "owner": {
+                "reputation": 72,
+                "user_id": 2313691,
+                "user_type": "registered",
+                "accept_rate": 70,
+                "profile_image": "https://www.gravatar.com/avatar/09c5888b538203206835a0986c64460f?s=128&d=identicon&r=PG",
+                "display_name": "bismute",
+                "link": "https://stackoverflow.com/users/2313691/bismute"
+            },
+            "is_answered": true,
+            "view_count": 21,
+            "accepted_answer_id": 50362078,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526441447,
+            "creation_date": 1526431998,
+            "last_edit_date": 1526432625,
+            "question_id": 50361029,
+            "body_markdown": "I want to get results from Laravel by putting the results from the query into another query in foreach.\r\n\r\n    $first = DB::connection(&#39;store&#39;)\r\n    -&gt;table(&#39;entire_store&#39;)\r\n    -&gt;select(&#39;name&#39;, &#39;code&#39;, &#39;category&#39;, &#39;direct&#39;)\r\n    -&gt;where(&#39;open&#39;, &#39;Y&#39;)\r\n    -&gt;get();\r\n\r\n\r\nThe first query takes the information of the points and processes them into an array.\r\n\r\nMatch the information of the branches with the workplace in the employee table.\r\n\r\nI want to save the workplace information of the employees together.\r\n\r\n    $temp = array();    \r\n    $i =0;    \r\n    foreach($first as $key =&gt; $item){\r\n    \r\n        $temp[$i][&#39;name&#39;] = $item-&gt;name;\r\n        $temp[$i][&#39;code&#39;] = $item-&gt;code;\r\n    \r\n        $temp[$i][&#39;category&#39;] = $item-&gt;category;\r\n        $temp[$i][&#39;direct&#39;] = $item→direct;\r\n    \r\n        $second = DB::connection(&#39;store&#39;)\r\n         -&gt;table(&#39;entire_employer&#39;)\r\n         -&gt;SELECT(&#39;mgr_no&#39;,&#39;mgr_id&#39;, &#39;status&#39;)\r\n         -&gt;where(&#39;store&#39;,$item-&gt;code)-&gt;get();\r\n        //I tried.\r\n        foreach($second as $key2 =&gt; $item2){\r\n            $temp[$i][&#39;mgr_id&#39;] = $item2-&gt;mgr_id;\r\n        }\r\n        $i++;\r\n    \r\n    }\r\n\r\n\r\nI want to store the values from this query in temp_array.\r\n\r\nI get an error if I try to save the value of the second query and print the value of temp_array ().\r\n\r\nIs there anything more I need to do to check temp_array ()?\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50361029/get-results-from-laravel-by-putting-the-results-from-the-query-into-another-quer",
+            "title": "Get results from Laravel by putting the results from the query into another query in foreach",
+            "body": "<p>I want to get results from Laravel by putting the results from the query into another query in foreach.</p>\n\n<pre><code>$first = DB::connection('store')\n-&gt;table('entire_store')\n-&gt;select('name', 'code', 'category', 'direct')\n-&gt;where('open', 'Y')\n-&gt;get();\n</code></pre>\n\n<p>The first query takes the information of the points and processes them into an array.</p>\n\n<p>Match the information of the branches with the workplace in the employee table.</p>\n\n<p>I want to save the workplace information of the employees together.</p>\n\n<pre><code>$temp = array();    \n$i =0;    \nforeach($first as $key =&gt; $item){\n\n    $temp[$i]['name'] = $item-&gt;name;\n    $temp[$i]['code'] = $item-&gt;code;\n\n    $temp[$i]['category'] = $item-&gt;category;\n    $temp[$i]['direct'] = $item→direct;\n\n    $second = DB::connection('store')\n     -&gt;table('entire_employer')\n     -&gt;SELECT('mgr_no','mgr_id', 'status')\n     -&gt;where('store',$item-&gt;code)-&gt;get();\n    //I tried.\n    foreach($second as $key2 =&gt; $item2){\n        $temp[$i]['mgr_id'] = $item2-&gt;mgr_id;\n    }\n    $i++;\n\n}\n</code></pre>\n\n<p>I want to store the values from this query in temp_array.</p>\n\n<p>I get an error if I try to save the value of the second query and print the value of temp_array ().</p>\n\n<p>Is there anything more I need to do to check temp_array ()?</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "database",
+                "ms-access"
+            ],
+            "owner": {
+                "reputation": 9,
+                "user_id": 8178383,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/c0eeef3da17607fa5e79096f28596559?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Joseph Joshua Anggita",
+                "link": "https://stackoverflow.com/users/8178383/joseph-joshua-anggita"
+            },
+            "is_answered": true,
+            "view_count": 31,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526441432,
+            "creation_date": 1526435478,
+            "question_id": 50361373,
+            "body_markdown": "I&#39;m trying to create a form to edit the datagridview which is data-bind to an access database, but when I was querying the database it threw an exception &quot;Data type mismatch in criteria expression&quot;.                                       Here&#39;s my code/select query:\r\n\r\n    OleDbCommand cmd = conn.CreateCommand();\r\n\tstring query = &quot;SELECT * FROM DataServisan WHERE NomorNota=?&quot;;\r\n\r\n\tconn.Open();\r\n\r\n\tcmd.CommandText = query;\r\n\r\n\tcmd.Parameters.Add(new OleDbParameter { Value = nomorNota, DbType = DbType.String });\r\n\r\n\tOleDbDataReader dr = cmd.ExecuteReader();\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50361373/c-oledb-exception-data-type-mismatch-occured-in-select-query",
+            "title": "c# oledb exception data type mismatch occured in select query",
+            "body": "<p>I'm trying to create a form to edit the datagridview which is data-bind to an access database, but when I was querying the database it threw an exception \"Data type mismatch in criteria expression\".                                       Here's my code/select query:</p>\n\n<pre><code>OleDbCommand cmd = conn.CreateCommand();\nstring query = \"SELECT * FROM DataServisan WHERE NomorNota=?\";\n\nconn.Open();\n\ncmd.CommandText = query;\n\ncmd.Parameters.Add(new OleDbParameter { Value = nomorNota, DbType = DbType.String });\n\nOleDbDataReader dr = cmd.ExecuteReader();\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "objective-c",
+                "nsnumber"
+            ],
+            "owner": {
+                "reputation": 31,
+                "user_id": 5092268,
+                "user_type": "registered",
+                "accept_rate": 57,
+                "profile_image": "https://www.gravatar.com/avatar/2da2896723ec57fac370296994215e8a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "backbencher",
+                "link": "https://stackoverflow.com/users/5092268/backbencher"
+            },
+            "is_answered": true,
+            "view_count": 180,
+            "accepted_answer_id": 47029292,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1526441430,
+            "creation_date": 1509431574,
+            "last_edit_date": 1526441430,
+            "question_id": 47029197,
+            "body_markdown": " \r\n\r\n    long long mServerDurationTime = (_mExpTime.longValue) - (serverTime.longValue);\r\n    long long curTime = [[NSDate date] timeIntervalSince1970] * 1000;\r\n    NSNumber newDeviceTime  = (curTime + mServerDurationTime);\r\n\r\nI want newDeviceTime to be saved as NSNumber. ",
+            "link": "https://stackoverflow.com/questions/47029197/how-to-convert-long-long-into-nsnumber",
+            "title": "how to convert long long into NSnumber?",
+            "body": "<pre><code>long long mServerDurationTime = (_mExpTime.longValue) - (serverTime.longValue);\nlong long curTime = [[NSDate date] timeIntervalSince1970] * 1000;\nNSNumber newDeviceTime  = (curTime + mServerDurationTime);\n</code></pre>\n\n<p>I want newDeviceTime to be saved as NSNumber. </p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "calendar"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8674370,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/25eb170c19fcac327394dd8d08231ce1?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Utsah Kapoor",
+                "link": "https://stackoverflow.com/users/8674370/utsah-kapoor"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "closed_date": 1526456305,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526441420,
+            "creation_date": 1526441420,
+            "question_id": 50362076,
+            "body_markdown": "So I am using Android Studio to create a time table maker application, and I am having trouble implementing new events into my current Day View &amp; Week View things. I am currently using https://github.com/alamkanak/Android-Week-View\r\n\r\nI would appreciate if there any any alternatives which make it easier to make events on the calendar. ",
+            "link": "https://stackoverflow.com/questions/50362076/any-other-day-view-and-week-view-calendar-alternatives-for-android-studio",
+            "closed_reason": "off-topic",
+            "title": "Any other Day View and Week View Calendar alternatives for android studio?",
+            "body": "<p>So I am using Android Studio to create a time table maker application, and I am having trouble implementing new events into my current Day View &amp; Week View things. I am currently using <a href=\"https://github.com/alamkanak/Android-Week-View\" rel=\"nofollow noreferrer\">https://github.com/alamkanak/Android-Week-View</a></p>\n\n<p>I would appreciate if there any any alternatives which make it easier to make events on the calendar. </p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "windows-store-apps",
+                "windows-store"
+            ],
+            "owner": {
+                "reputation": 1260,
+                "user_id": 3598949,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/63d9ae0d24293e4a667cba3c31ac9db6?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Saadi",
+                "link": "https://stackoverflow.com/users/3598949/saadi"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526441418,
+            "creation_date": 1526441084,
+            "last_edit_date": 1526441418,
+            "question_id": 50362037,
+            "body_markdown": "I&#39;ve a list of objects name `_PrintingPages` of type `List&lt;Page&gt;()` where page belong to `Windows.UI.Xaml.Controls.Page`\r\n\r\n    List&lt;Page&gt; _PrintingPages = new List&lt;Page&gt;();\r\n\r\nThis list of object get populated from the code. Which is not an issue.\r\n\r\nI want to generate pdf file from that `List&lt;Page&gt;` object containing multiple pages based on List elements count.\r\n\r\nI&#39;ve search a lots and I found lots of links containing example to generate pdf. Here are the few links:\r\nhttps://code.msdn.microsoft.com/windowsapps/how-to-generate-pdf-table-5f59b48b\r\n\r\nThese links doesn&#39;t allow to generate pdf from my list of object.\r\n\r\nBasically, I want to generate PDF file from XAML (In List of Page, Page is basically a XAML).\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50362037/c-windows-8-1-app-create-pdf-file-from-list-of-page",
+            "title": "C# Windows 8.1 App / Create PDF file from List of Page",
+            "body": "<p>I've a list of objects name <code>_PrintingPages</code> of type <code>List&lt;Page&gt;()</code> where page belong to <code>Windows.UI.Xaml.Controls.Page</code></p>\n\n<pre><code>List&lt;Page&gt; _PrintingPages = new List&lt;Page&gt;();\n</code></pre>\n\n<p>This list of object get populated from the code. Which is not an issue.</p>\n\n<p>I want to generate pdf file from that <code>List&lt;Page&gt;</code> object containing multiple pages based on List elements count.</p>\n\n<p>I've search a lots and I found lots of links containing example to generate pdf. Here are the few links:\n<a href=\"https://code.msdn.microsoft.com/windowsapps/how-to-generate-pdf-table-5f59b48b\" rel=\"nofollow noreferrer\">https://code.msdn.microsoft.com/windowsapps/how-to-generate-pdf-table-5f59b48b</a></p>\n\n<p>These links doesn't allow to generate pdf from my list of object.</p>\n\n<p>Basically, I want to generate PDF file from XAML (In List of Page, Page is basically a XAML).</p>\n"
+        },
+        {
+            "tags": [
+                "arrays",
+                "vb.net",
+                "csv",
+                "object"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9797687,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/61621d8dc72b6b50db082948ea969d11?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Adam Chlebek",
+                "link": "https://stackoverflow.com/users/9797687/adam-chlebek"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "closed_date": 1526459496,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526441416,
+            "creation_date": 1526441416,
+            "question_id": 50362075,
+            "body_markdown": "I currently have a CSV file that has about 500 lines that looks something like this:\r\n&lt;br/&gt;\r\n...\r\n&lt;br/&gt;\r\nFirst Name, Last Name, 5555555555, Address, State, etc...\r\n&lt;br/&gt;\r\n...\r\n&lt;br/&gt;\r\n\r\n\r\nI want to write something in VB or C# that can easily go through that and add each of those to a variable in an object. That meaning, each line will be its own object in an array and each object will have a first name variable, last name variable, etc...\r\n\r\nAny ideas or things I can start with?",
+            "link": "https://stackoverflow.com/questions/50362075/how-can-i-parse-a-csv-file-and-get-each-element-to-a-variable-in-an-object-in-vb",
+            "closed_reason": "too broad",
+            "title": "How can I parse a CSV file and get each element to a variable in an object in VB.NET?",
+            "body": "<p>I currently have a CSV file that has about 500 lines that looks something like this:\n<br/>\n...\n<br/>\nFirst Name, Last Name, 5555555555, Address, State, etc...\n<br/>\n...\n<br/></p>\n\n<p>I want to write something in VB or C# that can easily go through that and add each of those to a variable in an object. That meaning, each line will be its own object in an array and each object will have a first name variable, last name variable, etc...</p>\n\n<p>Any ideas or things I can start with?</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "arrays",
+                "swift",
+                "uicollectionview"
+            ],
+            "owner": {
+                "reputation": 324,
+                "user_id": 5117465,
+                "user_type": "registered",
+                "accept_rate": 91,
+                "profile_image": "https://www.gravatar.com/avatar/eef3e73c5f34cf5615a429b6e87fa895?s=128&d=identicon&r=PG&f=1",
+                "display_name": "ethanfox27",
+                "link": "https://stackoverflow.com/users/5117465/ethanfox27"
+            },
+            "is_answered": true,
+            "view_count": 87,
+            "accepted_answer_id": 47129637,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526441410,
+            "creation_date": 1509940762,
+            "last_edit_date": 1526441410,
+            "question_id": 47129546,
+            "body_markdown": "I am currently using AlamofireImage to download my images from firebase. The images go into a collection view and the order of the image is important. I have made it so each photo has a tag. \r\n\r\nHere is the class for my photos:\r\n\r\n\r\n\r\n    class businessPhoto {\r\n    \r\n    var image = UIImage()\r\n    var url = String()\r\n    var tag = Int()\r\n    \r\n    }\r\n\r\n\r\n**I am aware that Alamofire is asynchronous.** I am having trouble sorting my array after the download is complete. \r\n\r\n*(Something to do with the download actually being completed vs. the for loop being complete)*\r\n\r\nHere is what I am getting:\r\n\r\n[![enter image description here][1]][1]\r\n\r\nThis is what I need:\r\n\r\n[![enter image description here][2]][2]\r\n\r\nMy Code:  \r\n \r\n\r\n        // Creates an Array of URLS\r\n    func createURLArray() {\r\n        \r\n        if selectedBusiness.image1URL?.isEmpty == false {\r\n            \r\n            imageURLS.append(selectedBusiness.image1URL!)\r\n            \r\n        } else {\r\n            \r\n            let placeholder = &quot;--&quot;\r\n            imageURLS.append(placeholder)\r\n            \r\n        }\r\n        \r\n        if selectedBusiness.image2URL?.isEmpty == false {\r\n            \r\n            imageURLS.append(selectedBusiness.image2URL!)\r\n            \r\n        } else {\r\n            \r\n            let placeholder = &quot;--&quot;\r\n            imageURLS.append(placeholder)\r\n            \r\n        }\r\n        \r\n        if selectedBusiness.image3URL?.isEmpty == false {\r\n            \r\n            imageURLS.append(selectedBusiness.image3URL!)\r\n            \r\n        } else {\r\n            \r\n            let placeholder = &quot;--&quot;\r\n            imageURLS.append(placeholder)\r\n            \r\n        }\r\n        \r\n        if selectedBusiness.image4URL?.isEmpty == false {\r\n            \r\n            imageURLS.append(selectedBusiness.image4URL!)\r\n            \r\n        } else {\r\n            \r\n            let placeholder = &quot;--&quot;\r\n            imageURLS.append(placeholder)\r\n            \r\n        }\r\n        \r\n        if selectedBusiness.image5URL?.isEmpty == false {\r\n            \r\n            imageURLS.append(selectedBusiness.image5URL!)\r\n            \r\n        } else {\r\n            \r\n            let placeholder = &quot;--&quot;\r\n            imageURLS.append(placeholder)\r\n            \r\n        }\r\n        \r\n        if selectedBusiness.image6URL?.isEmpty == false {\r\n            \r\n            imageURLS.append(selectedBusiness.image6URL!)\r\n            \r\n        } else {\r\n            \r\n            let placeholder = &quot;--&quot;\r\n            imageURLS.append(placeholder)\r\n            \r\n        }\r\n        \r\n        if selectedBusiness.image7URL?.isEmpty == false {\r\n            \r\n            imageURLS.append(selectedBusiness.image7URL!)\r\n            \r\n        } else {\r\n            \r\n            let placeholder = &quot;--&quot;\r\n            imageURLS.append(placeholder)\r\n            \r\n        }\r\n        downloadImages(URLArray: imageURLS)\r\n\r\n    }\r\n\r\n    \r\n    \r\n    \r\n     \r\n    // ** Image Download\r\n    func downloadImages(URLArray: [String]) {\r\n        \r\n        for stringURL in URLArray {\r\n\r\n            // Temporary Object \r\n            let object = businessPhoto()\r\n\r\n            //Sets tag for object\r\n            if stringURL == imageURLS[0] {\r\n\r\n                object.tag = 1\r\n\r\n            } else if stringURL == imageURLS[1] {\r\n\r\n                object.tag = 2\r\n\r\n            } else if stringURL == imageURLS[2] {\r\n\r\n                object.tag = 3\r\n\r\n            } else if stringURL == imageURLS[3] {\r\n\r\n                object.tag = 4\r\n\r\n            } else if stringURL == imageURLS[4] {\r\n\r\n                object.tag = 5\r\n\r\n            } else if stringURL == imageURLS[5] {\r\n\r\n                object.tag = 6\r\n\r\n            } else if stringURL == imageURLS[6] {\r\n\r\n                object.tag = 7\r\n            }\r\n\r\n            if stringURL == &quot;--&quot; {\r\n\r\n\r\n            } else {\r\n                \r\n                // Downloads Image \r\n                let url = URL(string: stringURL)\r\n                Alamofire.request(url!).responseImage { response in\r\n\r\n\r\n                    if let image = response.result.value {\r\n\r\n                        DispatchQueue.main.async {\r\n                            object.image = image\r\n                            object.url = stringURL\r\n                            self.currentImages.append(object)\r\n                            self.photoCollectionView.reloadData()\r\n                        }\r\n\r\n\r\n                    } else {\r\n\r\n\r\n                        object.image = #imageLiteral(resourceName: &quot;image-failed&quot;)\r\n                        object.url = &quot;--&quot;\r\n                        self.currentImages.append(object)\r\n                        //self.photoCollectionView.reloadData()\r\n                    }\r\n                }\r\n\r\n            }\r\n\r\n\r\n        }\r\n        //completion()\r\n    }\r\n\r\n    //This function should update the collection view to show the photos sorted by their tag but does nothing\r\n     func updateCollectionView() {\r\n        \r\n        print(&quot;UPDATING COLLECTION VIEW&quot;)\r\n        print(currentImages)\r\n        currentImages.sort(by: { $0.tag &gt; $1.tag })\r\n        self.photoCollectionView.reloadData()\r\n  \r\n       \r\n    }\r\n    \r\n\r\n\r\n  [1]: https://i.stack.imgur.com/lSxpY.png\r\n  [2]: https://i.stack.imgur.com/z8ob3.png",
+            "link": "https://stackoverflow.com/questions/47129546/order-collection-view-cells-based-on-customobject-property-swift-4-xcode-9",
+            "title": "Order Collection View Cells based on customObject Property - Swift 4 -Xcode 9",
+            "body": "<p>I am currently using AlamofireImage to download my images from firebase. The images go into a collection view and the order of the image is important. I have made it so each photo has a tag. </p>\n\n<p>Here is the class for my photos:</p>\n\n<pre><code>class businessPhoto {\n\nvar image = UIImage()\nvar url = String()\nvar tag = Int()\n\n}\n</code></pre>\n\n<p><strong>I am aware that Alamofire is asynchronous.</strong> I am having trouble sorting my array after the download is complete. </p>\n\n<p><em>(Something to do with the download actually being completed vs. the for loop being complete)</em></p>\n\n<p>Here is what I am getting:</p>\n\n<p><a href=\"https://i.stack.imgur.com/lSxpY.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/lSxpY.png\" alt=\"enter image description here\"></a></p>\n\n<p>This is what I need:</p>\n\n<p><a href=\"https://i.stack.imgur.com/z8ob3.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/z8ob3.png\" alt=\"enter image description here\"></a></p>\n\n<p>My Code:  </p>\n\n<pre><code>    // Creates an Array of URLS\nfunc createURLArray() {\n\n    if selectedBusiness.image1URL?.isEmpty == false {\n\n        imageURLS.append(selectedBusiness.image1URL!)\n\n    } else {\n\n        let placeholder = \"--\"\n        imageURLS.append(placeholder)\n\n    }\n\n    if selectedBusiness.image2URL?.isEmpty == false {\n\n        imageURLS.append(selectedBusiness.image2URL!)\n\n    } else {\n\n        let placeholder = \"--\"\n        imageURLS.append(placeholder)\n\n    }\n\n    if selectedBusiness.image3URL?.isEmpty == false {\n\n        imageURLS.append(selectedBusiness.image3URL!)\n\n    } else {\n\n        let placeholder = \"--\"\n        imageURLS.append(placeholder)\n\n    }\n\n    if selectedBusiness.image4URL?.isEmpty == false {\n\n        imageURLS.append(selectedBusiness.image4URL!)\n\n    } else {\n\n        let placeholder = \"--\"\n        imageURLS.append(placeholder)\n\n    }\n\n    if selectedBusiness.image5URL?.isEmpty == false {\n\n        imageURLS.append(selectedBusiness.image5URL!)\n\n    } else {\n\n        let placeholder = \"--\"\n        imageURLS.append(placeholder)\n\n    }\n\n    if selectedBusiness.image6URL?.isEmpty == false {\n\n        imageURLS.append(selectedBusiness.image6URL!)\n\n    } else {\n\n        let placeholder = \"--\"\n        imageURLS.append(placeholder)\n\n    }\n\n    if selectedBusiness.image7URL?.isEmpty == false {\n\n        imageURLS.append(selectedBusiness.image7URL!)\n\n    } else {\n\n        let placeholder = \"--\"\n        imageURLS.append(placeholder)\n\n    }\n    downloadImages(URLArray: imageURLS)\n\n}\n\n\n\n\n\n// ** Image Download\nfunc downloadImages(URLArray: [String]) {\n\n    for stringURL in URLArray {\n\n        // Temporary Object \n        let object = businessPhoto()\n\n        //Sets tag for object\n        if stringURL == imageURLS[0] {\n\n            object.tag = 1\n\n        } else if stringURL == imageURLS[1] {\n\n            object.tag = 2\n\n        } else if stringURL == imageURLS[2] {\n\n            object.tag = 3\n\n        } else if stringURL == imageURLS[3] {\n\n            object.tag = 4\n\n        } else if stringURL == imageURLS[4] {\n\n            object.tag = 5\n\n        } else if stringURL == imageURLS[5] {\n\n            object.tag = 6\n\n        } else if stringURL == imageURLS[6] {\n\n            object.tag = 7\n        }\n\n        if stringURL == \"--\" {\n\n\n        } else {\n\n            // Downloads Image \n            let url = URL(string: stringURL)\n            Alamofire.request(url!).responseImage { response in\n\n\n                if let image = response.result.value {\n\n                    DispatchQueue.main.async {\n                        object.image = image\n                        object.url = stringURL\n                        self.currentImages.append(object)\n                        self.photoCollectionView.reloadData()\n                    }\n\n\n                } else {\n\n\n                    object.image = #imageLiteral(resourceName: \"image-failed\")\n                    object.url = \"--\"\n                    self.currentImages.append(object)\n                    //self.photoCollectionView.reloadData()\n                }\n            }\n\n        }\n\n\n    }\n    //completion()\n}\n\n//This function should update the collection view to show the photos sorted by their tag but does nothing\n func updateCollectionView() {\n\n    print(\"UPDATING COLLECTION VIEW\")\n    print(currentImages)\n    currentImages.sort(by: { $0.tag &gt; $1.tag })\n    self.photoCollectionView.reloadData()\n\n\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "excel",
+                "excel-vba"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9773751,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10156397783898762/picture?type=large",
+                "display_name": "Yunior Cruz",
+                "link": "https://stackoverflow.com/users/9773751/yunior-cruz"
+            },
+            "is_answered": false,
+            "view_count": 62,
+            "closed_date": 1526420216,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526441387,
+            "creation_date": 1526001160,
+            "last_edit_date": 1526438605,
+            "question_id": 50283605,
+            "body_markdown": "I want to make a database updateable in excel with sports data MLB\r\n\r\n    Sub GetHTMLDocument()\r\n\r\n    &#39;dimension (set aside memory for) our variables\r\n    Dim objIE As InternetExplorer\r\n    Dim ele As Object\r\n    Dim y As Integer\r\n    \r\n    &#39;start a new browser instance\r\n    Set objIE = New InternetExplorer\r\n    &#39;make browser visible\r\n    objIE.Visible = True\r\n    \r\n    &#39;navigate to page with needed data\r\n    objIE.navigate &quot;http://mlb.mlb.com/stats/sortable.jsp#elem=%5Bobject+Object%5D&amp;tab_level=child&amp;click_text=Sortable+Player+hitting&amp;game_type=&#39;R&#39;&amp;season=2018&amp;season_type=ANY&amp;league_code=&#39;MLB&#39;&amp;sectionType=sp&amp;statType=hitting&amp;page=1&amp;ts=1526432697176&quot;\r\n    &#39;wait for page to load\r\n    Do While objIE.Busy = True Or objIE.readyState &lt;&gt; 4: DoEvents: Loop\r\n    \r\n    &#39;we will output data to excel, starting on row 1\r\n    y = 0\r\n    \r\n    &#39;look at all the &#39;tr&#39; elements in the &#39;table&#39; with id &#39;myTable&#39;,\r\n    &#39;and evaluate each, one at a time, using &#39;ele&#39; variable\r\n    For Each ele In objIE.document.getElementById(&quot;datagrid&quot;). _\r\n      getElementsByTagName(&quot;tr&quot;)\r\n        &#39;show the text content of &#39;tr&#39; element being looked at\r\n        Debug.Print ele.textContent\r\n        &#39;each &#39;tr&#39; (table row) element contains 4 children (&#39;td&#39;) elements\r\n        &#39;put text of 1st &#39;td&#39; in col A\r\n        Sheets(&quot;Sheet1&quot;).Range(&quot;A&quot; &amp; y).Value = ele.Children(0).textContent\r\n        &#39;put text of 2nd &#39;td&#39; in col B\r\n        Sheets(&quot;Sheet1&quot;).Range(&quot;B&quot; &amp; y).Value = ele.Children(1).textContent\r\n        &#39;put text of 3rd &#39;td&#39; in col C\r\n        Sheets(&quot;Sheet1&quot;).Range(&quot;C&quot; &amp; y).Value = ele.Children(2).textContent\r\n        &#39;put text of 4th &#39;td&#39; in col D\r\n        Sheets(&quot;Sheet1&quot;).Range(&quot;D&quot; &amp; y).Value = ele.Children(5).textContent\r\n        &#39;put text of 4th &#39;td&#39; in col f\r\n        Sheets(&quot;Sheet1&quot;).Range(&quot;E&quot; &amp; y).Value = ele.Children(22).textContent\r\n        &#39;increment row counter by 1\r\n        y = y + 1\r\n           Next\r\n\r\n    &#39;save the Excel workbook\r\n    ActiveWorkbook.Save\r\nEnd Sub\r\n\r\ncopy statistics data from the mlb web in excel book, automatic click on the &quot;paginationWidget-next&quot; button and again copy statistics data from the mlb web in excel book\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50283605/copy-statistics-data-from-the-mlb-web-in-excel-book",
+            "closed_reason": "unclear what you&#39;re asking",
+            "title": "Copy statistics data from the mlb web in excel book",
+            "body": "<p>I want to make a database updateable in excel with sports data MLB</p>\n\n<pre><code>Sub GetHTMLDocument()\n\n'dimension (set aside memory for) our variables\nDim objIE As InternetExplorer\nDim ele As Object\nDim y As Integer\n\n'start a new browser instance\nSet objIE = New InternetExplorer\n'make browser visible\nobjIE.Visible = True\n\n'navigate to page with needed data\nobjIE.navigate \"http://mlb.mlb.com/stats/sortable.jsp#elem=%5Bobject+Object%5D&amp;tab_level=child&amp;click_text=Sortable+Player+hitting&amp;game_type='R'&amp;season=2018&amp;season_type=ANY&amp;league_code='MLB'&amp;sectionType=sp&amp;statType=hitting&amp;page=1&amp;ts=1526432697176\"\n'wait for page to load\nDo While objIE.Busy = True Or objIE.readyState &lt;&gt; 4: DoEvents: Loop\n\n'we will output data to excel, starting on row 1\ny = 0\n\n'look at all the 'tr' elements in the 'table' with id 'myTable',\n'and evaluate each, one at a time, using 'ele' variable\nFor Each ele In objIE.document.getElementById(\"datagrid\"). _\n  getElementsByTagName(\"tr\")\n    'show the text content of 'tr' element being looked at\n    Debug.Print ele.textContent\n    'each 'tr' (table row) element contains 4 children ('td') elements\n    'put text of 1st 'td' in col A\n    Sheets(\"Sheet1\").Range(\"A\" &amp; y).Value = ele.Children(0).textContent\n    'put text of 2nd 'td' in col B\n    Sheets(\"Sheet1\").Range(\"B\" &amp; y).Value = ele.Children(1).textContent\n    'put text of 3rd 'td' in col C\n    Sheets(\"Sheet1\").Range(\"C\" &amp; y).Value = ele.Children(2).textContent\n    'put text of 4th 'td' in col D\n    Sheets(\"Sheet1\").Range(\"D\" &amp; y).Value = ele.Children(5).textContent\n    'put text of 4th 'td' in col f\n    Sheets(\"Sheet1\").Range(\"E\" &amp; y).Value = ele.Children(22).textContent\n    'increment row counter by 1\n    y = y + 1\n       Next\n\n'save the Excel workbook\nActiveWorkbook.Save\n</code></pre>\n\n<p>End Sub</p>\n\n<p>copy statistics data from the mlb web in excel book, automatic click on the \"paginationWidget-next\" button and again copy statistics data from the mlb web in excel book</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "objective-c",
+                "uiviewcontroller",
+                "uicontrol",
+                "uipopoverpresentationcontroller"
+            ],
+            "owner": {
+                "reputation": 1110,
+                "user_id": 836850,
+                "user_type": "registered",
+                "accept_rate": 74,
+                "profile_image": "https://i.stack.imgur.com/eFVb6.png?s=128&g=1",
+                "display_name": "joan",
+                "link": "https://stackoverflow.com/users/836850/joan"
+            },
+            "is_answered": true,
+            "view_count": 33,
+            "accepted_answer_id": 47308585,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526441386,
+            "creation_date": 1510751955,
+            "last_edit_date": 1526441386,
+            "question_id": 47308457,
+            "body_markdown": "I am writing a UIControl. I need to display a popover when the user touches an area of the control. But of course the usual code:\r\n\r\n    [self presentViewController:self.popover animated:YES completion:nil];\r\n\r\ndoes not work because we are in a UIControl, not in a UIViewController.\r\nHow can I display a popover from a UIControl? ",
+            "link": "https://stackoverflow.com/questions/47308457/display-an-uipopoverpresentationcontroller-from-a-uicontrol",
+            "title": "Display an UIPopoverPresentationController from a UIControl?",
+            "body": "<p>I am writing a UIControl. I need to display a popover when the user touches an area of the control. But of course the usual code:</p>\n\n<pre><code>[self presentViewController:self.popover animated:YES completion:nil];\n</code></pre>\n\n<p>does not work because we are in a UIControl, not in a UIViewController.\nHow can I display a popover from a UIControl? </p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "json",
+                "wpf",
+                "signalr",
+                "json-serialization"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 6660027,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/fbaa1518296d6b2ba2646827ca08ca43?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Raziel Naing",
+                "link": "https://stackoverflow.com/users/6660027/raziel-naing"
+            },
+            "is_answered": false,
+            "view_count": 31,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526441366,
+            "creation_date": 1526371503,
+            "last_edit_date": 1526441366,
+            "question_id": 50345228,
+            "body_markdown": "I have problem in invoking JSON data to API. I am now working MVVM project using WPF and I would like to make data sync. I use SignalR technology to solve my issue. I normally send one root node as a parameter in echo hub invoke method but now I would like to send JSON data with muli-nodes. To be exact, for example:\r\n   \r\n    public class Staffs\r\n    {\r\n     public ObservableCollection&lt;Manager&gt; managers {get; set;}\r\n     public ObservableCollection&lt;Assistant_Manager&gt; asst_managers {get; set;}\r\n    }\r\n\r\n    ObservableCollection&lt;Staffs&gt; staffs;\r\n\r\nI would like to send staffs to all clients using SignalR. My Code in client side is:\r\n\r\n    connection = new HubConnection(&quot;http://localhost:48333&quot;);\r\n    hub = connection.CreateHubProxy(&quot;echo&quot;);\r\n    connection.Start().Wait();\r\n    \r\n    var subscriber = hub.Subscribe(&quot;addMessage&quot;);\r\n    hub.Invoke(&quot;Say&quot;, JsonConvert.SerializeObject(staffs));\r\n\r\nCode in API is:\r\n\r\n    public partial class Startup\r\n    {\r\n        public void Configuration(IAppBuilder app)\r\n        {\r\n            ConfigureAuth(app);\r\n            app.UseCors(CorsOptions.AllowAll);\r\n            app.MapSignalR();\r\n        }\r\n    }\r\n\r\n    [HubName(&quot;echo&quot;)]\r\n    public class EchoHub : Hub\r\n    {\r\n        public void Say(string message)\r\n        {\r\n            Clients.All.addMessage(message);\r\n        }\r\n    }\r\n\r\nBut Say Method is not working. If I send staffs.managers or staffs.asst_managers, for example:\r\n\r\n    hub.Invoke(&quot;Say&quot;, JsonConvert.SerializeObject(staffs.managers));\r\n\r\nOR\r\n\r\n    hub.Invoke(&quot;Say&quot;, JsonConvert.SerializeObject(staffs.asst_managers));\r\n\r\nIt is work!\r\nBut I would like to invoke staffs instead of its property. I am waiting your help.",
+            "link": "https://stackoverflow.com/questions/50345228/json-string-with-multi-roots-cannot-be-sent-to-signalr-server",
+            "title": "JSON string with Multi-Roots cannot be sent to SignalR server",
+            "body": "<p>I have problem in invoking JSON data to API. I am now working MVVM project using WPF and I would like to make data sync. I use SignalR technology to solve my issue. I normally send one root node as a parameter in echo hub invoke method but now I would like to send JSON data with muli-nodes. To be exact, for example:</p>\n\n<pre><code>public class Staffs\n{\n public ObservableCollection&lt;Manager&gt; managers {get; set;}\n public ObservableCollection&lt;Assistant_Manager&gt; asst_managers {get; set;}\n}\n\nObservableCollection&lt;Staffs&gt; staffs;\n</code></pre>\n\n<p>I would like to send staffs to all clients using SignalR. My Code in client side is:</p>\n\n<pre><code>connection = new HubConnection(\"http://localhost:48333\");\nhub = connection.CreateHubProxy(\"echo\");\nconnection.Start().Wait();\n\nvar subscriber = hub.Subscribe(\"addMessage\");\nhub.Invoke(\"Say\", JsonConvert.SerializeObject(staffs));\n</code></pre>\n\n<p>Code in API is:</p>\n\n<pre><code>public partial class Startup\n{\n    public void Configuration(IAppBuilder app)\n    {\n        ConfigureAuth(app);\n        app.UseCors(CorsOptions.AllowAll);\n        app.MapSignalR();\n    }\n}\n\n[HubName(\"echo\")]\npublic class EchoHub : Hub\n{\n    public void Say(string message)\n    {\n        Clients.All.addMessage(message);\n    }\n}\n</code></pre>\n\n<p>But Say Method is not working. If I send staffs.managers or staffs.asst_managers, for example:</p>\n\n<pre><code>hub.Invoke(\"Say\", JsonConvert.SerializeObject(staffs.managers));\n</code></pre>\n\n<p>OR</p>\n\n<pre><code>hub.Invoke(\"Say\", JsonConvert.SerializeObject(staffs.asst_managers));\n</code></pre>\n\n<p>It is work!\nBut I would like to invoke staffs instead of its property. I am waiting your help.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "seaborn",
+                "boxplot",
+                "continuous"
+            ],
+            "owner": {
+                "reputation": 20,
+                "user_id": 9774860,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5d21f21c9b75650d9a60959e0b0b599d?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Unknown",
+                "link": "https://stackoverflow.com/users/9774860/unknown"
+            },
+            "is_answered": true,
+            "view_count": 56,
+            "accepted_answer_id": 50323344,
+            "answer_count": 1,
+            "score": 3,
+            "last_activity_date": 1526441362,
+            "creation_date": 1526268090,
+            "last_edit_date": 1526278145,
+            "question_id": 50322704,
+            "body_markdown": "I have a csv file with 2 columns:\r\n\r\n* col1- `Timestamp` data(yyyy-mm-dd hh:mm:ss.ms (8 months data)) \r\n\r\n* col2 : Heat data (continuous variable) . \r\n\r\nSince there are almost 50k record, I would like to partition the col1(timestamp col) into months or weeks and then apply box plot on the heat data w.r.t timestamp.\r\nI tried in R,it takes a long time. Need help to do in Python.  I think I need to use `seaborn.boxplot`. \r\n\r\nPlease guide.",
+            "link": "https://stackoverflow.com/questions/50322704/box-plot-for-continuous-data-in-python",
+            "title": "Box plot for continuous data in Python",
+            "body": "<p>I have a csv file with 2 columns:</p>\n\n<ul>\n<li><p>col1- <code>Timestamp</code> data(yyyy-mm-dd hh:mm:ss.ms (8 months data)) </p></li>\n<li><p>col2 : Heat data (continuous variable) . </p></li>\n</ul>\n\n<p>Since there are almost 50k record, I would like to partition the col1(timestamp col) into months or weeks and then apply box plot on the heat data w.r.t timestamp.\nI tried in R,it takes a long time. Need help to do in Python.  I think I need to use <code>seaborn.boxplot</code>. </p>\n\n<p>Please guide.</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift",
+                "url",
+                "uiimageview",
+                "uiimage"
+            ],
+            "owner": {
+                "reputation": 99,
+                "user_id": 6925344,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://www.gravatar.com/avatar/c6b15803a119eef5f87a2384bea1ea9a?s=128&d=identicon&r=PG",
+                "display_name": "Leonardo",
+                "link": "https://stackoverflow.com/users/6925344/leonardo"
+            },
+            "is_answered": true,
+            "view_count": 756,
+            "accepted_answer_id": 47030880,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1526441345,
+            "creation_date": 1509438242,
+            "last_edit_date": 1526441345,
+            "question_id": 47030822,
+            "body_markdown": "This problems it&#39;s driving me crazy...\r\nI have this string `url`:  \r\n&quot;**verona-api.municipiumstaging.it/system/images/image/image/22/app_1920_1280_4.jpg**&quot; \r\nand I have to load this image in my `imageView`.\r\n\r\nthis is my code : \r\n\r\n    do {\r\n        let url = URL(fileURLWithPath: &quot;http://verona-api.municipiumstaging.it/system/images/image/image/22/app_1920_1280_4.jpg&quot;)\r\n        let data = try Data(contentsOf: url)\r\n        self.imageView.image = UIImage(data: data)\r\n    }\r\n    catch{\r\n\t\tprint(error)\r\n\t}\r\n\r\nThis throw the exception : \r\n\r\n&gt; No such file or directory.\r\n\r\n\r\n\r\nBut if I search this `url` with a browser I can see the image correctly!\r\n\r\n    ",
+            "link": "https://stackoverflow.com/questions/47030822/uiimageview-load-uiimage-from-remote-url",
+            "title": "UIImageView, Load UIImage from remote URL",
+            "body": "<p>This problems it's driving me crazy...\nI have this string <code>url</code>:<br>\n\"<strong>verona-api.municipiumstaging.it/system/images/image/image/22/app_1920_1280_4.jpg</strong>\" \nand I have to load this image in my <code>imageView</code>.</p>\n\n<p>this is my code : </p>\n\n<pre><code>do {\n    let url = URL(fileURLWithPath: \"http://verona-api.municipiumstaging.it/system/images/image/image/22/app_1920_1280_4.jpg\")\n    let data = try Data(contentsOf: url)\n    self.imageView.image = UIImage(data: data)\n}\ncatch{\n    print(error)\n}\n</code></pre>\n\n<p>This throw the exception : </p>\n\n<blockquote>\n  <p>No such file or directory.</p>\n</blockquote>\n\n<p>But if I search this <code>url</code> with a browser I can see the image correctly!</p>\n"
+        },
+        {
+            "tags": [
+                "azure",
+                "azure-sql-database",
+                "azure-virtual-machine"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9263253,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/67fd7133895bd9ed3f160d7ffaf55bbf?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Mike H",
+                "link": "https://stackoverflow.com/users/9263253/mike-h"
+            },
+            "is_answered": false,
+            "view_count": 43,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526441345,
+            "creation_date": 1525991389,
+            "last_edit_date": 1526015578,
+            "question_id": 50282381,
+            "body_markdown": "Deployment template validation failed: \r\n\r\n     The template resource &#39;xxx/SqlIaasExtension&#39; at line &#39;1&#39; and column &#39;5024&#39; is not valid:\r\n     The resource identificator &#39;xxx/ManagedIdentityExtensionForWindows&#39; is malformed. Please see https://aka.ms/arm-template-expressions/#reference for usage details.. Please see https://aka.ms/arm-template-expressions for usage details. \r\n\r\nAnyone else have experience with this while using the new VM wizard?  I attempted to create the VM with SQL Server 2014 under Windows Server 2012.",
+            "link": "https://stackoverflow.com/questions/50282381/unable-to-create-new-azure-sql-vm",
+            "title": "Unable to create new Azure SQL VM",
+            "body": "<p>Deployment template validation failed: </p>\n\n<pre><code> The template resource 'xxx/SqlIaasExtension' at line '1' and column '5024' is not valid:\n The resource identificator 'xxx/ManagedIdentityExtensionForWindows' is malformed. Please see https://aka.ms/arm-template-expressions/#reference for usage details.. Please see https://aka.ms/arm-template-expressions for usage details. \n</code></pre>\n\n<p>Anyone else have experience with this while using the new VM wizard?  I attempted to create the VM with SQL Server 2014 under Windows Server 2012.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "ssh"
+            ],
+            "owner": {
+                "reputation": 16122,
+                "user_id": 319618,
+                "user_type": "registered",
+                "accept_rate": 82,
+                "profile_image": "https://i.stack.imgur.com/bQZof.png?s=128&g=1",
+                "display_name": "fredley",
+                "link": "https://stackoverflow.com/users/319618/fredley"
+            },
+            "is_answered": true,
+            "view_count": 232678,
+            "accepted_answer_id": 3586168,
+            "answer_count": 7,
+            "score": 83,
+            "last_activity_date": 1526441333,
+            "creation_date": 1282925341,
+            "question_id": 3586106,
+            "body_markdown": "I&#39;m writing a script to automate some command line commands in Python. At the moment I&#39;m doing calls thus:\r\n\r\n    cmd = &quot;some unix command&quot;\r\n    retcode = subprocess.call(cmd,shell=True)\r\n\r\nHowever I need to run some commands on a remote machine. Manually, I would log in using ssh and then run the commands. How would I automate this in Python? I need to log in with a (known) password to the remote machine, so I can&#39;t just use `cmd = ssh user@remotehost`, I&#39;m wondering if there&#39;s a module I should be using?",
+            "link": "https://stackoverflow.com/questions/3586106/perform-commands-over-ssh-with-python",
+            "title": "Perform commands over ssh with Python",
+            "body": "<p>I'm writing a script to automate some command line commands in Python. At the moment I'm doing calls thus:</p>\n\n<pre><code>cmd = \"some unix command\"\nretcode = subprocess.call(cmd,shell=True)\n</code></pre>\n\n<p>However I need to run some commands on a remote machine. Manually, I would log in using ssh and then run the commands. How would I automate this in Python? I need to log in with a (known) password to the remote machine, so I can't just use <code>cmd = ssh user@remotehost</code>, I'm wondering if there's a module I should be using?</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "objective-c",
+                "xcode"
+            ],
+            "owner": {
+                "reputation": 876,
+                "user_id": 6787033,
+                "user_type": "registered",
+                "accept_rate": 78,
+                "profile_image": "https://www.gravatar.com/avatar/d55119dacd5a0a45d9a3f92bd66a4e69?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Wojciech Kazior",
+                "link": "https://stackoverflow.com/users/6787033/wojciech-kazior"
+            },
+            "is_answered": true,
+            "view_count": 110,
+            "accepted_answer_id": 47056050,
+            "answer_count": 3,
+            "score": 3,
+            "last_activity_date": 1526441329,
+            "creation_date": 1509541103,
+            "last_edit_date": 1526441329,
+            "question_id": 47055453,
+            "body_markdown": "I would like to ask if there is a possibility to check a built-in function implementation in Xcode IDE. I mean - is there something like CTRL + [click on function name] in IntelliJ? I need to check `arc4random()` implementation.",
+            "link": "https://stackoverflow.com/questions/47055453/how-can-i-check-the-built-in-function-implementation-in-objective-c",
+            "title": "How can I check the built-in function implementation in Objective-C?",
+            "body": "<p>I would like to ask if there is a possibility to check a built-in function implementation in Xcode IDE. I mean - is there something like CTRL + [click on function name] in IntelliJ? I need to check <code>arc4random()</code> implementation.</p>\n"
+        },
+        {
+            "tags": [
+                "html",
+                "css",
+                "printing"
+            ],
+            "owner": {
+                "reputation": 30,
+                "user_id": 8762796,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://i.stack.imgur.com/X6dYY.jpg?s=128&g=1",
+                "display_name": "ddvick",
+                "link": "https://stackoverflow.com/users/8762796/ddvick"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526441325,
+            "creation_date": 1526441325,
+            "question_id": 50362062,
+            "body_markdown": "I&#39;m in the process of building a character generator for a role playing game, and I&#39;ve run into the issue of my formatting not carrying over when I try to print it or convert it to pdf (as shown below). I&#39;m looking for the generator to fit on a single page of letter paper (8.5in/11in). Is it a matter of reformatting the CSS I have to fit those dimensions, or is there a HTML or CSS solution that can amend this?\r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\n[![enter image description here][2]][2]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/B3bht.jpg\r\n  [2]: https://i.stack.imgur.com/F55eT.jpg",
+            "link": "https://stackoverflow.com/questions/50362062/how-to-make-html-printer-friendly",
+            "title": "How to make HTML printer friendly?",
+            "body": "<p>I'm in the process of building a character generator for a role playing game, and I've run into the issue of my formatting not carrying over when I try to print it or convert it to pdf (as shown below). I'm looking for the generator to fit on a single page of letter paper (8.5in/11in). Is it a matter of reformatting the CSS I have to fit those dimensions, or is there a HTML or CSS solution that can amend this?</p>\n\n<p><a href=\"https://i.stack.imgur.com/B3bht.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/B3bht.jpg\" alt=\"enter image description here\"></a></p>\n\n<p><a href=\"https://i.stack.imgur.com/F55eT.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/F55eT.jpg\" alt=\"enter image description here\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "cordova",
+                "ionic-framework",
+                "ionic3",
+                "keyboard-events",
+                "ionic-native"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 5632268,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10154404876998312/picture?type=large",
+                "display_name": "Luciano Ursache",
+                "link": "https://stackoverflow.com/users/5632268/luciano-ursache"
+            },
+            "is_answered": false,
+            "view_count": 395,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526441286,
+            "creation_date": 1516639452,
+            "question_id": 48386422,
+            "body_markdown": "I&#39;m trying to hide the footer of my Ionic 3 app when the keyboard is open,\r\n\r\ni&#39;ve followed the steps found on official documentation and also on this question&#39;s accepted answer: https://stackoverflow.com/questions/43739545/hide-tabs-on-keyboard-open\r\n\r\nI&#39;ve correctly installed the keyboard plugin and imported it in app.module.ts,\r\ni have this code in app.component.ts:\r\n\r\n    this.platform.ready().then(() =&gt; {\r\n      \r\n      this.keyboard.onKeyboardShow().subscribe(() =&gt; {\r\n            document.body.classList.add(&#39;keyboard-is-open&#39;);\r\n        });\r\n\r\n        this.keyboard.onKeyboardHide().subscribe(() =&gt; {\r\n            document.body.classList.remove(&#39;keyboard-is-open&#39;);\r\n        });\r\n      \r\n\r\n    });\r\n\r\ni&#39;ve correctly set the css class : \r\n\r\n    body.keyboard-is-open .hideElementOnKeyboardShown{\r\n        display: none;        \r\n    }\r\n\r\nand added this &quot;hideElementOnKeyboardShown&quot; class to the footer,\r\nwhat&#39;s happening now is that the footer disappears for few milliseconds (i guess the time that it takes for the keyboard to show up) and then reappears on top of the keyboard, partially hiding some input fields on the page.\r\n\r\nI need to find a way to hide the footer, or just to keep it at the bottom of the page, covered by the keyboard (i&#39;ve also tried with z-index but it isn&#39;t working)",
+            "link": "https://stackoverflow.com/questions/48386422/hide-footer-on-keyboard-open-ionic3",
+            "title": "Hide footer on keyboard open Ionic3",
+            "body": "<p>I'm trying to hide the footer of my Ionic 3 app when the keyboard is open,</p>\n\n<p>i've followed the steps found on official documentation and also on this question's accepted answer: <a href=\"https://stackoverflow.com/questions/43739545/hide-tabs-on-keyboard-open\">Hide tabs on keyboard open</a></p>\n\n<p>I've correctly installed the keyboard plugin and imported it in app.module.ts,\ni have this code in app.component.ts:</p>\n\n<pre><code>this.platform.ready().then(() =&gt; {\n\n  this.keyboard.onKeyboardShow().subscribe(() =&gt; {\n        document.body.classList.add('keyboard-is-open');\n    });\n\n    this.keyboard.onKeyboardHide().subscribe(() =&gt; {\n        document.body.classList.remove('keyboard-is-open');\n    });\n\n\n});\n</code></pre>\n\n<p>i've correctly set the css class : </p>\n\n<pre><code>body.keyboard-is-open .hideElementOnKeyboardShown{\n    display: none;        \n}\n</code></pre>\n\n<p>and added this \"hideElementOnKeyboardShown\" class to the footer,\nwhat's happening now is that the footer disappears for few milliseconds (i guess the time that it takes for the keyboard to show up) and then reappears on top of the keyboard, partially hiding some input fields on the page.</p>\n\n<p>I need to find a way to hide the footer, or just to keep it at the bottom of the page, covered by the keyboard (i've also tried with z-index but it isn't working)</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pandas",
+                "csv"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 9797511,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/dede0380b00ff59ef5868bc85b077863?s=128&d=identicon&r=PG&f=1",
+                "display_name": "GeothermalSpring",
+                "link": "https://stackoverflow.com/users/9797511/geothermalspring"
+            },
+            "is_answered": true,
+            "view_count": 35,
+            "accepted_answer_id": 50361794,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526441252,
+            "creation_date": 1526438040,
+            "last_edit_date": 1526438373,
+            "question_id": 50361669,
+            "body_markdown": "I have a csv file in the following format:\r\n\r\n    id    data\r\n    1     [{&#39;name&#39;:&#39;Day 1&#39;, &#39;data&#39;:[12,13]},{&#39;name&#39;:&#39;Day 2&#39;, &#39;data&#39;:[34,45]}]\r\n\r\nand I want it in the format below:\r\n    \r\n    id    name     index    data\r\n    1     Day 1    0        12\r\n    1     Day 1    1        13\r\n    1     Day 2    0        34\r\n    1     Day 2    1        45 \r\n\r\nI&#39;ve tried doing pd.apply(Series) on the data column but it only separated the dictionaries into their own columns. Any idea on how to do this?\r\n\r\nThanks!!",
+            "link": "https://stackoverflow.com/questions/50361669/transforming-data-in-dictionaries-into-rows",
+            "title": "Transforming data in dictionaries into rows",
+            "body": "<p>I have a csv file in the following format:</p>\n\n<pre><code>id    data\n1     [{'name':'Day 1', 'data':[12,13]},{'name':'Day 2', 'data':[34,45]}]\n</code></pre>\n\n<p>and I want it in the format below:</p>\n\n<pre><code>id    name     index    data\n1     Day 1    0        12\n1     Day 1    1        13\n1     Day 2    0        34\n1     Day 2    1        45 \n</code></pre>\n\n<p>I've tried doing pd.apply(Series) on the data column but it only separated the dictionaries into their own columns. Any idea on how to do this?</p>\n\n<p>Thanks!!</p>\n"
+        },
+        {
+            "tags": [
+                "angularjs"
+            ],
+            "owner": {
+                "reputation": 186,
+                "user_id": 8425145,
+                "user_type": "registered",
+                "accept_rate": 86,
+                "profile_image": "https://www.gravatar.com/avatar/27309030ca765a0d81f11a51915c8afc?s=128&d=identicon&r=PG&f=1",
+                "display_name": "BT101",
+                "link": "https://stackoverflow.com/users/8425145/bt101"
+            },
+            "is_answered": true,
+            "view_count": 22,
+            "accepted_answer_id": 50362053,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526441247,
+            "creation_date": 1526436480,
+            "last_edit_date": 1526440145,
+            "question_id": 50361488,
+            "body_markdown": "I&#39;m displaying inputs in loop. To every one I want to attach 3 spans which are saying &#39;required&#39;, &#39;too short&#39;, &#39;too long&#39;. I&#39;ve done it like this:\r\n\r\n    &lt;form name=&quot;sellItem&quot;&gt;\r\n    &lt;div data-ng-repeat=&quot;n in langInput.values&quot; style=&quot;margin-top: 100px; background: white; color: white&quot;&gt;\r\n        &lt;div class=&quot;col-lg-12 col-md-12 col-sm-12 col-xs-12 u-no-padding&quot;&gt;\r\n            &lt;label class=&quot;sell__label&quot; for=&quot;auction_name_account_{{n.selected}}&quot;&gt;Gł&#243;wna nazwa Twojej aukcji ({{n.selected }}):&lt;/label&gt;\r\n            &lt;div&gt;\r\n                &lt;input type=&quot;text&quot;\r\n                       id=&quot;auction_name_account_{{n.selected}}&quot;\r\n                       class=&quot;form-control&quot;\r\n                       name=&quot;auction_name_account[$index]&quot;\r\n                       data-ng-model=&quot;inputs.auction_name_account[$index]&quot;\r\n                       data-ng-minlength=&quot;10&quot;\r\n                       data-ng-maxlength=&quot;60&quot;\r\n                       required /&gt;\r\n                &lt;span class=&quot;sell__input-text sell__input-text--big-input&quot;\r\n                      data-ng-show=&quot;sellItem.auction_name_account[$index].$error.required&quot;&gt;Wymagane!&lt;/span&gt;\r\n                &lt;span class=&quot;sell__input-text sell__input-text--big-input&quot;\r\n                      data-ng-show=&quot;sellItem.auction_name_account[$index].$error.minlength&quot;&gt;Za kr&#243;tkie!&lt;/span&gt;\r\n                &lt;span class=&quot;sell__input-text sell__input-text--big-input&quot;\r\n                      data-ng-show=&quot;sellItem.auction_name_account[$index].$error.maxlength&quot;&gt;Za długie!&lt;/span&gt;\r\n                {{ inputs }}\r\n            &lt;/div&gt;\r\n        &lt;/div&gt;\r\n    &lt;/div&gt;\r\n    &lt;/form&gt;\r\n\r\nBut spans doesn&#39;t show at all. Values which I&#39;m looping on is:\r\n\r\n    $scope.langInput = {\r\n            values: [\r\n                {\r\n                    id: &quot;1&quot;,\r\n                    selected: &quot;pl&quot;\r\n                },\r\n                {\r\n                    id: &quot;2&quot;,\r\n                    selected: &quot;eng&quot;\r\n                }\r\n            ],\r\n\r\n\r\nI&#39;m also initilizing the array \r\n\r\n        $scope.inputs = {\r\n            auction_name_account: []\r\n        };\r\n\r\nto make sure that ng-model will be unique.\r\n\r\nHow to attach validation spans to correct input? At the moment like I said spans doesn&#39;t show at all.",
+            "link": "https://stackoverflow.com/questions/50361488/attach-validation-spans-to-correct-input",
+            "title": "Attach validation spans to correct input",
+            "body": "<p>I'm displaying inputs in loop. To every one I want to attach 3 spans which are saying 'required', 'too short', 'too long'. I've done it like this:</p>\n\n<pre><code>&lt;form name=\"sellItem\"&gt;\n&lt;div data-ng-repeat=\"n in langInput.values\" style=\"margin-top: 100px; background: white; color: white\"&gt;\n    &lt;div class=\"col-lg-12 col-md-12 col-sm-12 col-xs-12 u-no-padding\"&gt;\n        &lt;label class=\"sell__label\" for=\"auction_name_account_{{n.selected}}\"&gt;Główna nazwa Twojej aukcji ({{n.selected }}):&lt;/label&gt;\n        &lt;div&gt;\n            &lt;input type=\"text\"\n                   id=\"auction_name_account_{{n.selected}}\"\n                   class=\"form-control\"\n                   name=\"auction_name_account[$index]\"\n                   data-ng-model=\"inputs.auction_name_account[$index]\"\n                   data-ng-minlength=\"10\"\n                   data-ng-maxlength=\"60\"\n                   required /&gt;\n            &lt;span class=\"sell__input-text sell__input-text--big-input\"\n                  data-ng-show=\"sellItem.auction_name_account[$index].$error.required\"&gt;Wymagane!&lt;/span&gt;\n            &lt;span class=\"sell__input-text sell__input-text--big-input\"\n                  data-ng-show=\"sellItem.auction_name_account[$index].$error.minlength\"&gt;Za krótkie!&lt;/span&gt;\n            &lt;span class=\"sell__input-text sell__input-text--big-input\"\n                  data-ng-show=\"sellItem.auction_name_account[$index].$error.maxlength\"&gt;Za długie!&lt;/span&gt;\n            {{ inputs }}\n        &lt;/div&gt;\n    &lt;/div&gt;\n&lt;/div&gt;\n&lt;/form&gt;\n</code></pre>\n\n<p>But spans doesn't show at all. Values which I'm looping on is:</p>\n\n<pre><code>$scope.langInput = {\n        values: [\n            {\n                id: \"1\",\n                selected: \"pl\"\n            },\n            {\n                id: \"2\",\n                selected: \"eng\"\n            }\n        ],\n</code></pre>\n\n<p>I'm also initilizing the array </p>\n\n<pre><code>    $scope.inputs = {\n        auction_name_account: []\n    };\n</code></pre>\n\n<p>to make sure that ng-model will be unique.</p>\n\n<p>How to attach validation spans to correct input? At the moment like I said spans doesn't show at all.</p>\n"
+        },
+        {
+            "tags": [
+                "jenkins",
+                "jira",
+                "integration"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9795284,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "yashashree mehta",
+                "link": "https://stackoverflow.com/users/9795284/yashashree-mehta"
+            },
+            "is_answered": false,
+            "view_count": 16,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526441245,
+            "creation_date": 1526400821,
+            "last_edit_date": 1526401263,
+            "question_id": 50354850,
+            "body_markdown": "How to find value of RPC url in Jira Application for jenkins extension\r\n\r\nImages included below show the RPC url field in extension.\r\n\r\nI have local Jenkins running and Jira account on cloud.\r\n\r\n![jenkins with jira extension added][1]\r\n![jenkin extension setup in jira][2]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/89P0P.png\r\n  [2]: https://i.stack.imgur.com/mALXZ.png",
+            "link": "https://stackoverflow.com/questions/50354850/how-to-find-value-of-rpc-url-in-jira-application-for-jenkins-extension",
+            "title": "How to find value of RPC url in Jira Application for jenkins extension",
+            "body": "<p>How to find value of RPC url in Jira Application for jenkins extension</p>\n\n<p>Images included below show the RPC url field in extension.</p>\n\n<p>I have local Jenkins running and Jira account on cloud.</p>\n\n<p><img src=\"https://i.stack.imgur.com/89P0P.png\" alt=\"jenkins with jira extension added\">\n<img src=\"https://i.stack.imgur.com/mALXZ.png\" alt=\"jenkin extension setup in jira\"></p>\n"
+        },
+        {
+            "tags": [
+                "django",
+                "django-models",
+                "django-forms",
+                "django-views"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8450783,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-6rrICxp2bSY/AAAAAAAAAAI/AAAAAAAABHg/equMG7udduk/photo.jpg?sz=128",
+                "display_name": "Matheus Soares",
+                "link": "https://stackoverflow.com/users/8450783/matheus-soares"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526441235,
+            "creation_date": 1526438613,
+            "question_id": 50361733,
+            "body_markdown": "I have a problem. In my project, I need to associate the User logged in a forms to my Models. A forms contains (&#39;user_logged&#39;, &#39;name&#39;, &#39;description&#39; and &#39;conclusion&#39;), and I wish the forms get user logged automatically, and other fields I will put manually. I try this in my models:\r\n\r\n    user = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=models.CASCADE)\r\n\r\nBut I fill in my forms, and dont get my user logged, the results for user is: &quot;None&quot;.\r\n\r\nMy views below:\r\n\r\n    @method_decorator(login_required, name=&#39;dispatch&#39;)\r\n    class CreateTarefa(CreateView):\r\n    model = Tarefa\r\n    fields = [&#39;nome_tarefa&#39;, &#39;descricao&#39;, &#39;concluida&#39;]\r\n    template_name = &#39;tarefa_form.html&#39;\r\n\r\nThanks a lot.\r\nBest wishes.\r\n",
+            "link": "https://stackoverflow.com/questions/50361733/how-to-associate-user-logged-to-models-in-a-form",
+            "title": "How to associate User Logged to Models in a Form?",
+            "body": "<p>I have a problem. In my project, I need to associate the User logged in a forms to my Models. A forms contains ('user_logged', 'name', 'description' and 'conclusion'), and I wish the forms get user logged automatically, and other fields I will put manually. I try this in my models:</p>\n\n<pre><code>user = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=models.CASCADE)\n</code></pre>\n\n<p>But I fill in my forms, and dont get my user logged, the results for user is: \"None\".</p>\n\n<p>My views below:</p>\n\n<pre><code>@method_decorator(login_required, name='dispatch')\nclass CreateTarefa(CreateView):\nmodel = Tarefa\nfields = ['nome_tarefa', 'descricao', 'concluida']\ntemplate_name = 'tarefa_form.html'\n</code></pre>\n\n<p>Thanks a lot.\nBest wishes.</p>\n"
+        },
+        {
+            "tags": [
+                "asp.net",
+                "excel",
+                "pdf"
+            ],
+            "owner": {
+                "reputation": 98,
+                "user_id": 3085376,
+                "user_type": "registered",
+                "accept_rate": 64,
+                "profile_image": "https://www.gravatar.com/avatar/f1ab0ba4784e7ae006091ab921663c9f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Dreamer XD",
+                "link": "https://stackoverflow.com/users/3085376/dreamer-xd"
+            },
+            "is_answered": false,
+            "view_count": 37,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1526441233,
+            "creation_date": 1526374633,
+            "last_edit_date": 1526379549,
+            "question_id": 50346090,
+            "body_markdown": "Hi I&#39;m trying to Convert my Excel file with textbox and rectangle object to PDF File, I tried to use Spire.Xls but error encountered during conversion XML error then when I tried GemBox textbox and rectangle not showing on PDF then when I tired Microsoft.Office.Interop.Excel not converting properly Thanks in advance",
+            "link": "https://stackoverflow.com/questions/50346090/excel-file-to-pdf-file",
+            "title": "Excel file to PDF File",
+            "body": "<p>Hi I'm trying to Convert my Excel file with textbox and rectangle object to PDF File, I tried to use Spire.Xls but error encountered during conversion XML error then when I tried GemBox textbox and rectangle not showing on PDF then when I tired Microsoft.Office.Interop.Excel not converting properly Thanks in advance</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "arrays",
+                "nested"
+            ],
+            "owner": {
+                "reputation": 10,
+                "user_id": 9712668,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/44c7587182097c36344a5054d1640b1a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "izee",
+                "link": "https://stackoverflow.com/users/9712668/izee"
+            },
+            "is_answered": true,
+            "view_count": 26,
+            "accepted_answer_id": 50361904,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526441197,
+            "creation_date": 1526439943,
+            "last_edit_date": 1526440669,
+            "question_id": 50361891,
+            "body_markdown": "\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    let array2 = [&#39;Banana&#39;, [&#39;Apples&#39;, [&#39;Oranges&#39;], &#39;Blueberries&#39;]];\r\n    document.write(array2[0][0]);\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\nI wanted to print `Apples` in this array. When I tried `array2[0]` it prints `Banana` which is correct,  but when I make it `array2[0][0]` it prints `B`, when I make it like `array2[0][1]` it prints `a`. Seems like the string `Banana` became an array.",
+            "link": "https://stackoverflow.com/questions/50361891/my-nested-array-wont-print-in-javascript",
+            "title": "My nested array won&#39;t print in javascript",
+            "body": "<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-js lang-js prettyprint-override\"><code>let array2 = ['Banana', ['Apples', ['Oranges'], 'Blueberries']];\r\ndocument.write(array2[0][0]);</code></pre>\r\n</div>\r\n</div>\r\n</p>\n\n<p>I wanted to print <code>Apples</code> in this array. When I tried <code>array2[0]</code> it prints <code>Banana</code> which is correct,  but when I make it <code>array2[0][0]</code> it prints <code>B</code>, when I make it like <code>array2[0][1]</code> it prints <code>a</code>. Seems like the string <code>Banana</code> became an array.</p>\n"
+        },
+        {
+            "tags": [
+                "http"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 4471882,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/c986a5e22bbaba76f59a0b65605d1db3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "svevin",
+                "link": "https://stackoverflow.com/users/4471882/svevin"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526441163,
+            "creation_date": 1526439752,
+            "last_edit_date": 1526441163,
+            "question_id": 50361862,
+            "body_markdown": "During an http request, what determines the number and size of data packets for the response? Does this depend upon the Accept header?\r\n\r\nFor example, would a request for application/json result in a single data packet provided that the data is less than some maximum size, while a request for an application/octet-stream result in multiple packets?\r\n\r\nedit: I am particularly interested in the number of data packets chosen and how it is chosen. The possible duplicate question linked makes no mention of that.",
+            "link": "https://stackoverflow.com/questions/50361862/http-requests-and-data-packets",
+            "title": "Http Requests and Data Packets",
+            "body": "<p>During an http request, what determines the number and size of data packets for the response? Does this depend upon the Accept header?</p>\n\n<p>For example, would a request for application/json result in a single data packet provided that the data is less than some maximum size, while a request for an application/octet-stream result in multiple packets?</p>\n\n<p>edit: I am particularly interested in the number of data packets chosen and how it is chosen. The possible duplicate question linked makes no mention of that.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "c++",
+                "tensorflow",
+                "keras"
+            ],
+            "owner": {
+                "reputation": 2665,
+                "user_id": 939259,
+                "user_type": "registered",
+                "accept_rate": 64,
+                "profile_image": "https://www.gravatar.com/avatar/4ee12a004bdd48dab9a040fae4aa51f6?s=128&d=identicon&r=PG",
+                "display_name": "Thomas Johnson",
+                "link": "https://stackoverflow.com/users/939259/thomas-johnson"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526441153,
+            "creation_date": 1526441153,
+            "question_id": 50362045,
+            "body_markdown": "I&#39;m trying to create a Tensorflow model in Keras, initialize it, and then save it so I can use it later in C++. I don&#39;t want to train it with Keras, because I have a custom training method in C++ that I want to use.\r\n\r\nI tried to do this with:\r\n\r\n    def reset_weights(model):\r\n        session = K.get_session()\r\n        for layer in model.layers:\r\n            if hasattr(layer, &#39;kernel_initializer&#39;):\r\n                layer.kernel.initializer.run(session=session)\r\n\r\n\r\n    inputs = Input(shape=(2,), name=&quot;inputs&quot;)\r\n    hidden_l = Dense(5, activation=&#39;relu&#39;, name=&quot;hidden_1&quot;, kernel_initializer=&quot;glorot_normal&quot;)(inputs)\r\n    hidden_l = LeakyReLU(alpha=0.3, name=&quot;hidden_leakyrelu_1&quot;)(hidden_l)\r\n    outputs = Dense(2, activation=&#39;softmax&#39;, name=&quot;outputs&quot;, kernel_initializer=&quot;glorot_normal&quot;)(hidden_l)\r\n    model = Model(inputs=inputs, outputs=outputs)\r\n    \r\n    reset_weights(model)\r\n    K.set_learning_phase(0)\r\n    sess = K.get_session()\r\n    f = &quot;graph_def_for_reference.pb.ascii&quot;\r\n    tf.train.write_graph(sess.graph.as_graph_def(), &quot;./&quot;, f, as_text=True)\r\n\r\nBut the `graph_def_for_reference.pb.ascii` file still seems to contain a bunch of initialization nodes, rather than just the graph structure.\r\n\r\nHow can I run the initialization and save the graph and the initialized weights so I can then load them in TensorFlow C++?\r\n",
+            "link": "https://stackoverflow.com/questions/50362045/save-initialized-tensorflow-graph-from-keras",
+            "title": "Save initialized tensorflow graph from Keras",
+            "body": "<p>I'm trying to create a Tensorflow model in Keras, initialize it, and then save it so I can use it later in C++. I don't want to train it with Keras, because I have a custom training method in C++ that I want to use.</p>\n\n<p>I tried to do this with:</p>\n\n<pre><code>def reset_weights(model):\n    session = K.get_session()\n    for layer in model.layers:\n        if hasattr(layer, 'kernel_initializer'):\n            layer.kernel.initializer.run(session=session)\n\n\ninputs = Input(shape=(2,), name=\"inputs\")\nhidden_l = Dense(5, activation='relu', name=\"hidden_1\", kernel_initializer=\"glorot_normal\")(inputs)\nhidden_l = LeakyReLU(alpha=0.3, name=\"hidden_leakyrelu_1\")(hidden_l)\noutputs = Dense(2, activation='softmax', name=\"outputs\", kernel_initializer=\"glorot_normal\")(hidden_l)\nmodel = Model(inputs=inputs, outputs=outputs)\n\nreset_weights(model)\nK.set_learning_phase(0)\nsess = K.get_session()\nf = \"graph_def_for_reference.pb.ascii\"\ntf.train.write_graph(sess.graph.as_graph_def(), \"./\", f, as_text=True)\n</code></pre>\n\n<p>But the <code>graph_def_for_reference.pb.ascii</code> file still seems to contain a bunch of initialization nodes, rather than just the graph structure.</p>\n\n<p>How can I run the initialization and save the graph and the initialized weights so I can then load them in TensorFlow C++?</p>\n"
+        },
+        {
+            "tags": [
+                "php"
+            ],
+            "owner": {
+                "reputation": 458,
+                "user_id": 6505146,
+                "user_type": "registered",
+                "accept_rate": 90,
+                "profile_image": "https://lh4.googleusercontent.com/-K2CFTSiAj0w/AAAAAAAAAAI/AAAAAAAAABI/SCn-x79VV6Y/photo.jpg?sz=128",
+                "display_name": "Arash Howaida",
+                "link": "https://stackoverflow.com/users/6505146/arash-howaida"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526441109,
+            "creation_date": 1526437883,
+            "last_edit_date": 1526441109,
+            "question_id": 50361648,
+            "body_markdown": "I am trying to get the inner html of a `&lt;p&gt;` tag and save it as a .txt file. It is a very simple page; there is only one `&lt;p&gt;` on it. I tried using `getElementsByTagName(&#39;p&#39;)` as per: https://stackoverflow.com/questions/8144061/using-php-to-get-dom-element. Unfortunately, it didn&#39;t work for me, but maybe I&#39;m missing something. My code is:\r\n\r\n&lt;!-- language: php --&gt;\r\n\r\n    &lt;?php\r\n    $dataPage = file_get_contents(&#39;http://www.somedataurl.com&#39;);\r\n    $doc = new DOMDocument;\r\n    $doc-&gt;loadHTML($dataPage);\r\n    \r\n    $dataNodeList = $doc-&gt;getElementsByTagName(&#39;p&#39;);\r\n    $dataNode = $dataNodeList-&gt;item(0);\r\n    \r\n    function innerHTML($node) {\r\n        return implode(array_map([$node-&gt;ownerDocument, &quot;saveHTML&quot;],\r\n                iterator_to_array($node-&gt;childNodes)));\r\n    }\r\n    \r\n    $theData = innerHTML($dataNode);\r\n    \r\n    header(&#39;Content-Type: text/plain&#39;);\r\n    $filename = date(&#39;Y-m-d&#39;) . &#39;.txt&#39;;\r\n    file_put_contents($filename, $theData);\r\n\r\nThe error log is giving me:\r\n\r\n&gt; PHP Notice: Undefined property:: DOMNodeList (line 10)\r\n&gt; \r\n&gt; \r\n&gt; PHP Notice: Undefined property:: DOMNodeList (line 11)\r\n&gt; \r\n&gt; \r\n&gt; PHP Catchable fatal error (line 11)\r\n\r\nThese errors sound rather alarming, especially the last one.\r\n\r\n**Question:** Is there a better tool I can use other than `getElementsByTagName()` since I am only dealing with one `&lt;p&gt;`? Or can this way work if I adjust a few things?\r\n",
+            "link": "https://stackoverflow.com/questions/50361648/php-save-inner-html-of-p-tag-only-1-p-tag-on-page",
+            "title": "PHP save inner html of p tag, only 1 p tag on page",
+            "body": "<p>I am trying to get the inner html of a <code>&lt;p&gt;</code> tag and save it as a .txt file. It is a very simple page; there is only one <code>&lt;p&gt;</code> on it. I tried using <code>getElementsByTagName('p')</code> as per: <a href=\"https://stackoverflow.com/questions/8144061/using-php-to-get-dom-element\">Using PHP to get DOM Element</a>. Unfortunately, it didn't work for me, but maybe I'm missing something. My code is:</p>\n\n<pre class=\"lang-php prettyprint-override\"><code>&lt;?php\n$dataPage = file_get_contents('http://www.somedataurl.com');\n$doc = new DOMDocument;\n$doc-&gt;loadHTML($dataPage);\n\n$dataNodeList = $doc-&gt;getElementsByTagName('p');\n$dataNode = $dataNodeList-&gt;item(0);\n\nfunction innerHTML($node) {\n    return implode(array_map([$node-&gt;ownerDocument, \"saveHTML\"],\n            iterator_to_array($node-&gt;childNodes)));\n}\n\n$theData = innerHTML($dataNode);\n\nheader('Content-Type: text/plain');\n$filename = date('Y-m-d') . '.txt';\nfile_put_contents($filename, $theData);\n</code></pre>\n\n<p>The error log is giving me:</p>\n\n<blockquote>\n  <p>PHP Notice: Undefined property:: DOMNodeList (line 10)</p>\n  \n  <p>PHP Notice: Undefined property:: DOMNodeList (line 11)</p>\n  \n  <p>PHP Catchable fatal error (line 11)</p>\n</blockquote>\n\n<p>These errors sound rather alarming, especially the last one.</p>\n\n<p><strong>Question:</strong> Is there a better tool I can use other than <code>getElementsByTagName()</code> since I am only dealing with one <code>&lt;p&gt;</code>? Or can this way work if I adjust a few things?</p>\n"
+        },
+        {
+            "tags": [
+                "html",
+                "video",
+                "mobile"
+            ],
+            "owner": {
+                "reputation": 28,
+                "user_id": 7970441,
+                "user_type": "registered",
+                "accept_rate": 40,
+                "profile_image": "https://lh5.googleusercontent.com/-6fPPIgZBxP8/AAAAAAAAAAI/AAAAAAAAAB0/luyu1ab4hYU/photo.jpg?sz=128",
+                "display_name": "Ibrahim Ayyoub",
+                "link": "https://stackoverflow.com/users/7970441/ibrahim-ayyoub"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526441099,
+            "creation_date": 1526440504,
+            "last_edit_date": 1526440650,
+            "question_id": 50361973,
+            "body_markdown": "I was just wondering, why does the `&lt;video&gt;` element not auto-play on mobile devices, such as Android and IOS. Do these platforms and support videos?\r\n\r\n    &lt;div class=&quot;video-test-animated col span-2-of-2&quot;&gt;\r\n       &lt;video class=&quot;video-size&quot;  autoplay muted loop&gt;\r\n        &lt;source src=&quot;videos/final-video-background.mp4&quot; type=&quot;video/mp4&quot;&gt;\r\n       &lt;/video&gt;      \r\n    &lt;/div&gt;",
+            "link": "https://stackoverflow.com/questions/50361973/why-isnt-the-video-autoplaying-on-mobile-devices",
+            "title": "Why isn&#39;t the video autoplaying on mobile devices?",
+            "body": "<p>I was just wondering, why does the <code>&lt;video&gt;</code> element not auto-play on mobile devices, such as Android and IOS. Do these platforms and support videos?</p>\n\n<pre><code>&lt;div class=\"video-test-animated col span-2-of-2\"&gt;\n   &lt;video class=\"video-size\"  autoplay muted loop&gt;\n    &lt;source src=\"videos/final-video-background.mp4\" type=\"video/mp4\"&gt;\n   &lt;/video&gt;      \n&lt;/div&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "node.js",
+                "reactjs"
+            ],
+            "owner": {
+                "reputation": 108,
+                "user_id": 1108968,
+                "user_type": "registered",
+                "accept_rate": 42,
+                "profile_image": "https://www.gravatar.com/avatar/43e2fff121c3c337bb22ce8b98edb2e0?s=128&d=identicon&r=PG",
+                "display_name": "TrongBang",
+                "link": "https://stackoverflow.com/users/1108968/trongbang"
+            },
+            "is_answered": true,
+            "view_count": 14,
+            "accepted_answer_id": 50362035,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1526441078,
+            "creation_date": 1526255927,
+            "question_id": 50321665,
+            "body_markdown": "I upgraded from React 15 and Node 6 to React 16 and Node 8. When I tried to do `npm install`, it fails with contextify module which is required by some dependencies, not mine. The contextify module tries to install node-gyp in my Mac High Seria and it&#39;s failing with missing some C function in Node 8. When I downgraded to node 6, contextify and node-gyp plays along well but React 16 is not supported. Have anyone succeeded?",
+            "link": "https://stackoverflow.com/questions/50321665/error-with-contextify-and-node-gyp-when-installing-react-16-with-node-8-lts",
+            "title": "Error with Contextify and Node Gyp when installing react 16 with node 8 LTS",
+            "body": "<p>I upgraded from React 15 and Node 6 to React 16 and Node 8. When I tried to do <code>npm install</code>, it fails with contextify module which is required by some dependencies, not mine. The contextify module tries to install node-gyp in my Mac High Seria and it's failing with missing some C function in Node 8. When I downgraded to node 6, contextify and node-gyp plays along well but React 16 is not supported. Have anyone succeeded?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html",
+                "css",
+                "node.js",
+                "express"
+            ],
+            "owner": {
+                "reputation": 52,
+                "user_id": 4847664,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://www.gravatar.com/avatar/d668097907d35b74564ed0365cf1b1f3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Annette",
+                "link": "https://stackoverflow.com/users/4847664/annette"
+            },
+            "is_answered": false,
+            "view_count": 31,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526441077,
+            "creation_date": 1526432982,
+            "last_edit_date": 1526441077,
+            "question_id": 50361119,
+            "body_markdown": "I have my website running in expressjs and was trying to add the redirect from non-www or nonsecure site to secure www site.\r\n\r\nMy site is redirected correctly, but the page is not loading properly. When I check in the chrome console, I see the error as  below\r\n[![enter image description here][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/r4xBt.jpg\r\n\r\n\r\nThis is my code in app.js file for redirect,\r\n\r\n&lt;!-- begin snippet: js hide: false console: true babel: false --&gt;\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    app.get(&#39;/*&#39;, function(req, res, next) {\r\n      //console.log(req.headers.host)\r\n      if (req.headers.host.match(/somewebsitename/))\r\n      {\r\n        if (req.headers.host.match(/^www/) == null )\r\n        {\r\n          res.redirect(301,&#39;https://www.&#39; + req.headers.host + req.url);\r\n        }\r\n        else if ((req.headers.host.match(/^www/)) &amp;&amp; !(req.secure))\r\n        {\r\n          res.redirect(301,&#39;https://&#39; + req.headers.host + req.url);\r\n        }\r\n        else next();\r\n      }\r\n      else next();\r\n    });\r\n\r\n&lt;!-- end snippet --&gt;\r\n\r\nCan you please let me know what is wrong &amp; the right way to do the redirect?",
+            "link": "https://stackoverflow.com/questions/50361119/err-too-many-redirects-error-for-css-js-files-in-expressjs",
+            "title": "ERR_TOO_MANY_REDIRECTS error for css &amp;js files in expressjs",
+            "body": "<p>I have my website running in expressjs and was trying to add the redirect from non-www or nonsecure site to secure www site.</p>\n\n<p>My site is redirected correctly, but the page is not loading properly. When I check in the chrome console, I see the error as  below\n<a href=\"https://i.stack.imgur.com/r4xBt.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/r4xBt.jpg\" alt=\"enter image description here\"></a></p>\n\n<p>This is my code in app.js file for redirect,</p>\n\n<p><div class=\"snippet\" data-lang=\"js\" data-hide=\"false\" data-console=\"true\" data-babel=\"false\">\r\n<div class=\"snippet-code\">\r\n<pre class=\"snippet-code-js lang-js prettyprint-override\"><code>app.get('/*', function(req, res, next) {\r\n  //console.log(req.headers.host)\r\n  if (req.headers.host.match(/somewebsitename/))\r\n  {\r\n    if (req.headers.host.match(/^www/) == null )\r\n    {\r\n      res.redirect(301,'https://www.' + req.headers.host + req.url);\r\n    }\r\n    else if ((req.headers.host.match(/^www/)) &amp;&amp; !(req.secure))\r\n    {\r\n      res.redirect(301,'https://' + req.headers.host + req.url);\r\n    }\r\n    else next();\r\n  }\r\n  else next();\r\n});</code></pre>\r\n</div>\r\n</div>\r\n</p>\n\n<p>Can you please let me know what is wrong &amp; the right way to do the redirect?</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 133
+}

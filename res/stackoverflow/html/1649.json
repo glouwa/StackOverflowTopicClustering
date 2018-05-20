@@ -1,0 +1,840 @@
+{
+    "items": [
+        {
+            "tags": [
+                "javascript",
+                "node.js",
+                "parallel-processing",
+                "web-worker",
+                "child-process"
+            ],
+            "owner": {
+                "reputation": 966,
+                "user_id": 6660433,
+                "user_type": "registered",
+                "accept_rate": 85,
+                "profile_image": "https://graph.facebook.com/1206212896066130/picture?type=large",
+                "display_name": "neoflash",
+                "link": "https://stackoverflow.com/users/6660433/neoflash"
+            },
+            "is_answered": false,
+            "view_count": 38,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526416739,
+            "creation_date": 1526402246,
+            "last_edit_date": 1526415884,
+            "question_id": 50355260,
+            "body_markdown": "I&#39;m familiar with Web Workers in the browser and figured that the Node.js equivalent of doing \r\n\r\n    const worker = new Worker(&#39;./worker&#39;)\r\n\r\nis\r\n\r\n    const worker = child_process.fork(&#39;./worker&#39;)\r\n\r\nThe API is a bit different, and they don&#39;t quite work the same under the hood but in the end Web Workers and Child Processes seem to both do roughly the same thing; allow you to run JavaScript code in parallel.\r\n\r\nNow, there is this neat thing that can be done with Web Workers where instead of creating a Worker by passing the path/url of the file containing the worker code you can pass an actual function. This can be achieved with this simple three line function:\r\n\r\n    function createWorker(fn) {\r\n      var blob = new Blob([&#39;self.onmessage = &#39;, fn.toString()], { type: &#39;text/javascript&#39; });\r\n      var url = URL.createObjectURL(blob);\r\n      \r\n      return new Worker(url);\r\n    }\r\n\r\nThis allows you to write your worker code inline, in the main/master/parent (whatever you wanna call it) file, like this:\r\n\r\n    var myWorker = createWorker(function (e) {\r\n      self.postMessage(e.data.toUpperCase());\r\n    });\r\n    \r\n    myWorker.onMessage = function (e) {\r\n      console.log(e.data); // HELLO FROM AN INLINE WORKER!\r\n    }\r\n    \r\n    myWorker.postMessage(&#39;hello from an inline worker!&#39;)\r\n\r\n**QUESTION**  \r\nHow can I achieve the same thing with Node.js Child Processes? I couldn&#39;t tell from looking at the documentation whether or not you could pass something other than a module path to child_process.fork or if there was any other way to achieve what I want; to write inline child processes.\r\n  \r\n**UPDATE**  \r\nI have tried the following, based on @Bergi &#39;s suggestion in the comments:\r\n\r\n    const fileSync = require(&#39;tmp&#39;).fileSync;\r\n    const writeFileSync = require(&#39;fs&#39;).writeFileSync;\r\n    const fork = require(&#39;child_process&#39;).fork;\r\n    \r\n    function createWorker(fn) {\r\n      const tmpobj = fileSync();\r\n      writeFileSync(tmpobj.name, fn.toString()); \r\n       \r\n      return fork(tmpobj.name);\r\n    }\r\n    \r\n    var myWorker = createWorker(function (e) {\r\n      process.send(e.toUpperCase());\r\n    });\r\n    \r\n    myWorker.on(&#39;message&#39;, function (e) {\r\n      console.log(e); // HELLO FROM AN INLINE WORKER!\r\n    })\r\n    \r\n    myWorker.send(&#39;hello from an inline worker!&#39;);\r\n\r\nAlas, I am getting the following error:\r\n\r\n    C:\\Users\\phili\\AppData\\Local\\Temp\\tmp-165566BgqUKKM5yjR.tmp:1\r\n    (function (exports, require, module, __filename, __dirname) { function (e) {\r\n                                                                           ^\r\n    \r\n    SyntaxError: Unexpected token (\r\n        at createScript (vm.js:80:10)\r\n        at Object.runInThisContext (vm.js:139:10)\r\n        at Module._compile (module.js:616:28)\r\n        at Object.Module._extensions..js (module.js:663:10)\r\n        at Module.load (module.js:565:32)\r\n        at tryModuleLoad (module.js:505:12)\r\n        at Function.Module._load (module.js:497:3)\r\n        at Function.Module.runMain (module.js:693:10)\r\n        at startup (bootstrap_node.js:188:16)\r\n        at bootstrap_node.js:609:3\r\n\r\nI&#39;m afraid I am out of my depth here. Any idea what is going on and how I can get it to work?",
+            "link": "https://stackoverflow.com/questions/50355260/inline-child-processes-in-node-js",
+            "title": "Inline Child Processes in Node.js",
+            "body": "<p>I'm familiar with Web Workers in the browser and figured that the Node.js equivalent of doing </p>\n\n<pre><code>const worker = new Worker('./worker')\n</code></pre>\n\n<p>is</p>\n\n<pre><code>const worker = child_process.fork('./worker')\n</code></pre>\n\n<p>The API is a bit different, and they don't quite work the same under the hood but in the end Web Workers and Child Processes seem to both do roughly the same thing; allow you to run JavaScript code in parallel.</p>\n\n<p>Now, there is this neat thing that can be done with Web Workers where instead of creating a Worker by passing the path/url of the file containing the worker code you can pass an actual function. This can be achieved with this simple three line function:</p>\n\n<pre><code>function createWorker(fn) {\n  var blob = new Blob(['self.onmessage = ', fn.toString()], { type: 'text/javascript' });\n  var url = URL.createObjectURL(blob);\n\n  return new Worker(url);\n}\n</code></pre>\n\n<p>This allows you to write your worker code inline, in the main/master/parent (whatever you wanna call it) file, like this:</p>\n\n<pre><code>var myWorker = createWorker(function (e) {\n  self.postMessage(e.data.toUpperCase());\n});\n\nmyWorker.onMessage = function (e) {\n  console.log(e.data); // HELLO FROM AN INLINE WORKER!\n}\n\nmyWorker.postMessage('hello from an inline worker!')\n</code></pre>\n\n<p><strong>QUESTION</strong><br>\nHow can I achieve the same thing with Node.js Child Processes? I couldn't tell from looking at the documentation whether or not you could pass something other than a module path to child_process.fork or if there was any other way to achieve what I want; to write inline child processes.</p>\n\n<p><strong>UPDATE</strong><br>\nI have tried the following, based on @Bergi 's suggestion in the comments:</p>\n\n<pre><code>const fileSync = require('tmp').fileSync;\nconst writeFileSync = require('fs').writeFileSync;\nconst fork = require('child_process').fork;\n\nfunction createWorker(fn) {\n  const tmpobj = fileSync();\n  writeFileSync(tmpobj.name, fn.toString()); \n\n  return fork(tmpobj.name);\n}\n\nvar myWorker = createWorker(function (e) {\n  process.send(e.toUpperCase());\n});\n\nmyWorker.on('message', function (e) {\n  console.log(e); // HELLO FROM AN INLINE WORKER!\n})\n\nmyWorker.send('hello from an inline worker!');\n</code></pre>\n\n<p>Alas, I am getting the following error:</p>\n\n<pre><code>C:\\Users\\phili\\AppData\\Local\\Temp\\tmp-165566BgqUKKM5yjR.tmp:1\n(function (exports, require, module, __filename, __dirname) { function (e) {\n                                                                       ^\n\nSyntaxError: Unexpected token (\n    at createScript (vm.js:80:10)\n    at Object.runInThisContext (vm.js:139:10)\n    at Module._compile (module.js:616:28)\n    at Object.Module._extensions..js (module.js:663:10)\n    at Module.load (module.js:565:32)\n    at tryModuleLoad (module.js:505:12)\n    at Function.Module._load (module.js:497:3)\n    at Function.Module.runMain (module.js:693:10)\n    at startup (bootstrap_node.js:188:16)\n    at bootstrap_node.js:609:3\n</code></pre>\n\n<p>I'm afraid I am out of my depth here. Any idea what is going on and how I can get it to work?</p>\n"
+        },
+        {
+            "tags": [
+                "amazon-web-services",
+                "amazon-cloudsearch"
+            ],
+            "owner": {
+                "reputation": 2816,
+                "user_id": 1003815,
+                "user_type": "registered",
+                "accept_rate": 73,
+                "profile_image": "https://www.gravatar.com/avatar/a2de7b72452cde6ac37a07e506d68149?s=128&d=identicon&r=PG",
+                "display_name": "RTF",
+                "link": "https://stackoverflow.com/users/1003815/rtf"
+            },
+            "is_answered": true,
+            "view_count": 14,
+            "accepted_answer_id": 50358840,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526416733,
+            "creation_date": 1526041962,
+            "question_id": 50292436,
+            "body_markdown": "Using AWS Cloudsearch, I need to query 2 separate fields for the same value using a structured (compound) query e.g.\r\n\r\n    (and (or name:&#39;john smith&#39;) (or curr_addr:&#39;123 someplace&#39; other_addr:&#39;123 someplace&#39;))\r\n\r\nThis query works, but I&#39;m wondering if it&#39;s necessary to repeat the value for each field that I want to search against. Is there some way to specify the value only once e.g. `curr_addr+other_addr:&#39;123 someplace&#39;`",
+            "link": "https://stackoverflow.com/questions/50292436/is-it-possible-to-query-multiple-aws-cloudsearch-fields-for-the-same-value-witho",
+            "title": "Is it possible to query multiple AWS Cloudsearch fields for the same value without repeating?",
+            "body": "<p>Using AWS Cloudsearch, I need to query 2 separate fields for the same value using a structured (compound) query e.g.</p>\n\n<pre><code>(and (or name:'john smith') (or curr_addr:'123 someplace' other_addr:'123 someplace'))\n</code></pre>\n\n<p>This query works, but I'm wondering if it's necessary to repeat the value for each field that I want to search against. Is there some way to specify the value only once e.g. <code>curr_addr+other_addr:'123 someplace'</code></p>\n"
+        },
+        {
+            "tags": [
+                "typescript",
+                "inversion-of-control",
+                "inversifyjs"
+            ],
+            "owner": {
+                "reputation": 719,
+                "user_id": 2348615,
+                "user_type": "registered",
+                "accept_rate": 85,
+                "profile_image": "https://www.gravatar.com/avatar/a63740c597abaf6fcfba0e89ccd517dd?s=128&d=identicon&r=PG",
+                "display_name": "Wendell Muntslag",
+                "link": "https://stackoverflow.com/users/2348615/wendell-muntslag"
+            },
+            "is_answered": true,
+            "view_count": 29,
+            "accepted_answer_id": 50358563,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526416722,
+            "creation_date": 1526295231,
+            "last_edit_date": 1526298586,
+            "question_id": 50328582,
+            "body_markdown": "I am trying to have templates automagically wired to an inversifyjs container but whatever I try it&#39;s not working. Please help?\r\n\r\n\r\n    \r\n    private templates = [\r\n        {file: &#39;./component.html.tpl&#39;, obj: &#39;HtmlTemplate&#39;},\r\n        {file: &#39;./component.tpl.ts&#39;, obj: &#39;ComponentTemplate&#39;}\r\n    ];\r\n    private container = new Container();\r\n    bind(){\r\n        // original and working code \r\n        // this.container.bind&lt;ITemplate&gt;(&#39;HtmlTemplate&#39;).to(HtmlTemplate);\r\n        // this.container.bind&lt;ITemplate&gt;(&#39;ComponentTemplate&#39;).to(ComponentTemplate);\r\n        this.templates.forEach(template =&gt; {\r\n            import(template.file).then(mod =&gt; {\r\n                console.log(mod.default, template);\r\n                // is this correct (seems to work) =&gt; \r\n                this.container.bind&lt;ITemplate&gt;(template.obj).to(mod.default);\r\n                console.log(&#39;bound =&gt;&#39;, mod.default);\r\n            });\r\n        });\r\n    }\r\n\r\nand files ./component.html.tpl\r\n\r\n    @injectable() export default class HtmlTemplate implements ITemplate { ... }\r\n\r\nand ./component.ts.tpl\r\n\r\n\r\n    @injectable() export default class ComponentTemplate implements ITemplate { ... }\r\n\r\nWhich logs completely as expected to the console:\r\n\r\n    [Function: HtmlTemplate] { file: &#39;./component.html.tpl&#39;, obj: &#39;HtmlTemplate&#39; }\r\n    [Function: ComponentTemplate] { file: &#39;./component.tpl.ts&#39;, obj: &#39;ComponentTemplate&#39; }\r\n\r\nBut I really expected the code in the foreach statement:\r\n\r\n    this.container.bind&lt;ITemplate&gt;(template.obj).to(mod.default);\r\n\r\nto be equivalent to this:\r\n\r\n    this.container.bind&lt;HtmlTemplate&gt;(&#39;HtmlTemplate&#39;).to(HtmlTemplate);\r\n    this.container.bind&lt;ComponentTemplate&gt;(&#39;ComponentTemplate&#39;).to(ComponentTemplate);\r\n\r\nbut when I try to resolve it in an other loop:\r\n\r\n    this.templates.forEach(template =&gt; {\r\n        const tpl = this.container.get&lt;ITemplate&gt;(template.obj);\r\n    ...\r\n\r\nit throws an error:\r\n\r\n    Error: No matching bindings found for serviceIdentifier HtmlTemplate\r\n\r\nAnyone know how to solve this?",
+            "link": "https://stackoverflow.com/questions/50328582/how-to-dynamically-bind-a-dynamically-imported-type",
+            "title": "How to dynamically bind a dynamically imported type",
+            "body": "<p>I am trying to have templates automagically wired to an inversifyjs container but whatever I try it's not working. Please help?</p>\n\n<pre><code>private templates = [\n    {file: './component.html.tpl', obj: 'HtmlTemplate'},\n    {file: './component.tpl.ts', obj: 'ComponentTemplate'}\n];\nprivate container = new Container();\nbind(){\n    // original and working code \n    // this.container.bind&lt;ITemplate&gt;('HtmlTemplate').to(HtmlTemplate);\n    // this.container.bind&lt;ITemplate&gt;('ComponentTemplate').to(ComponentTemplate);\n    this.templates.forEach(template =&gt; {\n        import(template.file).then(mod =&gt; {\n            console.log(mod.default, template);\n            // is this correct (seems to work) =&gt; \n            this.container.bind&lt;ITemplate&gt;(template.obj).to(mod.default);\n            console.log('bound =&gt;', mod.default);\n        });\n    });\n}\n</code></pre>\n\n<p>and files ./component.html.tpl</p>\n\n<pre><code>@injectable() export default class HtmlTemplate implements ITemplate { ... }\n</code></pre>\n\n<p>and ./component.ts.tpl</p>\n\n<pre><code>@injectable() export default class ComponentTemplate implements ITemplate { ... }\n</code></pre>\n\n<p>Which logs completely as expected to the console:</p>\n\n<pre><code>[Function: HtmlTemplate] { file: './component.html.tpl', obj: 'HtmlTemplate' }\n[Function: ComponentTemplate] { file: './component.tpl.ts', obj: 'ComponentTemplate' }\n</code></pre>\n\n<p>But I really expected the code in the foreach statement:</p>\n\n<pre><code>this.container.bind&lt;ITemplate&gt;(template.obj).to(mod.default);\n</code></pre>\n\n<p>to be equivalent to this:</p>\n\n<pre><code>this.container.bind&lt;HtmlTemplate&gt;('HtmlTemplate').to(HtmlTemplate);\nthis.container.bind&lt;ComponentTemplate&gt;('ComponentTemplate').to(ComponentTemplate);\n</code></pre>\n\n<p>but when I try to resolve it in an other loop:</p>\n\n<pre><code>this.templates.forEach(template =&gt; {\n    const tpl = this.container.get&lt;ITemplate&gt;(template.obj);\n...\n</code></pre>\n\n<p>it throws an error:</p>\n\n<pre><code>Error: No matching bindings found for serviceIdentifier HtmlTemplate\n</code></pre>\n\n<p>Anyone know how to solve this?</p>\n"
+        },
+        {
+            "tags": [
+                "vba",
+                "excel-vba",
+                "access-vba"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9796554,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-jrR69OAFQUk/AAAAAAAAAAI/AAAAAAAAAB8/Mweha97PKPY/photo.jpg?sz=128",
+                "display_name": "PikminGod Olimar",
+                "link": "https://stackoverflow.com/users/9796554/pikmingod-olimar"
+            },
+            "is_answered": true,
+            "view_count": 13,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526416720,
+            "creation_date": 1526416159,
+            "last_edit_date": 1526416622,
+            "question_id": 50358709,
+            "body_markdown": "I have created a combobox with 3 options. I have 3 types of .OFT that correlate with this combobox. The combobox is named Study_String.\r\n\r\n    Dim Study_Stage As String\r\n    \r\n    If Study_Stage &lt;&gt; &quot;Start-Up&quot; Or Study_Stage &lt;&gt; &quot;Closed at IRB&quot; Then\r\n    \r\n\t    Set objMsg = OutApp.CreateItemFromTemplate(&quot;X:\\Users\\Test Realm\\OFT Template Maintenance.oft&quot;)\r\n\t    \r\n    End If\r\n\r\n    If Study_Stage = &quot;Maintenance&quot; Or Study_Stage &lt;&gt; &quot;Closed at IRB&quot; Then\r\n    \r\n    \tSet objMsg = OutApp.CreateItemFromTemplate(&quot;X:\\Users\\Test Realm\\OFT Template Start Up.oft&quot;)\r\n    \r\n    End If\r\n    \r\n    If Study_Stage &lt;&gt; &quot;Maintenance&quot; Or Study_Stage &lt;&gt; &quot;Start-Up&quot; Then\r\n    \r\n    \tSet objMsg = OutApp.CreateItemFromTemplate(&quot;X:\\Users\\Test Realm\\OFT Template Closure.oft&quot;)\r\n    \r\n    End If\r\n    \r\nAs it stands right now, it just uses the &#39;OFT TEMPLATE CLOSURE.OFT&#39; and won&#39;t use the other two. I&#39;ve been teaching myself VBA, so any guidance you can give would be amazing!",
+            "link": "https://stackoverflow.com/questions/50358709/selecting-a-oft-based-on-answer-to-combobox",
+            "title": "Selecting a .OFT based on answer to ComboBox",
+            "body": "<p>I have created a combobox with 3 options. I have 3 types of .OFT that correlate with this combobox. The combobox is named <code>Study_String</code>.</p>\n\n<pre><code>Dim Study_Stage As String\n\nIf Study_Stage &lt;&gt; \"Start-Up\" Or Study_Stage &lt;&gt; \"Closed at IRB\" Then\n\n    Set objMsg = OutApp.CreateItemFromTemplate(\"X:\\Users\\Test Realm\\OFT Template Maintenance.oft\")\n\nEnd If\n\nIf Study_Stage = \"Maintenance\" Or Study_Stage &lt;&gt; \"Closed at IRB\" Then\n\n    Set objMsg = OutApp.CreateItemFromTemplate(\"X:\\Users\\Test Realm\\OFT Template Start Up.oft\")\n\nEnd If\n\nIf Study_Stage &lt;&gt; \"Maintenance\" Or Study_Stage &lt;&gt; \"Start-Up\" Then\n\n    Set objMsg = OutApp.CreateItemFromTemplate(\"X:\\Users\\Test Realm\\OFT Template Closure.oft\")\n\nEnd If\n</code></pre>\n\n<p>As it stands right now, it just uses the 'OFT TEMPLATE CLOSURE.OFT' and won't use the other two.</p>\n"
+        },
+        {
+            "tags": [
+                "apache",
+                "xampp",
+                "logfile",
+                "controlpanel",
+                "event-viewer"
+            ],
+            "owner": {
+                "reputation": 1378,
+                "user_id": 1586383,
+                "user_type": "registered",
+                "accept_rate": 83,
+                "profile_image": "https://i.stack.imgur.com/6IKrX.jpg?s=128&g=1",
+                "display_name": "Jan Tacci",
+                "link": "https://stackoverflow.com/users/1586383/jan-tacci"
+            },
+            "is_answered": true,
+            "view_count": 9241,
+            "answer_count": 5,
+            "score": 15,
+            "last_activity_date": 1526416715,
+            "creation_date": 1389652303,
+            "last_edit_date": 1389653749,
+            "question_id": 21102707,
+            "body_markdown": "I have XAMPP installed on my machine. I am trying to run Apache from the XAMPP Control Panel.\r\n\r\nI start the XAMPP Control Panel by right-clicking the shortcut and selecting &quot;Run as administrator&quot; (I am logged in on an account with Administrator privileges). The Control Panel starts up and everything appears to be in order (no error messages/warnings).\r\n\r\n![Xampp Control Panel After Startup][1]\r\n\r\nWhen I click the *Start* button next to Apache I get the following error message:\r\n\r\n    2:22:44 PM  [Apache] \tAttempting to start Apache app...\r\n    2:22:45 PM  [Apache] \tStatus change detected: running\r\n    2:22:45 PM  [Apache] \tStatus change detected: stopped\r\n    2:22:45 PM  [Apache] \tError: Apache shutdown unexpectedly.\r\n    2:22:45 PM  [Apache] \tThis may be due to a blocked port, missing dependencies, \r\n    2:22:45 PM  [Apache] \timproper privileges, a crash, or a shutdown by another method.\r\n    2:22:45 PM  [Apache] \tCheck the &quot;/xampp/apache/logs/error.log&quot; file\r\n    2:22:45 PM  [Apache] \tand the Windows Event Viewer for more clues\r\n\r\n![Xampp Control Panel Apache Error][2]\r\n\r\nNote that it&#39;s telling me Apache has shutdown unexpectedly and to check the error.log file and the Windows Event Viewer.\r\n\r\nI checked the error.log file but it&#39;s empty:\r\n\r\n![Apache Error Log File Empty][3]\r\n\r\nI also checked for any events using Windows Event Viewer but the event viewer shows no events (under Application):\r\n\r\n![Windows Event Viewer No Application Events][4]\r\n\r\nI have checked for programs that might be blocking ports, etc. (like Skype, Visual SVN Server) and closed any programs that might be causing the issue.\r\n \r\nIs there anything else I can do to find out what might be going on? \r\n\r\nThank you.\r\n\r\n***UPDATE***\r\n\r\nI figured out the problem by trying to run apache from a DOS command prompt. Running from the command prompt gave me the specific errors and the location in the httpd.conf file where those errors were. It turns out that my *ServerRoot* and *DocumentRoot* values were incorrect (pointing to wrong directories). I changed them to point to the correct directories and now I can start apache from the Control Panel.\r\n\r\nCurious, why didn&#39;t I see the error messages about *ServerRoot* and *DocumentRoot* when launching from the Control Panel? \r\n\r\n\r\n  [1]: http://i.stack.imgur.com/6cdKD.png\r\n  [2]: http://i.stack.imgur.com/xZvSR.png\r\n  [3]: http://i.stack.imgur.com/GB4hq.png\r\n  [4]: http://i.stack.imgur.com/ug2ED.png",
+            "link": "https://stackoverflow.com/questions/21102707/xampp-apache-shuts-down-unexpectedly-empty-log-file-and-no-events",
+            "title": "Xampp - Apache Shuts Down Unexpectedly, Empty Log File And No Events",
+            "body": "<p>I have XAMPP installed on my machine. I am trying to run Apache from the XAMPP Control Panel.</p>\n\n<p>I start the XAMPP Control Panel by right-clicking the shortcut and selecting \"Run as administrator\" (I am logged in on an account with Administrator privileges). The Control Panel starts up and everything appears to be in order (no error messages/warnings).</p>\n\n<p><img src=\"https://i.stack.imgur.com/6cdKD.png\" alt=\"Xampp Control Panel After Startup\"></p>\n\n<p>When I click the <em>Start</em> button next to Apache I get the following error message:</p>\n\n<pre><code>2:22:44 PM  [Apache]    Attempting to start Apache app...\n2:22:45 PM  [Apache]    Status change detected: running\n2:22:45 PM  [Apache]    Status change detected: stopped\n2:22:45 PM  [Apache]    Error: Apache shutdown unexpectedly.\n2:22:45 PM  [Apache]    This may be due to a blocked port, missing dependencies, \n2:22:45 PM  [Apache]    improper privileges, a crash, or a shutdown by another method.\n2:22:45 PM  [Apache]    Check the \"/xampp/apache/logs/error.log\" file\n2:22:45 PM  [Apache]    and the Windows Event Viewer for more clues\n</code></pre>\n\n<p><img src=\"https://i.stack.imgur.com/xZvSR.png\" alt=\"Xampp Control Panel Apache Error\"></p>\n\n<p>Note that it's telling me Apache has shutdown unexpectedly and to check the error.log file and the Windows Event Viewer.</p>\n\n<p>I checked the error.log file but it's empty:</p>\n\n<p><img src=\"https://i.stack.imgur.com/GB4hq.png\" alt=\"Apache Error Log File Empty\"></p>\n\n<p>I also checked for any events using Windows Event Viewer but the event viewer shows no events (under Application):</p>\n\n<p><img src=\"https://i.stack.imgur.com/ug2ED.png\" alt=\"Windows Event Viewer No Application Events\"></p>\n\n<p>I have checked for programs that might be blocking ports, etc. (like Skype, Visual SVN Server) and closed any programs that might be causing the issue.</p>\n\n<p>Is there anything else I can do to find out what might be going on? </p>\n\n<p>Thank you.</p>\n\n<p><strong><em>UPDATE</em></strong></p>\n\n<p>I figured out the problem by trying to run apache from a DOS command prompt. Running from the command prompt gave me the specific errors and the location in the httpd.conf file where those errors were. It turns out that my <em>ServerRoot</em> and <em>DocumentRoot</em> values were incorrect (pointing to wrong directories). I changed them to point to the correct directories and now I can start apache from the Control Panel.</p>\n\n<p>Curious, why didn't I see the error messages about <em>ServerRoot</em> and <em>DocumentRoot</em> when launching from the Control Panel? </p>\n"
+        },
+        {
+            "tags": [
+                "spring-security",
+                "grails3"
+            ],
+            "owner": {
+                "reputation": 15,
+                "user_id": 5758172,
+                "user_type": "registered",
+                "accept_rate": 43,
+                "profile_image": "https://www.gravatar.com/avatar/9ca6ebfd3cefd0abdff381179e5db29e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user5758172",
+                "link": "https://stackoverflow.com/users/5758172/user5758172"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526416712,
+            "creation_date": 1526411634,
+            "question_id": 50357648,
+            "body_markdown": "So I am able to successfully install plugin 3.1.2 to grails 3.1.\r\nI want to show common general info page and then when the user clicks on the login option then redirect the user to /login/auth page. But right now as soon as I start my app it goes to /login/auth page?\r\n\r\nThanks,\r\nSnehal",
+            "link": "https://stackoverflow.com/questions/50357648/grails-sprint-security-page-redirect-to-login-page",
+            "title": "grails sprint security page redirect to login page",
+            "body": "<p>So I am able to successfully install plugin 3.1.2 to grails 3.1.\nI want to show common general info page and then when the user clicks on the login option then redirect the user to /login/auth page. But right now as soon as I start my app it goes to /login/auth page?</p>\n\n<p>Thanks,\nSnehal</p>\n"
+        },
+        {
+            "tags": [
+                "ruby-on-rails",
+                "rubygems",
+                "erd"
+            ],
+            "owner": {
+                "reputation": 130,
+                "user_id": 2223459,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/6c6c9845e541bb1a5ec2771a515350b3?s=128&d=identicon&r=PG",
+                "display_name": "Ojas Kale",
+                "link": "https://stackoverflow.com/users/2223459/ojas-kale"
+            },
+            "is_answered": false,
+            "view_count": 29,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526416705,
+            "creation_date": 1501858591,
+            "question_id": 45509934,
+            "body_markdown": "I am trying to create an ER diagram for my project using `RailRoady`. I am also using `PaperTrail` gem. because of this my ERD is all messed up. Is there any way to exclude PaperTrail::version table from ERD? \r\n\r\nI went through following issue but couldn&#39;t understand much\r\n\r\nhttps://github.com/preston/railroady/issues/54\r\n\r\nand\r\n\r\nhttps://github.com/preston/railroady/pull/115\r\n\r\nCan anyone give a snippet / Example.\r\n",
+            "link": "https://stackoverflow.com/questions/45509934/exclude-model-from-railroady-digram",
+            "title": "Exclude model from Railroady digram",
+            "body": "<p>I am trying to create an ER diagram for my project using <code>RailRoady</code>. I am also using <code>PaperTrail</code> gem. because of this my ERD is all messed up. Is there any way to exclude PaperTrail::version table from ERD? </p>\n\n<p>I went through following issue but couldn't understand much</p>\n\n<p><a href=\"https://github.com/preston/railroady/issues/54\" rel=\"nofollow noreferrer\">https://github.com/preston/railroady/issues/54</a></p>\n\n<p>and</p>\n\n<p><a href=\"https://github.com/preston/railroady/pull/115\" rel=\"nofollow noreferrer\">https://github.com/preston/railroady/pull/115</a></p>\n\n<p>Can anyone give a snippet / Example.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "spring",
+                "thymeleaf"
+            ],
+            "owner": {
+                "reputation": 3697,
+                "user_id": 196032,
+                "user_type": "registered",
+                "accept_rate": 49,
+                "profile_image": "https://www.gravatar.com/avatar/b75136316e93a66545dd346297fad09e?s=128&d=identicon&r=PG",
+                "display_name": "Alex R",
+                "link": "https://stackoverflow.com/users/196032/alex-r"
+            },
+            "is_answered": true,
+            "view_count": 28,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526416699,
+            "creation_date": 1526408837,
+            "last_edit_date": 1526414959,
+            "question_id": 50356986,
+            "body_markdown": "In a Java/Spring/Themeleaf application, how can CSS/JS optimization be enabled in code only, without adding another component outside the platform (e.g. Apache)?\r\n\r\nI&#39;m talking about optimizations like this:\r\n\r\n- https://github.com/JonathanWalsh/Granule\r\n\r\nwhich is in Java but has its own syntax and not integrated with Spring MVC or Thymeleaf, besides being last updated seven years ago,\r\n\r\nand this:\r\n\r\n - https://www.modpagespeed.com/doc/filter-prioritize-critical-css\r\n - https://www.modpagespeed.com/doc/filter-css-combine\r\n - https://www.modpagespeed.com/doc/filter-js-combine\r\n - https://www.modpagespeed.com/doc/filter-js-minify\r\n\r\nwhich looks great but runs on Apache. I understand I could stick an Apache server between our CDN Reverse Proxy and App Servers, but that&#39;s a whole new level of complexity and right now I&#39;m looking for a developer-oriented solution that can be managed as part of the application code within Java / Spring / Thymeleaf.\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50356986/css-js-optimizer-for-java-spring-thymeleaf-application",
+            "title": "CSS/JS optimizer for Java/Spring/Thymeleaf application?",
+            "body": "<p>In a Java/Spring/Themeleaf application, how can CSS/JS optimization be enabled in code only, without adding another component outside the platform (e.g. Apache)?</p>\n\n<p>I'm talking about optimizations like this:</p>\n\n<ul>\n<li><a href=\"https://github.com/JonathanWalsh/Granule\" rel=\"nofollow noreferrer\">https://github.com/JonathanWalsh/Granule</a></li>\n</ul>\n\n<p>which is in Java but has its own syntax and not integrated with Spring MVC or Thymeleaf, besides being last updated seven years ago,</p>\n\n<p>and this:</p>\n\n<ul>\n<li><a href=\"https://www.modpagespeed.com/doc/filter-prioritize-critical-css\" rel=\"nofollow noreferrer\">https://www.modpagespeed.com/doc/filter-prioritize-critical-css</a></li>\n<li><a href=\"https://www.modpagespeed.com/doc/filter-css-combine\" rel=\"nofollow noreferrer\">https://www.modpagespeed.com/doc/filter-css-combine</a></li>\n<li><a href=\"https://www.modpagespeed.com/doc/filter-js-combine\" rel=\"nofollow noreferrer\">https://www.modpagespeed.com/doc/filter-js-combine</a></li>\n<li><a href=\"https://www.modpagespeed.com/doc/filter-js-minify\" rel=\"nofollow noreferrer\">https://www.modpagespeed.com/doc/filter-js-minify</a></li>\n</ul>\n\n<p>which looks great but runs on Apache. I understand I could stick an Apache server between our CDN Reverse Proxy and App Servers, but that's a whole new level of complexity and right now I'm looking for a developer-oriented solution that can be managed as part of the application code within Java / Spring / Thymeleaf.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html",
+                "if-statement"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9796328,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/2077173649222388/picture?type=large",
+                "display_name": "Kye Atkinson",
+                "link": "https://stackoverflow.com/users/9796328/kye-atkinson"
+            },
+            "is_answered": false,
+            "view_count": 56,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526416692,
+            "creation_date": 1526413230,
+            "last_edit_date": 1526413277,
+            "question_id": 50358014,
+            "body_markdown": "I am making an artificial intelligent agent to play google chromes t-rex game and need help creating a loop for the game to continuously play at the moment to begin the game I have to actually press space. \r\n\r\n    document.getElementById(&quot;botStatus&quot;).addEventListener(&quot;change&quot;, function() {\r\n\r\n      if (this.checked === true) {\r\n        // Activate bot\r\n        var INTERVAL = 2;\r\n        window.tRexBot = setInterval(function() {\r\n          var tRex = Runner.instance_.tRex;\r\n          var obstacles = Runner.instance_.horizon.obstacles;\r\n          var lengthsize = 0;\r\n          var a = 0.1;\r\n          var b = 5;\r\n          var c = 35;\r\n          var d = 160;\r\n          var posWidth = 20;\r\n\r\n          // if (!tRex.jumping &amp;&amp; (obstacles.length &gt; 0) &amp;&amp; (obstacles[0].xPos + obstacles[0].width) &lt;= ((parseInt(Runner.instance_.currentSpeed - 0.1) - 5) * 34 + 160) &amp;&amp; (obstacles[0].xPos + obstacles[0].width) &gt; 20) {\r\n          if (!tRex.jumping &amp;&amp; (obstacles.length &gt; lengthsize) &amp;&amp; (obstacles[0].xPos + obstacles[0].width) &lt;= ((parseInt(Runner.instance_.currentSpeed - a) - b) * c + d) &amp;&amp; (obstacles[0].xPos + obstacles[0].width) &gt; posWidth) {\r\n            // console.log(obstacles[0].xPos + obstacles[0].width + &quot; | &quot; + ((parseInt(Runner.instance_.currentSpeed - 0.1) - 5) * 34 + 160));\r\n            tRex.startJump();\r\n          }\r\n        }, INTERVAL);\r\n      } else {\r\n        // Disable bot\r\n        clearInterval(tRexBot);\r\n      }\r\n    });\r\n\r\n\r\nwhat I require is for once the Interval ends, I would like it to take the games current speed and distance of obstacles then either increase or decrease the variables I have set into a new interval, so that it will hopefully learn how to get further and further into the game as it picks up speed...\r\n\r\nIf this sort of makes sense? \r\n",
+            "link": "https://stackoverflow.com/questions/50358014/javascript-loop-and-change-variables",
+            "title": "JavaScript loop and change variables",
+            "body": "<p>I am making an artificial intelligent agent to play google chromes t-rex game and need help creating a loop for the game to continuously play at the moment to begin the game I have to actually press space. </p>\n\n<pre><code>document.getElementById(\"botStatus\").addEventListener(\"change\", function() {\n\n  if (this.checked === true) {\n    // Activate bot\n    var INTERVAL = 2;\n    window.tRexBot = setInterval(function() {\n      var tRex = Runner.instance_.tRex;\n      var obstacles = Runner.instance_.horizon.obstacles;\n      var lengthsize = 0;\n      var a = 0.1;\n      var b = 5;\n      var c = 35;\n      var d = 160;\n      var posWidth = 20;\n\n      // if (!tRex.jumping &amp;&amp; (obstacles.length &gt; 0) &amp;&amp; (obstacles[0].xPos + obstacles[0].width) &lt;= ((parseInt(Runner.instance_.currentSpeed - 0.1) - 5) * 34 + 160) &amp;&amp; (obstacles[0].xPos + obstacles[0].width) &gt; 20) {\n      if (!tRex.jumping &amp;&amp; (obstacles.length &gt; lengthsize) &amp;&amp; (obstacles[0].xPos + obstacles[0].width) &lt;= ((parseInt(Runner.instance_.currentSpeed - a) - b) * c + d) &amp;&amp; (obstacles[0].xPos + obstacles[0].width) &gt; posWidth) {\n        // console.log(obstacles[0].xPos + obstacles[0].width + \" | \" + ((parseInt(Runner.instance_.currentSpeed - 0.1) - 5) * 34 + 160));\n        tRex.startJump();\n      }\n    }, INTERVAL);\n  } else {\n    // Disable bot\n    clearInterval(tRexBot);\n  }\n});\n</code></pre>\n\n<p>what I require is for once the Interval ends, I would like it to take the games current speed and distance of obstacles then either increase or decrease the variables I have set into a new interval, so that it will hopefully learn how to get further and further into the game as it picks up speed...</p>\n\n<p>If this sort of makes sense? </p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "mysql",
+                "csv"
+            ],
+            "owner": {
+                "reputation": 36,
+                "user_id": 2125318,
+                "user_type": "registered",
+                "accept_rate": 86,
+                "profile_image": "https://i.stack.imgur.com/X0jqn.jpg?s=128&g=1",
+                "display_name": "Mario Cappellano",
+                "link": "https://stackoverflow.com/users/2125318/mario-cappellano"
+            },
+            "is_answered": false,
+            "view_count": 456,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526416691,
+            "creation_date": 1455790383,
+            "last_edit_date": 1455792801,
+            "question_id": 35478520,
+            "body_markdown": "Many related tickets and tut sites but unfortunately no solutions have worked for me so far, couple hours stuck on this.\r\n\r\nI have many csv files I need to insert into a mysql db, using &#39;load in file&#39; does it very quickly and easily. \r\n\r\nHowever, it stumbles on one section:\r\nSample csv line:\r\n   \r\n&gt;  ABSOLUTE,Glenn,Anakie,&quot;Cool Synd, Super Cool&quot;\r\n\r\nCode I&#39;m using is:\r\n\r\n    $q = &quot;load data infile &#39;$file&#39; into table $table\r\n        FIELDS TERMINATED BY &#39;,&#39;\r\n        OPTIONALLY ENCLOSED BY &#39;\\&quot;&#39;\r\n        LINES TERMINATED BY &#39;\\n&#39;;&quot;;\r\n        mysql_query($q, $db);\r\n\r\nI expect to have 4 fields from this, but I end up with 5, it counts the comma inside the quotes as being a delimiter. I thought the point of OPTIONALLY ENCLOSED BY was to catch these cases?\r\n\r\nI&#39;ve tried switching the order of the field terminated and opt enclosed by commands. Tried just making it ENCLOSED BY. Tried not escaping the &quot;, also /&quot;/&quot;, tried using 2 single quotes instead of a double; but I still can&#39;t get it to understand that I want &quot;Cool Synd, Super Cool&quot; as one field.\r\n\r\nAnyone know what I&#39;m doing wrong here?\r\n\r\n\r\nHere is my table structure:\r\n\r\n[![enter image description here][1]][1]\r\n\r\nI simply throw all my data in here then I process it and move fields to the relevant tables into the correct format. The column with the problem is &#39;Owner&#39;.\r\nI&#39;ve changed it to text type here as that was the solution for others, but it works the same way whether it is text, char, varchar, etc.\r\n\r\n\r\n\r\n(Working on Ubuntu server 14.4, Apache/2.4.7, PHP 5.5.9)\r\n\r\n\r\n  [1]: http://i.stack.imgur.com/cEDIH.png",
+            "link": "https://stackoverflow.com/questions/35478520/load-data-infile-optionally-enclosed-by-not-working-as-expected",
+            "title": "Load Data Infile OPTIONALLY ENCLOSED BY not working as expected",
+            "body": "<p>Many related tickets and tut sites but unfortunately no solutions have worked for me so far, couple hours stuck on this.</p>\n\n<p>I have many csv files I need to insert into a mysql db, using 'load in file' does it very quickly and easily. </p>\n\n<p>However, it stumbles on one section:\nSample csv line:</p>\n\n<blockquote>\n  <p>ABSOLUTE,Glenn,Anakie,\"Cool Synd, Super Cool\"</p>\n</blockquote>\n\n<p>Code I'm using is:</p>\n\n<pre><code>$q = \"load data infile '$file' into table $table\n    FIELDS TERMINATED BY ','\n    OPTIONALLY ENCLOSED BY '\\\"'\n    LINES TERMINATED BY '\\n';\";\n    mysql_query($q, $db);\n</code></pre>\n\n<p>I expect to have 4 fields from this, but I end up with 5, it counts the comma inside the quotes as being a delimiter. I thought the point of OPTIONALLY ENCLOSED BY was to catch these cases?</p>\n\n<p>I've tried switching the order of the field terminated and opt enclosed by commands. Tried just making it ENCLOSED BY. Tried not escaping the \", also /\"/\", tried using 2 single quotes instead of a double; but I still can't get it to understand that I want \"Cool Synd, Super Cool\" as one field.</p>\n\n<p>Anyone know what I'm doing wrong here?</p>\n\n<p>Here is my table structure:</p>\n\n<p><a href=\"https://i.stack.imgur.com/cEDIH.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/cEDIH.png\" alt=\"enter image description here\"></a></p>\n\n<p>I simply throw all my data in here then I process it and move fields to the relevant tables into the correct format. The column with the problem is 'Owner'.\nI've changed it to text type here as that was the solution for others, but it works the same way whether it is text, char, varchar, etc.</p>\n\n<p>(Working on Ubuntu server 14.4, Apache/2.4.7, PHP 5.5.9)</p>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "jsonschema",
+                "section508"
+            ],
+            "owner": {
+                "reputation": 9823,
+                "user_id": 239879,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/b9e2d7ef70e61ce1c509e556c453626d?s=128&d=identicon&r=PG",
+                "display_name": "Shamoon",
+                "link": "https://stackoverflow.com/users/239879/shamoon"
+            },
+            "is_answered": false,
+            "view_count": 89,
+            "answer_count": 0,
+            "score": 3,
+            "last_activity_date": 1526416680,
+            "creation_date": 1525794285,
+            "question_id": 50237556,
+            "body_markdown": "It seems that the library is missing aria-label fields. Specifically, by using the `Material` framework, it groups my checkboxes into one section.",
+            "link": "https://stackoverflow.com/questions/50237556/how-do-i-make-angular2-json-form-schema-508-compliant",
+            "title": "How do I make angular2-json-form-schema 508 compliant?",
+            "body": "<p>It seems that the library is missing aria-label fields. Specifically, by using the <code>Material</code> framework, it groups my checkboxes into one section.</p>\n"
+        },
+        {
+            "tags": [
+                "scilab"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9379866,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/efe499153c652b8f0f8e425694f68557?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Saurabh Das",
+                "link": "https://stackoverflow.com/users/9379866/saurabh-das"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526416679,
+            "creation_date": 1526113793,
+            "question_id": 50304286,
+            "body_markdown": "I have written the following code to calculate temperature distribution along a fin. For some reason, it keeps calculating certain values as zero, even when they aren&#39;t!\r\n\r\n    for t = 0:300:3000\r\n    for i = 2:L2\r\n        if i ==2\r\n            A(i)= 0.75*rhocp*DX/DT + 3*k/dx;\r\n            B(i)= k/dx;\r\n            C(i)= 2*k/dx;\r\n            D(i)= 0.75*rhocp*(DX/DT)*T(i);\r\n        elseif i == L2\r\n            A(i)= 0.75*rhocp*DX/DT + 3*k/dx;\r\n            B(i)= 2*k/dx;\r\n            C(i)= k/dx;\r\n            D(i)= 0.75*rhocp*(DX/DT)*T(i);\r\n        else\r\n            A(i)= 0.75*rhocp*DX/DT + 2*k/dx;\r\n            B(i)= k/dx;\r\n            C(i)= k/dx;\r\n            D(i)= rhocp*(DX/DT)*T(i);\r\n        end\r\n        \r\n        P(1) = 0;\r\n        Q(1) = T(1);\r\n        for i = 2:L2\r\n            DENO = A(i) - C(i)*P(i-1);\r\n            NUM = D(i)+ C(i)*Q(i-1);\r\n            P(i) = B(i)/DENO;\r\n            Q(i) = NUM/DENO;\r\n        end\r\n        \r\n        for i =L2:-1:2\r\n            if i == L2\r\n                T(i) = Q(i);\r\n            else\r\n                T(i) = P(i)*T(i+1) + Q(i);\r\n            end\r\n        end\r\n        T(L1) = ((2*k*T(L2) - h*DX*Tinf)/(2*k - h*DX));\r\n    end\r\n    disp (T);       \r\n`\r\n  \r\nDENO and NUM is calculated as zero in the first iteration, even though on calculating their values is not zero! This leads to &quot;Division by zero&quot; error.\r\n\r\n    A(2)-C(2)*P(1)\r\n ans  =\r\n \r\n    3750.\r\n\r\nAnalytically it has got a value though.",
+            "link": "https://stackoverflow.com/questions/50304286/getting-a-zero-value-for-a-variable-that-clearly-should-not-be-zero",
+            "title": "Getting a zero value for a variable that clearly should not be zero",
+            "body": "<p>I have written the following code to calculate temperature distribution along a fin. For some reason, it keeps calculating certain values as zero, even when they aren't!</p>\n\n<pre><code>for t = 0:300:3000\nfor i = 2:L2\n    if i ==2\n        A(i)= 0.75*rhocp*DX/DT + 3*k/dx;\n        B(i)= k/dx;\n        C(i)= 2*k/dx;\n        D(i)= 0.75*rhocp*(DX/DT)*T(i);\n    elseif i == L2\n        A(i)= 0.75*rhocp*DX/DT + 3*k/dx;\n        B(i)= 2*k/dx;\n        C(i)= k/dx;\n        D(i)= 0.75*rhocp*(DX/DT)*T(i);\n    else\n        A(i)= 0.75*rhocp*DX/DT + 2*k/dx;\n        B(i)= k/dx;\n        C(i)= k/dx;\n        D(i)= rhocp*(DX/DT)*T(i);\n    end\n\n    P(1) = 0;\n    Q(1) = T(1);\n    for i = 2:L2\n        DENO = A(i) - C(i)*P(i-1);\n        NUM = D(i)+ C(i)*Q(i-1);\n        P(i) = B(i)/DENO;\n        Q(i) = NUM/DENO;\n    end\n\n    for i =L2:-1:2\n        if i == L2\n            T(i) = Q(i);\n        else\n            T(i) = P(i)*T(i+1) + Q(i);\n        end\n    end\n    T(L1) = ((2*k*T(L2) - h*DX*Tinf)/(2*k - h*DX));\nend\ndisp (T);       \n</code></pre>\n\n<p>`</p>\n\n<p>DENO and NUM is calculated as zero in the first iteration, even though on calculating their values is not zero! This leads to \"Division by zero\" error.</p>\n\n<pre><code>A(2)-C(2)*P(1)\n</code></pre>\n\n<p>ans  =</p>\n\n<pre><code>3750.\n</code></pre>\n\n<p>Analytically it has got a value though.</p>\n"
+        },
+        {
+            "tags": [
+                "sql-server",
+                "ssis",
+                "etl"
+            ],
+            "owner": {
+                "reputation": 43,
+                "user_id": 2878101,
+                "user_type": "registered",
+                "accept_rate": 87,
+                "profile_image": "https://www.gravatar.com/avatar/0d8a7d6725d48beef85957ba728bbb03?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Raymondo",
+                "link": "https://stackoverflow.com/users/2878101/raymondo"
+            },
+            "is_answered": true,
+            "view_count": 30,
+            "accepted_answer_id": 50358820,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526416678,
+            "creation_date": 1526381726,
+            "last_edit_date": 1526415311,
+            "question_id": 50348443,
+            "body_markdown": "is it possible to set &quot;Rows Per Batch&quot; and &quot;Maximum Insert Commit Size&quot; via expressions? i.e. so that they can be driven by a config table? I know the buffer sizes can, but I couldn&#39;t spot anything for these two properties.",
+            "link": "https://stackoverflow.com/questions/50348443/ssis-rows-per-batch-expression",
+            "title": "SSIS Rows Per Batch Expression",
+            "body": "<p>is it possible to set \"Rows Per Batch\" and \"Maximum Insert Commit Size\" via expressions? i.e. so that they can be driven by a config table? I know the buffer sizes can, but I couldn't spot anything for these two properties.</p>\n"
+        },
+        {
+            "tags": [
+                "node.js",
+                "amazon-web-services",
+                "aws-sdk",
+                "aws-sqs"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9795989,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Gangadhar Mullapudi",
+                "link": "https://stackoverflow.com/users/9795989/gangadhar-mullapudi"
+            },
+            "is_answered": true,
+            "view_count": 27,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526416668,
+            "creation_date": 1526408566,
+            "question_id": 50356923,
+            "body_markdown": "Hi Can we send messages from one Queue to another in bulk without polling them and sending back to another Queue one by one.",
+            "link": "https://stackoverflow.com/questions/50356923/transfering-messages-from-one-aws-queue-to-another",
+            "title": "Transfering messages from one AWS Queue to another",
+            "body": "<p>Hi Can we send messages from one Queue to another in bulk without polling them and sending back to another Queue one by one.</p>\n"
+        },
+        {
+            "tags": [
+                "css",
+                "angular",
+                "sass"
+            ],
+            "owner": {
+                "reputation": 1568,
+                "user_id": 2372784,
+                "user_type": "registered",
+                "accept_rate": 56,
+                "profile_image": "https://i.stack.imgur.com/jjMQH.jpg?s=128&g=1",
+                "display_name": "zed",
+                "link": "https://stackoverflow.com/users/2372784/zed"
+            },
+            "is_answered": true,
+            "view_count": 28,
+            "accepted_answer_id": 50358818,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1526416665,
+            "creation_date": 1526328225,
+            "last_edit_date": 1526332246,
+            "question_id": 50338175,
+            "body_markdown": "I am using Angular5 with sass v1.3.2.\r\n\r\nI want to be able to change a color that is used extensively in the scss files of my single page app in runtime (not by compiling new files).\r\n\r\nThe color is defined globally in my `_variables.css` as:\r\n\r\n    $brand: #123123;\r\n\r\nAnd for example used as:\r\n\r\n    h1 {\r\n        color: $brand;\r\n    }\r\n\r\nI learned that I can modify the color if I am using CSS variables such as:\r\n\r\n    # CSS\r\n    :root {\r\n        --brand: #123123\r\n    }\r\n    \r\n    #JS\r\n    document.documentElement.style.setProperty(&#39;--brand&#39;, &#39;#456456&#39;);\r\n    # OR\r\n    document.querySelector(&#39;:root&#39;).style.setProperty(&#39;--brand&#39;, &#39;#456456&#39;);\r\n\r\nHowever to be able to do that using SCSS, I needed to use [css-vars][1] mixin as such:\r\n\r\n    $brand: #123123;\r\n    \r\n    :root {\r\n      @include css-vars((\r\n        --brand: #{$brand},\r\n      ));\r\n    }\r\n\r\nAnd use it as:\r\n\r\n    h1 {\r\n        color: var(--brand);\r\n    }\r\n\r\nTwo problems:\r\n\r\n- Actually, still `--brand` is not showing at root.\r\n- Also, the CSS generated in `&lt;script type=&quot;text/css&quot;&gt;` by angular-cli does not have `--brand` anywhere, it is actually compiling the CSS variable into `#123123` so the output is:\r\n\r\n    h1 {\r\n        color: #123123;\r\n    }\r\n\r\nAny ideas about how can I achieve changing a global color in runtime? Or how to get my CSS in `:root` and then how to get SASS to not compile it?\r\n\r\n**UPDATE**\r\n\r\nAs @JonUleis has showed, there is no need for using `css-var`. Now the var `--brand` shows in the DOM at `:root`.\r\n\r\nHowever, now `color: var(--brand);` line still does not show in the CSS, and `h1` doesn&#39;t have a color style at all.\r\n\r\nAfter updating `node-sass` to the latest `4.9.0` from `4.8.3`, it worked great.\r\n\r\n\r\n  [1]: https://github.com/malyw/css-vars\r\n  [2]: https://sass-lang.com/install\r\n  [3]: https://www.npmjs.com/package/node-sass",
+            "link": "https://stackoverflow.com/questions/50338175/prevent-scss-from-compiling-css-variables-angular-cli",
+            "title": "Prevent SCSS from compiling CSS variables - Angular-CLI",
+            "body": "<p>I am using Angular5 with sass v1.3.2.</p>\n\n<p>I want to be able to change a color that is used extensively in the scss files of my single page app in runtime (not by compiling new files).</p>\n\n<p>The color is defined globally in my <code>_variables.css</code> as:</p>\n\n<pre><code>$brand: #123123;\n</code></pre>\n\n<p>And for example used as:</p>\n\n<pre><code>h1 {\n    color: $brand;\n}\n</code></pre>\n\n<p>I learned that I can modify the color if I am using CSS variables such as:</p>\n\n<pre><code># CSS\n:root {\n    --brand: #123123\n}\n\n#JS\ndocument.documentElement.style.setProperty('--brand', '#456456');\n# OR\ndocument.querySelector(':root').style.setProperty('--brand', '#456456');\n</code></pre>\n\n<p>However to be able to do that using SCSS, I needed to use <a href=\"https://github.com/malyw/css-vars\" rel=\"nofollow noreferrer\">css-vars</a> mixin as such:</p>\n\n<pre><code>$brand: #123123;\n\n:root {\n  @include css-vars((\n    --brand: #{$brand},\n  ));\n}\n</code></pre>\n\n<p>And use it as:</p>\n\n<pre><code>h1 {\n    color: var(--brand);\n}\n</code></pre>\n\n<p>Two problems:</p>\n\n<ul>\n<li>Actually, still <code>--brand</code> is not showing at root.</li>\n<li><p>Also, the CSS generated in <code>&lt;script type=\"text/css\"&gt;</code> by angular-cli does not have <code>--brand</code> anywhere, it is actually compiling the CSS variable into <code>#123123</code> so the output is:</p>\n\n<p>h1 {\n    color: #123123;\n}</p></li>\n</ul>\n\n<p>Any ideas about how can I achieve changing a global color in runtime? Or how to get my CSS in <code>:root</code> and then how to get SASS to not compile it?</p>\n\n<p><strong>UPDATE</strong></p>\n\n<p>As @JonUleis has showed, there is no need for using <code>css-var</code>. Now the var <code>--brand</code> shows in the DOM at <code>:root</code>.</p>\n\n<p>However, now <code>color: var(--brand);</code> line still does not show in the CSS, and <code>h1</code> doesn't have a color style at all.</p>\n\n<p>After updating <code>node-sass</code> to the latest <code>4.9.0</code> from <code>4.8.3</code>, it worked great.</p>\n"
+        },
+        {
+            "tags": [
+                "regex",
+                "powershell",
+                "select-string"
+            ],
+            "owner": {
+                "reputation": 9,
+                "user_id": 9794426,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-4jp7zHOcMOw/AAAAAAAAAAI/AAAAAAAADOg/k2-LYGdSxKc/photo.jpg?sz=128",
+                "display_name": "Daria Da",
+                "link": "https://stackoverflow.com/users/9794426/daria-da"
+            },
+            "is_answered": true,
+            "view_count": 51,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526416662,
+            "creation_date": 1526390716,
+            "last_edit_date": 1526391556,
+            "question_id": 50351427,
+            "body_markdown": "I am trying to extract all text matching a particular pattern from files in the directory using PowerShell. However, for some reason it seems to loop indefinitely (output is an endlessly repeating set of the same results and the script never finishes). Please, can anyone give me a tip on what the problem is?\r\n\r\n    $input_path = &#39;C:\\Users\\*.txt&#39;\r\n    $output_file = &#39;C:\\Users\\*.txt&#39;\r\n    $regex = &#39;[A-Za-z]+?_V[A-Z][A-Z0]?[A-Z]? [A-Za-z]+?_R[A-Z][A-Z]?V?&#39;\r\n    select-string -Path $input_path -Pattern $regex -AllMatches | % { $_.Matches } | % { $_.Value } &gt; $output_file",
+            "link": "https://stackoverflow.com/questions/50351427/select-string-stuck-in-endless-loop",
+            "title": "select-string stuck in endless loop",
+            "body": "<p>I am trying to extract all text matching a particular pattern from files in the directory using PowerShell. However, for some reason it seems to loop indefinitely (output is an endlessly repeating set of the same results and the script never finishes). Please, can anyone give me a tip on what the problem is?</p>\n\n<pre><code>$input_path = 'C:\\Users\\*.txt'\n$output_file = 'C:\\Users\\*.txt'\n$regex = '[A-Za-z]+?_V[A-Z][A-Z0]?[A-Z]? [A-Za-z]+?_R[A-Z][A-Z]?V?'\nselect-string -Path $input_path -Pattern $regex -AllMatches | % { $_.Matches } | % { $_.Value } &gt; $output_file\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "google-chrome",
+                "firefox",
+                "drm",
+                "widevine"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9796505,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/325eac5ab3390adea77f46211e87a858?s=128&d=identicon&r=PG&f=1",
+                "display_name": "phelaphant",
+                "link": "https://stackoverflow.com/users/9796505/phelaphant"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526416649,
+            "creation_date": 1526416649,
+            "question_id": 50358814,
+            "body_markdown": "We have a video application that contacts a DRM license server before playback can begin. When playback fails, the app sends an error to our backend splunk system including the XMLHttpRequest statusText and status code as well as the EME capabilities of the browser.\r\n\r\nWe see alot of errors (mainly on Firefox but some on Chrome too) where the statusText is an empty string, the status code is zero and the client definitely has Widevine enabled. We&#39;re not able to reproduce this issue and our server logs indicate that the request never made it through.\r\n\r\nMy understanding of status code zero comes from a quote from a stackoverflow answer:\r\n\r\n&gt; A Status Code of 0 means &quot;the browser refused to honor the request.&quot; Generally, this might happen because of a Content Security Policy, a pre-flight check failure (CORS), or because the site is not in the same network as the Internet (most browsers differentiate between local and public internet connections, and restrict public internet from reaching private networks)\r\n\r\nIf this is the case and there is nothing else useful to send to splunk from the XMLHttpRequest onerror callback, then what would be a good way to pinpoint the problem? When I&#39;ve seen CORS errors in the past they&#39;ve always manifested themselves as an error in the console. Is it possible to get access to these &quot;native&quot; errors? I&#39;ve tried overriding the console.error and console.exception functions but CORS errors (and GET / POST 400s 500s etc) don&#39;t seem to go through this route.\r\n\r\nIf it&#39;s not possible to send the console errors to our splunk backend then is there anything clever we can do to try and get to the bottom of this issue?",
+            "link": "https://stackoverflow.com/questions/50358814/capture-console-errors-to-determine-whats-causing-status-0",
+            "title": "Capture console errors to determine what&#39;s causing status 0",
+            "body": "<p>We have a video application that contacts a DRM license server before playback can begin. When playback fails, the app sends an error to our backend splunk system including the XMLHttpRequest statusText and status code as well as the EME capabilities of the browser.</p>\n\n<p>We see alot of errors (mainly on Firefox but some on Chrome too) where the statusText is an empty string, the status code is zero and the client definitely has Widevine enabled. We're not able to reproduce this issue and our server logs indicate that the request never made it through.</p>\n\n<p>My understanding of status code zero comes from a quote from a stackoverflow answer:</p>\n\n<blockquote>\n  <p>A Status Code of 0 means \"the browser refused to honor the request.\" Generally, this might happen because of a Content Security Policy, a pre-flight check failure (CORS), or because the site is not in the same network as the Internet (most browsers differentiate between local and public internet connections, and restrict public internet from reaching private networks)</p>\n</blockquote>\n\n<p>If this is the case and there is nothing else useful to send to splunk from the XMLHttpRequest onerror callback, then what would be a good way to pinpoint the problem? When I've seen CORS errors in the past they've always manifested themselves as an error in the console. Is it possible to get access to these \"native\" errors? I've tried overriding the console.error and console.exception functions but CORS errors (and GET / POST 400s 500s etc) don't seem to go through this route.</p>\n\n<p>If it's not possible to send the console errors to our splunk backend then is there anything clever we can do to try and get to the bottom of this issue?</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "algorithm",
+                "data-structures",
+                "linked-list",
+                "singly-linked-list"
+            ],
+            "owner": {
+                "reputation": 2156,
+                "user_id": 1840421,
+                "user_type": "registered",
+                "accept_rate": 65,
+                "profile_image": "https://www.gravatar.com/avatar/515ec6ff557dab01ee32f0e2cf288663?s=128&d=identicon&r=PG",
+                "display_name": "Sharif Mamun",
+                "link": "https://stackoverflow.com/users/1840421/sharif-mamun"
+            },
+            "is_answered": false,
+            "view_count": 25,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526416635,
+            "creation_date": 1526416635,
+            "question_id": 50358810,
+            "body_markdown": "The following code is not working for the below Input:\r\n[2,4,3]\r\n[5,6,4]\r\nOutput:\r\n[7,8]\r\nExpected:\r\n[7,0,8]\r\n\r\nWhy I am not getting 0? Can anyone please help me.\r\n\r\n    /**\r\n     * Definition for singly-linked list.\r\n     * public class ListNode {\r\n     *     public int val;\r\n     *     public ListNode next;\r\n     *     public ListNode(int x) { val = x; }\r\n     * }\r\n     */\r\n    public class Solution {\r\n        public ListNode AddTwoNumbers(ListNode l1, ListNode l2) {\r\n            return AddTwoNumbersHelper(l1, l2, 0);            \r\n        }\r\n        \r\n\r\n    private ListNode AddTwoNumbersHelper(ListNode l1, ListNode l2, int carry) {\r\n        if (l1 == null &amp;&amp; l2 == null)\r\n            return null;\r\n        \r\n        int temp = 0;\r\n        if (l1 != null)\r\n            temp += l1.val;\r\n\r\n        if (l2 != null)\r\n            temp += l2.val;\r\n        \r\n        ListNode result = new ListNode(temp % 10);\r\n        carry = temp / 10;\r\n        \r\n        l1 = l1.next;\r\n        l2 = l2.next;\r\n        int sum = 0;\r\n        while(l1 != null || l2 != null) {\r\n            sum = carry;\r\n\r\n            if (l1 != null)\r\n                sum += l1.val;\r\n\r\n            if (l2 != null)\r\n                sum += l2.val;\r\n\r\n            carry = sum == 0 ? 0 : sum / 10;\r\n            sum = sum % 10;\r\n\r\n            result.next = new ListNode(sum);\r\n            if(l1 != null)\r\n                l1 = l1.next;\r\n            if(l2 != null)\r\n                l2 = l2.next;\r\n        }\r\n        \r\n        if (carry &gt; 0)\r\n            result.next = new ListNode(carry);\r\n        \r\n        return result;\r\n    } \r\n}\r\n",
+            "link": "https://stackoverflow.com/questions/50358810/leetcode-adding-two-numbers-represented-in-reverse-linked-list-is-not-working",
+            "title": "Leetcode: Adding two numbers represented in reverse linked list is not working",
+            "body": "<p>The following code is not working for the below Input:\n[2,4,3]\n[5,6,4]\nOutput:\n[7,8]\nExpected:\n[7,0,8]</p>\n\n<p>Why I am not getting 0? Can anyone please help me.</p>\n\n<pre><code>/**\n * Definition for singly-linked list.\n * public class ListNode {\n *     public int val;\n *     public ListNode next;\n *     public ListNode(int x) { val = x; }\n * }\n */\npublic class Solution {\n    public ListNode AddTwoNumbers(ListNode l1, ListNode l2) {\n        return AddTwoNumbersHelper(l1, l2, 0);            \n    }\n\n\nprivate ListNode AddTwoNumbersHelper(ListNode l1, ListNode l2, int carry) {\n    if (l1 == null &amp;&amp; l2 == null)\n        return null;\n\n    int temp = 0;\n    if (l1 != null)\n        temp += l1.val;\n\n    if (l2 != null)\n        temp += l2.val;\n\n    ListNode result = new ListNode(temp % 10);\n    carry = temp / 10;\n\n    l1 = l1.next;\n    l2 = l2.next;\n    int sum = 0;\n    while(l1 != null || l2 != null) {\n        sum = carry;\n\n        if (l1 != null)\n            sum += l1.val;\n\n        if (l2 != null)\n            sum += l2.val;\n\n        carry = sum == 0 ? 0 : sum / 10;\n        sum = sum % 10;\n\n        result.next = new ListNode(sum);\n        if(l1 != null)\n            l1 = l1.next;\n        if(l2 != null)\n            l2 = l2.next;\n    }\n\n    if (carry &gt; 0)\n        result.next = new ListNode(carry);\n\n    return result;\n} \n</code></pre>\n\n<p>}</p>\n"
+        },
+        {
+            "tags": [
+                "tkinter",
+                "python-3.3"
+            ],
+            "owner": {
+                "reputation": 77,
+                "user_id": 7385015,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-tfZ5-8ZwCn0/AAAAAAAAAAI/AAAAAAAAAHE/esyFKkLYPrw/photo.jpg?sz=128",
+                "display_name": "Alec Keyser White",
+                "link": "https://stackoverflow.com/users/7385015/alec-keyser-white"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526416622,
+            "creation_date": 1526414971,
+            "last_edit_date": 1526416622,
+            "question_id": 50358433,
+            "body_markdown": "    from tkinter import filedialog\r\n    import os\r\n    \r\n    temp = filedialog.askdirectory(initialdir=os.curdir)\r\n    print(&quot;ask directory: &quot; + str(temp))\r\n    temp = filedialog.asksaveasfilename(initialdir=os.curdir)\r\n    print(&quot;ask save as file name: &quot; + str(temp))\r\n\r\nCertain characters in the Basic Multilingual Plane are being converted to question marks or other characters by the tkinter filedialog askdirectory method, but when I use the tkinter filedialog asksaveasfilename method the characters are preserved.\r\n\r\n**For example these characters are converted like so by by askdirectory when in the path name**\r\n\r\n - ц -&gt; ?\r\n - Ķ -&gt; K\r\n\r\n  ",
+            "link": "https://stackoverflow.com/questions/50358433/why-does-tkinter-convert-certain-bmp-characters",
+            "title": "Why does tkinter convert certain BMP characters?",
+            "body": "<pre><code>from tkinter import filedialog\nimport os\n\ntemp = filedialog.askdirectory(initialdir=os.curdir)\nprint(\"ask directory: \" + str(temp))\ntemp = filedialog.asksaveasfilename(initialdir=os.curdir)\nprint(\"ask save as file name: \" + str(temp))\n</code></pre>\n\n<p>Certain characters in the Basic Multilingual Plane are being converted to question marks or other characters by the tkinter filedialog askdirectory method, but when I use the tkinter filedialog asksaveasfilename method the characters are preserved.</p>\n\n<p><strong>For example these characters are converted like so by by askdirectory when in the path name</strong></p>\n\n<ul>\n<li>ц -> ?</li>\n<li>Ķ -> K</li>\n</ul>\n"
+        },
+        {
+            "tags": [
+                "symfony",
+                "routes"
+            ],
+            "owner": {
+                "reputation": 48,
+                "user_id": 8954060,
+                "user_type": "registered",
+                "accept_rate": 25,
+                "profile_image": "https://www.gravatar.com/avatar/eee0e6391d6409deb6fe6657f8f87a37?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Dima Rashevskiy",
+                "link": "https://stackoverflow.com/users/8954060/dima-rashevskiy"
+            },
+            "is_answered": false,
+            "view_count": 22,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526416590,
+            "creation_date": 1526416112,
+            "question_id": 50358699,
+            "body_markdown": "So I just installed clean Symfony 4.\r\n\r\nMy simple controller:\r\n\r\n        &lt;?php\r\n    \r\n    namespace App\\Controller;\r\n        \r\n    use Symfony\\Component\\HttpFoundation\\Response;\r\n    \r\n    class ArticleController{\r\n        \r\n        public function index(){\r\n            \r\n            return new Response(&#39;Hello&#39;);\r\n        }\r\n    }\r\n\r\nand routes.yaml\r\n\r\n    index:\r\n    path: /\r\n    controller: App\\Controller\\ArticleController::index\r\n\r\nin public/index.php it says:\r\nNo route found for &quot;.../public/index.php&quot;\r\n\r\nand also I was trying to set up my domain for localhost on windows, with file in apache and in system32, on http://mypath it opets https and says there is security problem",
+            "link": "https://stackoverflow.com/questions/50358699/symfony-4-route-trouble-after-install",
+            "title": "symfony 4 route trouble after install",
+            "body": "<p>So I just installed clean Symfony 4.</p>\n\n<p>My simple controller:</p>\n\n<pre><code>    &lt;?php\n\nnamespace App\\Controller;\n\nuse Symfony\\Component\\HttpFoundation\\Response;\n\nclass ArticleController{\n\n    public function index(){\n\n        return new Response('Hello');\n    }\n}\n</code></pre>\n\n<p>and routes.yaml</p>\n\n<pre><code>index:\npath: /\ncontroller: App\\Controller\\ArticleController::index\n</code></pre>\n\n<p>in public/index.php it says:\nNo route found for \".../public/index.php\"</p>\n\n<p>and also I was trying to set up my domain for localhost on windows, with file in apache and in system32, on <a href=\"http://mypath\" rel=\"nofollow noreferrer\">http://mypath</a> it opets https and says there is security problem</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pandas",
+                "dataframe",
+                "group-by"
+            ],
+            "owner": {
+                "reputation": 249,
+                "user_id": 7492420,
+                "user_type": "registered",
+                "accept_rate": 68,
+                "profile_image": "https://www.gravatar.com/avatar/ca34e32c5b0e1aae0c1d5976cdd8ad60?s=128&d=identicon&r=PG&f=1",
+                "display_name": "jovicbg",
+                "link": "https://stackoverflow.com/users/7492420/jovicbg"
+            },
+            "is_answered": true,
+            "view_count": 2115,
+            "accepted_answer_id": 44725963,
+            "answer_count": 3,
+            "score": 2,
+            "last_activity_date": 1526416583,
+            "creation_date": 1498229947,
+            "question_id": 44724480,
+            "body_markdown": "I have a dataframe like this:\r\n\r\n    Name  id  col1  col2  col3  cl4 \r\n    PL    252  0     747   3     53  \r\n    PL2   252  1     24    2     35 \r\n    PL3   252  4     75    24    13 \r\n    AD    889  53    24    0     95 \r\n    AD2   889  23    2     0     13  \r\n    AD3   889  0     24    3     6  \r\n    BG    024  12    89    53    66 \r\n    BG1   024  43    16    13    0   \r\n    BG2   024  5     32    101   4   \r\n\r\nAnd now I need to group by ID, and for columns col1 and col4 find the sum for each id and put that into a new column near to parent column (example: col3(sum)) But for col2 and col3 find max value. \r\nDesired output: \r\n\r\n    Name  id  col1 col1(sum) col2 col2(max) col3 col(max) col4 col4(sum)\r\n    PL    252  0       5      747    747     3     24    6    18\r\n    PL2   252  1       5      24     747     2     24    12   18\r\n    PL3   252  4       5      75     747     24    24    0    18\r\n    AD    889  53      76     24     24      95    95    23   33\r\n    AD2   889  23      76     2      24      13    95    5    33\r\n    AD3   889  0       76     24     24      6     95    5    33\r\n    BG    024  12      60     89     89      66    66    0    67   \r\n    BG1   024  43      60     16     89      0     66    63   67    \r\n    BG2   024  5       60     32     89      4     66    4    67    \r\n    \r\nWhat is the easiest and fastest way to calculate this? ",
+            "link": "https://stackoverflow.com/questions/44724480/group-by-one-columns-and-find-sum-and-max-value-for-another-in-pandas",
+            "title": "Group by one columns and find sum and max value for another in pandas",
+            "body": "<p>I have a dataframe like this:</p>\n\n<pre><code>Name  id  col1  col2  col3  cl4 \nPL    252  0     747   3     53  \nPL2   252  1     24    2     35 \nPL3   252  4     75    24    13 \nAD    889  53    24    0     95 \nAD2   889  23    2     0     13  \nAD3   889  0     24    3     6  \nBG    024  12    89    53    66 \nBG1   024  43    16    13    0   \nBG2   024  5     32    101   4   \n</code></pre>\n\n<p>And now I need to group by ID, and for columns col1 and col4 find the sum for each id and put that into a new column near to parent column (example: col3(sum)) But for col2 and col3 find max value. \nDesired output: </p>\n\n<pre><code>Name  id  col1 col1(sum) col2 col2(max) col3 col(max) col4 col4(sum)\nPL    252  0       5      747    747     3     24    6    18\nPL2   252  1       5      24     747     2     24    12   18\nPL3   252  4       5      75     747     24    24    0    18\nAD    889  53      76     24     24      95    95    23   33\nAD2   889  23      76     2      24      13    95    5    33\nAD3   889  0       76     24     24      6     95    5    33\nBG    024  12      60     89     89      66    66    0    67   \nBG1   024  43      60     16     89      0     66    63   67    \nBG2   024  5       60     32     89      4     66    4    67    \n</code></pre>\n\n<p>What is the easiest and fastest way to calculate this? </p>\n"
+        },
+        {
+            "tags": [
+                "windows-subsystem-for-linux",
+                "conemu"
+            ],
+            "owner": {
+                "reputation": 17,
+                "user_id": 7525409,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/13a35176e857e85554e820b5013d25ac?s=128&d=identicon&r=PG",
+                "display_name": "Alex Lepailleur",
+                "link": "https://stackoverflow.com/users/7525409/alex-lepailleur"
+            },
+            "is_answered": true,
+            "view_count": 38,
+            "accepted_answer_id": 50358801,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526416581,
+            "creation_date": 1526315333,
+            "last_edit_date": 1526330788,
+            "question_id": 50335007,
+            "body_markdown": "I&#39;m using WSL and ConEmu build 180506. I&#39;m trying to setup a task in ConEmu to use the current directory of the active tab when opening a new console but I cannot get it to work.\r\nWhat I did is to setup the task {Bash: bash} using the instructions on [this page](https://conemu.github.io/en/BashOnWindows.html)\r\n\r\nsetting the task command as :\r\n\r\n    set &quot;PATH=%ConEmuBaseDirShort%\\wsl;%PATH%&quot; &amp; %ConEmuBaseDirShort%\\conemu-cyg-64.exe --wsl -C~ -cur_console:pm:/mnt\r\n\r\nThen following the instruction on [this page](https://conemu.github.io/en/ShellWorkDir.html#connector-ps1), I added to my .bashrc\r\n\r\n    if [[ -n &quot;${ConEmuPID}&quot; ]]; then\r\n      PS1=&quot;$PS1\\[\\e]9;9;\\&quot;\\w\\&quot;\\007\\e]9;12\\007\\]&quot;\r\n    fi\r\n\r\nand finally setup a shortcut using the macro :\r\n\r\n    Shell(&quot;new_console&quot;, &quot;{bash}&quot;, &quot;&quot;, &quot;%CD%&quot;)\r\n\r\nBut it always open the new console in the default directory (`&#39;/home/[username]&#39;`).\r\n\r\nI don&#39;t understand what I&#39;m not doing right.\r\nI also noticed that a lot of environment variables [listed here](https://conemu.github.io/en/ConEmuEnvironment.html) are not set. Basically, only $ConEmuPID and $ConEmuBuild seem to be set.\r\n\r\nAny help would be appreciated.",
+            "link": "https://stackoverflow.com/questions/50335007/conemu-wsl-open-new-console-in-current-tab-directory",
+            "title": "ConEmu + WSL: Open new console in current tab directory",
+            "body": "<p>I'm using WSL and ConEmu build 180506. I'm trying to setup a task in ConEmu to use the current directory of the active tab when opening a new console but I cannot get it to work.\nWhat I did is to setup the task {Bash: bash} using the instructions on <a href=\"https://conemu.github.io/en/BashOnWindows.html\" rel=\"nofollow noreferrer\">this page</a></p>\n\n<p>setting the task command as :</p>\n\n<pre><code>set \"PATH=%ConEmuBaseDirShort%\\wsl;%PATH%\" &amp; %ConEmuBaseDirShort%\\conemu-cyg-64.exe --wsl -C~ -cur_console:pm:/mnt\n</code></pre>\n\n<p>Then following the instruction on <a href=\"https://conemu.github.io/en/ShellWorkDir.html#connector-ps1\" rel=\"nofollow noreferrer\">this page</a>, I added to my .bashrc</p>\n\n<pre><code>if [[ -n \"${ConEmuPID}\" ]]; then\n  PS1=\"$PS1\\[\\e]9;9;\\\"\\w\\\"\\007\\e]9;12\\007\\]\"\nfi\n</code></pre>\n\n<p>and finally setup a shortcut using the macro :</p>\n\n<pre><code>Shell(\"new_console\", \"{bash}\", \"\", \"%CD%\")\n</code></pre>\n\n<p>But it always open the new console in the default directory (<code>'/home/[username]'</code>).</p>\n\n<p>I don't understand what I'm not doing right.\nI also noticed that a lot of environment variables <a href=\"https://conemu.github.io/en/ConEmuEnvironment.html\" rel=\"nofollow noreferrer\">listed here</a> are not set. Basically, only $ConEmuPID and $ConEmuBuild seem to be set.</p>\n\n<p>Any help would be appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "dplyr",
+                "probability"
+            ],
+            "owner": {
+                "reputation": 23,
+                "user_id": 9128882,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://www.gravatar.com/avatar/74d37974ad971fe2cd1f575a0e476335?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Ian_De_Oliveira",
+                "link": "https://stackoverflow.com/users/9128882/ian-de-oliveira"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "closed_date": 1526213122,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526416580,
+            "creation_date": 1526201463,
+            "last_edit_date": 1526416580,
+            "question_id": 50314378,
+            "body_markdown": "Is it possible to create a new variable using the pnorm function? I can mutate and create a new variable. However, using the pnorm function within mutate, I get the following error: \r\n\r\n      Error: unexpected symbol in:\r\n      &quot;mutate(prob =(pnorm(0,Mean,sd,lower.tail = FALSE))\r\n      Prob&quot;\r\n\r\nI am trying to get the output for pnorm , I have over 100 rows and doing one by one seems not very efficient.\r\n\r\n        Factor\t      Var1\t       Var2(Mean)\t     sd\t       pnorm\r\n       Returns\t   large\t        0.133\t        0.416\t       \r\n       Returns\t   medium\t        0.263\t        1.842\t       \r\n       Returns\t   small\t        0.210\t        0.821\t\r\n       Tax_Paid\t   large\t        490.794\t        840.559\t\r\n       Tax_Paid\t   medium\t        29.816\t        60.171\t\r\n       Tax_Paid\t   small\t        9.580\t        18.890\t\r\n\r\nMy code is the follow:\r\n\r\n     Prob &lt;- df %&gt;% select(Factor,Mean,sd) %&gt;%\r\n          mutate(prob =(pnorm(0,&quot;Mean&quot;,&quot;sd&quot;,lower.tail = FALSE))\r\n\r\nIm new to R and struggling to geerate new variables using other variables.",
+            "link": "https://stackoverflow.com/questions/50314378/generating-new-variables-in-r-using-a-pnorm-function-or-dplyrmutate-to-create",
+            "closed_reason": "off-topic",
+            "title": "Generating new variables in R using a pnorm function or dplyr::mutate to create a new variable",
+            "body": "<p>Is it possible to create a new variable using the pnorm function? I can mutate and create a new variable. However, using the pnorm function within mutate, I get the following error: </p>\n\n<pre><code>  Error: unexpected symbol in:\n  \"mutate(prob =(pnorm(0,Mean,sd,lower.tail = FALSE))\n  Prob\"\n</code></pre>\n\n<p>I am trying to get the output for pnorm , I have over 100 rows and doing one by one seems not very efficient.</p>\n\n<pre><code>    Factor        Var1         Var2(Mean)        sd        pnorm\n   Returns     large            0.133           0.416          \n   Returns     medium           0.263           1.842          \n   Returns     small            0.210           0.821   \n   Tax_Paid    large            490.794         840.559 \n   Tax_Paid    medium           29.816          60.171  \n   Tax_Paid    small            9.580           18.890  \n</code></pre>\n\n<p>My code is the follow:</p>\n\n<pre><code> Prob &lt;- df %&gt;% select(Factor,Mean,sd) %&gt;%\n      mutate(prob =(pnorm(0,\"Mean\",\"sd\",lower.tail = FALSE))\n</code></pre>\n\n<p>Im new to R and struggling to geerate new variables using other variables.</p>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "angular-activatedroute"
+            ],
+            "owner": {
+                "reputation": 233,
+                "user_id": 7088371,
+                "user_type": "registered",
+                "accept_rate": 62,
+                "profile_image": "https://www.gravatar.com/avatar/4f2a62081d43b21c757cff113c83fda8?s=128&d=identicon&r=PG&f=1",
+                "display_name": "bluePearl",
+                "link": "https://stackoverflow.com/users/7088371/bluepearl"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526416578,
+            "creation_date": 1526416578,
+            "question_id": 50358800,
+            "body_markdown": "through out my application structure i am always checking `this.route.snapshot.params[&quot;id&quot;]`\r\n\r\nand in some areas it would be like `this.route.snapshot.parent.parent.parent.params[&quot;id&quot;]` \r\n\r\nso i thought it would be best to create a service that will loop through route.snapshot and once it has an id it would return it. That way when i have to change in part of the structure i don&#39;t have to change the `.parent` everywhere. \r\n\r\nIf anyone knows of a cleaner way to handle this please share - otherwise this is what i started out with. \r\n\r\n    public getRouteId(route: any) {\r\n            let routeId = route.snapshot;\r\n            while (routeId.params[&quot;id&quot;] == null) {\r\n                routeId += `.parent`;\r\n            }\r\n            return routeId;\r\n        }\r\n\r\nDoes this make since for what i am trying to achieve? I am trying to get the id from the snapshot route and if it doesn&#39;t exist try to go to an upper level - parent and look for the id there and continue until id is found. ",
+            "link": "https://stackoverflow.com/questions/50358800/creating-a-service-that-will-loop-through-activated-route-to-get-id",
+            "title": "Creating a service that will loop through activated route to get id",
+            "body": "<p>through out my application structure i am always checking <code>this.route.snapshot.params[\"id\"]</code></p>\n\n<p>and in some areas it would be like <code>this.route.snapshot.parent.parent.parent.params[\"id\"]</code> </p>\n\n<p>so i thought it would be best to create a service that will loop through route.snapshot and once it has an id it would return it. That way when i have to change in part of the structure i don't have to change the <code>.parent</code> everywhere. </p>\n\n<p>If anyone knows of a cleaner way to handle this please share - otherwise this is what i started out with. </p>\n\n<pre><code>public getRouteId(route: any) {\n        let routeId = route.snapshot;\n        while (routeId.params[\"id\"] == null) {\n            routeId += `.parent`;\n        }\n        return routeId;\n    }\n</code></pre>\n\n<p>Does this make since for what i am trying to achieve? I am trying to get the id from the snapshot route and if it doesn't exist try to go to an upper level - parent and look for the id there and continue until id is found. </p>\n"
+        },
+        {
+            "tags": [
+                "react-native",
+                "parent-child",
+                "state"
+            ],
+            "owner": {
+                "reputation": 288,
+                "user_id": 861826,
+                "user_type": "registered",
+                "accept_rate": 65,
+                "profile_image": "https://www.gravatar.com/avatar/8ec3c73aead85dad0f66daf4d39ea4f3?s=128&d=identicon&r=PG",
+                "display_name": "arnoldbird",
+                "link": "https://stackoverflow.com/users/861826/arnoldbird"
+            },
+            "is_answered": true,
+            "view_count": 21,
+            "accepted_answer_id": 50357495,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526416576,
+            "creation_date": 1526409746,
+            "last_edit_date": 1526416576,
+            "question_id": 50357199,
+            "body_markdown": "I have a PlusMinus component whose purpose is to let the user increment or decrement an integer. In my parent component, I loop through several items in a list and provide a PlusMinus counter for each item.  \r\n\r\nHow can I reset all the counters from the parent component?  Most answers to questions like this suggest handling state in the parent, making the child stateless, and passing values to the child via props.  However, when I update those prop values in the parent, the child does not update.  Some answer componentWillReceiveProps.  However, that function is deprecated and I was not able to get it to work anyway.\r\n\r\nHere is my component.  It works, except I have no way to reset the counters.  How can I provide a button in my parent that resets all the child counters?\r\n    \r\n    import * as React from &#39;react&#39;\r\n    import { Text, TouchableOpacity, View } from &#39;react-native&#39;\r\n    \r\n    import styles from &#39;./Styles&#39;\r\n    \r\n    type Props = { k: string, handler: Function, style: Object }\r\n    type State = { clicks: Object }\r\n    \r\n    export default class PlusMinus extends React.Component&lt;Props, State&gt; {\r\n    \r\n      state = {\r\n        clicks: {}\r\n      }\r\n    \r\n      IncrementItem = (k: string) =&gt; {\r\n    \r\n        let clicks = this.state.clicks\r\n    \r\n        if (&#39;undefined&#39; == typeof this.state.clicks[k]) {\r\n          clicks[k] = 1\r\n        }\r\n        else {\r\n          clicks[k]++\r\n        }\r\n        \r\n        // A handler passed from the parent that updates persistent values in the parent.\r\n        this.props.handler(k, clicks[k])\r\n    \r\n        this.setState(\r\n          { clicks: clicks }\r\n        )\r\n      }\r\n    \r\n      DecreaseItem = (k: string) =&gt; {\r\n    \r\n        let clicks = this.state.clicks\r\n    \r\n        if (&#39;undefined&#39; == typeof this.state.clicks[k]) {\r\n          clicks[k] = 0\r\n        }\r\n        else if (this.state.clicks[k] &gt; 0) {\r\n          clicks[k]--\r\n        }\r\n    \r\n        this.props.handler(k, clicks[k])\r\n    \r\n        this.setState(\r\n          { clicks: clicks }\r\n        )\r\n      }\r\n    \r\n      Count = (k: string) =&gt; {\r\n        let ct = 0\r\n    \r\n        if (&#39;undefined&#39; !== typeof this.state.clicks[k]) {\r\n          ct = this.state.clicks[k]\r\n          ct = ct++\r\n        }\r\n        return (\r\n          &lt;Text style={styles.counter} id={k}&gt;{ ct }&lt;/Text&gt;\r\n        )\r\n      }\r\n    \r\n      render() { \r\n        return (\r\n          &lt;View style={this.props.style}&gt;\r\n            &lt;TouchableOpacity style={styles.plusminus} title=&#39;+&#39; onPress={() =&gt; this.IncrementItem(this.props.k)}&gt;\r\n              &lt;Text style={styles.pmtxt}&gt;+&lt;/Text&gt;\r\n            &lt;/TouchableOpacity&gt;\r\n            &lt;TouchableOpacity style={styles.plusminus} title=&#39;-&#39; onPress={() =&gt; this.DecreaseItem(this.props.k)}&gt;\r\n              &lt;Text style={styles.pmtxt}&gt;-&lt;/Text&gt;\r\n            &lt;/TouchableOpacity&gt;\r\n    \r\n            &lt;View style={[{ \r\n              paddingHorizontal: 10,\r\n              marginLeft: 4,\r\n              alignItems: &#39;center&#39;,\r\n              justifyContent: &#39;center&#39;,\r\n              backgroundColor: &#39;#aaa&#39;,\r\n              width: 40,\r\n              borderRadius: 5\r\n            }]}&gt;{this.Count(this.props.k)}&lt;/View&gt;\r\n          &lt;/View&gt;\r\n        )\r\n      }\r\n    }\r\n\r\n\r\nMy handler in the parent component looks like...\r\n\r\n    handler = async (key: string, value: Number) =&gt; {\r\n        let object = {}\r\n        let str = await Expo.SecureStore.getItemAsync(&#39;clicks&#39;)\r\n        if (str) {\r\n          object = JSON.parse(str)\r\n        }\r\n        object[key] = value\r\n        str = JSON.stringify(object)\r\n        Expo.SecureStore.setItemAsync(&#39;clicks&#39;, str)\r\n      }\r\n\r\n---------------------------------------------------\r\n------- UPDATE:  Here is a working example. -------\r\n\r\n    import * as React from &#39;react&#39;\r\n    import { Text, TouchableOpacity, View } from &#39;react-native&#39;\r\n    \r\n    import styles from &#39;./Styles&#39;\r\n    \r\n    type Props = { k: string, handler: Function, style: Object, clicks: Number }\r\n    \r\n    export default class PlusMinus extends React.Component&lt;Props&gt; {\r\n    \r\n      IncrementItem = (k: string) =&gt; {\r\n        let clicks = this.props.clicks\r\n        this.props.handler(k, clicks, &#39;++&#39;)\r\n      }\r\n    \r\n      DecreaseItem = (k: string) =&gt; {\r\n        let clicks = this.props.clicks\r\n        this.props.handler(k, clicks, &#39;--&#39;)\r\n      }\r\n    \r\n      Count = (k: string) =&gt; {\r\n        let ct = 0\r\n    \r\n        if (&#39;undefined&#39; !== typeof this.props.clicks) {\r\n          ct = this.props.clicks\r\n        }\r\n        return (\r\n          &lt;Text style={styles.counter} id={k}&gt;{ ct }&lt;/Text&gt;\r\n        )\r\n      }\r\n    \r\n      render() { \r\n        return (\r\n          &lt;View style={this.props.style}&gt;\r\n            &lt;TouchableOpacity style={styles.plusminus} title=&#39;+&#39; onPress={() =&gt; this.IncrementItem(this.props.k)}&gt;\r\n              &lt;Text style={styles.pmtxt}&gt;+&lt;/Text&gt;\r\n            &lt;/TouchableOpacity&gt;\r\n            &lt;TouchableOpacity style={styles.plusminus} title=&#39;-&#39; onPress={() =&gt; this.DecreaseItem(this.props.k)}&gt;\r\n              &lt;Text style={styles.pmtxt}&gt;-&lt;/Text&gt;\r\n            &lt;/TouchableOpacity&gt;\r\n    \r\n            &lt;View style={[{ \r\n              paddingHorizontal: 10,\r\n              marginLeft: 4,\r\n              alignItems: &#39;center&#39;,\r\n              justifyContent: &#39;center&#39;,\r\n              backgroundColor: &#39;#aaa&#39;,\r\n              width: 40,\r\n              borderRadius: 5\r\n            }]}&gt;{this.Count(this.props.k)}&lt;/View&gt;\r\n          &lt;/View&gt;\r\n        )\r\n      }\r\n    }\r\n\r\nAnd a working handler for the parent component...\r\n\r\n \r\n\r\n     handler = async (key: string, value: Number, pm: string) =&gt; {\r\n    \r\n        let ct = 1\r\n        let n = this.state.clicks[key]\r\n    \r\n        if (&#39;++&#39; == pm) {\r\n          ct = n\r\n          ct++\r\n        }\r\n        else {\r\n          ct = 0\r\n          if (n &gt; 0) {\r\n            ct = n\r\n            ct--\r\n          }\r\n        }\r\n    \r\n        let clicks = this.state.clicks\r\n        clicks[key] = ct\r\n    \r\n        this.setState({clicks: clicks})\r\n      }\r\n\r\nAnd the JSX for the child component within the parent&#39;s render...\r\n\r\n    &lt;PlusMinus k={k} clicks={this.state.clicks[k]} style={{\r\n                            flexWrap: &#39;wrap&#39;,\r\n                            flexDirection: &#39;row&#39;,\r\n                            marginBottom: 0,\r\n                            marginRight: 12,\r\n                            paddingBottom: 0,\r\n                            paddingRight: 5,\r\n                            paddingLeft: 5\r\n                          }} handler={this.handler} /&gt;",
+            "link": "https://stackoverflow.com/questions/50357199/how-to-reset-counters-in-a-child-component-in-react-native",
+            "title": "How to reset counters in a child component in React Native",
+            "body": "<p>I have a PlusMinus component whose purpose is to let the user increment or decrement an integer. In my parent component, I loop through several items in a list and provide a PlusMinus counter for each item.  </p>\n\n<p>How can I reset all the counters from the parent component?  Most answers to questions like this suggest handling state in the parent, making the child stateless, and passing values to the child via props.  However, when I update those prop values in the parent, the child does not update.  Some answer componentWillReceiveProps.  However, that function is deprecated and I was not able to get it to work anyway.</p>\n\n<p>Here is my component.  It works, except I have no way to reset the counters.  How can I provide a button in my parent that resets all the child counters?</p>\n\n<pre><code>import * as React from 'react'\nimport { Text, TouchableOpacity, View } from 'react-native'\n\nimport styles from './Styles'\n\ntype Props = { k: string, handler: Function, style: Object }\ntype State = { clicks: Object }\n\nexport default class PlusMinus extends React.Component&lt;Props, State&gt; {\n\n  state = {\n    clicks: {}\n  }\n\n  IncrementItem = (k: string) =&gt; {\n\n    let clicks = this.state.clicks\n\n    if ('undefined' == typeof this.state.clicks[k]) {\n      clicks[k] = 1\n    }\n    else {\n      clicks[k]++\n    }\n\n    // A handler passed from the parent that updates persistent values in the parent.\n    this.props.handler(k, clicks[k])\n\n    this.setState(\n      { clicks: clicks }\n    )\n  }\n\n  DecreaseItem = (k: string) =&gt; {\n\n    let clicks = this.state.clicks\n\n    if ('undefined' == typeof this.state.clicks[k]) {\n      clicks[k] = 0\n    }\n    else if (this.state.clicks[k] &gt; 0) {\n      clicks[k]--\n    }\n\n    this.props.handler(k, clicks[k])\n\n    this.setState(\n      { clicks: clicks }\n    )\n  }\n\n  Count = (k: string) =&gt; {\n    let ct = 0\n\n    if ('undefined' !== typeof this.state.clicks[k]) {\n      ct = this.state.clicks[k]\n      ct = ct++\n    }\n    return (\n      &lt;Text style={styles.counter} id={k}&gt;{ ct }&lt;/Text&gt;\n    )\n  }\n\n  render() { \n    return (\n      &lt;View style={this.props.style}&gt;\n        &lt;TouchableOpacity style={styles.plusminus} title='+' onPress={() =&gt; this.IncrementItem(this.props.k)}&gt;\n          &lt;Text style={styles.pmtxt}&gt;+&lt;/Text&gt;\n        &lt;/TouchableOpacity&gt;\n        &lt;TouchableOpacity style={styles.plusminus} title='-' onPress={() =&gt; this.DecreaseItem(this.props.k)}&gt;\n          &lt;Text style={styles.pmtxt}&gt;-&lt;/Text&gt;\n        &lt;/TouchableOpacity&gt;\n\n        &lt;View style={[{ \n          paddingHorizontal: 10,\n          marginLeft: 4,\n          alignItems: 'center',\n          justifyContent: 'center',\n          backgroundColor: '#aaa',\n          width: 40,\n          borderRadius: 5\n        }]}&gt;{this.Count(this.props.k)}&lt;/View&gt;\n      &lt;/View&gt;\n    )\n  }\n}\n</code></pre>\n\n<p>My handler in the parent component looks like...</p>\n\n<pre><code>handler = async (key: string, value: Number) =&gt; {\n    let object = {}\n    let str = await Expo.SecureStore.getItemAsync('clicks')\n    if (str) {\n      object = JSON.parse(str)\n    }\n    object[key] = value\n    str = JSON.stringify(object)\n    Expo.SecureStore.setItemAsync('clicks', str)\n  }\n</code></pre>\n\n<hr>\n\n<p>------- UPDATE:  Here is a working example. -------</p>\n\n<pre><code>import * as React from 'react'\nimport { Text, TouchableOpacity, View } from 'react-native'\n\nimport styles from './Styles'\n\ntype Props = { k: string, handler: Function, style: Object, clicks: Number }\n\nexport default class PlusMinus extends React.Component&lt;Props&gt; {\n\n  IncrementItem = (k: string) =&gt; {\n    let clicks = this.props.clicks\n    this.props.handler(k, clicks, '++')\n  }\n\n  DecreaseItem = (k: string) =&gt; {\n    let clicks = this.props.clicks\n    this.props.handler(k, clicks, '--')\n  }\n\n  Count = (k: string) =&gt; {\n    let ct = 0\n\n    if ('undefined' !== typeof this.props.clicks) {\n      ct = this.props.clicks\n    }\n    return (\n      &lt;Text style={styles.counter} id={k}&gt;{ ct }&lt;/Text&gt;\n    )\n  }\n\n  render() { \n    return (\n      &lt;View style={this.props.style}&gt;\n        &lt;TouchableOpacity style={styles.plusminus} title='+' onPress={() =&gt; this.IncrementItem(this.props.k)}&gt;\n          &lt;Text style={styles.pmtxt}&gt;+&lt;/Text&gt;\n        &lt;/TouchableOpacity&gt;\n        &lt;TouchableOpacity style={styles.plusminus} title='-' onPress={() =&gt; this.DecreaseItem(this.props.k)}&gt;\n          &lt;Text style={styles.pmtxt}&gt;-&lt;/Text&gt;\n        &lt;/TouchableOpacity&gt;\n\n        &lt;View style={[{ \n          paddingHorizontal: 10,\n          marginLeft: 4,\n          alignItems: 'center',\n          justifyContent: 'center',\n          backgroundColor: '#aaa',\n          width: 40,\n          borderRadius: 5\n        }]}&gt;{this.Count(this.props.k)}&lt;/View&gt;\n      &lt;/View&gt;\n    )\n  }\n}\n</code></pre>\n\n<p>And a working handler for the parent component...</p>\n\n<pre><code> handler = async (key: string, value: Number, pm: string) =&gt; {\n\n    let ct = 1\n    let n = this.state.clicks[key]\n\n    if ('++' == pm) {\n      ct = n\n      ct++\n    }\n    else {\n      ct = 0\n      if (n &gt; 0) {\n        ct = n\n        ct--\n      }\n    }\n\n    let clicks = this.state.clicks\n    clicks[key] = ct\n\n    this.setState({clicks: clicks})\n  }\n</code></pre>\n\n<p>And the JSX for the child component within the parent's render...</p>\n\n<pre><code>&lt;PlusMinus k={k} clicks={this.state.clicks[k]} style={{\n                        flexWrap: 'wrap',\n                        flexDirection: 'row',\n                        marginBottom: 0,\n                        marginRight: 12,\n                        paddingBottom: 0,\n                        paddingRight: 5,\n                        paddingLeft: 5\n                      }} handler={this.handler} /&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "mongodb"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 3365744,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/bac06c73e4cbdecc7e60f8c4ec38f74c?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Neo",
+                "link": "https://stackoverflow.com/users/3365744/neo"
+            },
+            "is_answered": false,
+            "view_count": 23,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526416576,
+            "creation_date": 1526414134,
+            "last_edit_date": 1526416576,
+            "question_id": 50358257,
+            "body_markdown": "I have a mongoDB collection.\r\n\r\nI am trying to insert the following record using mongoose.\r\n\r\n \r\n\r\n       {\r\n         &quot;employeeColumns&quot;: {\r\n                    &quot;headCount&quot;: [&quot;empId&quot;,&quot;designation&quot;,&quot;country&quot;,&quot;city&quot;,&quot;branch&quot;,&quot;vertical&quot;,&quot;client&quot;,&quot;process&quot;],\r\n                    &quot;headCountRatio&quot;: [&quot;empId&quot;,&quot;designation&quot;,&quot;country&quot;,&quot;city&quot;,&quot;branch&quot;,&quot;vertical&quot;,&quot;client&quot;,&quot;process&quot;],\r\n                    &quot;genderRatio&quot;: [&quot;empId&quot;,&quot;designation&quot;,&quot;country&quot;,&quot;city&quot;,&quot;branch&quot;,&quot;vertical&quot;,&quot;client&quot;,&quot;process&quot;,&quot;gender&quot;],\r\n                    &quot;averageCtc&quot;: [&quot;empId&quot;,&quot;designation&quot;,&quot;country&quot;,&quot;city&quot;,&quot;branch&quot;,&quot;vertical&quot;,&quot;client&quot;,&quot;process&quot;,&quot;ctc&quot;],\r\n                    &quot;accuracy&quot;: [&quot;empId&quot;,&quot;designation&quot;,&quot;country&quot;,&quot;city&quot;,&quot;branch&quot;,&quot;vertical&quot;,&quot;client&quot;,&quot;process&quot;,&quot;accuracy&quot;],\r\n                    &quot;productivity&quot;: [&quot;empId&quot;,&quot;designation&quot;,&quot;country&quot;,&quot;city&quot;,&quot;branch&quot;,&quot;vertical&quot;,&quot;client&quot;,&quot;process&quot;,&quot;productivity&quot;],\r\n                    &quot;attrition&quot;: [&quot;empId&quot;,&quot;designation&quot;,&quot;country&quot;,&quot;city&quot;,&quot;branch&quot;,&quot;vertical&quot;,&quot;client&quot;,&quot;process&quot;,&quot;employmentStatus&quot;],\r\n                    &quot;allowances&quot;: [&quot;empId&quot;,&quot;designation&quot;,&quot;country&quot;,&quot;city&quot;,&quot;branch&quot;,&quot;vertical&quot;,&quot;client&quot;,&quot;process&quot;]\r\n                },\r\n                &quot;costColumns&quot;: {\r\n                    &quot;branchCost&quot;: [&quot;country&quot;,&quot;city&quot;,&quot;branch&quot;],\r\n                    &quot;clientCost&quot;: [&quot;client&quot;],\r\n                    &quot;verticalCost&quot;: [&quot;vertical&quot;]\r\n                },\r\n                &quot;revenueColumns&quot;: [&quot;client&quot;]\r\n        }\r\n\r\nWhen i try to insert the above document i am getting the following error\r\n\r\n`WiredTigerIndex :: insert: key too large to index, failing  1180`\r\n\r\nI am not inserting a huge record. Just the above document and I don&#39;t know why I am getting this error. I am relatively new to MongoDB",
+            "link": "https://stackoverflow.com/questions/50358257/wiredtigerindexinsert-key-too-large-to-index-failing-1180",
+            "title": "WiredTigerIndex::insert: key too large to index, failing 1180",
+            "body": "<p>I have a mongoDB collection.</p>\n\n<p>I am trying to insert the following record using mongoose.</p>\n\n<pre><code>   {\n     \"employeeColumns\": {\n                \"headCount\": [\"empId\",\"designation\",\"country\",\"city\",\"branch\",\"vertical\",\"client\",\"process\"],\n                \"headCountRatio\": [\"empId\",\"designation\",\"country\",\"city\",\"branch\",\"vertical\",\"client\",\"process\"],\n                \"genderRatio\": [\"empId\",\"designation\",\"country\",\"city\",\"branch\",\"vertical\",\"client\",\"process\",\"gender\"],\n                \"averageCtc\": [\"empId\",\"designation\",\"country\",\"city\",\"branch\",\"vertical\",\"client\",\"process\",\"ctc\"],\n                \"accuracy\": [\"empId\",\"designation\",\"country\",\"city\",\"branch\",\"vertical\",\"client\",\"process\",\"accuracy\"],\n                \"productivity\": [\"empId\",\"designation\",\"country\",\"city\",\"branch\",\"vertical\",\"client\",\"process\",\"productivity\"],\n                \"attrition\": [\"empId\",\"designation\",\"country\",\"city\",\"branch\",\"vertical\",\"client\",\"process\",\"employmentStatus\"],\n                \"allowances\": [\"empId\",\"designation\",\"country\",\"city\",\"branch\",\"vertical\",\"client\",\"process\"]\n            },\n            \"costColumns\": {\n                \"branchCost\": [\"country\",\"city\",\"branch\"],\n                \"clientCost\": [\"client\"],\n                \"verticalCost\": [\"vertical\"]\n            },\n            \"revenueColumns\": [\"client\"]\n    }\n</code></pre>\n\n<p>When i try to insert the above document i am getting the following error</p>\n\n<p><code>WiredTigerIndex :: insert: key too large to index, failing  1180</code></p>\n\n<p>I am not inserting a huge record. Just the above document and I don't know why I am getting this error. I am relatively new to MongoDB</p>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "linux",
+                "input",
+                "racing"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9796449,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a2d938313959f1cca3a630bbb8a3efc1?s=128&d=identicon&r=PG&f=1",
+                "display_name": "CodeCat",
+                "link": "https://stackoverflow.com/users/9796449/codecat"
+            },
+            "is_answered": false,
+            "view_count": 36,
+            "closed_date": 1526415429,
+            "answer_count": 0,
+            "score": -6,
+            "last_activity_date": 1526416571,
+            "creation_date": 1526414304,
+            "last_edit_date": 1526416571,
+            "question_id": 50358297,
+            "body_markdown": "I need to get input from a racing wheel on linux using c++ and I&#39;m pretty lost on where to start. There are no drivers for the racing wheel on linux. I have tried using a c++ wrapper to interact with HID devices here -&gt; https://github.com/yigityuce/HidApi. I managed to get that to run but it did not pick up the racing wheel as a device although it did pick up my mouse and keyboard. I was going to look into using libusb to try to interact with the racing wheel but I&#39;m not sure if that will work. How would you go about getting input from a Trustmaster racing wheel on linux using c++? If you need any additional information I&#39;d be more than happy to provide it.",
+            "link": "https://stackoverflow.com/questions/50358297/racing-wheel-input-on-linux-with-c",
+            "closed_reason": "too broad",
+            "title": "Racing wheel input on Linux with c++",
+            "body": "<p>I need to get input from a racing wheel on linux using c++ and I'm pretty lost on where to start. There are no drivers for the racing wheel on linux. I have tried using a c++ wrapper to interact with HID devices here -> <a href=\"https://github.com/yigityuce/HidApi\" rel=\"nofollow noreferrer\">https://github.com/yigityuce/HidApi</a>. I managed to get that to run but it did not pick up the racing wheel as a device although it did pick up my mouse and keyboard. I was going to look into using libusb to try to interact with the racing wheel but I'm not sure if that will work. How would you go about getting input from a Trustmaster racing wheel on linux using c++? If you need any additional information I'd be more than happy to provide it.</p>\n"
+        },
+        {
+            "tags": [
+                "jquery",
+                "jquery-plugins",
+                "owl-carousel"
+            ],
+            "owner": {
+                "reputation": 78,
+                "user_id": 1783695,
+                "user_type": "registered",
+                "accept_rate": 64,
+                "profile_image": "https://www.gravatar.com/avatar/8e97f84f5dc666a81fadfa71f93c315b?s=128&d=identicon&r=PG",
+                "display_name": "ByteMyPixel",
+                "link": "https://stackoverflow.com/users/1783695/bytemypixel"
+            },
+            "is_answered": true,
+            "view_count": 5808,
+            "accepted_answer_id": 33252395,
+            "answer_count": 5,
+            "score": 0,
+            "last_activity_date": 1526416566,
+            "creation_date": 1419968709,
+            "last_edit_date": 1419969934,
+            "question_id": 27711558,
+            "body_markdown": "Is there a way to disable the previous and next links if there aren’t enough items to scroll?\r\n\r\nFor example: http://truewest.nextmp.net/special-programs these galleries allow for 4 items (desktop), there are only 4 items in this gallery but the buttons to pagination still appear, but should be disabled.\r\n\r\nI know there was a way to do it in the previous version, but the .disabled class doesn’t load into the links on this one?  I don’t see it doing so in any of the demos either...\r\n\r\nCould I use some additional jquery to override this, or is there anything built-in I that I&#39;m missing?\r\n\r\nHere is my code:\r\n\r\n\t\t\t$(&quot;.owl-carousel&quot;).owlCarousel({\r\n\t\t\t\titems: 4,\r\n\t\t\t\tloop: true,\r\n\t\t\t\trewindNav: false,\r\n\t\t\t\tautoplayHoverPause: true,\r\n\t\t\t    margin: 0,\r\n\t\t\t    dots: false,\r\n\t\t\t    navText: &quot;&lt;&gt;&quot;,\r\n\t\t\t    responsive:{\r\n\t\t\t        0:{ // breakpoint from 0 up - small smartphones\r\n\t\t\t            items:1,\r\n\t\t\t            nav:true\r\n\t\t\t        },\r\n\t\t\t        480:{  // breakpoint from 480 up - smartphones // landscape\r\n\t\t\t            items:2,\r\n\t\t\t            nav:false\r\n\t\t\t        },\r\n\t\t\t        768:{ // breakpoint from 768 up - tablets\r\n\t\t\t            items:3,\r\n\t\t\t            nav:true,\r\n\t\t\t            loop:false\r\n\t\t\t        },\r\n\t\t\t        992:{ // breakpoint from 992 up - desktop\r\n\t\t\t            items:4,\r\n\t\t\t            nav:true,\r\n\t\t\t            loop:false\r\n\t\t\t        }\r\n\t\t\t    }\r\n\t\t\t  \r\n\t\t\t});",
+            "link": "https://stackoverflow.com/questions/27711558/how-can-i-disable-previous-next-in-owlcarousel2-if-there-arent-enough-items-to",
+            "title": "How can I disable previous/next in OwlCarousel2 if there aren&#39;t enough items to scroll?",
+            "body": "<p>Is there a way to disable the previous and next links if there aren’t enough items to scroll?</p>\n\n<p>For example: <a href=\"http://truewest.nextmp.net/special-programs\" rel=\"nofollow\">http://truewest.nextmp.net/special-programs</a> these galleries allow for 4 items (desktop), there are only 4 items in this gallery but the buttons to pagination still appear, but should be disabled.</p>\n\n<p>I know there was a way to do it in the previous version, but the .disabled class doesn’t load into the links on this one?  I don’t see it doing so in any of the demos either...</p>\n\n<p>Could I use some additional jquery to override this, or is there anything built-in I that I'm missing?</p>\n\n<p>Here is my code:</p>\n\n<pre><code>        $(\".owl-carousel\").owlCarousel({\n            items: 4,\n            loop: true,\n            rewindNav: false,\n            autoplayHoverPause: true,\n            margin: 0,\n            dots: false,\n            navText: \"&lt;&gt;\",\n            responsive:{\n                0:{ // breakpoint from 0 up - small smartphones\n                    items:1,\n                    nav:true\n                },\n                480:{  // breakpoint from 480 up - smartphones // landscape\n                    items:2,\n                    nav:false\n                },\n                768:{ // breakpoint from 768 up - tablets\n                    items:3,\n                    nav:true,\n                    loop:false\n                },\n                992:{ // breakpoint from 992 up - desktop\n                    items:4,\n                    nav:true,\n                    loop:false\n                }\n            }\n\n        });\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "excel",
+                "excel-vba",
+                "excel-formula",
+                "excel-2010"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9795308,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-L-fJGhvc0js/AAAAAAAAAAI/AAAAAAAAAsM/4sGSxjIgsSw/photo.jpg?sz=128",
+                "display_name": "Salih Asadov",
+                "link": "https://stackoverflow.com/users/9795308/salih-asadov"
+            },
+            "is_answered": false,
+            "view_count": 21,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526416562,
+            "creation_date": 1526401280,
+            "last_edit_date": 1526416562,
+            "question_id": 50354990,
+            "body_markdown": "I have [this][1] 14k lines of nightmare. I have to come up with a way to format it as shown in the second photo. The wrong format is repetitive, so I think it&#39;s possible to relocate those with some sort of macro. It goes like this:\r\n\r\n - There&#39;s a bold year (as string) for each year (I think there are 3, from 2015 to 2018)\r\n - the day of the month\r\n - the month of the year\r\n - a blank row\r\n - and then two rows of content\r\n  \r\nAs you can see in the first picture it repeats for about 15k lines like this.\r\n\r\n\r\n\r\n\r\n\r\nThe format I&#39;m aiming to get is pretty [straightforward][2]. It just needs to in line with this order;  year -&gt; month -&gt; day -&gt; content\r\nAny kind of help is appreciated, thanks in advance!\r\n\r\n  [1]: https://i.stack.imgur.com/IQB70.jpg\r\n  [2]: https://i.stack.imgur.com/3dWhb.jpg\r\n",
+            "link": "https://stackoverflow.com/questions/50354990/how-do-i-relocate-certain-cells-with-given-format-in-excel-using-macros",
+            "title": "How do I relocate certain cells with given format in Excel using macros",
+            "body": "<p>I have <a href=\"https://i.stack.imgur.com/IQB70.jpg\" rel=\"nofollow noreferrer\">this</a> 14k lines of nightmare. I have to come up with a way to format it as shown in the second photo. The wrong format is repetitive, so I think it's possible to relocate those with some sort of macro. It goes like this:</p>\n\n<ul>\n<li>There's a bold year (as string) for each year (I think there are 3, from 2015 to 2018)</li>\n<li>the day of the month</li>\n<li>the month of the year</li>\n<li>a blank row</li>\n<li>and then two rows of content</li>\n</ul>\n\n<p>As you can see in the first picture it repeats for about 15k lines like this.</p>\n\n<p>The format I'm aiming to get is pretty <a href=\"https://i.stack.imgur.com/3dWhb.jpg\" rel=\"nofollow noreferrer\">straightforward</a>. It just needs to in line with this order;  year -> month -> day -> content\nAny kind of help is appreciated, thanks in advance!</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "windows",
+                "visual-studio",
+                "events",
+                "console-application"
+            ],
+            "owner": {
+                "reputation": 323,
+                "user_id": 4880538,
+                "user_type": "registered",
+                "accept_rate": 77,
+                "profile_image": "https://lh5.googleusercontent.com/-11WVsaKNUgs/AAAAAAAAAAI/AAAAAAAAAKQ/AlBWlXhkueE/photo.jpg?sz=128",
+                "display_name": "Albert MN.",
+                "link": "https://stackoverflow.com/users/4880538/albert-mn"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526416559,
+            "creation_date": 1526416559,
+            "question_id": 50358793,
+            "body_markdown": "Is there an `EventWatcher` for when a new item is added to the Windows volume mixer?\r\nI&#39;m currently using the event for new processes, then checking if they have a volume object but a would much rather use the correct event if it exists.",
+            "link": "https://stackoverflow.com/questions/50358793/new-volume-mixer-addition-event",
+            "title": "New volume mixer addition event",
+            "body": "<p>Is there an <code>EventWatcher</code> for when a new item is added to the Windows volume mixer?\nI'm currently using the event for new processes, then checking if they have a volume object but a would much rather use the correct event if it exists.</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 299
+}

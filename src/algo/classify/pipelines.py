@@ -33,13 +33,13 @@ _slow_or_bad_pipelines = {
 
 #decomp =preprocessing.MaxAbsScaler()
 #decomp = decomposition.PCA(n_components=100)
-decomp = decomposition.TruncatedSVD(n_components=150)
-#decomp = decomposition.NMF(n_components=100, random_state=1, alpha=.1, l1_ratio=.5)
-#decomp = decomposition.LatentDirichletAllocation(n_components=200, learning_method='batch')
+ecomp = decomposition.TruncatedSVD(n_components=100)
+#decomp = decomposition.NMF(n_components=250, random_state=1, ) #alpha=.1, l1_ratio=.5
+#decomp = decomposition.LatentDirichletAllocation(n_components=400, learning_method='batch')
 
 classify_pre_pipeline = Pipeline([
     ('norm1', preprocessing.MaxAbsScaler()),
-    ('nmf', decomp),
+    #('nmf', decomp),
     ('norm', preprocessing.MaxAbsScaler()),    
 ])
 

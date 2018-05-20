@@ -1,0 +1,831 @@
+{
+    "items": [
+        {
+            "tags": [
+                "android",
+                "bluetooth-lowenergy"
+            ],
+            "owner": {
+                "reputation": 1259,
+                "user_id": 2405663,
+                "user_type": "registered",
+                "accept_rate": 48,
+                "profile_image": "https://www.gravatar.com/avatar/ded7b79bc778bdbd87e808c0e9664796?s=128&d=identicon&r=PG",
+                "display_name": "bircastri",
+                "link": "https://stackoverflow.com/users/2405663/bircastri"
+            },
+            "is_answered": true,
+            "view_count": 23,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526456021,
+            "creation_date": 1526389481,
+            "question_id": 50350985,
+            "body_markdown": "I&#39;m building an app that downlaod all characteristic from a BLE device. This device storage in your local memory 10 distinct double values, every 3ms.\r\n\r\nSo in 1 second the BLE device has storage 333 row (every row have 10 values).\r\n\r\nMy Android app, download this values but I can to downlaod one rows of second or little less. In this mode I can&#39;t never to download all the information of this BLE device.\r\n\r\nNow there is any way to increase the frequency of scan o read this characteristic ?\r\n\r\nthis is my Service that downlaod the characteristic of BLE device:\r\n\r\n\r\n\r\n    public class BlePowerService extends Service {\r\n        public DbLayer db;\r\n        Setting settingApp;\r\n        List&lt;ScanFilter&gt; filters;\r\n        String[] stringSequence = new String[] {CHARACTERISTIC_FORZA_STRING, CHARACTERISTIC_TEMPERATURA_STRING};\r\n        BluetoothAdapter mBluetoothAdapter;\r\n        BluetoothGatt mGatt;\r\n        BluetoothDevice currDevice;\r\n        static final long SCAN_PERIOD = 500;\r\n        static String SPLIT_CHAR =&quot;;&quot;;\r\n        BluetoothLeScanner mLEScanner;\r\n        Handler mHandler;\r\n        int ReadQueueIndex;\r\n        List&lt;BluetoothGattCharacteristic&gt; ReadQueue;\r\n        BluetoothGattCharacteristic caratteristicaDaLeggere;\r\n        ScanSettings settings;\r\n        Integer ultimaForzaLetta,ultimaTemperaturaLetta;\r\n        boolean continuaLetturaForza, continuaLetturaTemperatura;\r\n        boolean isReading = true;\r\n        String LOG_CODE = &quot;NOTIFSRV&quot;;\r\n        GattClientCallback gattClientCallback;\r\n        private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;\r\n    \r\n    \r\n        public BlePowerService() {\r\n        }\r\n    \r\n        @Override\r\n        public void onCreate() {\r\n            super.onCreate();\r\n            mHandler = new Handler();\r\n    \r\n            Context sharedContext = null;\r\n            try {\r\n                sharedContext = this.createPackageContext(\r\n                        &quot;com.care.devicesensor&quot;,\r\n                        Context.CONTEXT_INCLUDE_CODE);\r\n                if (sharedContext == null) {\r\n                    return;\r\n                }\r\n                db=new DbLayer(sharedContext);\r\n                db.open();\r\n            } catch (Exception e) {\r\n                String error = e.getMessage();\r\n              //  Log.d(LOG_CODE,&quot;DB error : &quot; + error);\r\n                return;\r\n            }\r\n        }\r\n    \r\n    \r\n        @Override\r\n        public int onStartCommand(Intent intent, int flags, int startId) {\r\n            try {\r\n                //RECUPERO LE IMPOSTAZIONI SETTATE DALL&#39;UTENTE\r\n                settingApp = db.fetchSetting();\r\n                if (settingApp != null &amp;&amp; settingApp.getAddressBleSX()!=null) {\r\n                    //POSSO FILTRARE DIRETTAMENTE PER L&#39;UUID DEL DISPOSITIVO MEMORIZZATO\r\n                    //DALL&#39;UTENTE\r\n                    ScanFilter.Builder scanFilterMac =\r\n                            null;\r\n                        scanFilterMac = new ScanFilter.Builder().setDeviceAddress(settingApp.getAddressBleSX());\r\n                    if(filters==null)\r\n                        filters = new ArrayList&lt;ScanFilter&gt;();\r\n                    //if (Build.VERSION.SDK_INT &gt;= Build.VERSION_CODES.LOLLIPOP) {\r\n                    filters.add(scanFilterMac.build());\r\n                    //}\r\n                    //FILTRO ANCHE PER LA CARATTERISTICA DI FORZA\r\n                    ScanFilter filter = null;\r\n                        filter = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(CHARACTERISTIC_FORZA_STRING)).build();\r\n                    filters.add(filter);\r\n    \r\n                    final BluetoothManager bluetoothManager =\r\n                            (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);\r\n                        mBluetoothAdapter = bluetoothManager.getAdapter();\r\n                    //mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();\r\n                        mLEScanner = mBluetoothAdapter.getBluetoothLeScanner();\r\n                        settings = new ScanSettings.Builder()\r\n                                .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)\r\n                                .build();\r\n                    scanLeDevice(true);\r\n                    mTimer = new Timer();\r\n                    //ogni 2 ore\r\n                    continuaLetturaForza = true;\r\n                    continuaLetturaTemperatura = true;\r\n    \r\n                    int nSecondi = settingApp.getFrequenzaDownload()!= null ? settingApp.getFrequenzaDownload() : 1;\r\n                    mTimer.schedule(timerTask,5000);\r\n                    //mTimer.schedule(timerTask, 10000, 1000 * nSecondi);\r\n                    //mTimer.scheduleAtFixedRate (timerTask, 10000, 1000 * nSecondi);\r\n                }\r\n            } catch (Exception e) {\r\n               // Log.e(&quot;POWER_SERVICE&quot;, e.getMessage());\r\n            }\r\n            return super.onStartCommand(intent, flags, startId);\r\n        }\r\n    \r\n        private Timer mTimer;\r\n    \r\n        TimerTask timerTask = new TimerTask() {\r\n    \r\n            @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)\r\n            @Override\r\n            public void run() {\r\n                //LEGGO TUTTI I DATI DAL SENSORE FINCHE CI SONO VALORI\r\n                 int counter = 0;\r\n                while(continuaLetturaForza || continuaLetturaTemperatura){\r\n                    counter++;\r\n                    //Log.v(&quot;CICLO WHILE&quot;, counter+&quot;&quot;);\r\n                    if (currDevice != null) {\r\n                   \r\n                        if(ReadQueue!= null &amp;&amp; ReadQueue.size()&gt;0){\r\n                            int index =0;\r\n                            for(index=0; index &lt; ReadQueue.size(); index++){\r\n                                if(mGatt!=null){\r\n                                    isReading = mGatt.readCharacteristic(ReadQueue.get(index));\r\n                                    while(isReading){\r\n                                        try {\r\n                                            Thread.sleep(1);\r\n                                        } catch (InterruptedException e) {\r\n                                            e.printStackTrace();\r\n                                        }\r\n                                    }\r\n                                }else{\r\n                                    continuaLetturaForza = false;\r\n                                    continuaLetturaTemperatura = false;\r\n                                }\r\n                            }\r\n                        }\r\n                    \r\n                    }else{\r\n                        //provo a ricollegarmi al dispositivo probabile, abbia perso la connessione con esso\r\n                        scanLeDevice(true);\r\n                        try {\r\n                            Thread.sleep(2500);\r\n                        } catch (InterruptedException e) {\r\n                            e.printStackTrace();\r\n                        }\r\n                        if(currDevice == null &amp;&amp; counter == 25){\r\n                            //in questo caso non &#232; riuscito a trovare il dispositivo BLE\r\n                            //esco dal ciclo\r\n                            continuaLetturaForza = false;\r\n                            continuaLetturaTemperatura = false;\r\n                            continue;\r\n                        }\r\n                    }\r\n               \r\n                }\r\n                \r\n                if(gattClientCallback!=null &amp;&amp; mGatt != null)\r\n                    gattClientCallback.disconnectGattServer();\r\n                mTimer.cancel();\r\n                stopSelf();\r\n                EventBus.getDefault().post(new MessageEvent(&quot;stopService&quot;));\r\n            }\r\n    \r\n            public void stopTask() {\r\n    \r\n                if (timerTask != null) {\r\n    \r\n                    Log.d(&quot;TIMER&quot;, &quot;timer canceled&quot;);\r\n                    timerTask.cancel();\r\n                }\r\n            }\r\n        };\r\n    \r\n    \r\n        public void connectToDevice(BluetoothDevice device) {\r\n            //VERIFICO SE IL DEVICE &#232; QUELLO CHE VOGLIO IO\r\n            if (mGatt == null &amp;&amp; settingApp != null\r\n                    &amp;&amp; device.getAddress().equals(settingApp.getAddressBleSX())) {\r\n                currDevice = device;\r\n                gattClientCallback = new GattClientCallback();\r\n                mGatt = currDevice.connectGatt(getBaseContext(), false, gattClientCallback);\r\n                scanLeDevice(false);// will stop after first device detection\r\n            }\r\n        }\r\n    \r\n        private BluetoothAdapter.LeScanCallback mLeScanCallback =\r\n                new BluetoothAdapter.LeScanCallback() {\r\n                    @Override\r\n                    public void onLeScan(final BluetoothDevice device, int rssi,\r\n                                         byte[] scanRecord) {\r\n                        Handler h = new Handler(getApplicationContext().getMainLooper());\r\n                        // Although you need to pass an appropriate context\r\n                        h.post(new Runnable() {\r\n                            @Override\r\n                            public void run() {\r\n                              //  Log.i(&quot;onLeScan&quot;, device.toString());\r\n                                    connectToDevice(device);\r\n    \r\n                            }\r\n                        });\r\n                    }\r\n                };\r\n    \r\n        private void scanLeDevice(final boolean enable) {\r\n            if (enable) {\r\n                mHandler.postDelayed(new Runnable() {\r\n                    @Override\r\n                    public void run() {\r\n                        if (Build.VERSION.SDK_INT &lt; 21) {\r\n                            mBluetoothAdapter.stopLeScan(mLeScanCallback);\r\n                        } else {\r\n                            mLEScanner.stopScan(mScanCallback);\r\n    \r\n                        }\r\n                    }\r\n                }, SCAN_PERIOD);\r\n                if (Build.VERSION.SDK_INT &lt; 21) {\r\n                    mBluetoothAdapter.startLeScan(mLeScanCallback);\r\n                } else {\r\n                    mLEScanner.startScan(filters, settings, mScanCallback);\r\n                }\r\n            } else {\r\n                if (Build.VERSION.SDK_INT &lt; 21) {\r\n                    mBluetoothAdapter.stopLeScan(mLeScanCallback);\r\n                } else {\r\n                    mLEScanner.stopScan(mScanCallback);\r\n                }\r\n            }\r\n        }\r\n    \r\n    \r\n        private ScanCallback mScanCallback = new ScanCallback() {\r\n            @Override\r\n            public void onScanResult(int callbackType, ScanResult result) {\r\n               // Log.i(&quot;callbackType&quot;, String.valueOf(callbackType));\r\n               // Log.i(&quot;result&quot;, result.toString());\r\n                BluetoothDevice btDevice = null;\r\n                   btDevice = result.getDevice();\r\n                connectToDevice(btDevice);\r\n            }\r\n    \r\n            @Override\r\n            public void onBatchScanResults(List&lt;ScanResult&gt; results) {\r\n                for (ScanResult sr : results) {\r\n                    Log.i(&quot;ScanResult - Results&quot;, sr.toString());\r\n                }\r\n            }\r\n    \r\n            @Override\r\n            public void onScanFailed(int errorCode) {\r\n               Log.e(&quot;Scan Failed&quot;, &quot;Error Code: &quot; + errorCode);\r\n            }\r\n        };\r\n    \r\n        private class GattClientCallback extends BluetoothGattCallback {\r\n    \r\n            @Override\r\n            public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {\r\n                try{\r\n                    super.onConnectionStateChange(gatt, status, newState);\r\n                    //Log.i(&quot;tag&quot;, &quot;onConnectionStateChange newState: &quot; + newState);\r\n    \r\n                    if (status == BluetoothGatt.GATT_FAILURE) {\r\n                        Log.e(&quot;ERROR_SERVICE&quot;, &quot;Connection Gatt failure status &quot; + status);\r\n                        if(mGatt == null){\r\n    \r\n                        }else{\r\n                            try {\r\n                                gatt.close();\r\n                            } catch (Exception e) {\r\n                                Log.d(&quot;&quot;, &quot;close ignoring: &quot; + e);\r\n                            }\r\n                            mGatt = null;\r\n                        }\r\n                        return;\r\n                    } else if (status != BluetoothGatt.GATT_SUCCESS) {\r\n                        // handle anything not SUCCESS as failure\r\n                        Log.e(&quot;ERROR_SERVICE&quot;, &quot;Connection not GATT sucess status &quot; + status);\r\n                        if(mGatt == null){\r\n    \r\n                        }else{\r\n                            try {\r\n                                gatt.close();\r\n                            } catch (Exception e) {\r\n                                Log.d(&quot;&quot;, &quot;close ignoring: &quot; + e);\r\n                            }\r\n                            mGatt = null;\r\n                        }\r\n                        return;\r\n                    }\r\n    \r\n                    if (newState == BluetoothProfile.STATE_CONNECTED) {\r\n                        //Log.i(&quot;INFO&quot;, &quot;Connected to device &quot; + gatt.getDevice().getAddress());\r\n                        gatt.discoverServices();\r\n                    } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {\r\n                        Log.i(&quot;INFO&quot;, &quot;Disconnected from device&quot;);\r\n                        if(mGatt == null){\r\n    \r\n                        }else{\r\n                            try {\r\n                                mGatt.close();\r\n                                mGatt = null;\r\n                                currDevice = null;\r\n                            } catch (Exception e) {\r\n                                Log.d(&quot;&quot;, &quot;close ignoring: &quot; + e);\r\n                            }\r\n                            mGatt = null;\r\n                        }\r\n    \r\n                    }\r\n                }catch(Exception e){\r\n                    Log.e(&quot;tag&quot;, e.getMessage());\r\n                    continuaLetturaForza = true;\r\n                    continuaLetturaTemperatura = true;\r\n                }\r\n            }\r\n    \r\n            public void disconnectGattServer() {\r\n              \r\n                continuaLetturaForza = true;\r\n                continuaLetturaTemperatura = true;\r\n                isReading = false;\r\n                if (mGatt == null) {\r\n    \r\n                }\r\n                else{\r\n                    try{\r\n                        mGatt.disconnect();\r\n                       // mGatt.close();\r\n                    }catch(Exception e){\r\n                        mGatt = null;\r\n                    }\r\n    \r\n                }\r\n                //mGatt = null;\r\n                //currDevice = null;\r\n            }\r\n    \r\n            @Override\r\n            public void onServicesDiscovered(BluetoothGatt gatt, int status) {\r\n                super.onServicesDiscovered(gatt, status);\r\n    \r\n                if (status != BluetoothGatt.GATT_SUCCESS) {\r\n                 //   Log.i(&quot;INFO&quot;, &quot;Device service discovery unsuccessful, status &quot; + status);\r\n                    return;\r\n                }\r\n    \r\n                List&lt;BluetoothGattCharacteristic&gt; matchingCharacteristics =\r\n                        BluetoothUtils.findCharacteristics(gatt,stringSequence);\r\n                if (matchingCharacteristics.isEmpty()) {\r\n                  //  Log.e(&quot;ERROR_SERVICE&quot;,&quot;Unable to find characteristics.&quot;);\r\n                    return;\r\n                }else {\r\n                   \r\n                    ReadQueue = new ArrayList&lt;&gt;();\r\n                    for (BluetoothGattCharacteristic characterist : matchingCharacteristics) {\r\n                        ReadQueue.add(characterist);\r\n                    }\r\n                    //ReadQueueIndex = 0;\r\n                    //ReadCharacteristics(ReadQueueIndex);\r\n                }\r\n    \r\n    \r\n    \r\n            }\r\n    \r\n            @Override\r\n            public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {\r\n                super.onCharacteristicRead(gatt, characteristic, status);\r\n                if (status == BluetoothGatt.GATT_SUCCESS) {\r\n               \r\n                    String valoreRestituito = characteristic.getStringValue(0);\r\n                    if(valoreRestituito==null){\r\n                        int i = 0;\r\n                        i = i + 1;\r\n                        return;\r\n                    }\r\n                    //SPLITTO PER IL CARATTERE ;\r\n                    String[] arrayValori = valoreRestituito.split(SPLIT_CHAR);\r\n                    //1 valore &#232; l ID\r\n                    try{\r\n                        int id = new Integer(arrayValori[0]);\r\n                        //VERIFICO SE STO LEGGENDO TEMPERATURA O FORZA\r\n                        if(characteristic.getUuid().equals(CHARACTERISTIC_FORZA_UUID)){\r\n                            /*Log.v(&quot;CARATTERISTICA&quot;, &quot;*****************************************&quot;);\r\n                            Log.v(&quot;FORZA&quot;, &quot;*****************************************&quot;);*/\r\n                            if(ultimaForzaLetta!= null &amp;&amp; ultimaForzaLetta == id){\r\n                                continuaLetturaForza = false;\r\n                                isReading = false;\r\n                                return;\r\n                            }\r\n                            ultimaForzaLetta = id;\r\n                        }else if(characteristic.getUuid().equals( CHARACTERISTIC_TEMPERATURA_UUID)){\r\n                            /*Log.v(&quot;CARATTERISTICA&quot;, &quot;*****************************************&quot;);\r\n                            Log.v(&quot;TEMPERATURA&quot;, &quot;*****************************************&quot;);*/\r\n                            if(ultimaTemperaturaLetta!= null &amp;&amp; ultimaTemperaturaLetta == id){\r\n                                continuaLetturaTemperatura = false;\r\n                                isReading = false;\r\n                                return;\r\n                            }\r\n                            ultimaTemperaturaLetta = id;\r\n                        }\r\n    \r\n                        SensorData mSenData = new SensorData();\r\n                        mSenData.setIdType(id);\r\n                        mSenData.setValue1(arrayValori[1]);\r\n                        mSenData.setValue2(arrayValori[2]);\r\n                        mSenData.setValue3(arrayValori[3]);\r\n                        mSenData.setValue4(arrayValori[4]);\r\n                        mSenData.setValue5(arrayValori[5]);\r\n                        mSenData.setValue6(arrayValori[6]);\r\n                        mSenData.setValue7(arrayValori[7]);\r\n                        mSenData.setValue8(arrayValori[8]);\r\n                        //TO-DO HO COMMENTATO QUESTA RIGA DI CODICE\r\n                        // mSenData.setIdType(st.getId());\r\n                        mSenData.setCharacteristic(characteristic.getUuid().toString());\r\n                        mSenData.setValueTimestamp(db.getDateTime(true));\r\n                     \r\n                        db.insertSensorData(mSenData);\r\n    \r\n                        EventBus.getDefault().post(new MessageEvent(&quot;update&quot;));\r\n    \r\n                    }catch (Exception e){\r\n                        Log.e(&quot;ERROR&quot;, e.getMessage());\r\n                    }\r\n                    isReading = false;\r\n    \r\n                } else {\r\n                    isReading = false;\r\n                    Log.e(&quot;ERROR_SERVICE&quot;, &quot;Characteristic read unsuccessful, status: &quot; + status);\r\n                  \r\n                    disconnectGattServer();\r\n    \r\n                    return;\r\n                }\r\n            }\r\n        }\r\n    \r\n        public void onDestroy() {\r\n            try {\r\n                db.close();\r\n                Log.d(LOG_CODE,&quot;DB connection closed&quot; );\r\n    \r\n                mTimer.cancel();\r\n                timerTask.cancel();\r\n            } catch (Exception e) {\r\n                e.printStackTrace();\r\n            }\r\n        }\r\n    \r\n    \r\n    }\r\n\r\nThe service works correctly but is to slow.\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50350985/how-to-increase-readcharacteristic-of-ble-device",
+            "title": "How to increase readCharacteristic of Ble device?",
+            "body": "<p>I'm building an app that downlaod all characteristic from a BLE device. This device storage in your local memory 10 distinct double values, every 3ms.</p>\n\n<p>So in 1 second the BLE device has storage 333 row (every row have 10 values).</p>\n\n<p>My Android app, download this values but I can to downlaod one rows of second or little less. In this mode I can't never to download all the information of this BLE device.</p>\n\n<p>Now there is any way to increase the frequency of scan o read this characteristic ?</p>\n\n<p>this is my Service that downlaod the characteristic of BLE device:</p>\n\n<pre><code>public class BlePowerService extends Service {\n    public DbLayer db;\n    Setting settingApp;\n    List&lt;ScanFilter&gt; filters;\n    String[] stringSequence = new String[] {CHARACTERISTIC_FORZA_STRING, CHARACTERISTIC_TEMPERATURA_STRING};\n    BluetoothAdapter mBluetoothAdapter;\n    BluetoothGatt mGatt;\n    BluetoothDevice currDevice;\n    static final long SCAN_PERIOD = 500;\n    static String SPLIT_CHAR =\";\";\n    BluetoothLeScanner mLEScanner;\n    Handler mHandler;\n    int ReadQueueIndex;\n    List&lt;BluetoothGattCharacteristic&gt; ReadQueue;\n    BluetoothGattCharacteristic caratteristicaDaLeggere;\n    ScanSettings settings;\n    Integer ultimaForzaLetta,ultimaTemperaturaLetta;\n    boolean continuaLetturaForza, continuaLetturaTemperatura;\n    boolean isReading = true;\n    String LOG_CODE = \"NOTIFSRV\";\n    GattClientCallback gattClientCallback;\n    private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;\n\n\n    public BlePowerService() {\n    }\n\n    @Override\n    public void onCreate() {\n        super.onCreate();\n        mHandler = new Handler();\n\n        Context sharedContext = null;\n        try {\n            sharedContext = this.createPackageContext(\n                    \"com.care.devicesensor\",\n                    Context.CONTEXT_INCLUDE_CODE);\n            if (sharedContext == null) {\n                return;\n            }\n            db=new DbLayer(sharedContext);\n            db.open();\n        } catch (Exception e) {\n            String error = e.getMessage();\n          //  Log.d(LOG_CODE,\"DB error : \" + error);\n            return;\n        }\n    }\n\n\n    @Override\n    public int onStartCommand(Intent intent, int flags, int startId) {\n        try {\n            //RECUPERO LE IMPOSTAZIONI SETTATE DALL'UTENTE\n            settingApp = db.fetchSetting();\n            if (settingApp != null &amp;&amp; settingApp.getAddressBleSX()!=null) {\n                //POSSO FILTRARE DIRETTAMENTE PER L'UUID DEL DISPOSITIVO MEMORIZZATO\n                //DALL'UTENTE\n                ScanFilter.Builder scanFilterMac =\n                        null;\n                    scanFilterMac = new ScanFilter.Builder().setDeviceAddress(settingApp.getAddressBleSX());\n                if(filters==null)\n                    filters = new ArrayList&lt;ScanFilter&gt;();\n                //if (Build.VERSION.SDK_INT &gt;= Build.VERSION_CODES.LOLLIPOP) {\n                filters.add(scanFilterMac.build());\n                //}\n                //FILTRO ANCHE PER LA CARATTERISTICA DI FORZA\n                ScanFilter filter = null;\n                    filter = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(CHARACTERISTIC_FORZA_STRING)).build();\n                filters.add(filter);\n\n                final BluetoothManager bluetoothManager =\n                        (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);\n                    mBluetoothAdapter = bluetoothManager.getAdapter();\n                //mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();\n                    mLEScanner = mBluetoothAdapter.getBluetoothLeScanner();\n                    settings = new ScanSettings.Builder()\n                            .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)\n                            .build();\n                scanLeDevice(true);\n                mTimer = new Timer();\n                //ogni 2 ore\n                continuaLetturaForza = true;\n                continuaLetturaTemperatura = true;\n\n                int nSecondi = settingApp.getFrequenzaDownload()!= null ? settingApp.getFrequenzaDownload() : 1;\n                mTimer.schedule(timerTask,5000);\n                //mTimer.schedule(timerTask, 10000, 1000 * nSecondi);\n                //mTimer.scheduleAtFixedRate (timerTask, 10000, 1000 * nSecondi);\n            }\n        } catch (Exception e) {\n           // Log.e(\"POWER_SERVICE\", e.getMessage());\n        }\n        return super.onStartCommand(intent, flags, startId);\n    }\n\n    private Timer mTimer;\n\n    TimerTask timerTask = new TimerTask() {\n\n        @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)\n        @Override\n        public void run() {\n            //LEGGO TUTTI I DATI DAL SENSORE FINCHE CI SONO VALORI\n             int counter = 0;\n            while(continuaLetturaForza || continuaLetturaTemperatura){\n                counter++;\n                //Log.v(\"CICLO WHILE\", counter+\"\");\n                if (currDevice != null) {\n\n                    if(ReadQueue!= null &amp;&amp; ReadQueue.size()&gt;0){\n                        int index =0;\n                        for(index=0; index &lt; ReadQueue.size(); index++){\n                            if(mGatt!=null){\n                                isReading = mGatt.readCharacteristic(ReadQueue.get(index));\n                                while(isReading){\n                                    try {\n                                        Thread.sleep(1);\n                                    } catch (InterruptedException e) {\n                                        e.printStackTrace();\n                                    }\n                                }\n                            }else{\n                                continuaLetturaForza = false;\n                                continuaLetturaTemperatura = false;\n                            }\n                        }\n                    }\n\n                }else{\n                    //provo a ricollegarmi al dispositivo probabile, abbia perso la connessione con esso\n                    scanLeDevice(true);\n                    try {\n                        Thread.sleep(2500);\n                    } catch (InterruptedException e) {\n                        e.printStackTrace();\n                    }\n                    if(currDevice == null &amp;&amp; counter == 25){\n                        //in questo caso non è riuscito a trovare il dispositivo BLE\n                        //esco dal ciclo\n                        continuaLetturaForza = false;\n                        continuaLetturaTemperatura = false;\n                        continue;\n                    }\n                }\n\n            }\n\n            if(gattClientCallback!=null &amp;&amp; mGatt != null)\n                gattClientCallback.disconnectGattServer();\n            mTimer.cancel();\n            stopSelf();\n            EventBus.getDefault().post(new MessageEvent(\"stopService\"));\n        }\n\n        public void stopTask() {\n\n            if (timerTask != null) {\n\n                Log.d(\"TIMER\", \"timer canceled\");\n                timerTask.cancel();\n            }\n        }\n    };\n\n\n    public void connectToDevice(BluetoothDevice device) {\n        //VERIFICO SE IL DEVICE è QUELLO CHE VOGLIO IO\n        if (mGatt == null &amp;&amp; settingApp != null\n                &amp;&amp; device.getAddress().equals(settingApp.getAddressBleSX())) {\n            currDevice = device;\n            gattClientCallback = new GattClientCallback();\n            mGatt = currDevice.connectGatt(getBaseContext(), false, gattClientCallback);\n            scanLeDevice(false);// will stop after first device detection\n        }\n    }\n\n    private BluetoothAdapter.LeScanCallback mLeScanCallback =\n            new BluetoothAdapter.LeScanCallback() {\n                @Override\n                public void onLeScan(final BluetoothDevice device, int rssi,\n                                     byte[] scanRecord) {\n                    Handler h = new Handler(getApplicationContext().getMainLooper());\n                    // Although you need to pass an appropriate context\n                    h.post(new Runnable() {\n                        @Override\n                        public void run() {\n                          //  Log.i(\"onLeScan\", device.toString());\n                                connectToDevice(device);\n\n                        }\n                    });\n                }\n            };\n\n    private void scanLeDevice(final boolean enable) {\n        if (enable) {\n            mHandler.postDelayed(new Runnable() {\n                @Override\n                public void run() {\n                    if (Build.VERSION.SDK_INT &lt; 21) {\n                        mBluetoothAdapter.stopLeScan(mLeScanCallback);\n                    } else {\n                        mLEScanner.stopScan(mScanCallback);\n\n                    }\n                }\n            }, SCAN_PERIOD);\n            if (Build.VERSION.SDK_INT &lt; 21) {\n                mBluetoothAdapter.startLeScan(mLeScanCallback);\n            } else {\n                mLEScanner.startScan(filters, settings, mScanCallback);\n            }\n        } else {\n            if (Build.VERSION.SDK_INT &lt; 21) {\n                mBluetoothAdapter.stopLeScan(mLeScanCallback);\n            } else {\n                mLEScanner.stopScan(mScanCallback);\n            }\n        }\n    }\n\n\n    private ScanCallback mScanCallback = new ScanCallback() {\n        @Override\n        public void onScanResult(int callbackType, ScanResult result) {\n           // Log.i(\"callbackType\", String.valueOf(callbackType));\n           // Log.i(\"result\", result.toString());\n            BluetoothDevice btDevice = null;\n               btDevice = result.getDevice();\n            connectToDevice(btDevice);\n        }\n\n        @Override\n        public void onBatchScanResults(List&lt;ScanResult&gt; results) {\n            for (ScanResult sr : results) {\n                Log.i(\"ScanResult - Results\", sr.toString());\n            }\n        }\n\n        @Override\n        public void onScanFailed(int errorCode) {\n           Log.e(\"Scan Failed\", \"Error Code: \" + errorCode);\n        }\n    };\n\n    private class GattClientCallback extends BluetoothGattCallback {\n\n        @Override\n        public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {\n            try{\n                super.onConnectionStateChange(gatt, status, newState);\n                //Log.i(\"tag\", \"onConnectionStateChange newState: \" + newState);\n\n                if (status == BluetoothGatt.GATT_FAILURE) {\n                    Log.e(\"ERROR_SERVICE\", \"Connection Gatt failure status \" + status);\n                    if(mGatt == null){\n\n                    }else{\n                        try {\n                            gatt.close();\n                        } catch (Exception e) {\n                            Log.d(\"\", \"close ignoring: \" + e);\n                        }\n                        mGatt = null;\n                    }\n                    return;\n                } else if (status != BluetoothGatt.GATT_SUCCESS) {\n                    // handle anything not SUCCESS as failure\n                    Log.e(\"ERROR_SERVICE\", \"Connection not GATT sucess status \" + status);\n                    if(mGatt == null){\n\n                    }else{\n                        try {\n                            gatt.close();\n                        } catch (Exception e) {\n                            Log.d(\"\", \"close ignoring: \" + e);\n                        }\n                        mGatt = null;\n                    }\n                    return;\n                }\n\n                if (newState == BluetoothProfile.STATE_CONNECTED) {\n                    //Log.i(\"INFO\", \"Connected to device \" + gatt.getDevice().getAddress());\n                    gatt.discoverServices();\n                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {\n                    Log.i(\"INFO\", \"Disconnected from device\");\n                    if(mGatt == null){\n\n                    }else{\n                        try {\n                            mGatt.close();\n                            mGatt = null;\n                            currDevice = null;\n                        } catch (Exception e) {\n                            Log.d(\"\", \"close ignoring: \" + e);\n                        }\n                        mGatt = null;\n                    }\n\n                }\n            }catch(Exception e){\n                Log.e(\"tag\", e.getMessage());\n                continuaLetturaForza = true;\n                continuaLetturaTemperatura = true;\n            }\n        }\n\n        public void disconnectGattServer() {\n\n            continuaLetturaForza = true;\n            continuaLetturaTemperatura = true;\n            isReading = false;\n            if (mGatt == null) {\n\n            }\n            else{\n                try{\n                    mGatt.disconnect();\n                   // mGatt.close();\n                }catch(Exception e){\n                    mGatt = null;\n                }\n\n            }\n            //mGatt = null;\n            //currDevice = null;\n        }\n\n        @Override\n        public void onServicesDiscovered(BluetoothGatt gatt, int status) {\n            super.onServicesDiscovered(gatt, status);\n\n            if (status != BluetoothGatt.GATT_SUCCESS) {\n             //   Log.i(\"INFO\", \"Device service discovery unsuccessful, status \" + status);\n                return;\n            }\n\n            List&lt;BluetoothGattCharacteristic&gt; matchingCharacteristics =\n                    BluetoothUtils.findCharacteristics(gatt,stringSequence);\n            if (matchingCharacteristics.isEmpty()) {\n              //  Log.e(\"ERROR_SERVICE\",\"Unable to find characteristics.\");\n                return;\n            }else {\n\n                ReadQueue = new ArrayList&lt;&gt;();\n                for (BluetoothGattCharacteristic characterist : matchingCharacteristics) {\n                    ReadQueue.add(characterist);\n                }\n                //ReadQueueIndex = 0;\n                //ReadCharacteristics(ReadQueueIndex);\n            }\n\n\n\n        }\n\n        @Override\n        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {\n            super.onCharacteristicRead(gatt, characteristic, status);\n            if (status == BluetoothGatt.GATT_SUCCESS) {\n\n                String valoreRestituito = characteristic.getStringValue(0);\n                if(valoreRestituito==null){\n                    int i = 0;\n                    i = i + 1;\n                    return;\n                }\n                //SPLITTO PER IL CARATTERE ;\n                String[] arrayValori = valoreRestituito.split(SPLIT_CHAR);\n                //1 valore è l ID\n                try{\n                    int id = new Integer(arrayValori[0]);\n                    //VERIFICO SE STO LEGGENDO TEMPERATURA O FORZA\n                    if(characteristic.getUuid().equals(CHARACTERISTIC_FORZA_UUID)){\n                        /*Log.v(\"CARATTERISTICA\", \"*****************************************\");\n                        Log.v(\"FORZA\", \"*****************************************\");*/\n                        if(ultimaForzaLetta!= null &amp;&amp; ultimaForzaLetta == id){\n                            continuaLetturaForza = false;\n                            isReading = false;\n                            return;\n                        }\n                        ultimaForzaLetta = id;\n                    }else if(characteristic.getUuid().equals( CHARACTERISTIC_TEMPERATURA_UUID)){\n                        /*Log.v(\"CARATTERISTICA\", \"*****************************************\");\n                        Log.v(\"TEMPERATURA\", \"*****************************************\");*/\n                        if(ultimaTemperaturaLetta!= null &amp;&amp; ultimaTemperaturaLetta == id){\n                            continuaLetturaTemperatura = false;\n                            isReading = false;\n                            return;\n                        }\n                        ultimaTemperaturaLetta = id;\n                    }\n\n                    SensorData mSenData = new SensorData();\n                    mSenData.setIdType(id);\n                    mSenData.setValue1(arrayValori[1]);\n                    mSenData.setValue2(arrayValori[2]);\n                    mSenData.setValue3(arrayValori[3]);\n                    mSenData.setValue4(arrayValori[4]);\n                    mSenData.setValue5(arrayValori[5]);\n                    mSenData.setValue6(arrayValori[6]);\n                    mSenData.setValue7(arrayValori[7]);\n                    mSenData.setValue8(arrayValori[8]);\n                    //TO-DO HO COMMENTATO QUESTA RIGA DI CODICE\n                    // mSenData.setIdType(st.getId());\n                    mSenData.setCharacteristic(characteristic.getUuid().toString());\n                    mSenData.setValueTimestamp(db.getDateTime(true));\n\n                    db.insertSensorData(mSenData);\n\n                    EventBus.getDefault().post(new MessageEvent(\"update\"));\n\n                }catch (Exception e){\n                    Log.e(\"ERROR\", e.getMessage());\n                }\n                isReading = false;\n\n            } else {\n                isReading = false;\n                Log.e(\"ERROR_SERVICE\", \"Characteristic read unsuccessful, status: \" + status);\n\n                disconnectGattServer();\n\n                return;\n            }\n        }\n    }\n\n    public void onDestroy() {\n        try {\n            db.close();\n            Log.d(LOG_CODE,\"DB connection closed\" );\n\n            mTimer.cancel();\n            timerTask.cancel();\n        } catch (Exception e) {\n            e.printStackTrace();\n        }\n    }\n\n\n}\n</code></pre>\n\n<p>The service works correctly but is to slow.</p>\n"
+        },
+        {
+            "tags": [
+                "harmon.ie"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9797468,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/22ae2a94aedaedb06aba2d9a6f6ca776?s=128&d=identicon&r=PG&f=1",
+                "display_name": "John",
+                "link": "https://stackoverflow.com/users/9797468/john"
+            },
+            "is_answered": false,
+            "view_count": 9,
+            "closed_date": 1526467657,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1526456019,
+            "creation_date": 1526439778,
+            "question_id": 50361866,
+            "body_markdown": "We have a computer that is shared by a number of users (it&#39;s a spare laptop for use when/if their personal device goes down). For most users, Harmon.ie is not accepting the users&#39; custom credentials to access the site, even though these are correct, and do work in Harmon.ie on their own computer. Weirdly, for some users on this shared device, Harmon.ie still works fine. It doesn&#39;t work for most, but does for a couple of them.\r\n\r\nWhen the user fires up Outlook, the Harmon.ie sidebar thinks for a while, then pops up the &#39;Edit SharePoint Site&#39; box. The Username is already present under &#39;Use Custom Credentials&#39;, but the password is blank. Entering the (valid) password brings up the &#39;Test connection&#39; box, which tries to connect for a while, then returns the error &quot;Failed to connect&quot;. An option here is to &#39;Send Report&#39; to Harmon.ie, which I have done. Often, some time later, an auto-generated email is received, and part of the text says &quot;Following a recent change in Office 365 authentication (especially for client applications), you could not use custom credentials. A fix is available for customers at:...&quot; and then provides links for 32- and 64-bit patches. Running this however makes no difference - the problem persists.\r\n\r\nIn general, uninstalling and reinstalling Harmon.ie seems to make no difference where certain users are having the issue, but not others (as is the case here). Settings still seem to be retained.\r\n\r\nI&#39;m not sure what the problem could be when some users on the same device are unaffected, and there doesn&#39;t seem to be any way to do a clean removal of all Harmon.ie settings. Unfortunately, I cannot create new user profiles because the profiles are too involved in other ways. It would take hours to set up one user again, and I would need to do this 12 or so times, once for each user. Is there anything else I can do?",
+            "link": "https://stackoverflow.com/questions/50361866/custom-credentials-in-harmon-ie-site-settings-not-accepted-for-some-users",
+            "closed_reason": "too broad",
+            "title": "Custom Credentials in Harmon.ie site settings not accepted for some users",
+            "body": "<p>We have a computer that is shared by a number of users (it's a spare laptop for use when/if their personal device goes down). For most users, Harmon.ie is not accepting the users' custom credentials to access the site, even though these are correct, and do work in Harmon.ie on their own computer. Weirdly, for some users on this shared device, Harmon.ie still works fine. It doesn't work for most, but does for a couple of them.</p>\n\n<p>When the user fires up Outlook, the Harmon.ie sidebar thinks for a while, then pops up the 'Edit SharePoint Site' box. The Username is already present under 'Use Custom Credentials', but the password is blank. Entering the (valid) password brings up the 'Test connection' box, which tries to connect for a while, then returns the error \"Failed to connect\". An option here is to 'Send Report' to Harmon.ie, which I have done. Often, some time later, an auto-generated email is received, and part of the text says \"Following a recent change in Office 365 authentication (especially for client applications), you could not use custom credentials. A fix is available for customers at:...\" and then provides links for 32- and 64-bit patches. Running this however makes no difference - the problem persists.</p>\n\n<p>In general, uninstalling and reinstalling Harmon.ie seems to make no difference where certain users are having the issue, but not others (as is the case here). Settings still seem to be retained.</p>\n\n<p>I'm not sure what the problem could be when some users on the same device are unaffected, and there doesn't seem to be any way to do a clean removal of all Harmon.ie settings. Unfortunately, I cannot create new user profiles because the profiles are too involved in other ways. It would take hours to set up one user again, and I would need to do this 12 or so times, once for each user. Is there anything else I can do?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "jquery",
+                "leaflet",
+                "gis",
+                "mapbox"
+            ],
+            "owner": {
+                "reputation": 44,
+                "user_id": 5838449,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/5d7ad7e76fae1456b6a5fe07ab7c4371?s=128&d=identicon&r=PG&f=1",
+                "display_name": "bohdan baida",
+                "link": "https://stackoverflow.com/users/5838449/bohdan-baida"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526456010,
+            "creation_date": 1526400069,
+            "question_id": 50354618,
+            "body_markdown": "I am trying to add Leaflet layers to the mapbox map.\r\nI have used example from official leaflet page on how to add layers to mapbox.\r\n\r\nBut leayers not showing up and console returns error **&quot;Uncaught TypeError: this._map.hasLayer is not a function&quot;**.\r\n\r\nHere is my code:\r\n\r\n    &lt;script src=&quot;https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js&quot;&gt;&lt;/script&gt;\r\n    \r\n    &lt;script src=&#39;https://api.tiles.mapbox.com/mapbox-gl-js/v0.45.0/mapbox-gl.js&#39;&gt;&lt;/script&gt;\r\n    &lt;link href=&#39;https://api.tiles.mapbox.com/mapbox-gl-js/v0.45.0/mapbox-gl.css&#39; rel=&#39;stylesheet&#39; /&gt;\r\n    \r\n    &lt;link rel=&quot;stylesheet&quot; href=&quot;https://unpkg.com/leaflet@1.3.1/dist/leaflet.css&quot; /&gt;\r\n    &lt;script src=&quot;https://unpkg.com/leaflet@1.3.1/dist/leaflet.js&quot;&gt;&lt;/script&gt;\r\n    \r\n    &lt;div id=&#39;map&#39; style=&quot;position:relative;float:left;width:100%;height:100%;margin:0px 0px 0px 0px;z-index:1;&quot;&gt;&lt;/div&gt;\r\n    &lt;script&gt;\r\n    mapboxgl.accessToken = &#39;pk.eyJ1IjoiYm9zc3RvbjgxMiIsImEiOiJjaW94NnBlY2cwMDNsejBtNTZucnV3ZDJpIn0.U1b4soqANbdiKr_hPGDO8g&#39;;\r\n    \r\n    var map = new mapboxgl.Map({\r\n      container: &#39;map&#39;,\r\n      center: [-105.02, 39.61],\r\n      zoom: 10,\r\n      style: &#39;mapbox://styles/mapbox/streets-v9&#39;,\r\n      hash: true,\r\n      transformRequest: (url, resourceType)=&gt; {\r\n        if(resourceType == &#39;Source&#39; &amp;&amp; url.startsWith(&#39;http://myHost&#39;)) {\r\n          return {\r\n           url: url.replace(&#39;http&#39;, &#39;https&#39;),\r\n           headers: { &#39;my-custom-header&#39;: true},\r\n           credentials: &#39;include&#39;  // Include cookies for cross-origin requests\r\n         }\r\n        }\r\n      }\r\n    });\r\n    \r\n    var littleton = L.marker([39.61, -105.02]).bindPopup(&#39;This is Littleton, CO.&#39;),\r\n        denver    = L.marker([39.74, -104.99]).bindPopup(&#39;This is Denver, CO.&#39;),\r\n        aurora    = L.marker([39.73, -104.8]).bindPopup(&#39;This is Aurora, CO.&#39;),\r\n        golden    = L.marker([39.77, -105.23]).bindPopup(&#39;This is Golden, CO.&#39;);\r\n    \r\n    var cities = L.layerGroup([littleton, denver, aurora, golden]);\r\n    \r\n    var grayscale = L.tileLayer(&#39;mapbox://styles/mapbox/streets-v9&#39;, {id: &#39;MapID&#39;}),\r\n        streets   = L.tileLayer(&#39;mapbox://styles/mapbox/streets-v9&#39;, {id: &#39;MapID&#39;});\r\n    \r\n    \r\n    var baseMaps = {\r\n        &quot;Grayscale&quot;: grayscale,\r\n        &quot;Streets&quot;: streets\r\n    };\r\n    \r\n    var overlayMaps = {\r\n        &quot;Cities&quot;: cities\r\n    };\r\n    \r\n    L.control.layers(baseMaps, overlayMaps).addTo(map);\r\n    &lt;/script&gt;\r\n\r\nPlease help me to find the problem?",
+            "link": "https://stackoverflow.com/questions/50354618/getting-uncaught-typeerror-this-map-haslayer-is-not-a-function-while-adding",
+            "title": "Getting &quot;Uncaught TypeError: this._map.hasLayer is not a function&quot; while adding leaflet layers to mapbox",
+            "body": "<p>I am trying to add Leaflet layers to the mapbox map.\nI have used example from official leaflet page on how to add layers to mapbox.</p>\n\n<p>But leayers not showing up and console returns error <strong>\"Uncaught TypeError: this._map.hasLayer is not a function\"</strong>.</p>\n\n<p>Here is my code:</p>\n\n<pre><code>&lt;script src=\"https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js\"&gt;&lt;/script&gt;\n\n&lt;script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.45.0/mapbox-gl.js'&gt;&lt;/script&gt;\n&lt;link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.45.0/mapbox-gl.css' rel='stylesheet' /&gt;\n\n&lt;link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.3.1/dist/leaflet.css\" /&gt;\n&lt;script src=\"https://unpkg.com/leaflet@1.3.1/dist/leaflet.js\"&gt;&lt;/script&gt;\n\n&lt;div id='map' style=\"position:relative;float:left;width:100%;height:100%;margin:0px 0px 0px 0px;z-index:1;\"&gt;&lt;/div&gt;\n&lt;script&gt;\nmapboxgl.accessToken = 'pk.eyJ1IjoiYm9zc3RvbjgxMiIsImEiOiJjaW94NnBlY2cwMDNsejBtNTZucnV3ZDJpIn0.U1b4soqANbdiKr_hPGDO8g';\n\nvar map = new mapboxgl.Map({\n  container: 'map',\n  center: [-105.02, 39.61],\n  zoom: 10,\n  style: 'mapbox://styles/mapbox/streets-v9',\n  hash: true,\n  transformRequest: (url, resourceType)=&gt; {\n    if(resourceType == 'Source' &amp;&amp; url.startsWith('http://myHost')) {\n      return {\n       url: url.replace('http', 'https'),\n       headers: { 'my-custom-header': true},\n       credentials: 'include'  // Include cookies for cross-origin requests\n     }\n    }\n  }\n});\n\nvar littleton = L.marker([39.61, -105.02]).bindPopup('This is Littleton, CO.'),\n    denver    = L.marker([39.74, -104.99]).bindPopup('This is Denver, CO.'),\n    aurora    = L.marker([39.73, -104.8]).bindPopup('This is Aurora, CO.'),\n    golden    = L.marker([39.77, -105.23]).bindPopup('This is Golden, CO.');\n\nvar cities = L.layerGroup([littleton, denver, aurora, golden]);\n\nvar grayscale = L.tileLayer('mapbox://styles/mapbox/streets-v9', {id: 'MapID'}),\n    streets   = L.tileLayer('mapbox://styles/mapbox/streets-v9', {id: 'MapID'});\n\n\nvar baseMaps = {\n    \"Grayscale\": grayscale,\n    \"Streets\": streets\n};\n\nvar overlayMaps = {\n    \"Cities\": cities\n};\n\nL.control.layers(baseMaps, overlayMaps).addTo(map);\n&lt;/script&gt;\n</code></pre>\n\n<p>Please help me to find the problem?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-2.7",
+                "raspberry-pi3"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9690957,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-WqYSSAQa55k/AAAAAAAAAAI/AAAAAAAABcQ/brczxab1J6A/photo.jpg?sz=128",
+                "display_name": "Vinay Kaila",
+                "link": "https://stackoverflow.com/users/9690957/vinay-kaila"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526456007,
+            "creation_date": 1526455076,
+            "last_edit_date": 1526456007,
+            "question_id": 50364590,
+            "body_markdown": "    \r\nI am trying to print values from sensor but the sensor is running without showing error but it is not printing values, I am not able to understand the problem\r\n\r\n\r\nthis is the code:\r\n\r\n\r\n\r\n    from usbiss.spi import SPI\r\n    import numpy\r\n    import serial\r\n    import opc\r\n    import time\r\n    import csv\r\n    import matplotlib\r\n    matplotlib.use(&#39;Qt5Agg&#39;)\r\n    import matplotlib.pyplot as plt\r\n    from drawnow import *\r\n\r\n    spi = SPI(&quot;/dev/ttyACM0&quot;)\r\n    spi.mode = 1\r\n    spi.max_speed_hz = 500000\r\n    alpha = opc.OPCN2(spi)\r\n    time.sleep(2)\r\n    alpha.on()\r\n    a1 = alpha.pm()\r\n    op_sensor = serial.Serial(\r\n        port = &#39;/dev/ttyACM0&#39;,\r\n        baudrate = 500000,\r\n        parity = serial.PARITY_NONE,\r\n        stopbits = serial.STOPBITS_ONE,\r\n        bytesize = serial.EIGHTBITS,\r\n        timeout=1 # add this\r\n        ) \r\n    count = 0\r\n    while(count&lt;=20):\r\n        while(op_sensor.inWaiting()==0):\r\n            pass\r\n        a = op_sensor.readline()\r\n        print(a)\r\n ",
+            "link": "https://stackoverflow.com/questions/50364590/not-able-to-print-values-from-sensor",
+            "title": "not able to print values from sensor",
+            "body": "<p>I am trying to print values from sensor but the sensor is running without showing error but it is not printing values, I am not able to understand the problem</p>\n\n<p>this is the code:</p>\n\n<pre><code>from usbiss.spi import SPI\nimport numpy\nimport serial\nimport opc\nimport time\nimport csv\nimport matplotlib\nmatplotlib.use('Qt5Agg')\nimport matplotlib.pyplot as plt\nfrom drawnow import *\n\nspi = SPI(\"/dev/ttyACM0\")\nspi.mode = 1\nspi.max_speed_hz = 500000\nalpha = opc.OPCN2(spi)\ntime.sleep(2)\nalpha.on()\na1 = alpha.pm()\nop_sensor = serial.Serial(\n    port = '/dev/ttyACM0',\n    baudrate = 500000,\n    parity = serial.PARITY_NONE,\n    stopbits = serial.STOPBITS_ONE,\n    bytesize = serial.EIGHTBITS,\n    timeout=1 # add this\n    ) \ncount = 0\nwhile(count&lt;=20):\n    while(op_sensor.inWaiting()==0):\n        pass\n    a = op_sensor.readline()\n    print(a)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "c",
+                "windows",
+                "timer",
+                "interrupt"
+            ],
+            "owner": {
+                "reputation": 1949,
+                "user_id": 3697264,
+                "user_type": "registered",
+                "accept_rate": 92,
+                "profile_image": "https://www.gravatar.com/avatar/5adc5afbd7a1145fdd762d872b4b43bb?s=128&d=identicon&r=PG",
+                "display_name": "SPlatten",
+                "link": "https://stackoverflow.com/users/3697264/splatten"
+            },
+            "is_answered": false,
+            "view_count": 80,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526456007,
+            "creation_date": 1526398738,
+            "last_edit_date": 1526403275,
+            "question_id": 50354226,
+            "body_markdown": "The project I&#39;m currently working on uses MSVC 2008, I don&#39;t have any choice in this.\r\n\r\nThe operating system that this is being used on is as recent as Windows 10.  I am trying to introduce more accurate timing into the application, however so far most of the searching I&#39;ve done online has resulted in a dead end where yes newer versions of MSVC do support more accurate timing but I don&#39;t have those.\r\n\r\nIs there any way to improve on the resolution of the timing, not only the resolution but the accuracy.\r\n\r\nI&#39;ve used and worked on other operating systems such as QNX where its quite possible to work with Nanosecond accurate timers and this is on much older hardware.\r\n\r\nFudge:  Now I&#39;m thinking of combining the results from two routines, calling:\r\n\r\n        GetLocalTime\r\n\r\nTo return the bulk of the data, year, month, day, hours, minutes and seconds then using:\r\n\r\n        QueryPerformanceFrequency\r\n        QueryPerformanceCounter\r\n\r\nTo obtain and calculate the microsecond part and masking out anything larger than a second so I maintain a decimal portion down to microseconds.\r\n",
+            "link": "https://stackoverflow.com/questions/50354226/msvc-2008-better-timing",
+            "title": "MSVC 2008 better timing?",
+            "body": "<p>The project I'm currently working on uses MSVC 2008, I don't have any choice in this.</p>\n\n<p>The operating system that this is being used on is as recent as Windows 10.  I am trying to introduce more accurate timing into the application, however so far most of the searching I've done online has resulted in a dead end where yes newer versions of MSVC do support more accurate timing but I don't have those.</p>\n\n<p>Is there any way to improve on the resolution of the timing, not only the resolution but the accuracy.</p>\n\n<p>I've used and worked on other operating systems such as QNX where its quite possible to work with Nanosecond accurate timers and this is on much older hardware.</p>\n\n<p>Fudge:  Now I'm thinking of combining the results from two routines, calling:</p>\n\n<pre><code>    GetLocalTime\n</code></pre>\n\n<p>To return the bulk of the data, year, month, day, hours, minutes and seconds then using:</p>\n\n<pre><code>    QueryPerformanceFrequency\n    QueryPerformanceCounter\n</code></pre>\n\n<p>To obtain and calculate the microsecond part and masking out anything larger than a second so I maintain a decimal portion down to microseconds.</p>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "mysql"
+            ],
+            "owner": {
+                "reputation": 39,
+                "user_id": 2519473,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://i.stack.imgur.com/e00G0.jpg?s=128&g=1",
+                "display_name": "Joe Kasedde",
+                "link": "https://stackoverflow.com/users/2519473/joe-kasedde"
+            },
+            "is_answered": true,
+            "view_count": 24,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526455997,
+            "creation_date": 1526432902,
+            "last_edit_date": 1526455997,
+            "question_id": 50361115,
+            "body_markdown": "[![Current code ][1]][1]I am trying to use this code to return flights from a table .. the json data i get is okay but i want to display the data using divs so that a client can proceed to book a flight but am stack       \r\n\r\n    &lt;?php\r\n    \r\n    include &#39;connection.php&#39;;\r\n    \r\n    session_start();\r\n    \r\n    \r\n          $sql = &quot;\r\n    SELECT origin\r\n         , destination\r\n         , departure\r\n         , arrival\r\n         , craftoperator\r\n         , date\r\n         , returndte\r\n         , operatorlogo\r\n         , Price \r\n      FROM test \r\n     WHERE origin = &#39;&quot;.$_REQUEST[&#39;origin&#39;].&quot;&#39; \r\n       AND destination = &#39;&quot;.$_REQUEST[&#39;destination&#39;].&quot;&#39;\r\n       AND date = &#39;&quot;.$_REQUEST[&#39;departure&#39;].&quot;&#39;\r\n        OR returndte = &#39;&quot;.$_REQUEST[&#39;return&#39;].&quot;&#39; &quot;;\r\n    \r\n      \r\n    \r\n       $result = $conn-&gt;query($sql);\r\n    \r\n    \r\n    \r\n    while($row = mysqli_fetch_assoc($result))\r\n    {\r\n      $output[]=$row;\r\n    }\r\n    print(json_encode($output));\r\n    \r\n    ?&gt;\r\n\r\nThe image shows the desired output right now i can only see json output\r\n\r\n[![Image show desired output right now i can only see json output][2]][2]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/m0aDB.png\r\n  [2]: https://i.stack.imgur.com/Ib9rr.png",
+            "link": "https://stackoverflow.com/questions/50361115/how-can-i-get-paginated-results-for-both-departure-and-return-flights-from-this",
+            "title": "How can i get paginated results for both departure and return flights from this code",
+            "body": "<p><a href=\"https://i.stack.imgur.com/m0aDB.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/m0aDB.png\" alt=\"Current code \"></a>I am trying to use this code to return flights from a table .. the json data i get is okay but i want to display the data using divs so that a client can proceed to book a flight but am stack       </p>\n\n<pre><code>&lt;?php\n\ninclude 'connection.php';\n\nsession_start();\n\n\n      $sql = \"\nSELECT origin\n     , destination\n     , departure\n     , arrival\n     , craftoperator\n     , date\n     , returndte\n     , operatorlogo\n     , Price \n  FROM test \n WHERE origin = '\".$_REQUEST['origin'].\"' \n   AND destination = '\".$_REQUEST['destination'].\"'\n   AND date = '\".$_REQUEST['departure'].\"'\n    OR returndte = '\".$_REQUEST['return'].\"' \";\n\n\n\n   $result = $conn-&gt;query($sql);\n\n\n\nwhile($row = mysqli_fetch_assoc($result))\n{\n  $output[]=$row;\n}\nprint(json_encode($output));\n\n?&gt;\n</code></pre>\n\n<p>The image shows the desired output right now i can only see json output</p>\n\n<p><a href=\"https://i.stack.imgur.com/Ib9rr.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/Ib9rr.png\" alt=\"Image show desired output right now i can only see json output\"></a></p>\n"
+        },
+        {
+            "tags": [
+                "oracle",
+                "weblogic12c",
+                "bpmn",
+                "bpm",
+                "business-process"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9371403,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5df30a24ac11d5da044292f6a661447e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "DanilVanDovgal",
+                "link": "https://stackoverflow.com/users/9371403/danilvandovgal"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526455991,
+            "creation_date": 1526455991,
+            "question_id": 50364848,
+            "body_markdown": "Can anybody know, how to add column &quot;Initiated date&quot;(like in Process Tracking) to table in Oracle Business Process Workspace? It&#39;s necessary to display the date, when bpmn process instance is start.\r\n\r\nThanks.",
+            "link": "https://stackoverflow.com/questions/50364848/flexfield-initiated-date-in-oracle-bpm-workspace",
+            "title": "Flexfield Initiated date in oracle bpm/workspace",
+            "body": "<p>Can anybody know, how to add column \"Initiated date\"(like in Process Tracking) to table in Oracle Business Process Workspace? It's necessary to display the date, when bpmn process instance is start.</p>\n\n<p>Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "ambari"
+            ],
+            "owner": {
+                "reputation": 48,
+                "user_id": 4007000,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2a4325fc2f6b0de45cbd104ea6692840?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Morgan Deng",
+                "link": "https://stackoverflow.com/users/4007000/morgan-deng"
+            },
+            "is_answered": false,
+            "view_count": 4,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526455973,
+            "creation_date": 1526455973,
+            "question_id": 50364843,
+            "body_markdown": "I want to use apache ambari for mananging and monitoring my existed hadoop cluster. But I didn`t find corresponding document and blog about existed cluster. Anybody complete this process?",
+            "link": "https://stackoverflow.com/questions/50364843/could-ambari-manage-and-monitor-the-existed-apache-hadoop-cluster-how",
+            "title": "Could ambari manage and monitor the existed apache hadoop cluster? How?",
+            "body": "<p>I want to use apache ambari for mananging and monitoring my existed hadoop cluster. But I didn`t find corresponding document and blog about existed cluster. Anybody complete this process?</p>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "multiple-columns",
+                "missing-data"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9798449,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10160471981465046/picture?type=large",
+                "display_name": "Michael Truong",
+                "link": "https://stackoverflow.com/users/9798449/michael-truong"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "closed_date": 1526456995,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526455972,
+            "creation_date": 1526455972,
+            "question_id": 50364842,
+            "body_markdown": "I have data where each row can have up to 3 observations of a measurement.  I&#39;m trying to create a column that pulls just the last observation.\r\n\r\nFor example, my data looks like:\r\n\r\n    Participant  x1  x2  x3\r\n    1            10  NA  NA \r\n    2            5   15  NA\r\n    3            5   20  30\r\n    4            20  NA  NA\r\n\r\nAnd I&#39;m trying to get this:\r\n\r\n    Participant  x1  x2  x3  x_final\r\n    1            10  NA  NA  10\r\n    2            5   15  NA  15\r\n    3            5   20  30  30\r\n    4            20  NA  NA  20\r\n\r\nHow should I go about this?  I&#39;m a bit new to R and haven&#39;t been able to figure it out from searching for other examples.",
+            "link": "https://stackoverflow.com/questions/50364842/multiple-observations-per-id-create-column-for-last-observation",
+            "closed_reason": "duplicate",
+            "title": "Multiple observations per ID, create column for last observation",
+            "body": "<p>I have data where each row can have up to 3 observations of a measurement.  I'm trying to create a column that pulls just the last observation.</p>\n\n<p>For example, my data looks like:</p>\n\n<pre><code>Participant  x1  x2  x3\n1            10  NA  NA \n2            5   15  NA\n3            5   20  30\n4            20  NA  NA\n</code></pre>\n\n<p>And I'm trying to get this:</p>\n\n<pre><code>Participant  x1  x2  x3  x_final\n1            10  NA  NA  10\n2            5   15  NA  15\n3            5   20  30  30\n4            20  NA  NA  20\n</code></pre>\n\n<p>How should I go about this?  I'm a bit new to R and haven't been able to figure it out from searching for other examples.</p>\n"
+        },
+        {
+            "tags": [
+                "iphone",
+                "cocoa-touch",
+                "uikit",
+                "uilabel"
+            ],
+            "owner": {
+                "reputation": 16287,
+                "user_id": 66814,
+                "user_type": "registered",
+                "accept_rate": 52,
+                "profile_image": "https://www.gravatar.com/avatar/5dcd76e0b9d1484c0c4c8d8d0c6710a2?s=128&d=identicon&r=PG",
+                "display_name": "Boon",
+                "link": "https://stackoverflow.com/users/66814/boon"
+            },
+            "is_answered": true,
+            "view_count": 94994,
+            "accepted_answer_id": 2311674,
+            "answer_count": 8,
+            "score": 121,
+            "last_activity_date": 1526455966,
+            "creation_date": 1266850189,
+            "last_edit_date": 1266850855,
+            "question_id": 2311591,
+            "body_markdown": "Is there a way for UILabel to draw a border around itself? This is useful for me to debug the text placement and to see the placement and how big the label actually is.",
+            "link": "https://stackoverflow.com/questions/2311591/how-to-draw-border-around-a-uilabel",
+            "title": "How to draw border around a UILabel?",
+            "body": "<p>Is there a way for UILabel to draw a border around itself? This is useful for me to debug the text placement and to see the placement and how big the label actually is.</p>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "windows",
+                "rapidxml"
+            ],
+            "owner": {
+                "reputation": 152,
+                "user_id": 5836378,
+                "user_type": "registered",
+                "accept_rate": 0,
+                "profile_image": "https://lh6.googleusercontent.com/-P3qN3df1rbc/AAAAAAAAAAI/AAAAAAAAAEw/vGKy96W9OWA/photo.jpg?sz=128",
+                "display_name": "Arun kumar Kalaiarasan",
+                "link": "https://stackoverflow.com/users/5836378/arun-kumar-kalaiarasan"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1526455953,
+            "creation_date": 1526455953,
+            "question_id": 50364838,
+            "body_markdown": "I&#39;m new to rapidxml library. I&#39;ve successfully loaded and printed the xml. But I need to sort the nodes by using the attributes. I&#39;ve searched many but not yet found a way to sort the nodes.\r\n\r\nFor example, consider this xml,\r\n\r\n    &lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;\r\n    &lt;players&gt;\r\n      &lt;player id=&quot;0&quot; name=&quot;Charlie&quot;/&gt;\r\n      &lt;player id=&quot;1&quot; name=&quot;Shel&quot;/&gt;\r\n      &lt;player id=&quot;2&quot; name=&quot;Rock&quot;/&gt;\r\n      &lt;player id=&quot;3&quot; name=&quot;Clark&quot;/&gt;\r\n      &lt;player id=&quot;4&quot; name=&quot;Ark&quot;/&gt;\r\n    &lt;/players&gt;\r\n\r\nNeed to sort by &quot;name&quot; attribute, and output will be like:\r\n\r\n    &lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;\r\n    &lt;players&gt;\r\n      &lt;player id=&quot;4&quot; name=&quot;Ark&quot;/&gt;\r\n      &lt;player id=&quot;0&quot; name=&quot;Charlie&quot;/&gt;\r\n      &lt;player id=&quot;3&quot; name=&quot;Clark&quot;/&gt;\r\n      &lt;player id=&quot;2&quot; name=&quot;Rock&quot;/&gt;\r\n      &lt;player id=&quot;1&quot; name=&quot;Shel&quot;/&gt;\r\n    &lt;/players&gt;\r\n\r\n\r\nPlease help me to resolve this.\r\n",
+            "link": "https://stackoverflow.com/questions/50364838/how-to-sort-xml-nodes-using-rapidxml",
+            "title": "How to sort XML Nodes using rapidxml",
+            "body": "<p>I'm new to rapidxml library. I've successfully loaded and printed the xml. But I need to sort the nodes by using the attributes. I've searched many but not yet found a way to sort the nodes.</p>\n\n<p>For example, consider this xml,</p>\n\n<pre><code>&lt;?xml version=\"1.0\" encoding=\"UTF-8\"?&gt;\n&lt;players&gt;\n  &lt;player id=\"0\" name=\"Charlie\"/&gt;\n  &lt;player id=\"1\" name=\"Shel\"/&gt;\n  &lt;player id=\"2\" name=\"Rock\"/&gt;\n  &lt;player id=\"3\" name=\"Clark\"/&gt;\n  &lt;player id=\"4\" name=\"Ark\"/&gt;\n&lt;/players&gt;\n</code></pre>\n\n<p>Need to sort by \"name\" attribute, and output will be like:</p>\n\n<pre><code>&lt;?xml version=\"1.0\" encoding=\"UTF-8\"?&gt;\n&lt;players&gt;\n  &lt;player id=\"4\" name=\"Ark\"/&gt;\n  &lt;player id=\"0\" name=\"Charlie\"/&gt;\n  &lt;player id=\"3\" name=\"Clark\"/&gt;\n  &lt;player id=\"2\" name=\"Rock\"/&gt;\n  &lt;player id=\"1\" name=\"Shel\"/&gt;\n&lt;/players&gt;\n</code></pre>\n\n<p>Please help me to resolve this.</p>\n"
+        },
+        {
+            "tags": [
+                "ruby-on-rails",
+                "ruby",
+                "ruby-on-rails-4",
+                "minimagick"
+            ],
+            "owner": {
+                "reputation": 2421,
+                "user_id": 2968762,
+                "user_type": "registered",
+                "accept_rate": 71,
+                "profile_image": "https://i.stack.imgur.com/EhAX3.png?s=128&g=1",
+                "display_name": "Abhi",
+                "link": "https://stackoverflow.com/users/2968762/abhi"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526455952,
+            "creation_date": 1526308774,
+            "last_edit_date": 1526309312,
+            "question_id": 50333019,
+            "body_markdown": "I&#39;m writing some text on an image with the help of **MiniMagick::Image**\r\n\r\n**CODE**\r\n\r\n    image = MiniMagick::Image.open(&quot;#{Rails.root}/a.png&quot;)\r\n    \r\n    image.combine_options do |c|\r\n      c.fill &#39;green&#39;\r\n      c.pointsize 20\r\n      c.gravity &#39;center&#39;\r\n      c.draw &quot;text 0,-110 &#39;Hello I am here&#39;&quot;\r\n      c.draw &quot;text 150,-180 &#39;#{Time.now}&quot;\r\n      c.background &#39;blue&#39;\r\n    end\r\n    \r\n    image.format &#39;pdf&#39;\r\n    image.write(&quot;#{Rails.root}/b.pdf&quot;)\r\n\r\nBut, the background doesn&#39;t appear\r\n\r\nI have referred [LINK1](https://www.rubydoc.info/github/minimagick/minimagick/MiniMagick%2FImage%3Acombine_options) &amp; [LINK2](http://www.imagemagick.org/script/convert.php)",
+            "link": "https://stackoverflow.com/questions/50333019/how-to-add-background-to-text-using-minimagickimage",
+            "title": "How to add background to text using MiniMagick::Image",
+            "body": "<p>I'm writing some text on an image with the help of <strong>MiniMagick::Image</strong></p>\n\n<p><strong>CODE</strong></p>\n\n<pre><code>image = MiniMagick::Image.open(\"#{Rails.root}/a.png\")\n\nimage.combine_options do |c|\n  c.fill 'green'\n  c.pointsize 20\n  c.gravity 'center'\n  c.draw \"text 0,-110 'Hello I am here'\"\n  c.draw \"text 150,-180 '#{Time.now}\"\n  c.background 'blue'\nend\n\nimage.format 'pdf'\nimage.write(\"#{Rails.root}/b.pdf\")\n</code></pre>\n\n<p>But, the background doesn't appear</p>\n\n<p>I have referred <a href=\"https://www.rubydoc.info/github/minimagick/minimagick/MiniMagick%2FImage%3Acombine_options\" rel=\"nofollow noreferrer\">LINK1</a> &amp; <a href=\"http://www.imagemagick.org/script/convert.php\" rel=\"nofollow noreferrer\">LINK2</a></p>\n"
+        },
+        {
+            "tags": [
+                "e-commerce",
+                "customization",
+                "payment-gateway",
+                "bigcommerce"
+            ],
+            "owner": {
+                "reputation": 751,
+                "user_id": 5647049,
+                "user_type": "registered",
+                "accept_rate": 25,
+                "profile_image": "https://www.gravatar.com/avatar/f380d17c6cc3da5c094766a62b4c0f9f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Talha Abrar",
+                "link": "https://stackoverflow.com/users/5647049/talha-abrar"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526455951,
+            "creation_date": 1526455951,
+            "question_id": 50364834,
+            "body_markdown": "I&#39;ll be precise, i have been trying to add a custom gateway to bigcommerce, i have been somewhat successful till now, now i am stuck on bypassing the checkout page, i am unable to add additional option in checkout payment options, i&#39;m able to do it using javascript, but then order is not being processed, and second thing, even if i am able to add option, and redirect user using javascript, how am i suppose to empty the cart once user has returned to the site? \r\n\r\nI&#39;m completely stuck here, any help or pointing to the right direction would be greatly appreciated.",
+            "link": "https://stackoverflow.com/questions/50364834/bigcommerce-customize-checkout-page",
+            "title": "BigCommerce Customize checkout page",
+            "body": "<p>I'll be precise, i have been trying to add a custom gateway to bigcommerce, i have been somewhat successful till now, now i am stuck on bypassing the checkout page, i am unable to add additional option in checkout payment options, i'm able to do it using javascript, but then order is not being processed, and second thing, even if i am able to add option, and redirect user using javascript, how am i suppose to empty the cart once user has returned to the site? </p>\n\n<p>I'm completely stuck here, any help or pointing to the right direction would be greatly appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "android",
+                "android-arrayadapter"
+            ],
+            "owner": {
+                "reputation": 14,
+                "user_id": 2594642,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://www.gravatar.com/avatar/305dc5b891b956e4f5a64c45c782a18b?s=128&d=identicon&r=PG",
+                "display_name": "Althaf Ahamed",
+                "link": "https://stackoverflow.com/users/2594642/althaf-ahamed"
+            },
+            "is_answered": false,
+            "view_count": 52,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526455943,
+            "creation_date": 1526453292,
+            "last_edit_date": 1526455943,
+            "question_id": 50364117,
+            "body_markdown": "&gt; java.lang.ArrayIndexOutOfBoundsException: length=4; index=11        \r\n&gt; at java.util.Arrays$ArrayList.get(Arrays.java:3854)         at\r\n&gt; android.widget.ArrayAdapter.getItem(ArrayAdapter.java:349)         at\r\n&gt; android.widget.ArrayAdapter.createViewFromResource(ArrayAdapter.java:405)\r\n&gt; at android.widget.ArrayAdapter.getView(ArrayAdapter.java:371)        \r\n&gt; at android.widget.Spinner.makeView(Spinner.java:800)         at\r\n&gt; android.widget.Spinner.layout(Spinner.java:748)         at\r\n&gt; android.widget.Spinner.onLayout(Spinner.java:710)         at\r\n&gt; android.view.View.layout(View.java:18799)         at\r\n&gt; android.view.ViewGroup.layout(ViewGroup.java:5952)         at\r\n&gt; android.widget.LinearLayout.setChildFrame(LinearLayout.java:1741)     \r\n&gt; at\r\n&gt; android.widget.LinearLayout.layoutHorizontal(LinearLayout.java:1730)  \r\n&gt; at android.widget.TableRow.onLayout(TableRow.java:122)         at\r\n&gt; android.view.View.layout(View.java:18799)         at\r\n&gt; android.view.ViewGroup.layout(ViewGroup.java:5952)         at\r\n&gt; android.widget.LinearLayout.setChildFrame(LinearLayout.java:1741)     \r\n&gt; at android.widget.LinearLayout.layoutVertical(LinearLayout.java:1585) \r\n&gt; at android.widget.LinearLayout.onLayout(LinearLayout.java:1494)       \r\n&gt; at android.view.View.layout(View.java:18799)         at\r\n&gt; android.view.ViewGroup.layout(ViewGroup.java:5952)         at\r\n&gt; android.widget.FrameLayout.layoutChildren(FrameLayout.java:323)       \r\n&gt; at android.widget.FrameLayout.onLayout(FrameLayout.java:261)        \r\n&gt; at android.widget.ScrollView.onLayout(ScrollView.java:2535)         at\r\n&gt; android.view.View.layout(View.java:18799)         at\r\n&gt; android.view.ViewGroup.layout(ViewGroup.java:5952)         at\r\n&gt; android.widget.FrameLayout.layoutChildren(FrameLayout.java:323)       \r\n&gt; at android.widget.FrameLayout.onLayout(FrameLayout.java:261)        \r\n&gt; at android.view.View.layout(View.java:18799)         at\r\n&gt; android.view.ViewGroup.layout(ViewGroup.java:5952)         at\r\n&gt; android.widget.LinearLayout.setChildFrame(LinearLayout.java:1741)     \r\n&gt; at android.widget.LinearLayout.layoutVertical(LinearLayout\r\n\r\n\r\n\r\n\r\nList View OnItemClick\r\n\r\nlvApList.setOnItemClickListener(new AdapterView.OnItemClickListener() { @Override \r\npublic void onItemClick(AdapterView&lt;?&gt; parent, View view, int position, long id) { \r\n              apAdapter.getItem(position); //crashes here \r\n} `enter code here`\r\n});\r\n\r\nMy sample ArrayAdapter code:\r\n\r\n    public class AccessPointAdapter extends ArrayAdapter&lt;AccessPoint&gt; {\r\n    \r\n    \tprivate static final int NUM_SIGNAL_STRENGTH_LEVELS = 4;\r\n    \tList&lt;AccessPoint&gt; accessPoints;\r\n    \r\n        static private class ViewHolder{\r\n            private TextView tvName;\r\n            private TextView tvDetails;\r\n            private ImageView iv;\r\n            private LevelListDrawable signalStrength;\r\n        }\r\n    \r\n    \tpublic AccessPointAdapter(Context context, List&lt;AccessPoint&gt; objects) {\r\n    \t\tsuper(context, android.R.layout.simple_list_item_1, android.R.id.text1,\r\n    \t\t\t\tobjects);\r\n    \t\taccessPoints = objects;\r\n    \t}\r\n    \r\n    \tpublic AccessPointAdapter(Context context) {\r\n    \t\tsuper(context, android.R.layout.simple_list_item_1, android.R.id.text1);\r\n    \t}\r\n    \r\n    \t@Override\r\n    \tpublic View getView(int position, View convertView, ViewGroup parent) {\r\n    \t\tView rowView = convertView;\r\n    \t\tAccessPointAdapter.ViewHolder holder;\r\n    \t\t....\r\n    \r\n    \t\treturn rowView;\r\n    \t}\r\n    \r\n    }\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50364117/anonymous-arrayoutofbound-excption-when-press-item-in-arrayadapter",
+            "title": "Anonymous ArrayOutOfBound excption when press item in ArrayAdapter",
+            "body": "<blockquote>\n  <p>java.lang.ArrayIndexOutOfBoundsException: length=4; index=11<br>\n  at java.util.Arrays$ArrayList.get(Arrays.java:3854)         at\n  android.widget.ArrayAdapter.getItem(ArrayAdapter.java:349)         at\n  android.widget.ArrayAdapter.createViewFromResource(ArrayAdapter.java:405)\n  at android.widget.ArrayAdapter.getView(ArrayAdapter.java:371)<br>\n  at android.widget.Spinner.makeView(Spinner.java:800)         at\n  android.widget.Spinner.layout(Spinner.java:748)         at\n  android.widget.Spinner.onLayout(Spinner.java:710)         at\n  android.view.View.layout(View.java:18799)         at\n  android.view.ViewGroup.layout(ViewGroup.java:5952)         at\n  android.widget.LinearLayout.setChildFrame(LinearLayout.java:1741)<br>\n  at\n  android.widget.LinearLayout.layoutHorizontal(LinearLayout.java:1730)<br>\n  at android.widget.TableRow.onLayout(TableRow.java:122)         at\n  android.view.View.layout(View.java:18799)         at\n  android.view.ViewGroup.layout(ViewGroup.java:5952)         at\n  android.widget.LinearLayout.setChildFrame(LinearLayout.java:1741)<br>\n  at android.widget.LinearLayout.layoutVertical(LinearLayout.java:1585) \n  at android.widget.LinearLayout.onLayout(LinearLayout.java:1494)<br>\n  at android.view.View.layout(View.java:18799)         at\n  android.view.ViewGroup.layout(ViewGroup.java:5952)         at\n  android.widget.FrameLayout.layoutChildren(FrameLayout.java:323)<br>\n  at android.widget.FrameLayout.onLayout(FrameLayout.java:261)<br>\n  at android.widget.ScrollView.onLayout(ScrollView.java:2535)         at\n  android.view.View.layout(View.java:18799)         at\n  android.view.ViewGroup.layout(ViewGroup.java:5952)         at\n  android.widget.FrameLayout.layoutChildren(FrameLayout.java:323)<br>\n  at android.widget.FrameLayout.onLayout(FrameLayout.java:261)<br>\n  at android.view.View.layout(View.java:18799)         at\n  android.view.ViewGroup.layout(ViewGroup.java:5952)         at\n  android.widget.LinearLayout.setChildFrame(LinearLayout.java:1741)<br>\n  at android.widget.LinearLayout.layoutVertical(LinearLayout</p>\n</blockquote>\n\n<p>List View OnItemClick</p>\n\n<p>lvApList.setOnItemClickListener(new AdapterView.OnItemClickListener() { @Override \npublic void onItemClick(AdapterView parent, View view, int position, long id) { \n              apAdapter.getItem(position); //crashes here \n} <code>enter code here</code>\n});</p>\n\n<p>My sample ArrayAdapter code:</p>\n\n<pre><code>public class AccessPointAdapter extends ArrayAdapter&lt;AccessPoint&gt; {\n\n    private static final int NUM_SIGNAL_STRENGTH_LEVELS = 4;\n    List&lt;AccessPoint&gt; accessPoints;\n\n    static private class ViewHolder{\n        private TextView tvName;\n        private TextView tvDetails;\n        private ImageView iv;\n        private LevelListDrawable signalStrength;\n    }\n\n    public AccessPointAdapter(Context context, List&lt;AccessPoint&gt; objects) {\n        super(context, android.R.layout.simple_list_item_1, android.R.id.text1,\n                objects);\n        accessPoints = objects;\n    }\n\n    public AccessPointAdapter(Context context) {\n        super(context, android.R.layout.simple_list_item_1, android.R.id.text1);\n    }\n\n    @Override\n    public View getView(int position, View convertView, ViewGroup parent) {\n        View rowView = convertView;\n        AccessPointAdapter.ViewHolder holder;\n        ....\n\n        return rowView;\n    }\n\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "firebase",
+                "firebase-console"
+            ],
+            "owner": {
+                "reputation": 58,
+                "user_id": 1891333,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://i.stack.imgur.com/eaFuo.jpg?s=128&g=1",
+                "display_name": "AnujDeo",
+                "link": "https://stackoverflow.com/users/1891333/anujdeo"
+            },
+            "is_answered": true,
+            "view_count": 457,
+            "accepted_answer_id": 42827438,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1526455937,
+            "creation_date": 1489142262,
+            "question_id": 42716279,
+            "body_markdown": "I have about 200-300 apps on playstore. I wanted to connect them to Firebase Service mainly for 2 things as below:\r\n\r\n 1. Send Push Notifications occasionly to each app individually\r\n 2. Use Remote Config to store App Constants (Hardly 1 or 2 keys for each app)\r\n\r\nSo, my questions are:\r\n\r\n 1. How many Projects I can create on Firebase Console under Free Plan.\r\n 2. Should I create Single Project and add all my apps in it OR Create individual project for each app. (I have about 200 apps)\r\n 3. What is maximum no. of notification one can send using firebase (free)?\r\n\r\n\r\nI searched for this but cannot get exact answer. Aslo contacted firebase team but no response yet.",
+            "link": "https://stackoverflow.com/questions/42716279/maxiumum-number-of-apps-one-can-create-in-firebase-console-uder-free-plan",
+            "title": "Maxiumum number of apps one can Create in Firebase Console (Uder Free Plan)",
+            "body": "<p>I have about 200-300 apps on playstore. I wanted to connect them to Firebase Service mainly for 2 things as below:</p>\n\n<ol>\n<li>Send Push Notifications occasionly to each app individually</li>\n<li>Use Remote Config to store App Constants (Hardly 1 or 2 keys for each app)</li>\n</ol>\n\n<p>So, my questions are:</p>\n\n<ol>\n<li>How many Projects I can create on Firebase Console under Free Plan.</li>\n<li>Should I create Single Project and add all my apps in it OR Create individual project for each app. (I have about 200 apps)</li>\n<li>What is maximum no. of notification one can send using firebase (free)?</li>\n</ol>\n\n<p>I searched for this but cannot get exact answer. Aslo contacted firebase team but no response yet.</p>\n"
+        },
+        {
+            "tags": [
+                "nstimer",
+                "swift3",
+                "xcode8"
+            ],
+            "owner": {
+                "reputation": 625,
+                "user_id": 6224724,
+                "user_type": "registered",
+                "accept_rate": 50,
+                "profile_image": "https://www.gravatar.com/avatar/f5163ea6ba5c4f9f04898f396e1e7804?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Mohsin Qureshi",
+                "link": "https://stackoverflow.com/users/6224724/mohsin-qureshi"
+            },
+            "is_answered": true,
+            "view_count": 11683,
+            "accepted_answer_id": 39589296,
+            "answer_count": 2,
+            "score": 14,
+            "last_activity_date": 1526455932,
+            "creation_date": 1474360120,
+            "last_edit_date": 1474360553,
+            "question_id": 39589167,
+            "body_markdown": "I want to implement NSTimer.scheduledTimerWithTimeInterval in Swift 3. I want to know the Replacement of\r\n\r\n    NSTimer.scheduledTimerWithTimeInterval(0.35, target: self, selector: #selector(createEnemy), userInfo: nil, repeats: true)\r\n\r\nas we used it in swift 2.2\r\n",
+            "link": "https://stackoverflow.com/questions/39589167/what-is-replacement-of-nstimer-scheduledtimerwithtimeinterval-in-swift-3",
+            "title": "What is replacement of NSTimer.scheduledTimerWithTimeInterval() in swift 3?",
+            "body": "<p>I want to implement NSTimer.scheduledTimerWithTimeInterval in Swift 3. I want to know the Replacement of</p>\n\n<pre><code>NSTimer.scheduledTimerWithTimeInterval(0.35, target: self, selector: #selector(createEnemy), userInfo: nil, repeats: true)\n</code></pre>\n\n<p>as we used it in swift 2.2</p>\n"
+        },
+        {
+            "tags": [
+                "jenkins",
+                "cmd",
+                "psexec"
+            ],
+            "owner": {
+                "reputation": 170,
+                "user_id": 5311820,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://www.gravatar.com/avatar/199a8ba46ff64a92964fd4aab24fde08?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Pavel-man",
+                "link": "https://stackoverflow.com/users/5311820/pavel-man"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526455911,
+            "creation_date": 1526455911,
+            "question_id": 50364824,
+            "body_markdown": "On our project we want to deploy our .Net application to remote machine. For that purpose we have chosen PsExec tool. The propblem is that the commands that work fine in `cmd` don&#39;t work in Jenkins. They look the similar way in Jenkins\r\n\r\n    bat &#39;%windir%\\\\sysnative\\\\PsExec.exe \\\\\\\\ipaddress -u user -p password -accepteula -h cmd /c &quot;command&quot; /q&quot;&#39;\r\n\r\nJenkins prints that `Access is denied`, although it works well in `cmd`. Why should I do? How it works differently in Jenkins and cmd? Maybe I&#39;m doing something wrong?",
+            "link": "https://stackoverflow.com/questions/50364824/jenkins-doesnt-invoke-psexec-command-because-access-is-denied",
+            "title": "Jenkins doesn&#39;t invoke psexec command, because &quot;Access is denied&quot;",
+            "body": "<p>On our project we want to deploy our .Net application to remote machine. For that purpose we have chosen PsExec tool. The propblem is that the commands that work fine in <code>cmd</code> don't work in Jenkins. They look the similar way in Jenkins</p>\n\n<pre><code>bat '%windir%\\\\sysnative\\\\PsExec.exe \\\\\\\\ipaddress -u user -p password -accepteula -h cmd /c \"command\" /q\"'\n</code></pre>\n\n<p>Jenkins prints that <code>Access is denied</code>, although it works well in <code>cmd</code>. Why should I do? How it works differently in Jenkins and cmd? Maybe I'm doing something wrong?</p>\n"
+        },
+        {
+            "tags": [
+                "python-3.x",
+                "tkinter"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9797983,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-6p6lxWMEgds/AAAAAAAAAAI/AAAAAAAAACE/_lhXIof7yIY/photo.jpg?sz=128",
+                "display_name": "Jagadish Sagi",
+                "link": "https://stackoverflow.com/users/9797983/jagadish-sagi"
+            },
+            "is_answered": true,
+            "view_count": 20,
+            "accepted_answer_id": 50364822,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526455908,
+            "creation_date": 1526449474,
+            "question_id": 50363208,
+            "body_markdown": " I have 4 buttons in my Left Frame I would like them to resize whenever I resize \r\n \r\n my window but it doesn&#39;t work buttons are not expanding as i expand my window\r\n\r\n Below is my code for it\r\n\r\n\r\n    from tkinter import * \r\n    root = Tk()\r\n    leftFrame = Frame(root)\r\n    leftFrame.pack(side=LEFT)\r\n    rightFrame = Frame(root)\r\n    rightFrame.pack(side=RIGHT)\r\n\r\n    button1 = Button(leftFrame,text=&quot;Round 1&quot;,fg=&quot;white&quot;,bg=&quot;black&quot;)\r\n    button2 = Button(leftFrame,text=&quot;Round 2&quot;,fg=&quot;yellow&quot;,bg=&quot;blue&quot;)\r\n    button3 = Button(leftFrame,text=&quot;Round 3&quot;,fg=&quot;purple&quot;,bg=&quot;cyan&quot;)\r\n    button4 = Button(leftFrame,text=&quot;Round 4&quot;,fg=&quot;green&quot;,bg=&quot;orange&quot;)\r\n\r\n    button1.pack(expand=True,fill=&#39;both&#39;)\r\n    button2.pack(expand=True,fill=&#39;both&#39;)\r\n    button3.pack(expand=True,fill=&#39;both&#39;)\r\n    button4.pack(expand=True,fill=&#39;both&#39;)\r\n\r\n    root.mainloop()\r\n\r\n Help is appreciated\r\n\r\n I am using Python 3.5 and Editor is Pycharm",
+            "link": "https://stackoverflow.com/questions/50363208/expanding-button-widget-to-fill-the-entire-frame-in-tkinter",
+            "title": "Expanding Button Widget to fill the entire frame in Tkinter",
+            "body": "<p>I have 4 buttons in my Left Frame I would like them to resize whenever I resize </p>\n\n<p>my window but it doesn't work buttons are not expanding as i expand my window</p>\n\n<p>Below is my code for it</p>\n\n<pre><code>from tkinter import * \nroot = Tk()\nleftFrame = Frame(root)\nleftFrame.pack(side=LEFT)\nrightFrame = Frame(root)\nrightFrame.pack(side=RIGHT)\n\nbutton1 = Button(leftFrame,text=\"Round 1\",fg=\"white\",bg=\"black\")\nbutton2 = Button(leftFrame,text=\"Round 2\",fg=\"yellow\",bg=\"blue\")\nbutton3 = Button(leftFrame,text=\"Round 3\",fg=\"purple\",bg=\"cyan\")\nbutton4 = Button(leftFrame,text=\"Round 4\",fg=\"green\",bg=\"orange\")\n\nbutton1.pack(expand=True,fill='both')\nbutton2.pack(expand=True,fill='both')\nbutton3.pack(expand=True,fill='both')\nbutton4.pack(expand=True,fill='both')\n\nroot.mainloop()\n</code></pre>\n\n<p>Help is appreciated</p>\n\n<p>I am using Python 3.5 and Editor is Pycharm</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "mapbox"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9717674,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/dvjES.png?s=128&g=1",
+                "display_name": "Bal&#225;zs Nemes",
+                "link": "https://stackoverflow.com/users/9717674/bal%c3%a1zs-nemes"
+            },
+            "is_answered": false,
+            "view_count": 33,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526455884,
+            "creation_date": 1526374999,
+            "last_edit_date": 1526387284,
+            "question_id": 50346220,
+            "body_markdown": "I have two elements (semantic ui item &quot;**pz_click** and **lz_click**&quot;) that, when clicked, will show a hidden layer (map_1 and map_2 geojson), and then when you click that same element will hide that layer.\r\n\r\nI would like to ask you some help to create the script.(I use mapbox.js not mapbox-gl.js)\r\n\r\n**See in action here: [Jsfiddle][1]**\r\n\r\n\r\nJsfiddle include the two geojson data.\r\n\r\nThanks!\r\n\r\n\r\n***HTML:***\r\n\r\n    &lt;!DOCTYPE html&gt;\r\n    &lt;html&gt;\r\n    &lt;head&gt;\r\n    &lt;meta charset=utf-8 /&gt;\r\n    &lt;link rel=&quot;apple-touch-icon-precomposed&quot; sizes=&quot;152x152&quot; href=&quot;icos.png&quot;&gt;\r\n    &lt;link rel=&quot;icon&quot; type=&quot;image/png&quot; href=&quot;favicon-16x16.png&quot; sizes=&quot;16x16&quot; /&gt;\r\n    &lt;meta name=&#39;viewport&#39; content=&#39;initial-scale=1,maximum-scale=1,user-scalable=no&#39; /&gt;\r\n    &lt;script src=&#39;https://api.mapbox.com/mapbox.js/v3.1.1/mapbox.js&#39;&gt;&lt;/script&gt;\r\n    &lt;link href=&#39;https://api.mapbox.com/mapbox.js/v3.1.1/mapbox.css&#39; rel=&#39;stylesheet&#39; /&gt;\r\n    &lt;link href=&#39;https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.1.8/semantic.css&#39; rel=&#39;stylesheet&#39; /&gt;\r\n    &lt;/head&gt;\r\n    &lt;body&gt;\r\n    &lt;div id=&#39;map&#39;&gt;\r\n    &lt;style&gt;\r\n        body { margin:0; padding:0; }\r\n        #map { position:absolute; top:0; bottom:0; width:100%; }\r\n    &lt;/style&gt;\r\n    &lt;div class=&quot;ui small fixed main menu &quot;&gt;\r\n        &lt;div class=&quot;item&quot;&gt;\r\n          &lt;button class=&quot;ui blue dropdown button&quot;&gt;\r\n            &lt;i class=&quot;list alternate outline icon&quot;&gt;&lt;/i&gt;Map Layers\r\n            &lt;i class=&quot;dropdown icon&quot;&gt;&lt;/i&gt;\r\n            &lt;div class=&quot;menu&quot;&gt;\r\n            &lt;div class=&quot;header&quot;&gt;\r\n            &lt;i class=&quot;tags icon&quot;&gt;&lt;/i&gt;\r\n            Layers\r\n           &lt;/div&gt;\r\n           &lt;div class=&quot;divider&quot;&gt;&lt;/div&gt;\r\n            &lt;div id=&quot;pz_click&quot; class=&quot;item&quot;&gt;&lt;i class=&quot;flag outline icon&quot;&gt;&lt;/i&gt;1&lt;/div&gt;\r\n            &lt;div id=&quot;lz_clcik&quot; class=&quot;item&quot;&gt;&lt;i class=&quot;flag outline icon&quot;&gt;&lt;/i&gt;2&lt;/div&gt;\r\n          &lt;/div&gt;\r\n        &lt;/button&gt;\r\n        &lt;/div&gt;\r\n    &lt;/body&gt;\r\n    &lt;/html&gt;\r\n\r\n***Script:***\r\n\r\n    // mapbox-js\r\n     L.mapbox.accessToken = &#39;pk.eyJ1IjoibmVtYmFsaSIsImEiOiJjNWRiZmVjZWM5NTU3NWVkYWY3ZTJiYTM1YTI2NGY0YiJ9.d4DhEQIF0VQrfBJGBmKWBw&#39;;\r\n      var map = L.mapbox.map(&#39;map&#39;, &#39;mapbox.streets&#39;, {attributionControl: false}, {zoomControl:false})\r\n          .setView([47.4978287747,19.0198230743], 14);\r\n          map.removeControl(map.zoomControl);\r\n    // mapbox-js\r\n    \r\n    // dropdow-semantic\r\n          $(&#39;.ui.dropdown&#39;)\r\n            .dropdown()\r\n          ;\r\n    // dropdown-semantic\r\n    \r\n    // click-toggle ?\r\n    $(document).ready(function() {\r\n      $(pz_click).click(function() {\r\n        L.mapbox.featureLayer(&#39;map_1.geojson&#39;).addTo(map)\r\n    \r\n      })\r\n    });\r\n    // click-toggle  \r\n\r\n\r\n  [1]: http://jsfiddle.net/nembali/mu8ups7r/3/",
+            "link": "https://stackoverflow.com/questions/50346220/mapbox-show-hide-toggle-geojson-layer",
+            "title": "Mapbox | show/hide (toggle) geojson layer",
+            "body": "<p>I have two elements (semantic ui item \"<strong>pz_click</strong> and <strong>lz_click</strong>\") that, when clicked, will show a hidden layer (map_1 and map_2 geojson), and then when you click that same element will hide that layer.</p>\n\n<p>I would like to ask you some help to create the script.(I use mapbox.js not mapbox-gl.js)</p>\n\n<p><strong>See in action here: <a href=\"http://jsfiddle.net/nembali/mu8ups7r/3/\" rel=\"nofollow noreferrer\">Jsfiddle</a></strong></p>\n\n<p>Jsfiddle include the two geojson data.</p>\n\n<p>Thanks!</p>\n\n<p><strong><em>HTML:</em></strong></p>\n\n<pre><code>&lt;!DOCTYPE html&gt;\n&lt;html&gt;\n&lt;head&gt;\n&lt;meta charset=utf-8 /&gt;\n&lt;link rel=\"apple-touch-icon-precomposed\" sizes=\"152x152\" href=\"icos.png\"&gt;\n&lt;link rel=\"icon\" type=\"image/png\" href=\"favicon-16x16.png\" sizes=\"16x16\" /&gt;\n&lt;meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' /&gt;\n&lt;script src='https://api.mapbox.com/mapbox.js/v3.1.1/mapbox.js'&gt;&lt;/script&gt;\n&lt;link href='https://api.mapbox.com/mapbox.js/v3.1.1/mapbox.css' rel='stylesheet' /&gt;\n&lt;link href='https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.1.8/semantic.css' rel='stylesheet' /&gt;\n&lt;/head&gt;\n&lt;body&gt;\n&lt;div id='map'&gt;\n&lt;style&gt;\n    body { margin:0; padding:0; }\n    #map { position:absolute; top:0; bottom:0; width:100%; }\n&lt;/style&gt;\n&lt;div class=\"ui small fixed main menu \"&gt;\n    &lt;div class=\"item\"&gt;\n      &lt;button class=\"ui blue dropdown button\"&gt;\n        &lt;i class=\"list alternate outline icon\"&gt;&lt;/i&gt;Map Layers\n        &lt;i class=\"dropdown icon\"&gt;&lt;/i&gt;\n        &lt;div class=\"menu\"&gt;\n        &lt;div class=\"header\"&gt;\n        &lt;i class=\"tags icon\"&gt;&lt;/i&gt;\n        Layers\n       &lt;/div&gt;\n       &lt;div class=\"divider\"&gt;&lt;/div&gt;\n        &lt;div id=\"pz_click\" class=\"item\"&gt;&lt;i class=\"flag outline icon\"&gt;&lt;/i&gt;1&lt;/div&gt;\n        &lt;div id=\"lz_clcik\" class=\"item\"&gt;&lt;i class=\"flag outline icon\"&gt;&lt;/i&gt;2&lt;/div&gt;\n      &lt;/div&gt;\n    &lt;/button&gt;\n    &lt;/div&gt;\n&lt;/body&gt;\n&lt;/html&gt;\n</code></pre>\n\n<p><strong><em>Script:</em></strong></p>\n\n<pre><code>// mapbox-js\n L.mapbox.accessToken = 'pk.eyJ1IjoibmVtYmFsaSIsImEiOiJjNWRiZmVjZWM5NTU3NWVkYWY3ZTJiYTM1YTI2NGY0YiJ9.d4DhEQIF0VQrfBJGBmKWBw';\n  var map = L.mapbox.map('map', 'mapbox.streets', {attributionControl: false}, {zoomControl:false})\n      .setView([47.4978287747,19.0198230743], 14);\n      map.removeControl(map.zoomControl);\n// mapbox-js\n\n// dropdow-semantic\n      $('.ui.dropdown')\n        .dropdown()\n      ;\n// dropdown-semantic\n\n// click-toggle ?\n$(document).ready(function() {\n  $(pz_click).click(function() {\n    L.mapbox.featureLayer('map_1.geojson').addTo(map)\n\n  })\n});\n// click-toggle  \n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "php",
+                "magento",
+                "events",
+                "logging"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 6414683,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10204765373572727/picture?type=large",
+                "display_name": "L&#225;ďa Prchal",
+                "link": "https://stackoverflow.com/users/6414683/l%c3%a1%c4%8fa-prchal"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526455870,
+            "creation_date": 1526455870,
+            "question_id": 50364815,
+            "body_markdown": "we have quite a challenge here - we need to load our static class Logger whenever the page runs so we can log what is going on. We had to do quite customization, so we cannot use Mage::log anymore.\r\n\r\nSo far we have been using observer on event controller_front_init_before. This is working fine, I can access Logger from all places. Except for PHPunit tests. In this case it will fail as the Logger class is unknown.\r\n\r\nIs there an event which is always usable? Or is there some work-around? Better best practice?\r\n\r\nThank you and have a nice day",
+            "link": "https://stackoverflow.com/questions/50364815/magento-load-custom-class-whenever-whatever-starts-the-page",
+            "title": "Magento load custom class whenever whatever starts the page",
+            "body": "<p>we have quite a challenge here - we need to load our static class Logger whenever the page runs so we can log what is going on. We had to do quite customization, so we cannot use Mage::log anymore.</p>\n\n<p>So far we have been using observer on event controller_front_init_before. This is working fine, I can access Logger from all places. Except for PHPunit tests. In this case it will fail as the Logger class is unknown.</p>\n\n<p>Is there an event which is always usable? Or is there some work-around? Better best practice?</p>\n\n<p>Thank you and have a nice day</p>\n"
+        },
+        {
+            "tags": [
+                "mongodb",
+                "docker",
+                "docker-compose",
+                "pymongo"
+            ],
+            "owner": {
+                "reputation": 17015,
+                "user_id": 1031417,
+                "user_type": "registered",
+                "accept_rate": 85,
+                "profile_image": "https://i.stack.imgur.com/GwULm.png?s=128&g=1",
+                "display_name": "0x90",
+                "link": "https://stackoverflow.com/users/1031417/0x90"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526455864,
+            "creation_date": 1526443994,
+            "last_edit_date": 1526455864,
+            "question_id": 50362363,
+            "body_markdown": "I am trying to spin up a python application with mongodb server using docker-composer, but I get the following error:\r\n\r\n`pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 111] Connection refused`\r\n\r\n\r\nI really don&#39;t understand what am I missing in my setup:\r\n\r\n    version: &#39;3.6&#39;\r\n    services:\r\n      web:\r\n        build: .\r\n        ports:\r\n         - &quot;5000:5000&quot;\r\n         - &quot;9000:9000&quot;\r\n        links:\r\n          - db\r\n      db:\r\n        image: mongo:latest\r\n        container_name: &quot;mongodb&quot;\r\n        ports:\r\n            - 27017:27017\r\n        command: mongod --smallfiles # --quiet    \r\n    \r\n      redis:\r\n        image: &quot;redis:alpine&quot;\r\n\r\nI am not sure why I can&#39;t connect to the server which seems to be up (`docker ps`):\r\n\r\n    CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                                            NAMES\r\n    fb5a00bb8867        composedir_web      &quot;python app.py&quot;          20 seconds ago      Up 19 seconds       0.0.0.0:5000-&gt;5000/tcp, 0.0.0.0:9000-&gt;9000/tcp   composedir_web_1\r\n    56aeae245ad5        mongo:latest        &quot;docker-entrypoint.s…&quot;   14 minutes ago      Up 20 seconds       0.0.0.0:27017-&gt;27017/tcp                         mongodb\r\n    51c64650bab8        redis:alpine        &quot;docker-entrypoint.s…&quot;   14 minutes ago      Up 21 seconds       6379/tcp                                         composedir_red",
+            "link": "https://stackoverflow.com/questions/50362363/how-to-use-docker-compose-to-setup-a-mongodb-with-pymonogo-app",
+            "title": "How to use docker-compose to setup a mongodb with pymonogo app?",
+            "body": "<p>I am trying to spin up a python application with mongodb server using docker-composer, but I get the following error:</p>\n\n<p><code>pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 111] Connection refused</code></p>\n\n<p>I really don't understand what am I missing in my setup:</p>\n\n<pre><code>version: '3.6'\nservices:\n  web:\n    build: .\n    ports:\n     - \"5000:5000\"\n     - \"9000:9000\"\n    links:\n      - db\n  db:\n    image: mongo:latest\n    container_name: \"mongodb\"\n    ports:\n        - 27017:27017\n    command: mongod --smallfiles # --quiet    \n\n  redis:\n    image: \"redis:alpine\"\n</code></pre>\n\n<p>I am not sure why I can't connect to the server which seems to be up (<code>docker ps</code>):</p>\n\n<pre><code>CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                                            NAMES\nfb5a00bb8867        composedir_web      \"python app.py\"          20 seconds ago      Up 19 seconds       0.0.0.0:5000-&gt;5000/tcp, 0.0.0.0:9000-&gt;9000/tcp   composedir_web_1\n56aeae245ad5        mongo:latest        \"docker-entrypoint.s…\"   14 minutes ago      Up 20 seconds       0.0.0.0:27017-&gt;27017/tcp                         mongodb\n51c64650bab8        redis:alpine        \"docker-entrypoint.s…\"   14 minutes ago      Up 21 seconds       6379/tcp                                         composedir_red\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "spring",
+                "security",
+                "authentication",
+                "saml"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8786275,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/a0e0a8d5c1b37ef84241d20b7ac88116?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Kwasi Boateng",
+                "link": "https://stackoverflow.com/users/8786275/kwasi-boateng"
+            },
+            "is_answered": false,
+            "view_count": 123,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526455853,
+            "creation_date": 1508183459,
+            "question_id": 46778044,
+            "body_markdown": "We&#39;ve seen this behavior in our setup and would like to know if its a known bug or there is something we&#39;ve not been doing right.\r\n\r\nWe are replacing an old application url with a new one. The new has been properly configured in IdP.\r\n\r\nWe&#39;ve seem that the first url that hits the server is cached by spring security and subsequently used in all other authentication requests.\r\n\r\nAssertionConsumerServiceURL never changes after the first request. So it the first url was wrong, all other authentication requests will fail.\r\n \r\n\r\n \r\n\r\n    &lt;saml2p:AuthnRequest xmlns:saml2p=&quot;urn:oasis:names:tc:SAML:2.0:protocol&quot;\r\n                     AssertionConsumerServiceURL=&quot;**SP_URL**&quot;\r\n                     Destination=&quot;https://testsvr.oktapreview.com/app/testapp_1/e455h7q7rNHE0h7/sso/saml&quot;\r\n                     ForceAuthn=&quot;false&quot;\r\n                     ID=&quot;a22331j064aeda5g78c66cg2a21&quot;\r\n                     IsPassive=&quot;false&quot;\r\n                     IssueInstant=&quot;2017-10-12T21:55:18.794Z&quot;\r\n                     ProtocolBinding=&quot;urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST&quot;\r\n                     Version=&quot;2.0&quot;\r\n                     &gt;",
+            "link": "https://stackoverflow.com/questions/46778044/spring-saml-authentication-request-overwriting-new-authentication-assertionconsu",
+            "title": "Spring SAML authentication request overwriting new authentication AssertionConsumerServiceURL with first requested authentication url",
+            "body": "<p>We've seen this behavior in our setup and would like to know if its a known bug or there is something we've not been doing right.</p>\n\n<p>We are replacing an old application url with a new one. The new has been properly configured in IdP.</p>\n\n<p>We've seem that the first url that hits the server is cached by spring security and subsequently used in all other authentication requests.</p>\n\n<p>AssertionConsumerServiceURL never changes after the first request. So it the first url was wrong, all other authentication requests will fail.</p>\n\n<pre><code>&lt;saml2p:AuthnRequest xmlns:saml2p=\"urn:oasis:names:tc:SAML:2.0:protocol\"\n                 AssertionConsumerServiceURL=\"**SP_URL**\"\n                 Destination=\"https://testsvr.oktapreview.com/app/testapp_1/e455h7q7rNHE0h7/sso/saml\"\n                 ForceAuthn=\"false\"\n                 ID=\"a22331j064aeda5g78c66cg2a21\"\n                 IsPassive=\"false\"\n                 IssueInstant=\"2017-10-12T21:55:18.794Z\"\n                 ProtocolBinding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\"\n                 Version=\"2.0\"\n                 &gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "typescript",
+                "angular2-template",
+                "angular2-forms"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 9614586,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-VJS31giU8OA/AAAAAAAAAAI/AAAAAAAAAEo/_T-FdC7lwDo/photo.jpg?sz=128",
+                "display_name": "hari prasanth",
+                "link": "https://stackoverflow.com/users/9614586/hari-prasanth"
+            },
+            "is_answered": false,
+            "view_count": 32,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526455842,
+            "creation_date": 1526455842,
+            "question_id": 50364804,
+            "body_markdown": "     &lt;tbody&gt;\r\n                  &lt;tr *ngFor=&quot;let user of value; let j = index&quot;&gt;\r\n                      &lt;td&gt;{{j+1}}&lt;/td&gt;\r\n                      &lt;td contenteditable=&#39;true&#39; (input)=&quot;onRowClick($event, user.id)&quot;&gt;{{user.tax_name}}&lt;/td&gt;\r\n                      &lt;td contenteditable=&#39;true&#39; (input)=&quot;onRowClick($event, user.id)&quot;&gt;{{user.tax_percentage}}&lt;/td&gt;\r\n                      &lt;td&gt;&lt;button (click)=&quot;onButtonClick()&quot; class=&quot;btn btn-hero-secondary btn-demo&quot;&gt;Edit&lt;/button&gt;&lt;/td&gt;\r\n                      &lt;tr *ngFor=&quot;let field of fieldArray; let i = index&quot;&gt;\r\n                          &lt;td&gt;{{j+1}}&lt;/td&gt;\r\n                          &lt;td&gt;&lt;input class=&quot;form-control&quot; #qua [id]=&quot;&#39;tax_name&#39; + i&quot;  [name]=&quot;&#39;tax_name&#39; + i&quot; type=&quot;text&quot; ngModel [(ngModel)]=&quot;fieldArray[i].tax_name&quot;&gt;&lt;/td&gt;\r\n                          &lt;td&gt;&lt;input class=&quot;form-control&quot; #Rate [id]=&quot;&#39;tax_percentage&#39; + i&quot;  [name]=&quot;&#39;tax_percentage&#39; + i&quot; type=&quot;text&quot;  ngModel [(ngModel)]=&quot;fieldArray[i].tax_percentage&quot;&gt;&lt;/td&gt;\r\n                          &lt;td&gt;&lt;button (click)=&quot;onButtonClick()&quot; class=&quot;btn btn-hero-secondary btn-demo&quot;&gt;Create&lt;/button&gt;&lt;/td&gt;\r\n                      &lt;/tr&gt;\r\n                  \r\n              &lt;/tbody&gt;\r\n\r\nI have doubt.how to edit and save button in normal table using typescript.I tried it edit button but its not working.can u give me code or link how to do it .",
+            "link": "https://stackoverflow.com/questions/50364804/how-to-add-edit-and-save-button-an-normal-table-using-typescript",
+            "title": "how to add edit and save button an normal table using typescript?",
+            "body": "<pre><code> &lt;tbody&gt;\n              &lt;tr *ngFor=\"let user of value; let j = index\"&gt;\n                  &lt;td&gt;{{j+1}}&lt;/td&gt;\n                  &lt;td contenteditable='true' (input)=\"onRowClick($event, user.id)\"&gt;{{user.tax_name}}&lt;/td&gt;\n                  &lt;td contenteditable='true' (input)=\"onRowClick($event, user.id)\"&gt;{{user.tax_percentage}}&lt;/td&gt;\n                  &lt;td&gt;&lt;button (click)=\"onButtonClick()\" class=\"btn btn-hero-secondary btn-demo\"&gt;Edit&lt;/button&gt;&lt;/td&gt;\n                  &lt;tr *ngFor=\"let field of fieldArray; let i = index\"&gt;\n                      &lt;td&gt;{{j+1}}&lt;/td&gt;\n                      &lt;td&gt;&lt;input class=\"form-control\" #qua [id]=\"'tax_name' + i\"  [name]=\"'tax_name' + i\" type=\"text\" ngModel [(ngModel)]=\"fieldArray[i].tax_name\"&gt;&lt;/td&gt;\n                      &lt;td&gt;&lt;input class=\"form-control\" #Rate [id]=\"'tax_percentage' + i\"  [name]=\"'tax_percentage' + i\" type=\"text\"  ngModel [(ngModel)]=\"fieldArray[i].tax_percentage\"&gt;&lt;/td&gt;\n                      &lt;td&gt;&lt;button (click)=\"onButtonClick()\" class=\"btn btn-hero-secondary btn-demo\"&gt;Create&lt;/button&gt;&lt;/td&gt;\n                  &lt;/tr&gt;\n\n          &lt;/tbody&gt;\n</code></pre>\n\n<p>I have doubt.how to edit and save button in normal table using typescript.I tried it edit button but its not working.can u give me code or link how to do it .</p>\n"
+        },
+        {
+            "tags": [
+                "docker",
+                "centos",
+                "kubernetes",
+                "kubectl"
+            ],
+            "owner": {
+                "reputation": 23,
+                "user_id": 8341526,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/36b1b03cb6f1ba7eb2a042e3be24a518?s=128&d=identicon&r=PG&f=1",
+                "display_name": "xzg",
+                "link": "https://stackoverflow.com/users/8341526/xzg"
+            },
+            "is_answered": false,
+            "view_count": 2653,
+            "answer_count": 2,
+            "score": 3,
+            "last_activity_date": 1526455841,
+            "creation_date": 1501678032,
+            "last_edit_date": 1520856193,
+            "question_id": 45461307,
+            "body_markdown": "When I installed docker and ran `service docker start` I got this message:\r\n \r\n    Job for docker.service failed because the control process exited with error code. See &quot;systemctl status docker.service&quot; and &quot;journalctl -xe&quot; for details.\r\n\r\nWhen I ran `journalctl -xe` I got this message:\r\n\r\n\r\n    8月 02 20:42:11 centos-master systemd[1]: Unit docker-storage-setup.service entered failed state.\r\n    8月 02 20:42:11 centos-master systemd[1]: docker-storage-setup.service failed.\r\n    8月 02 20:42:11 centos-master systemd[1]: Starting Docker Application Container Engine...\r\n    -- Subject: Unit docker.service has begun start-up\r\n    -- Defined-By: systemd\r\n    -- Support: http://lists.freedesktop.org/mailman/listinfo/systemd-devel\r\n    -- \r\n    -- Unit docker.service has begun starting up.\r\n    8月 02 20:42:11 centos-master dockerd-current[32672]: time=&quot;2017-08-02T20:42:11.667102874+08:00&quot; level=info msg=&quot;libcontainerd: new containerd process, pid: 32676&quot;\r\n    8月 02 20:42:11 centos-master dockerd-current[32672]: time=&quot;2017-08-02T20:42:11.681065709+08:00&quot; level=info msg=&quot;[graphdriver] using prior storage driver \\&quot;overlay\\&quot;&quot;\r\n    8月 02 20:42:12 centos-master dockerd-current[32672]: time=&quot;2017-08-02T20:42:12.045251482+08:00&quot; level=fatal msg=&quot;Error starting daemon: SELinux is not supported with the overlay graph driver\r\n    8月 02 20:42:12 centos-master systemd[1]: docker.service: main process exited, code=exited, status=1/FAILURE\r\n    8月 02 20:42:12 centos-master systemd[1]: Failed to start Docker Application Container Engine.\r\n    -- Subject: Unit docker.service has failed\r\n\r\nthanks my friends",
+            "link": "https://stackoverflow.com/questions/45461307/selinux-is-not-supported-with-the-overlay-graph-driver",
+            "title": "SELinux is not supported with the overlay graph driver",
+            "body": "<p>When I installed docker and ran <code>service docker start</code> I got this message:</p>\n\n<pre><code>Job for docker.service failed because the control process exited with error code. See \"systemctl status docker.service\" and \"journalctl -xe\" for details.\n</code></pre>\n\n<p>When I ran <code>journalctl -xe</code> I got this message:</p>\n\n<pre><code>8月 02 20:42:11 centos-master systemd[1]: Unit docker-storage-setup.service entered failed state.\n8月 02 20:42:11 centos-master systemd[1]: docker-storage-setup.service failed.\n8月 02 20:42:11 centos-master systemd[1]: Starting Docker Application Container Engine...\n-- Subject: Unit docker.service has begun start-up\n-- Defined-By: systemd\n-- Support: http://lists.freedesktop.org/mailman/listinfo/systemd-devel\n-- \n-- Unit docker.service has begun starting up.\n8月 02 20:42:11 centos-master dockerd-current[32672]: time=\"2017-08-02T20:42:11.667102874+08:00\" level=info msg=\"libcontainerd: new containerd process, pid: 32676\"\n8月 02 20:42:11 centos-master dockerd-current[32672]: time=\"2017-08-02T20:42:11.681065709+08:00\" level=info msg=\"[graphdriver] using prior storage driver \\\"overlay\\\"\"\n8月 02 20:42:12 centos-master dockerd-current[32672]: time=\"2017-08-02T20:42:12.045251482+08:00\" level=fatal msg=\"Error starting daemon: SELinux is not supported with the overlay graph driver\n8月 02 20:42:12 centos-master systemd[1]: docker.service: main process exited, code=exited, status=1/FAILURE\n8月 02 20:42:12 centos-master systemd[1]: Failed to start Docker Application Container Engine.\n-- Subject: Unit docker.service has failed\n</code></pre>\n\n<p>thanks my friends</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "calendar",
+                "google-calendar"
+            ],
+            "owner": {
+                "reputation": 106,
+                "user_id": 4894182,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/17098439f753051619c648494258e095?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Malik Boy",
+                "link": "https://stackoverflow.com/users/4894182/malik-boy"
+            },
+            "is_answered": true,
+            "view_count": 728,
+            "accepted_answer_id": 31182148,
+            "answer_count": 3,
+            "score": 2,
+            "last_activity_date": 1526455838,
+            "creation_date": 1435815285,
+            "last_edit_date": 1435897160,
+            "question_id": 31176308,
+            "body_markdown": "I have followed following tutorial to fetch events from google calendar which is working fine.\r\nhttps://developers.google.com/google-apps/calendar/quickstart/ios\r\n\r\nNow I am stuck in insert event from my iOS app so that it can be synced with web as well. Please guide me in the right direction or post some sample code.\r\n\r\nI am using this code for authorization in viewDidLoad\r\n\r\n    // Initialize the Google Calendar API service &amp; load existing credentials from the keychain if available.\r\n    self.service = [[GTLServiceCalendar alloc] init];\r\n    self.service.authorizer =\r\n    [GTMOAuth2ViewControllerTouch authForGoogleFromKeychainForName:kKeychainItemName\r\n                                                          clientID:kClientID\r\n                                                      clientSecret:kClientSecret];\r\n\r\nAuthorization seems fine because fetch events is working perfectly fine. But I am using following code to add an event\r\n\r\n    - (void)addAnEvent {\r\n        // Make a new event, and show it to the user to edit\r\n        GTLCalendarEvent *newEvent = [GTLCalendarEvent object];\r\n        newEvent.summary = @&quot;Sample Added Event&quot;;\r\n        newEvent.descriptionProperty = @&quot;Description of sample added event&quot;;\r\n    \r\n        // We&#39;ll set the start time to now, and the end time to an hour from now,\r\n        // with a reminder 10 minutes before\r\n        NSDate *anHourFromNow = [NSDate dateWithTimeIntervalSinceNow:60*60];\r\n        GTLDateTime *startDateTime = [GTLDateTime dateTimeWithDate:[NSDate date]\r\n                                                      timeZone:[NSTimeZone systemTimeZone]];\r\n        GTLDateTime *endDateTime = [GTLDateTime dateTimeWithDate:anHourFromNow\r\n                                                    timeZone:[NSTimeZone systemTimeZone]];\r\n    \r\n        newEvent.start = [GTLCalendarEventDateTime object];\r\n        newEvent.start.dateTime = startDateTime;\r\n    \r\n        newEvent.end = [GTLCalendarEventDateTime object];\r\n        newEvent.end.dateTime = endDateTime;\r\n    \r\n        GTLCalendarEventReminder *reminder = [GTLCalendarEventReminder object];\r\n        reminder.minutes = [NSNumber numberWithInteger:10];\r\n        reminder.method = @&quot;email&quot;;\r\n    \r\n        newEvent.reminders = [GTLCalendarEventReminders object];\r\n        newEvent.reminders.overrides = [NSArray arrayWithObject:reminder];\r\n        newEvent.reminders.useDefault = [NSNumber numberWithBool:NO];\r\n    \r\n        [self addEvent:newEvent];\r\n    }\r\n\r\n\r\n    - (void)addEvent:(GTLCalendarEvent *)event {\r\n        GTLQueryCalendar *query = [GTLQueryCalendar queryForEventsInsertWithObject:event\r\n                                                                    calendarId:@&quot;primary&quot;];\r\n        [self.service executeQuery:query\r\n                      delegate:self\r\n             didFinishSelector:@selector(displayAddEventResultWithTicket:finishedWithObject:error:)];\r\n    }\r\n\r\n    - (void)displayAddEventResultWithTicket:(GTLServiceTicket *)ticket\r\n                     finishedWithObject:(GTLCalendarEvents *)events\r\n                                  error:(NSError *)error {\r\n        if (error == nil) {\r\n            NSLog(@&quot;I think event has been added successfully!&quot;);\r\n        \r\n        } else {\r\n            NSLog(@&quot;ERROR : %@&quot;, error.localizedDescription);\r\n        }\r\n    }\r\n\r\nBut I am getting the error in response &quot;The operation couldn’t be completed. (Insufficient Permission)&quot;\r\n\r\nThanks,",
+            "link": "https://stackoverflow.com/questions/31176308/add-event-to-google-calendar-from-ios",
+            "title": "Add event to google calendar from ios",
+            "body": "<p>I have followed following tutorial to fetch events from google calendar which is working fine.\n<a href=\"https://developers.google.com/google-apps/calendar/quickstart/ios\" rel=\"nofollow\">https://developers.google.com/google-apps/calendar/quickstart/ios</a></p>\n\n<p>Now I am stuck in insert event from my iOS app so that it can be synced with web as well. Please guide me in the right direction or post some sample code.</p>\n\n<p>I am using this code for authorization in viewDidLoad</p>\n\n<pre><code>// Initialize the Google Calendar API service &amp; load existing credentials from the keychain if available.\nself.service = [[GTLServiceCalendar alloc] init];\nself.service.authorizer =\n[GTMOAuth2ViewControllerTouch authForGoogleFromKeychainForName:kKeychainItemName\n                                                      clientID:kClientID\n                                                  clientSecret:kClientSecret];\n</code></pre>\n\n<p>Authorization seems fine because fetch events is working perfectly fine. But I am using following code to add an event</p>\n\n<pre><code>- (void)addAnEvent {\n    // Make a new event, and show it to the user to edit\n    GTLCalendarEvent *newEvent = [GTLCalendarEvent object];\n    newEvent.summary = @\"Sample Added Event\";\n    newEvent.descriptionProperty = @\"Description of sample added event\";\n\n    // We'll set the start time to now, and the end time to an hour from now,\n    // with a reminder 10 minutes before\n    NSDate *anHourFromNow = [NSDate dateWithTimeIntervalSinceNow:60*60];\n    GTLDateTime *startDateTime = [GTLDateTime dateTimeWithDate:[NSDate date]\n                                                  timeZone:[NSTimeZone systemTimeZone]];\n    GTLDateTime *endDateTime = [GTLDateTime dateTimeWithDate:anHourFromNow\n                                                timeZone:[NSTimeZone systemTimeZone]];\n\n    newEvent.start = [GTLCalendarEventDateTime object];\n    newEvent.start.dateTime = startDateTime;\n\n    newEvent.end = [GTLCalendarEventDateTime object];\n    newEvent.end.dateTime = endDateTime;\n\n    GTLCalendarEventReminder *reminder = [GTLCalendarEventReminder object];\n    reminder.minutes = [NSNumber numberWithInteger:10];\n    reminder.method = @\"email\";\n\n    newEvent.reminders = [GTLCalendarEventReminders object];\n    newEvent.reminders.overrides = [NSArray arrayWithObject:reminder];\n    newEvent.reminders.useDefault = [NSNumber numberWithBool:NO];\n\n    [self addEvent:newEvent];\n}\n\n\n- (void)addEvent:(GTLCalendarEvent *)event {\n    GTLQueryCalendar *query = [GTLQueryCalendar queryForEventsInsertWithObject:event\n                                                                calendarId:@\"primary\"];\n    [self.service executeQuery:query\n                  delegate:self\n         didFinishSelector:@selector(displayAddEventResultWithTicket:finishedWithObject:error:)];\n}\n\n- (void)displayAddEventResultWithTicket:(GTLServiceTicket *)ticket\n                 finishedWithObject:(GTLCalendarEvents *)events\n                              error:(NSError *)error {\n    if (error == nil) {\n        NSLog(@\"I think event has been added successfully!\");\n\n    } else {\n        NSLog(@\"ERROR : %@\", error.localizedDescription);\n    }\n}\n</code></pre>\n\n<p>But I am getting the error in response \"The operation couldn’t be completed. (Insufficient Permission)\"</p>\n\n<p>Thanks,</p>\n"
+        },
+        {
+            "tags": [
+                "asp.net-mvc-5",
+                "active-directory"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 7768983,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/c8870c693b0e198c408978e912701e6c?s=128&d=identicon&r=PG",
+                "display_name": "madlan",
+                "link": "https://stackoverflow.com/users/7768983/madlan"
+            },
+            "is_answered": false,
+            "view_count": 14,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526455830,
+            "creation_date": 1526455830,
+            "question_id": 50364800,
+            "body_markdown": "I have a requirement for a new MVC5 web app am working on. \r\nI need to use active directory based authentication for the back-end,and  SQL server based authentication for regular users.\r\nin our company&#39;s local applications I use forms authentication and I integrate it with active directory using custom authorize attribute, but now i have to add SQL server authentication and make them work at the same time.\r\n\r\nis there anyone had to solve a similar problem, and if so how did you go about it ? \r\n",
+            "link": "https://stackoverflow.com/questions/50364800/asp-net-mvc-5-dual-authentication-types",
+            "title": "ASP.NET MVC 5 Dual Authentication Types",
+            "body": "<p>I have a requirement for a new MVC5 web app am working on. \nI need to use active directory based authentication for the back-end,and  SQL server based authentication for regular users.\nin our company's local applications I use forms authentication and I integrate it with active directory using custom authorize attribute, but now i have to add SQL server authentication and make them work at the same time.</p>\n\n<p>is there anyone had to solve a similar problem, and if so how did you go about it ? </p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "sqlite3"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 7670538,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10210693246120016/picture?type=large",
+                "display_name": "Blak RUSH",
+                "link": "https://stackoverflow.com/users/7670538/blak-rush"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526455828,
+            "creation_date": 1526452869,
+            "last_edit_date": 1526455828,
+            "question_id": 50363995,
+            "body_markdown": "I want to modify value of `enabled_input_method` in android `settings.db`\r\ntable looklike this\r\n\r\n                     \r\n\r\n    =====================\r\n    ID\tNAME\tVALUE\r\n    =====================\r\n    1\temp\t    a1:a2\r\n\r\n\r\ni want to add a3 value, so inside emp value will shown **a1:a2:a3**\r\n\r\nif i run command\r\n\r\n    UPDATE secure SET value=&#39;a3&#39; where name=&#39;emp&#39;\r\n\r\nor \r\n\r\n    INSERT INTO secure (name, value) VALUES(&#39;emp&#39;,&#39;a3&#39;);\r\n\r\nit only change value to a3 and replacing the old one.\r\n\r\ni want to know if it posibble to add record in it without typing whole old + new value?\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50363995/android-sqlite3-add-oldvalue-newvalue",
+            "title": "Android SQLite3 add Oldvalue + NewValue",
+            "body": "<p>I want to modify value of <code>enabled_input_method</code> in android <code>settings.db</code>\ntable looklike this</p>\n\n<pre><code>=====================\nID  NAME    VALUE\n=====================\n1   emp     a1:a2\n</code></pre>\n\n<p>i want to add a3 value, so inside emp value will shown <strong>a1:a2:a3</strong></p>\n\n<p>if i run command</p>\n\n<pre><code>UPDATE secure SET value='a3' where name='emp'\n</code></pre>\n\n<p>or </p>\n\n<pre><code>INSERT INTO secure (name, value) VALUES('emp','a3');\n</code></pre>\n\n<p>it only change value to a3 and replacing the old one.</p>\n\n<p>i want to know if it posibble to add record in it without typing whole old + new value?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "amazon-s3",
+                "google-cloud-storage",
+                "portability"
+            ],
+            "owner": {
+                "reputation": 3109,
+                "user_id": 633961,
+                "user_type": "registered",
+                "accept_rate": 66,
+                "profile_image": "https://i.stack.imgur.com/0c29q.jpg?s=128&g=1",
+                "display_name": "guettli",
+                "link": "https://stackoverflow.com/users/633961/guettli"
+            },
+            "is_answered": true,
+            "view_count": 16,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526455822,
+            "creation_date": 1526455691,
+            "question_id": 50364766,
+            "body_markdown": "I want to write an application which is portable.\r\n\r\nWith &quot;portable&quot; I mean that it can be used to access these storages:\r\n\r\n * amazon s3\r\n * google cloud storage\r\n * Eucalyptus Storage\r\n\r\nThe software should be developed using Python.\r\n\r\nI am unsure how to start, since I could not find a library which supports all three storages.\r\n",
+            "link": "https://stackoverflow.com/questions/50364766/portable-application-s3-and-google-cloud-storage",
+            "title": "Portable application: s3 and Google cloud storage",
+            "body": "<p>I want to write an application which is portable.</p>\n\n<p>With \"portable\" I mean that it can be used to access these storages:</p>\n\n<ul>\n<li>amazon s3</li>\n<li>google cloud storage</li>\n<li>Eucalyptus Storage</li>\n</ul>\n\n<p>The software should be developed using Python.</p>\n\n<p>I am unsure how to start, since I could not find a library which supports all three storages.</p>\n"
+        },
+        {
+            "tags": [
+                "spring",
+                "rest",
+                "http-status-code-406"
+            ],
+            "owner": {
+                "reputation": 1429,
+                "user_id": 1068510,
+                "user_type": "registered",
+                "accept_rate": 76,
+                "profile_image": "https://i.stack.imgur.com/XvWtw.png?s=128&g=1",
+                "display_name": "ndrizza",
+                "link": "https://stackoverflow.com/users/1068510/ndrizza"
+            },
+            "is_answered": true,
+            "view_count": 22602,
+            "accepted_answer_id": 11429832,
+            "answer_count": 5,
+            "score": 1,
+            "last_activity_date": 1526455822,
+            "creation_date": 1341999668,
+            "question_id": 11429808,
+            "body_markdown": "I get this error when i try to consume a REST API:\r\n\r\n    Exception in thread &quot;main&quot; org.springframework.web.client.HttpClientErrorException: 406 Not Acceptable\r\n\r\nHere&#39;s the client code that gets executed:\r\n\r\n    public static void main(String[] args) {\r\n       Car c = getCarById(4);\r\n       System.out.println(c);\r\n    }\r\n    \r\n    public static  @ResponseBody Car getCarById(int id){\r\n        return new RestTemplate().getForObject(&quot;http://localhost:8080/rest/cars/{id}&quot;, Car.class, id);\r\n    }\r\n\r\nHere&#39;s the code of the Controller which maps the request:\r\n\r\n\t@RequestMapping(value=&quot;/cars/{id}&quot;, method=RequestMethod.GET, headers = {&quot;Accept=text/html,application/xhtml+xml,application/xml&quot;}, produces=&quot;application/xml&quot;)\r\n\tpublic @ResponseBody Car getCarById(@PathVariable(&quot;id&quot;) int id){\r\n\t\treturn carService.getCarById(id);\r\n\t}\r\n\r\nWhy is this error (406-Not Acceptable) happening although the mappers should take care of mapping to the correct types?",
+            "link": "https://stackoverflow.com/questions/11429808/spring-rest-consumption-results-in-http-status-406-not-acceptable",
+            "title": "Spring REST consumption results in HTTP Status 406 - Not Acceptable",
+            "body": "<p>I get this error when i try to consume a REST API:</p>\n\n<pre><code>Exception in thread \"main\" org.springframework.web.client.HttpClientErrorException: 406 Not Acceptable\n</code></pre>\n\n<p>Here's the client code that gets executed:</p>\n\n<pre><code>public static void main(String[] args) {\n   Car c = getCarById(4);\n   System.out.println(c);\n}\n\npublic static  @ResponseBody Car getCarById(int id){\n    return new RestTemplate().getForObject(\"http://localhost:8080/rest/cars/{id}\", Car.class, id);\n}\n</code></pre>\n\n<p>Here's the code of the Controller which maps the request:</p>\n\n<pre><code>@RequestMapping(value=\"/cars/{id}\", method=RequestMethod.GET, headers = {\"Accept=text/html,application/xhtml+xml,application/xml\"}, produces=\"application/xml\")\npublic @ResponseBody Car getCarById(@PathVariable(\"id\") int id){\n    return carService.getCarById(id);\n}\n</code></pre>\n\n<p>Why is this error (406-Not Acceptable) happening although the mappers should take care of mapping to the correct types?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "exception",
+                "exception-handling"
+            ],
+            "owner": {
+                "reputation": 383,
+                "user_id": 1273555,
+                "user_type": "registered",
+                "accept_rate": 57,
+                "profile_image": "https://i.stack.imgur.com/78wZ7.png?s=128&g=1",
+                "display_name": "Arch Linux Tux",
+                "link": "https://stackoverflow.com/users/1273555/arch-linux-tux"
+            },
+            "is_answered": false,
+            "view_count": 32,
+            "answer_count": 1,
+            "score": -2,
+            "last_activity_date": 1526455821,
+            "creation_date": 1526454748,
+            "question_id": 50364500,
+            "body_markdown": "I have the following code with excpetion handling, which does not work:\r\n\r\n**`LoadQuestionsDataButton::actionPerformed(ActionEvent)`:**\r\n\r\n\ttry\r\n\t{\r\n\t\tquestions = ParseXml.parseQuestionsData(questionsDataFile);\r\n\r\n\t\t// only for broken xml-files!\r\n\t} catch (java.lang.Exception e)\r\n\t{\r\n\t\tJOptionPane.showMessageDialog(mainWindow, &quot;&lt;html&gt;&lt;body&gt;The XML-file seems to be corrupt:&lt;br&gt;&lt;br&gt;&quot; +\r\n\t\t\t\te.getMessage() +\r\n\t\t\t\t&quot;.&lt;/body&gt;&lt;/html&gt;&quot;, &quot;Corrupt XML-file.&quot;, JOptionPane.ERROR_MESSAGE);\r\n\r\n\t\tSystem.out.println(&quot;error-message&quot;);\r\n\r\n\t\treturn;\r\n\t} catch (AssertionError e)\r\n\t{\r\n\t\tJOptionPane.showMessageDialog(mainWindow, &quot;&lt;html&gt;The XML-file seems to be corrupt.&lt;br&gt;&lt;/html&gt;&quot;, &quot;Fehler beim Laden der XML-Datei.&quot;, JOptionPane.ERROR_MESSAGE);\r\n\r\n\t\treturn;\r\n\t}\r\n\r\n**`ArrayList&lt;Question&gt; ParseXml::parseQuestionsData(File)`:**\r\n\r\n\tif(number == &quot;&quot;)\r\n\t{\r\n\t\tException e;\r\n\t\tSystem.out.println(&quot;before exception&quot;);\r\n\r\n\t\tif(firstQuestion)\r\n\t\t\te = new Exception(&quot;The first question does not contain numbering!&quot;);\r\n\t\telse\r\n\t\t\te = new Exception(&quot;The Question after &lt;&quot; + lastNumber + &quot;&gt; does not contain numbering!&quot;);\r\n\r\n\t\tSystem.out.println(&quot;after exception creation&quot;);\r\n\r\n\t\tthrow e;\r\n\t}\r\n\r\nWhen I load a XML-file with `number == &quot;&quot;`, then &quot;before exception&quot; and &quot;after exception creation&quot; get printed, but the error-message-dialog and &quot;error-message&quot; does not!\r\n\r\nIt also displays the stack trace:\r\n\r\n    before exception\r\n    after exception creation\r\n    java.lang.Exception: The first question does not contain numbering!\r\n    \tat com.examquestions.Buttons.ParseXml.parseQuestionsData(ParseXml.java:60)\r\n    \tat com.examquestions.Buttons.LoadQuestionsDataButton.actionPerformed(LoadQuestionsDataButton.java:65)\r\n    \tat java.desktop/javax.swing.AbstractButton.fireActionPerformed(AbstractButton.java:1967)\r\n    [...]\r\n\r\n[stacktrace on pastebin.com][1]\r\n\r\nI can&#39;t show more of the stacktrace here, because stackoverflow complains about having too much code.\r\n\r\n\r\n  [1]: https://pastebin.com/PDmPW092",
+            "link": "https://stackoverflow.com/questions/50364500/exception-not-caught-exception-handling-not-working",
+            "title": "exception not caught / exception handling not working",
+            "body": "<p>I have the following code with excpetion handling, which does not work:</p>\n\n<p><strong><code>LoadQuestionsDataButton::actionPerformed(ActionEvent)</code>:</strong></p>\n\n<pre><code>try\n{\n    questions = ParseXml.parseQuestionsData(questionsDataFile);\n\n    // only for broken xml-files!\n} catch (java.lang.Exception e)\n{\n    JOptionPane.showMessageDialog(mainWindow, \"&lt;html&gt;&lt;body&gt;The XML-file seems to be corrupt:&lt;br&gt;&lt;br&gt;\" +\n            e.getMessage() +\n            \".&lt;/body&gt;&lt;/html&gt;\", \"Corrupt XML-file.\", JOptionPane.ERROR_MESSAGE);\n\n    System.out.println(\"error-message\");\n\n    return;\n} catch (AssertionError e)\n{\n    JOptionPane.showMessageDialog(mainWindow, \"&lt;html&gt;The XML-file seems to be corrupt.&lt;br&gt;&lt;/html&gt;\", \"Fehler beim Laden der XML-Datei.\", JOptionPane.ERROR_MESSAGE);\n\n    return;\n}\n</code></pre>\n\n<p><strong><code>ArrayList&lt;Question&gt; ParseXml::parseQuestionsData(File)</code>:</strong></p>\n\n<pre><code>if(number == \"\")\n{\n    Exception e;\n    System.out.println(\"before exception\");\n\n    if(firstQuestion)\n        e = new Exception(\"The first question does not contain numbering!\");\n    else\n        e = new Exception(\"The Question after &lt;\" + lastNumber + \"&gt; does not contain numbering!\");\n\n    System.out.println(\"after exception creation\");\n\n    throw e;\n}\n</code></pre>\n\n<p>When I load a XML-file with <code>number == \"\"</code>, then \"before exception\" and \"after exception creation\" get printed, but the error-message-dialog and \"error-message\" does not!</p>\n\n<p>It also displays the stack trace:</p>\n\n<pre><code>before exception\nafter exception creation\njava.lang.Exception: The first question does not contain numbering!\n    at com.examquestions.Buttons.ParseXml.parseQuestionsData(ParseXml.java:60)\n    at com.examquestions.Buttons.LoadQuestionsDataButton.actionPerformed(LoadQuestionsDataButton.java:65)\n    at java.desktop/javax.swing.AbstractButton.fireActionPerformed(AbstractButton.java:1967)\n[...]\n</code></pre>\n\n<p><a href=\"https://pastebin.com/PDmPW092\" rel=\"nofollow noreferrer\">stacktrace on pastebin.com</a></p>\n\n<p>I can't show more of the stacktrace here, because stackoverflow complains about having too much code.</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 18
+}

@@ -1,0 +1,827 @@
+{
+    "items": [
+        {
+            "tags": [
+                "c#",
+                "sql",
+                "winforms",
+                "firebird"
+            ],
+            "owner": {
+                "reputation": 650,
+                "user_id": 7874193,
+                "user_type": "registered",
+                "accept_rate": 96,
+                "profile_image": "https://www.gravatar.com/avatar/910a754bafc803719bce9881ddf9beb8?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Aleksa Ristic",
+                "link": "https://stackoverflow.com/users/7874193/aleksa-ristic"
+            },
+            "is_answered": true,
+            "view_count": 75,
+            "accepted_answer_id": 50366017,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1526460841,
+            "creation_date": 1526452322,
+            "last_edit_date": 1526459449,
+            "question_id": 50363866,
+            "body_markdown": "I have this code:\r\n\r\n    private void button1_Click(object sender, EventArgs e)\r\n    {\r\n        foreach(Int_String partner in partneri)\r\n        {\r\n            double danaBezProdaje = (DateTime.Today - Komercijalno.Partner.PoslednjaKupovina(partner._int)).TotalDays;\r\n            if (danaBezProdaje &gt; 31 &amp;&amp; danaBezProdaje &lt; 1100)\r\n            {\r\n                NeaktivniPartner np = new NeaktivniPartner();\r\n                np.ppid = partner._int;\r\n                np.naziv = partner._string;\r\n                np.danaBezKupovine = danaBezProdaje;\r\n                neaktivniPartneri.Add(np);\r\n            }\r\n        }\r\n        dataGridView1.DataSource = M.List.ConvertToDataTable(neaktivniPartneri);\r\n    }\r\n\r\n\r\nSo in here i have `List&lt;Int_String&gt; partneri` which contains 5k rows. For each of it i run `Komercijalno.Partner.PoslednjaKupovina(partner._int)` which contains SQL statement which looks like this:\r\n\r\n    public static DateTime PoslednjaKupovina(int ppid)        \r\n    {\r\n        using (FbConnection con = new FbConnection(M.Baza.connectionKomercijalno2018))\r\n        {\r\n            con.Open();\r\n            using (FbCommand cmd = new FbCommand(&quot;SELECT DATUM FROM DOKUMENT WHERE PPID = @PPID ORDER BY DATUM DESC&quot;, con))\r\n            {\r\n                cmd.Parameters.AddWithValue(&quot;@PPID&quot;, ppid);\r\n        \r\n                FbDataReader dr = cmd.ExecuteReader();\r\n        \r\n                if (dr.Read())\r\n                    return Convert.ToDateTime(dr[0]);\r\n                else\r\n                    return new DateTime(1, 1, 1);\r\n            }\r\n        }\r\n    }\r\n\r\nSo SQL statement is executed 5k times which is way too slow.\r\n\r\nSo how could i pass my `List&lt;Int_String&gt;` or just array of ints to sql command so there i execute one time (inside foreach or how else) and return `dataAdapter` so i execute SQL only once.\r\n\r\nDataAdapter returned should look like this:\r\n\r\n    | ppid     | datum    |\r\n\r\nSo let&#39;s say i have Table `PARTNER` (from which i populate List `partneri` with `SELECT PPID, NAZIV FROM PARTNER`) with this data in it:\r\n\r\n    | PPID    | NAZIV    |\r\n    | 1       | name001  |\r\n    | 2       | name002  |\r\n    | 3       | name003  |\r\n    | 4       | name004  |\r\n\r\n\r\nAnd let&#39;s say my DOKUMENT table has this data:\r\n\r\n    | ID      | PPID    | DATE       |\r\n    | 1       | 2       | 12.03.2018 |\r\n    | 2       | 3       | 12.03.2018 |\r\n    | 3       | 2       | 05.03.2018 |\r\n    | 4       | 2       | 03.04.2018 |\r\n    | 5       | 1       | 26.03.2018 |\r\n    | 6       | 4       | 21.02.2018 |\r\n    | 7       | 4       | 06.05.2018 |\r\n\r\n\r\nAnd output i want is:\r\n\r\n    | PPID    | DATE       |\r\n    | 1       | 26.03.2018 |\r\n    | 2       | 03.04.2018 |\r\n    | 3       | 12.03.2018 |\r\n    | 4       | 06.05.2018 |",
+            "link": "https://stackoverflow.com/questions/50363866/building-sql-with-foreach",
+            "title": "Building SQL with foreach",
+            "body": "<p>I have this code:</p>\n\n<pre><code>private void button1_Click(object sender, EventArgs e)\n{\n    foreach(Int_String partner in partneri)\n    {\n        double danaBezProdaje = (DateTime.Today - Komercijalno.Partner.PoslednjaKupovina(partner._int)).TotalDays;\n        if (danaBezProdaje &gt; 31 &amp;&amp; danaBezProdaje &lt; 1100)\n        {\n            NeaktivniPartner np = new NeaktivniPartner();\n            np.ppid = partner._int;\n            np.naziv = partner._string;\n            np.danaBezKupovine = danaBezProdaje;\n            neaktivniPartneri.Add(np);\n        }\n    }\n    dataGridView1.DataSource = M.List.ConvertToDataTable(neaktivniPartneri);\n}\n</code></pre>\n\n<p>So in here i have <code>List&lt;Int_String&gt; partneri</code> which contains 5k rows. For each of it i run <code>Komercijalno.Partner.PoslednjaKupovina(partner._int)</code> which contains SQL statement which looks like this:</p>\n\n<pre><code>public static DateTime PoslednjaKupovina(int ppid)        \n{\n    using (FbConnection con = new FbConnection(M.Baza.connectionKomercijalno2018))\n    {\n        con.Open();\n        using (FbCommand cmd = new FbCommand(\"SELECT DATUM FROM DOKUMENT WHERE PPID = @PPID ORDER BY DATUM DESC\", con))\n        {\n            cmd.Parameters.AddWithValue(\"@PPID\", ppid);\n\n            FbDataReader dr = cmd.ExecuteReader();\n\n            if (dr.Read())\n                return Convert.ToDateTime(dr[0]);\n            else\n                return new DateTime(1, 1, 1);\n        }\n    }\n}\n</code></pre>\n\n<p>So SQL statement is executed 5k times which is way too slow.</p>\n\n<p>So how could i pass my <code>List&lt;Int_String&gt;</code> or just array of ints to sql command so there i execute one time (inside foreach or how else) and return <code>dataAdapter</code> so i execute SQL only once.</p>\n\n<p>DataAdapter returned should look like this:</p>\n\n<pre><code>| ppid     | datum    |\n</code></pre>\n\n<p>So let's say i have Table <code>PARTNER</code> (from which i populate List <code>partneri</code> with <code>SELECT PPID, NAZIV FROM PARTNER</code>) with this data in it:</p>\n\n<pre><code>| PPID    | NAZIV    |\n| 1       | name001  |\n| 2       | name002  |\n| 3       | name003  |\n| 4       | name004  |\n</code></pre>\n\n<p>And let's say my DOKUMENT table has this data:</p>\n\n<pre><code>| ID      | PPID    | DATE       |\n| 1       | 2       | 12.03.2018 |\n| 2       | 3       | 12.03.2018 |\n| 3       | 2       | 05.03.2018 |\n| 4       | 2       | 03.04.2018 |\n| 5       | 1       | 26.03.2018 |\n| 6       | 4       | 21.02.2018 |\n| 7       | 4       | 06.05.2018 |\n</code></pre>\n\n<p>And output i want is:</p>\n\n<pre><code>| PPID    | DATE       |\n| 1       | 26.03.2018 |\n| 2       | 03.04.2018 |\n| 3       | 12.03.2018 |\n| 4       | 06.05.2018 |\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "gradle",
+                "android-gradle"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9798327,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Dhayanand Bhaskar",
+                "link": "https://stackoverflow.com/users/9798327/dhayanand-bhaskar"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526460838,
+            "creation_date": 1526459221,
+            "question_id": 50365850,
+            "body_markdown": "My Customtask unzips the apk and collects sha1 for some file, so I have created my task but I want to execute it every time any apk(any built or any variant) is generated, dont know how to trigger my task exactly after apk is created. Please help",
+            "link": "https://stackoverflow.com/questions/50365850/gradle-run-customtask-immediately-after-android-apk-creation",
+            "title": "Gradle - Run CustomTask Immediately after android apk creation",
+            "body": "<p>My Customtask unzips the apk and collects sha1 for some file, so I have created my task but I want to execute it every time any apk(any built or any variant) is generated, dont know how to trigger my task exactly after apk is created. Please help</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "minidom"
+            ],
+            "owner": {
+                "reputation": 439,
+                "user_id": 969986,
+                "user_type": "registered",
+                "accept_rate": 93,
+                "profile_image": "https://www.gravatar.com/avatar/4375ad51bb1e18a2a7d78804e4c5ad97?s=128&d=identicon&r=PG",
+                "display_name": "Coderzelf",
+                "link": "https://stackoverflow.com/users/969986/coderzelf"
+            },
+            "is_answered": false,
+            "view_count": 201,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526460836,
+            "creation_date": 1377228623,
+            "question_id": 18394258,
+            "body_markdown": "I recently use minidom to parse some xml files.\r\n\r\nThe funny thing is it takes me 8G memroy to read a 56MB file, which is relative flat, i.e., most of the nodes are in the same level.\r\n\r\nWhy is this true?",
+            "link": "https://stackoverflow.com/questions/18394258/python-xml-parser-minidom-memory-usage",
+            "title": "python xml parser minidom memory usage",
+            "body": "<p>I recently use minidom to parse some xml files.</p>\n\n<p>The funny thing is it takes me 8G memroy to read a 56MB file, which is relative flat, i.e., most of the nodes are in the same level.</p>\n\n<p>Why is this true?</p>\n"
+        },
+        {
+            "tags": [
+                "android-source",
+                "cts"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 3201357,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5fdcb6ed304503e9d8893d60034a121f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "perz",
+                "link": "https://stackoverflow.com/users/3201357/perz"
+            },
+            "is_answered": false,
+            "view_count": 192,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526460832,
+            "creation_date": 1518080602,
+            "question_id": 48681471,
+            "body_markdown": "I have looked at the known-failures test plan that are available in CTS, where CTS tests that are known to fail are excluded. From there it is clear to me that you can exclude tests with this XML option:\r\n\r\n     .....\r\n     &lt;option name=&quot;compatibility:exclude-filter&quot; value=&quot;CtsAppSecurityHostTestCases android.appsecurity.cts.DocumentsTest#testCreateNew&quot; /&gt;\r\n     &lt;option name=&quot;compatibility:exclude-filter&quot; value=&quot;CtsAppSecurityHostTestCases android.appsecurity.cts.DocumentsTest#testCreateWebLink&quot; /&gt;\r\n     &lt;option name=&quot;compatibility:exclude-filter&quot; value=&quot;CtsAppSecurityHostTestCases android.appsecurity.cts.DocumentsTest#testEject&quot; /&gt;\r\n     .....\r\n\r\nSo I created a **my-known-failures.xml** with ~100 tests that I want to exclude. And included my **my-known-failures.xml** in the cts-suite.xml like this.\r\n\r\n    &lt;configuration description=&quot;Runs CTS as a suite&quot;&gt;\r\n     ...\r\n    &lt;include name=&quot;my-known-failures&quot; /&gt;\r\n\r\nAnd when I run cts-suite.xml I start it with the following command:\r\n\r\n    ./${CTS_BIN} run commandAndExit cts-suite-automated --logcat-on-failure --bugreport-on-failure --screenshot-on-failure --log-level-display debug\r\n\r\nThe report indicates that the cts-tradefed framework has picked up my configuration:\r\n\r\n    Excludes:[ .... CtsAppSecurityHostTestCases android.appsecurity.cts.DocumentsTest#testCreateNew,  CtsAppSecurityHostTestCases android.appsecurity.cts.DocumentsTest#testCreateWebLink, CtsAppSecurityHostTestCases android.appsecurity.cts.DocumentsTest#testEject ... ]\r\n\r\nHowever, it does look like these tests have been executed anyway since in the test_result.xml we see that the test cases have been given the &quot;fail&quot; result and the stacktrace is included:\r\n\r\n\t&lt;Test result=&quot;fail&quot; name=&quot;testEjected&quot;&gt;\r\n\t\t&lt;Failure message=&quot;java.lang.AssertionError: Devices that claim to support adoptable storage must have adoptable media inserted during CTS to verify correct behavior&quot;&gt;\r\n\t\t  &lt;StackTrace&gt;java.lang.AssertionError: Devices that claim to support adoptable storage must have adoptable media inserted during CTS to verify correct behavior\r\n\t\tat android.appsecurity.cts.AdoptableHostTest.getAdoptionDisk(AdoptableHostTest.java:311)\r\n\t\tat android.appsecurity.cts.AdoptableHostTest.testEjected(AdoptableHostTest.java:251)\r\n\t\tat sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)\r\n\t\tat sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)\r\n\t\tat sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)\r\n\t\tat java.lang.reflect.Method.invoke(Method.java:498)\r\n\t\tat junit.framework.TestCase.runTest(TestCase.java:176)\r\n\t\tat junit.framework.TestCase.runBare(TestCase.java:141)\r\n\t\tat com.android.tradefed.testtype.DeviceTestResult$1.protect(DeviceTestResult.java:90)\r\n\t\tat com.android.tradefed.testtype.DeviceTestResult.runProtected(DeviceTestResult.java:65)\r\n\t\tat com.android.tradefed.testtype.DeviceTestResult.run(DeviceTestResult.java:94)\r\n\t\tat junit.framework.TestCase.run(TestCase.java:129)\r\n\t\tat com.android.tradefed.testtype.DeviceTestCase.run(DeviceTestCase.java:183)\r\n\t\tat com.android.tradefed.testtype.JUnitRunUtil.runTest(JUnitRunUtil.java:55)\r\n\t\tat com.android.tradefed.testtype.JUnitRunUtil.runTest(JUnitRunUtil.java:38)\r\n\t\tat com.android.tradefed.testtype.DeviceTestCase.run(DeviceTestCase.java:148)\r\n\t\tat com.android.tradefed.testtype.HostTest.runRemoteTest(HostTest.java:463)\r\n\t\tat com.android.tradefed.testtype.HostTest.runTestClasses(HostTest.java:406)\r\n\t\tat com.android.tradefed.testtype.HostTest.run(HostTest.java:397)\r\n\t\tat com.android.compatibility.common.tradefed.testtype.JarHostTest.run(JarHostTest.java:142)\r\n\t\tat com.android.tradefed.testtype.suite.ModuleDefinition.run(ModuleDefinition.java:278)\r\n\t\tat com.android.tradefed.testtype.suite.ITestSuite.runSingleModule(ITestSuite.java:276)\r\n\t\tat com.android.tradefed.testtype.suite.ITestSuite.run(ITestSuite.java:225)\r\n\t\tat com.android.tradefed.invoker.TestInvocation.runTests(TestInvocation.java:793)\r\n\t\tat com.android.tradefed.invoker.TestInvocation.prepareAndRun(TestInvocation.java:476)\r\n\t\tat com.android.tradefed.invoker.TestInvocation.performInvocation(TestInvocation.java:330)\r\n\t\tat com.android.tradefed.invoker.TestInvocation.invoke(TestInvocation.java:921)\r\n\t\tat com.android.tradefed.command.CommandScheduler$InvocationThread.run(CommandScheduler.java:555)\r\n\t&lt;/StackTrace&gt;\r\n\t\t&lt;/Failure&gt;\r\n\r\nSo I am confused. I know that the cts-tradefed framework does exlude some tests with the known-failure plan but when I try to do the same thing it does not work as expected.\r\n\r\nIs it possible to &lt;include/&gt; a test plan with excluded tests to the cts-suite.xml?\r\n\r\nThanks!\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/48681471/how-to-exclude-android-cts-tests-with-configured-test-plan",
+            "title": "How to exclude Android CTS tests with configured test plan",
+            "body": "<p>I have looked at the known-failures test plan that are available in CTS, where CTS tests that are known to fail are excluded. From there it is clear to me that you can exclude tests with this XML option:</p>\n\n<pre><code> .....\n &lt;option name=\"compatibility:exclude-filter\" value=\"CtsAppSecurityHostTestCases android.appsecurity.cts.DocumentsTest#testCreateNew\" /&gt;\n &lt;option name=\"compatibility:exclude-filter\" value=\"CtsAppSecurityHostTestCases android.appsecurity.cts.DocumentsTest#testCreateWebLink\" /&gt;\n &lt;option name=\"compatibility:exclude-filter\" value=\"CtsAppSecurityHostTestCases android.appsecurity.cts.DocumentsTest#testEject\" /&gt;\n .....\n</code></pre>\n\n<p>So I created a <strong>my-known-failures.xml</strong> with ~100 tests that I want to exclude. And included my <strong>my-known-failures.xml</strong> in the cts-suite.xml like this.</p>\n\n<pre><code>&lt;configuration description=\"Runs CTS as a suite\"&gt;\n ...\n&lt;include name=\"my-known-failures\" /&gt;\n</code></pre>\n\n<p>And when I run cts-suite.xml I start it with the following command:</p>\n\n<pre><code>./${CTS_BIN} run commandAndExit cts-suite-automated --logcat-on-failure --bugreport-on-failure --screenshot-on-failure --log-level-display debug\n</code></pre>\n\n<p>The report indicates that the cts-tradefed framework has picked up my configuration:</p>\n\n<pre><code>Excludes:[ .... CtsAppSecurityHostTestCases android.appsecurity.cts.DocumentsTest#testCreateNew,  CtsAppSecurityHostTestCases android.appsecurity.cts.DocumentsTest#testCreateWebLink, CtsAppSecurityHostTestCases android.appsecurity.cts.DocumentsTest#testEject ... ]\n</code></pre>\n\n<p>However, it does look like these tests have been executed anyway since in the test_result.xml we see that the test cases have been given the \"fail\" result and the stacktrace is included:</p>\n\n<pre><code>&lt;Test result=\"fail\" name=\"testEjected\"&gt;\n    &lt;Failure message=\"java.lang.AssertionError: Devices that claim to support adoptable storage must have adoptable media inserted during CTS to verify correct behavior\"&gt;\n      &lt;StackTrace&gt;java.lang.AssertionError: Devices that claim to support adoptable storage must have adoptable media inserted during CTS to verify correct behavior\n    at android.appsecurity.cts.AdoptableHostTest.getAdoptionDisk(AdoptableHostTest.java:311)\n    at android.appsecurity.cts.AdoptableHostTest.testEjected(AdoptableHostTest.java:251)\n    at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)\n    at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)\n    at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)\n    at java.lang.reflect.Method.invoke(Method.java:498)\n    at junit.framework.TestCase.runTest(TestCase.java:176)\n    at junit.framework.TestCase.runBare(TestCase.java:141)\n    at com.android.tradefed.testtype.DeviceTestResult$1.protect(DeviceTestResult.java:90)\n    at com.android.tradefed.testtype.DeviceTestResult.runProtected(DeviceTestResult.java:65)\n    at com.android.tradefed.testtype.DeviceTestResult.run(DeviceTestResult.java:94)\n    at junit.framework.TestCase.run(TestCase.java:129)\n    at com.android.tradefed.testtype.DeviceTestCase.run(DeviceTestCase.java:183)\n    at com.android.tradefed.testtype.JUnitRunUtil.runTest(JUnitRunUtil.java:55)\n    at com.android.tradefed.testtype.JUnitRunUtil.runTest(JUnitRunUtil.java:38)\n    at com.android.tradefed.testtype.DeviceTestCase.run(DeviceTestCase.java:148)\n    at com.android.tradefed.testtype.HostTest.runRemoteTest(HostTest.java:463)\n    at com.android.tradefed.testtype.HostTest.runTestClasses(HostTest.java:406)\n    at com.android.tradefed.testtype.HostTest.run(HostTest.java:397)\n    at com.android.compatibility.common.tradefed.testtype.JarHostTest.run(JarHostTest.java:142)\n    at com.android.tradefed.testtype.suite.ModuleDefinition.run(ModuleDefinition.java:278)\n    at com.android.tradefed.testtype.suite.ITestSuite.runSingleModule(ITestSuite.java:276)\n    at com.android.tradefed.testtype.suite.ITestSuite.run(ITestSuite.java:225)\n    at com.android.tradefed.invoker.TestInvocation.runTests(TestInvocation.java:793)\n    at com.android.tradefed.invoker.TestInvocation.prepareAndRun(TestInvocation.java:476)\n    at com.android.tradefed.invoker.TestInvocation.performInvocation(TestInvocation.java:330)\n    at com.android.tradefed.invoker.TestInvocation.invoke(TestInvocation.java:921)\n    at com.android.tradefed.command.CommandScheduler$InvocationThread.run(CommandScheduler.java:555)\n&lt;/StackTrace&gt;\n    &lt;/Failure&gt;\n</code></pre>\n\n<p>So I am confused. I know that the cts-tradefed framework does exlude some tests with the known-failure plan but when I try to do the same thing it does not work as expected.</p>\n\n<p>Is it possible to  a test plan with excluded tests to the cts-suite.xml?</p>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "testing"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 8445698,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/2141755245965509/picture?type=large",
+                "display_name": "Kh&#244;i",
+                "link": "https://stackoverflow.com/users/8445698/kh%c3%b4i"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526460826,
+            "creation_date": 1526453548,
+            "last_edit_date": 1526460826,
+            "question_id": 50364178,
+            "body_markdown": "The below is my python code. \r\n\r\nIt can pass all except test_home_page_status. I don&#39;t know why, and at the bottom is image of error. could you guide me how to fix it?\r\n\r\n    class SimpleTests(SimpleTestCase):\r\n    def test_home_page_status(self):\r\n        response = self.client.get(&#39;/&#39;)\r\n        self.assertEquals(response.status_code, 200)\r\n\r\n    def test_info_page_status(self):\r\n        response = self.client.get(&#39;/info/&#39;)\r\n        self.assertEquals(response.status_code, 200)\r\n\r\n    def test_contact_page_status(self):\r\n        response = self.client.get(&#39;/contact/&#39;)\r\n        self.assertEquals(response.status_code, 200)\r\n\r\n    def test_admin_login_page_status(self):\r\n        response = self.client.get(&#39;/admin/login/?next=/admin/&#39;)\r\n        self.assertEquals(response.status_code, 200)\r\n\r\n[Test Code python][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/3AiaG.png\r\n\r\nThank you",
+            "link": "https://stackoverflow.com/questions/50364178/django-homepage-testing-error",
+            "title": "Django homepage testing error",
+            "body": "<p>The below is my python code. </p>\n\n<p>It can pass all except test_home_page_status. I don't know why, and at the bottom is image of error. could you guide me how to fix it?</p>\n\n<pre><code>class SimpleTests(SimpleTestCase):\ndef test_home_page_status(self):\n    response = self.client.get('/')\n    self.assertEquals(response.status_code, 200)\n\ndef test_info_page_status(self):\n    response = self.client.get('/info/')\n    self.assertEquals(response.status_code, 200)\n\ndef test_contact_page_status(self):\n    response = self.client.get('/contact/')\n    self.assertEquals(response.status_code, 200)\n\ndef test_admin_login_page_status(self):\n    response = self.client.get('/admin/login/?next=/admin/')\n    self.assertEquals(response.status_code, 200)\n</code></pre>\n\n<p><a href=\"https://i.stack.imgur.com/3AiaG.png\" rel=\"nofollow noreferrer\">Test Code python</a></p>\n\n<p>Thank you</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "wpf",
+                "xaml"
+            ],
+            "owner": {
+                "reputation": 351,
+                "user_id": 6773519,
+                "user_type": "registered",
+                "accept_rate": 35,
+                "profile_image": "https://www.gravatar.com/avatar/10866f026d70913588eaa02ba57ed0e0?s=128&d=identicon&r=PG&f=1",
+                "display_name": "programmerJavaPL",
+                "link": "https://stackoverflow.com/users/6773519/programmerjavapl"
+            },
+            "is_answered": true,
+            "view_count": 23,
+            "accepted_answer_id": 50366392,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526460819,
+            "creation_date": 1526458863,
+            "question_id": 50365724,
+            "body_markdown": "The following code gives the result that we see a divided Grid on 4 elements according to the schedule. Each column is filled with color.\r\n\r\n    &lt;Grid Grid.Column=&quot;1&quot; Background=&quot;#FF7E7738&quot;&gt;\r\n        &lt;Grid Width=&quot;Auto&quot;&gt;\r\n            &lt;Grid.ColumnDefinitions&gt;\r\n                &lt;ColumnDefinition Width=&quot;1*&quot;/&gt;\r\n                &lt;ColumnDefinition Width=&quot;1*&quot;/&gt;\r\n                &lt;ColumnDefinition Width=&quot;0.6*&quot;/&gt;\r\n                &lt;ColumnDefinition Width=&quot;1*&quot;/&gt;\r\n            &lt;/Grid.ColumnDefinitions&gt;\r\n            &lt;Grid Grid.Column=&quot;0&quot; Background=&quot;Red&quot;&gt;&lt;/Grid&gt;\r\n            &lt;Grid Grid.Column=&quot;1&quot; Background=&quot;Green&quot;&gt;&lt;/Grid&gt;\r\n            &lt;Grid Grid.Column=&quot;2&quot; Background=&quot;Blue&quot;&gt;&lt;/Grid&gt;\r\n            &lt;Grid Grid.Column=&quot;3&quot; Background=&quot;Pink&quot;&gt;&lt;/Grid&gt;\r\n        &lt;/Grid&gt;\r\n    &lt;/Grid&gt;\r\n\r\nBelow I wrote a code that should do the same. \r\n\r\n    public ObservableCollection&lt;Grid&gt; ConnectorItemsGridX { get; set; }\r\n    \r\n    public void DrawConnectors()\r\n    {\r\n        Grid mainGrid = new Grid();\r\n        mainGrid.Width = Double.NaN;\r\n    \r\n        ColumnDefinition cd1 = new ColumnDefinition();\r\n        cd1.Width = new GridLength(1, GridUnitType.Star);\r\n    \r\n        ColumnDefinition cd2 = new ColumnDefinition();\r\n        cd2.Width = new GridLength(1, GridUnitType.Star);\r\n    \r\n        ColumnDefinition cd3 = new ColumnDefinition();\r\n        cd3.Width = new GridLength(0.6, GridUnitType.Star);\r\n    \r\n        ColumnDefinition cd4 = new ColumnDefinition();\r\n        cd4.Width = new GridLength(1, GridUnitType.Star);\r\n    \r\n        mainGrid.ColumnDefinitions.Add(cd1);\r\n        mainGrid.ColumnDefinitions.Add(cd2);\r\n        mainGrid.ColumnDefinitions.Add(cd3);\r\n        mainGrid.ColumnDefinitions.Add(cd4);\r\n    \r\n        Grid tb1 = new Grid();\r\n        tb1.Background = Brushes.Beige;\r\n    \r\n        Grid tb2 = new Grid();\r\n        tb2.Background = Brushes.DarkSeaGreen;\r\n    \r\n        Grid tb3 = new Grid();\r\n        tb3.Background = Brushes.MistyRose;\r\n    \r\n        Grid tb4 = new Grid();\r\n        tb4.Background = Brushes.Violet;\r\n    \r\n        mainGrid.Children.Add(tb1);\r\n        mainGrid.Children.Add(tb2);\r\n        mainGrid.Children.Add(tb3);\r\n        mainGrid.Children.Add(tb4);\r\n    \r\n        Grid.SetColumn(tb1, 0);\r\n        Grid.SetColumn(tb2, 1);\r\n        Grid.SetColumn(tb3, 2);\r\n        Grid.SetColumn(tb4, 3);\r\n    \r\n    \r\n        ConnectorItemsGridX = new ObservableCollection&lt;Grid&gt;();\r\n        ConnectorItemsGridX.Add(mainGrid);\r\n    }\r\n\r\nCode from the XAMl file to load Grid.\r\n\r\n    &lt;Grid Grid.Column=&quot;1&quot; Background=&quot;#FF7E7738&quot;&gt;\r\n        &lt;ItemsControl ItemsSource=&quot;{Binding ConnectorItemsGridX}&quot; HorizontalAlignment=&quot;Left&quot;&gt;\r\n            &lt;ItemsControl.ItemsPanel&gt;\r\n                &lt;ItemsPanelTemplate&gt;\r\n                    &lt;StackPanel Orientation=&quot;Horizontal&quot;/&gt;\r\n                &lt;/ItemsPanelTemplate&gt;\r\n            &lt;/ItemsControl.ItemsPanel&gt;\r\n        &lt;/ItemsControl&gt;\r\n    &lt;/Grid&gt;\r\n\r\nWhy do not I see the result?\r\n\r\nIt seems to me that such a solution has a problem with downloading the width of the Grid which is higher.\r\n\r\nIf you type in a fixed value of type `mainGrid.Width = 200;` everything is displayed.\r\nThe window size may change more dynamically have a width equal to a grid above.\r\nIs there anything I need to include in the code which is not used in the XAML version?",
+            "link": "https://stackoverflow.com/questions/50365724/dynamic-grid-width-for-dynamically-generated-elements",
+            "title": "Dynamic Grid width for dynamically generated elements",
+            "body": "<p>The following code gives the result that we see a divided Grid on 4 elements according to the schedule. Each column is filled with color.</p>\n\n<pre><code>&lt;Grid Grid.Column=\"1\" Background=\"#FF7E7738\"&gt;\n    &lt;Grid Width=\"Auto\"&gt;\n        &lt;Grid.ColumnDefinitions&gt;\n            &lt;ColumnDefinition Width=\"1*\"/&gt;\n            &lt;ColumnDefinition Width=\"1*\"/&gt;\n            &lt;ColumnDefinition Width=\"0.6*\"/&gt;\n            &lt;ColumnDefinition Width=\"1*\"/&gt;\n        &lt;/Grid.ColumnDefinitions&gt;\n        &lt;Grid Grid.Column=\"0\" Background=\"Red\"&gt;&lt;/Grid&gt;\n        &lt;Grid Grid.Column=\"1\" Background=\"Green\"&gt;&lt;/Grid&gt;\n        &lt;Grid Grid.Column=\"2\" Background=\"Blue\"&gt;&lt;/Grid&gt;\n        &lt;Grid Grid.Column=\"3\" Background=\"Pink\"&gt;&lt;/Grid&gt;\n    &lt;/Grid&gt;\n&lt;/Grid&gt;\n</code></pre>\n\n<p>Below I wrote a code that should do the same. </p>\n\n<pre><code>public ObservableCollection&lt;Grid&gt; ConnectorItemsGridX { get; set; }\n\npublic void DrawConnectors()\n{\n    Grid mainGrid = new Grid();\n    mainGrid.Width = Double.NaN;\n\n    ColumnDefinition cd1 = new ColumnDefinition();\n    cd1.Width = new GridLength(1, GridUnitType.Star);\n\n    ColumnDefinition cd2 = new ColumnDefinition();\n    cd2.Width = new GridLength(1, GridUnitType.Star);\n\n    ColumnDefinition cd3 = new ColumnDefinition();\n    cd3.Width = new GridLength(0.6, GridUnitType.Star);\n\n    ColumnDefinition cd4 = new ColumnDefinition();\n    cd4.Width = new GridLength(1, GridUnitType.Star);\n\n    mainGrid.ColumnDefinitions.Add(cd1);\n    mainGrid.ColumnDefinitions.Add(cd2);\n    mainGrid.ColumnDefinitions.Add(cd3);\n    mainGrid.ColumnDefinitions.Add(cd4);\n\n    Grid tb1 = new Grid();\n    tb1.Background = Brushes.Beige;\n\n    Grid tb2 = new Grid();\n    tb2.Background = Brushes.DarkSeaGreen;\n\n    Grid tb3 = new Grid();\n    tb3.Background = Brushes.MistyRose;\n\n    Grid tb4 = new Grid();\n    tb4.Background = Brushes.Violet;\n\n    mainGrid.Children.Add(tb1);\n    mainGrid.Children.Add(tb2);\n    mainGrid.Children.Add(tb3);\n    mainGrid.Children.Add(tb4);\n\n    Grid.SetColumn(tb1, 0);\n    Grid.SetColumn(tb2, 1);\n    Grid.SetColumn(tb3, 2);\n    Grid.SetColumn(tb4, 3);\n\n\n    ConnectorItemsGridX = new ObservableCollection&lt;Grid&gt;();\n    ConnectorItemsGridX.Add(mainGrid);\n}\n</code></pre>\n\n<p>Code from the XAMl file to load Grid.</p>\n\n<pre><code>&lt;Grid Grid.Column=\"1\" Background=\"#FF7E7738\"&gt;\n    &lt;ItemsControl ItemsSource=\"{Binding ConnectorItemsGridX}\" HorizontalAlignment=\"Left\"&gt;\n        &lt;ItemsControl.ItemsPanel&gt;\n            &lt;ItemsPanelTemplate&gt;\n                &lt;StackPanel Orientation=\"Horizontal\"/&gt;\n            &lt;/ItemsPanelTemplate&gt;\n        &lt;/ItemsControl.ItemsPanel&gt;\n    &lt;/ItemsControl&gt;\n&lt;/Grid&gt;\n</code></pre>\n\n<p>Why do not I see the result?</p>\n\n<p>It seems to me that such a solution has a problem with downloading the width of the Grid which is higher.</p>\n\n<p>If you type in a fixed value of type <code>mainGrid.Width = 200;</code> everything is displayed.\nThe window size may change more dynamically have a width equal to a grid above.\nIs there anything I need to include in the code which is not used in the XAML version?</p>\n"
+        },
+        {
+            "tags": [
+                "xcode",
+                "firebase",
+                "react-native",
+                "react-native-ios"
+            ],
+            "owner": {
+                "reputation": 326,
+                "user_id": 4401349,
+                "user_type": "registered",
+                "accept_rate": 47,
+                "profile_image": "https://www.gravatar.com/avatar/48b964d31df7fafb4d71733a0dbd36af?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Im Happy",
+                "link": "https://stackoverflow.com/users/4401349/im-happy"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526460818,
+            "creation_date": 1526454616,
+            "question_id": 50364473,
+            "body_markdown": "I tried to set up dynamic link to my iOS project and follow https://rnfirebase.io/docs/v4.1.x/links/ios document.\r\n\r\nIn document number 5. that need to update the `AppDelegate.m` file.\r\n`FIROptions defaultOptions].deepLinkURLScheme = CUSTOM_URL_SCHEME;`\r\nWhat is `CUSTOM_URL_SCHEME` ?\r\n\r\nFrom the explanation : ^-- where `CUSTOM_URL_SCHEME` is the custom URL scheme you defined in your Xcode project.\r\n\r\nI still really don&#39;t know where `CUSTOM_URL_SCHEME` is.\r\n\r\n![image](https://user-images.githubusercontent.com/6957533/40100670-58496968-5917-11e8-8ba6-7e72a44457ce.png)\r\n",
+            "link": "https://stackoverflow.com/questions/50364473/confusing-dynamic-link-document",
+            "title": "Confusing Dynamic Link Document",
+            "body": "<p>I tried to set up dynamic link to my iOS project and follow <a href=\"https://rnfirebase.io/docs/v4.1.x/links/ios\" rel=\"nofollow noreferrer\">https://rnfirebase.io/docs/v4.1.x/links/ios</a> document.</p>\n\n<p>In document number 5. that need to update the <code>AppDelegate.m</code> file.\n<code>FIROptions defaultOptions].deepLinkURLScheme = CUSTOM_URL_SCHEME;</code>\nWhat is <code>CUSTOM_URL_SCHEME</code> ?</p>\n\n<p>From the explanation : ^-- where <code>CUSTOM_URL_SCHEME</code> is the custom URL scheme you defined in your Xcode project.</p>\n\n<p>I still really don't know where <code>CUSTOM_URL_SCHEME</code> is.</p>\n\n<p><img src=\"https://user-images.githubusercontent.com/6957533/40100670-58496968-5917-11e8-8ba6-7e72a44457ce.png\" alt=\"image\"></p>\n"
+        },
+        {
+            "tags": [
+                "wso2",
+                "worker",
+                "siddhi",
+                "wso2sp"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 7960144,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/cc9102e16464ca59d9c8db28ce57bf22?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Hassan",
+                "link": "https://stackoverflow.com/users/7960144/hassan"
+            },
+            "is_answered": true,
+            "view_count": 43,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526460809,
+            "creation_date": 1520417279,
+            "last_edit_date": 1525277918,
+            "question_id": 49149170,
+            "body_markdown": "I try to run Worker and dashbord in same machine.\r\nthe first tools is running coorectly, but when i start the second the error has been raised :\r\n\r\n\r\n  \r\n\r\n&gt;   [2018-03-07 09:59:43,546]  INFO\r\n&gt; {org.wso2.msf4j.internal.websocket.EndpointsRegistryImpl} - Endpoint\r\n&gt; Registered : /server-stats/{type}\r\n&gt;     [2018-03-07 09:59:43,636]  INFO {org.wso2.carbon.data.provider.DataProviderAPI} - Data Provider\r\n&gt; Service Component is activated\r\n&gt;     [2018-03-07 09:59:44,909]  INFO {org.wso2.msf4j.internal.websocket.WebSocketServerSC} - All required\r\n&gt; capabilities are available of WebSocket service component is\r\n&gt; available.\r\n&gt;     [2018-03-07 09:59:45,049]  INFO {org.wso2.msf4j.internal.MicroservicesServerSC} - All microservices\r\n&gt; are available\r\n&gt;     [2018-03-07 09:59:45,346]  INFO {org.wso2.transport.http.netty.listener.ServerConnectorBootstrap$HTTPServerConnector}\r\n&gt; - HTTP(S) Interface starting on host 0.0.0.0 and port 9643\r\n&gt;     [2018-03-07 09:59:45,939]  INFO {org.wso2.carbon.metrics.core.config.model.JmxReporterConfig} -\r\n&gt; Creating JMX reporter for Metrics with domain\r\n&gt; &#39;org.wso2.carbon.metrics&#39;\r\n&gt;     [2018-03-07 09:59:45,954]  INFO {org.wso2.carbon.metrics.core.reporter.impl.AbstractReporter} -\r\n&gt; Started JMX reporter for Metrics\r\n&gt;     [2018-03-07 09:59:45,954]  INFO {org.wso2.msf4j.analytics.metrics.MetricsComponent} - Metrics\r\n&gt; Component is activated\r\n&gt;     [2018-03-07 09:59:45,970]  INFO {org.wso2.carbon.databridge.agent.internal.DataAgentDS} - Successfully\r\n&gt; deployed Agent Server \r\n&gt;     [2018-03-07 09:59:52,914] ERROR {org.wso2.carbon.kernel.internal.startupresolver.StartupComponentManager}\r\n&gt; - Runtime Exception occurred while calling onAllRequiredCapabilitiesAvailable of component\r\n&gt; carbon-datasource-service\r\n&gt; com.zaxxer.hikari.pool.PoolInitializationException: Exception during\r\n&gt; pool initialization: Connection is broken:\r\n&gt; &quot;java.net.SocketTimeoutException: connect timed out:\r\n&gt; 169.254.235.125:59336&quot; [90067-196]\r\n&gt;     \tat com.zaxxer.hikari.pool.HikariPool.initializeConnections(HikariPool.java:581)\r\n&gt;     \tat com.zaxxer.hikari.pool.HikariPool.&lt;init&gt;(HikariPool.java:152)\r\n&gt;     \tat com.zaxxer.hikari.HikariDataSource.&lt;init&gt;(HikariDataSource.java:73)\r\n&gt;     \tat org.wso2.carbon.datasource.rdbms.hikari.HikariRDBMSDataSource.getDataSource(HikariRDBMSDataSource.java:56)\r\n&gt;     \tat org.wso2.carbon.datasource.rdbms.hikari.HikariDataSourceReader.createDataSource(HikariDataSourceReader.java:74)\r\n&gt;     \tat org.wso2.carbon.datasource.core.DataSourceBuilder.buildDataSourceObject(DataSourceBuilder.java:79)\r\n&gt;     \tat org.wso2.carbon.datasource.core.DataSourceBuilder.buildDataSourceObject(DataSourceBuilder.java:60)\r\n&gt;     \tat org.wso2.carbon.datasource.core.DataSourceBuilder.buildCarbonDataSource(DataSourceBuilder.java:44)\r\n&gt;     \tat org.wso2.carbon.datasource.core.DataSourceManager.initDataSources(DataSourceManager.java:153)\r\n&gt;     \tat org.wso2.carbon.datasource.core.internal.DataSourceListenerComponent.onAllRequiredCapabilitiesAvailable(DataSourceListenerComponent.java:125)\r\n&gt;     \tat org.wso2.carbon.kernel.internal.startupresolver.StartupComponentManager.lambda$notifySatisfiableComponents$7(StartupComponentManager.java:266)\r\n&gt;     \tat java.util.ArrayList.forEach(ArrayList.java:1249)\r\n&gt;     \tat org.wso2.carbon.kernel.internal.startupresolver.StartupComponentManager.notifySatisfiableComponents(StartupComponentManager.java:252)\r\n&gt;     \tat org.wso2.carbon.kernel.internal.startupresolver.StartupOrderResolver$1.run(StartupOrderResolver.java:204)\r\n&gt;     \tat java.util.TimerThread.mainLoop(Timer.java:555)\r\n&gt;     \tat java.util.TimerThread.run(Timer.java:505)\r\n&gt;     Caused by: org.h2.jdbc.JdbcSQLException: Connection is broken: &quot;java.net.SocketTimeoutException: connect timed out:\r\n&gt; 169.254.235.125:59336&quot; [90067-196]\r\n&gt;     \tat org.h2.message.DbException.getJdbcSQLException(DbException.java:345)\r\n&gt;     \tat org.h2.message.DbException.get(DbException.java:168)\r\n&gt;     \tat org.h2.engine.SessionRemote.connectServer(SessionRemote.java:457)\r\n&gt;     \tat org.h2.engine.SessionRemote.connectEmbeddedOrServer(SessionRemote.java:367)\r\n&gt;     \tat org.h2.jdbc.JdbcConnection.&lt;init&gt;(JdbcConnection.java:116)\r\n&gt;     \tat org.h2.jdbc.JdbcConnection.&lt;init&gt;(JdbcConnection.java:100)\r\n&gt;     \tat org.h2.Driver.connect(Driver.java:69)\r\n&gt;     \tat com.zaxxer.hikari.util.DriverDataSource.getConnection(DriverDataSource.java:95)\r\n&gt;     \tat com.zaxxer.hikari.util.DriverDataSource.getConnection(DriverDataSource.java:101)\r\n&gt;     \tat com.zaxxer.hikari.pool.HikariPool.addConnection(HikariPool.java:496)\r\n&gt;     \tat com.zaxxer.hikari.pool.HikariPool.initializeConnections(HikariPool.java:565)\r\n&gt;     \t... 15 more\r\n&gt;     Caused by: java.net.SocketTimeoutException: connect timed out\r\n&gt;     \tat java.net.DualStackPlainSocketImpl.waitForConnect(Native Method)\r\n&gt;     \tat java.net.DualStackPlainSocketImpl.socketConnect(DualStackPlainSocketImpl.java:85)\r\n&gt;     \tat java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:350)\r\n&gt;     \tat java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:206)\r\n&gt;     \tat java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:188)\r\n&gt;     \tat java.net.PlainSocketImpl.connect(PlainSocketImpl.java:172)\r\n&gt;     \tat java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)\r\n&gt;     \tat java.net.Socket.connect(Socket.java:589)\r\n&gt;     \tat org.h2.util.NetUtils.createSocket(NetUtils.java:103)\r\n&gt;     \tat org.h2.util.NetUtils.createSocket(NetUtils.java:83)\r\n&gt;     \tat org.h2.engine.SessionRemote.initTransfer(SessionRemote.java:115)\r\n&gt;     \tat org.h2.engine.SessionRemote.connectServer(SessionRemote.java:453)\r\n&gt;     \t... 23 more\r\n&gt; \r\n&gt; \r\n&gt; can you please advise?\r\n&gt; \r\n&gt; Thanks.",
+            "link": "https://stackoverflow.com/questions/49149170/wso2stream-processordashbord-running-dashbord-and-worker-in-same-machine",
+            "title": "[Wso2][Stream Processor][Dashbord] Running dashbord and worker in same machine",
+            "body": "<p>I try to run Worker and dashbord in same machine.\nthe first tools is running coorectly, but when i start the second the error has been raised :</p>\n\n<blockquote>\n  <p>[2018-03-07 09:59:43,546]  INFO\n  {org.wso2.msf4j.internal.websocket.EndpointsRegistryImpl} - Endpoint\n  Registered : /server-stats/{type}\n      [2018-03-07 09:59:43,636]  INFO {org.wso2.carbon.data.provider.DataProviderAPI} - Data Provider\n  Service Component is activated\n      [2018-03-07 09:59:44,909]  INFO {org.wso2.msf4j.internal.websocket.WebSocketServerSC} - All required\n  capabilities are available of WebSocket service component is\n  available.\n      [2018-03-07 09:59:45,049]  INFO {org.wso2.msf4j.internal.MicroservicesServerSC} - All microservices\n  are available\n      [2018-03-07 09:59:45,346]  INFO {org.wso2.transport.http.netty.listener.ServerConnectorBootstrap$HTTPServerConnector}\n  - HTTP(S) Interface starting on host 0.0.0.0 and port 9643\n      [2018-03-07 09:59:45,939]  INFO {org.wso2.carbon.metrics.core.config.model.JmxReporterConfig} -\n  Creating JMX reporter for Metrics with domain\n  'org.wso2.carbon.metrics'\n      [2018-03-07 09:59:45,954]  INFO {org.wso2.carbon.metrics.core.reporter.impl.AbstractReporter} -\n  Started JMX reporter for Metrics\n      [2018-03-07 09:59:45,954]  INFO {org.wso2.msf4j.analytics.metrics.MetricsComponent} - Metrics\n  Component is activated\n      [2018-03-07 09:59:45,970]  INFO {org.wso2.carbon.databridge.agent.internal.DataAgentDS} - Successfully\n  deployed Agent Server \n      [2018-03-07 09:59:52,914] ERROR {org.wso2.carbon.kernel.internal.startupresolver.StartupComponentManager}\n  - Runtime Exception occurred while calling onAllRequiredCapabilitiesAvailable of component\n  carbon-datasource-service\n  com.zaxxer.hikari.pool.PoolInitializationException: Exception during\n  pool initialization: Connection is broken:\n  \"java.net.SocketTimeoutException: connect timed out:\n  169.254.235.125:59336\" [90067-196]\n        at com.zaxxer.hikari.pool.HikariPool.initializeConnections(HikariPool.java:581)\n        at com.zaxxer.hikari.pool.HikariPool.(HikariPool.java:152)\n        at com.zaxxer.hikari.HikariDataSource.(HikariDataSource.java:73)\n        at org.wso2.carbon.datasource.rdbms.hikari.HikariRDBMSDataSource.getDataSource(HikariRDBMSDataSource.java:56)\n        at org.wso2.carbon.datasource.rdbms.hikari.HikariDataSourceReader.createDataSource(HikariDataSourceReader.java:74)\n        at org.wso2.carbon.datasource.core.DataSourceBuilder.buildDataSourceObject(DataSourceBuilder.java:79)\n        at org.wso2.carbon.datasource.core.DataSourceBuilder.buildDataSourceObject(DataSourceBuilder.java:60)\n        at org.wso2.carbon.datasource.core.DataSourceBuilder.buildCarbonDataSource(DataSourceBuilder.java:44)\n        at org.wso2.carbon.datasource.core.DataSourceManager.initDataSources(DataSourceManager.java:153)\n        at org.wso2.carbon.datasource.core.internal.DataSourceListenerComponent.onAllRequiredCapabilitiesAvailable(DataSourceListenerComponent.java:125)\n        at org.wso2.carbon.kernel.internal.startupresolver.StartupComponentManager.lambda$notifySatisfiableComponents$7(StartupComponentManager.java:266)\n        at java.util.ArrayList.forEach(ArrayList.java:1249)\n        at org.wso2.carbon.kernel.internal.startupresolver.StartupComponentManager.notifySatisfiableComponents(StartupComponentManager.java:252)\n        at org.wso2.carbon.kernel.internal.startupresolver.StartupOrderResolver$1.run(StartupOrderResolver.java:204)\n        at java.util.TimerThread.mainLoop(Timer.java:555)\n        at java.util.TimerThread.run(Timer.java:505)\n      Caused by: org.h2.jdbc.JdbcSQLException: Connection is broken: \"java.net.SocketTimeoutException: connect timed out:\n  169.254.235.125:59336\" [90067-196]\n        at org.h2.message.DbException.getJdbcSQLException(DbException.java:345)\n        at org.h2.message.DbException.get(DbException.java:168)\n        at org.h2.engine.SessionRemote.connectServer(SessionRemote.java:457)\n        at org.h2.engine.SessionRemote.connectEmbeddedOrServer(SessionRemote.java:367)\n        at org.h2.jdbc.JdbcConnection.(JdbcConnection.java:116)\n        at org.h2.jdbc.JdbcConnection.(JdbcConnection.java:100)\n        at org.h2.Driver.connect(Driver.java:69)\n        at com.zaxxer.hikari.util.DriverDataSource.getConnection(DriverDataSource.java:95)\n        at com.zaxxer.hikari.util.DriverDataSource.getConnection(DriverDataSource.java:101)\n        at com.zaxxer.hikari.pool.HikariPool.addConnection(HikariPool.java:496)\n        at com.zaxxer.hikari.pool.HikariPool.initializeConnections(HikariPool.java:565)\n        ... 15 more\n      Caused by: java.net.SocketTimeoutException: connect timed out\n        at java.net.DualStackPlainSocketImpl.waitForConnect(Native Method)\n        at java.net.DualStackPlainSocketImpl.socketConnect(DualStackPlainSocketImpl.java:85)\n        at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:350)\n        at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:206)\n        at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:188)\n        at java.net.PlainSocketImpl.connect(PlainSocketImpl.java:172)\n        at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)\n        at java.net.Socket.connect(Socket.java:589)\n        at org.h2.util.NetUtils.createSocket(NetUtils.java:103)\n        at org.h2.util.NetUtils.createSocket(NetUtils.java:83)\n        at org.h2.engine.SessionRemote.initTransfer(SessionRemote.java:115)\n        at org.h2.engine.SessionRemote.connectServer(SessionRemote.java:453)\n        ... 23 more</p>\n  \n  <p>can you please advise?</p>\n  \n  <p>Thanks.</p>\n</blockquote>\n"
+        },
+        {
+            "tags": [
+                "java"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9798830,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Ebenezer Mekonnen",
+                "link": "https://stackoverflow.com/users/9798830/ebenezer-mekonnen"
+            },
+            "is_answered": false,
+            "view_count": 36,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526460806,
+            "creation_date": 1526459363,
+            "last_edit_date": 1526460806,
+            "question_id": 50365899,
+            "body_markdown": "The array adapter won&#39;t accept the context, and here is the code.\r\n\r\n    private void initialize() {\r\n\r\n        Detail d = new Detail();\r\n\r\n\r\n        button = d.button;\r\n        listView = d.listView;\r\n\r\n        arrayAdapter = new ArrayAdapter(,android.R.layout.simple_list_item_1,files_on_server);\r\n        listView.setAdapter(arrayAdapter);\r\n        handler = new Handler();\r\n\r\n        progressDialog = new ProgressDialog(getContext());\r\n        progressDialog.setTitle(&quot;Downloading...&quot;);\r\n        progressDialog.setMax(100);\r\n        progressDialog.setCancelable(false);\r\n        progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);\r\n    }",
+            "link": "https://stackoverflow.com/questions/50365899/array-adapter-not-accept-context",
+            "title": "Array Adapter not accept context",
+            "body": "<p>The array adapter won't accept the context, and here is the code.</p>\n\n<pre><code>private void initialize() {\n\n    Detail d = new Detail();\n\n\n    button = d.button;\n    listView = d.listView;\n\n    arrayAdapter = new ArrayAdapter(,android.R.layout.simple_list_item_1,files_on_server);\n    listView.setAdapter(arrayAdapter);\n    handler = new Handler();\n\n    progressDialog = new ProgressDialog(getContext());\n    progressDialog.setTitle(\"Downloading...\");\n    progressDialog.setMax(100);\n    progressDialog.setCancelable(false);\n    progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "node.js",
+                "coffeescript",
+                "node-commander"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 4702548,
+                "user_type": "registered",
+                "profile_image": "https://lh4.googleusercontent.com/-YqGwJhKx3gs/AAAAAAAAAAI/AAAAAAAAAGI/s1l7yV0JxLQ/photo.jpg?sz=128",
+                "display_name": "Zep",
+                "link": "https://stackoverflow.com/users/4702548/zep"
+            },
+            "is_answered": false,
+            "view_count": 42,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526460806,
+            "creation_date": 1526270454,
+            "last_edit_date": 1526460806,
+            "question_id": 50322931,
+            "body_markdown": "I have some trouble using Commander in Node.js: parseInt not working properly in my code:\r\n\r\n    commander = require &#39;commander&#39;\r\n\r\n    #parseInt = (str) =&gt; parseInt str   #I tried to include this line but not work.\r\n\r\n    commander\r\n      .option &#39;-n, --connection [n]&#39;, &#39;number of connection&#39;, parseInt, 5000\r\n      .option &#39;-m, --message [n]&#39;, &#39;number of messages&#39;, parseInt, 5000\r\n      .parse process.argv\r\n\r\n    console.log commander.connection \r\n    console.log commander.message \r\n\r\nWhen I use option -n 10000 -m 10000, the console produce:\r\n\r\n    NaN\r\n    NaN\r\n\r\nI also notice this code with class work:\r\n\r\n    commander = require &#39;commander&#39;\r\n\r\n    class MyCommand\r\n      parseOpt: =&gt;\r\n        commander\r\n          .option &#39;-n, --connection [n]&#39;, &#39;number of connection&#39;, @parseInt, 5000\r\n          .option &#39;-m, --message [n]&#39;, &#39;number of messages&#39;, @parseInt, 5000\r\n          .parse process.argv\r\n        (@connection, @message} = commander\r\n      run: =&gt;\r\n        @parseOpt()\r\n        console.log @connection \r\n        console.log @message        \r\n      parseInt: (str) =&gt; parseInt str\r\n\r\n    new MyCommand().run()\r\n\r\nWhy my code does not work while the &#39;class&#39; code work? How to make my code work without using class? Thanks~",
+            "link": "https://stackoverflow.com/questions/50322931/does-not-understand-how-javascript-work-in-this-code-using-coffeescript-comman",
+            "title": "Does not understand how Javascript work in this code (using Coffeescript, Commander in Node.js)",
+            "body": "<p>I have some trouble using Commander in Node.js: parseInt not working properly in my code:</p>\n\n<pre><code>commander = require 'commander'\n\n#parseInt = (str) =&gt; parseInt str   #I tried to include this line but not work.\n\ncommander\n  .option '-n, --connection [n]', 'number of connection', parseInt, 5000\n  .option '-m, --message [n]', 'number of messages', parseInt, 5000\n  .parse process.argv\n\nconsole.log commander.connection \nconsole.log commander.message \n</code></pre>\n\n<p>When I use option -n 10000 -m 10000, the console produce:</p>\n\n<pre><code>NaN\nNaN\n</code></pre>\n\n<p>I also notice this code with class work:</p>\n\n<pre><code>commander = require 'commander'\n\nclass MyCommand\n  parseOpt: =&gt;\n    commander\n      .option '-n, --connection [n]', 'number of connection', @parseInt, 5000\n      .option '-m, --message [n]', 'number of messages', @parseInt, 5000\n      .parse process.argv\n    (@connection, @message} = commander\n  run: =&gt;\n    @parseOpt()\n    console.log @connection \n    console.log @message        \n  parseInt: (str) =&gt; parseInt str\n\nnew MyCommand().run()\n</code></pre>\n\n<p>Why my code does not work while the 'class' code work? How to make my code work without using class? Thanks~</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "command-line-interface",
+                "command-prompt",
+                "ethereum",
+                "web3-java"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 5942721,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/991704c79afa6b24286e5cc87ff539ae?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Mr.O",
+                "link": "https://stackoverflow.com/users/5942721/mr-o"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526460802,
+            "creation_date": 1526460802,
+            "question_id": 50366388,
+            "body_markdown": "this question may seem a bit trivial but I can not seem to find how to get it done. I am trying to install web3j CLI tools and I am not sure how to. I have downloaded the latest release from [here][1] as a zip file. I have tried installing using windows cmd prompt but I am not sure what commands to write. If it is not supposed to be installed with cmd prompt then what should I use?\r\n\r\nAny help is appreciated. Thank you very much in advance.\r\n\r\n\r\n  [1]: https://github.com/web3j/web3j/releases/tag/v3.4.0",
+            "link": "https://stackoverflow.com/questions/50366388/installing-web3j-cli-tools",
+            "title": "Installing Web3j CLI tools",
+            "body": "<p>this question may seem a bit trivial but I can not seem to find how to get it done. I am trying to install web3j CLI tools and I am not sure how to. I have downloaded the latest release from <a href=\"https://github.com/web3j/web3j/releases/tag/v3.4.0\" rel=\"nofollow noreferrer\">here</a> as a zip file. I have tried installing using windows cmd prompt but I am not sure what commands to write. If it is not supposed to be installed with cmd prompt then what should I use?</p>\n\n<p>Any help is appreciated. Thank you very much in advance.</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "regex",
+                "string",
+                "split",
+                "match"
+            ],
+            "owner": {
+                "reputation": 3174,
+                "user_id": 1682559,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://i.stack.imgur.com/MefSP.jpg?s=128&g=1",
+                "display_name": "Kevin Cruijssen",
+                "link": "https://stackoverflow.com/users/1682559/kevin-cruijssen"
+            },
+            "is_answered": true,
+            "view_count": 392,
+            "accepted_answer_id": 50365422,
+            "answer_count": 2,
+            "score": 10,
+            "last_activity_date": 1526460800,
+            "creation_date": 1526457428,
+            "last_edit_date": 1526459824,
+            "question_id": 50365295,
+            "body_markdown": "I like to do code-golfing in Java (even though Java way too verbose to be competitive), which is completing a certain challenge in as few bytes as possible. In one of my answers I had the following piece of code:\r\n\r\n    for(var p:&quot;A4;B8;CU;EM;EW;E3;G6;G9;I1;L7;NZ;O0;R2;S5&quot;.split(&quot;;&quot;))\r\n\r\nWhich basically loops over the 2-char Strings after we converted it into a String-array with `.split`. Someone suggested I could golf it to this instead to save 4 bytes:\r\n\r\n    for(var p:&quot;A4B8CUEMEWE3G6G9I1L7NZO0R2S5&quot;.split(&quot;(?&lt;=\\\\G..)&quot;))\r\n\r\nThe functionality is still the same. It loops over the 2-char Strings.\r\n\r\nHowever, neither of us was 100% sure how this works, hence this question.\r\n\r\n---\r\n\r\n**What I know:**\r\n\r\nI know `.split(&quot;(?&lt;= ... )&quot;)` is used to split, but keep the trailing delimiter.  \r\nThere is also a way to keep a leading delimiter, or delimiter as separated item:\r\n\r\n    &quot;a;b;c;d&quot;.split(&quot;(?&lt;=;)&quot;)            // Results in [&quot;a;&quot;, &quot;b;&quot;, &quot;c;&quot;, &quot;d&quot;]\r\n    &quot;a;b;c;d&quot;.split(&quot;(?=;)&quot;)             // Results in [&quot;a&quot;, &quot;;b&quot;, &quot;;c&quot;, &quot;;d&quot;]\r\n    &quot;a;b;c;d&quot;.split(&quot;((?&lt;=;)|(?=;))&quot;)    // Results in [&quot;a&quot;, &quot;;&quot;, &quot;b&quot;, &quot;;&quot;, &quot;c&quot;, &quot;;&quot;, &quot;d&quot;]\r\n\r\n&lt;s&gt;I know `\\G` is used to stop after a non-match is encountered.&lt;/s&gt;  \r\nEDIT: *`\\G` is used to indicate the position where the last match ended (or the start of the string for the first run).* Corrected definition thanks to *@SebastianProske*.\r\n\r\n    int count = 0;\r\n    java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(&quot;match,&quot;);\r\n    java.util.regex.Matcher matcher = pattern.matcher(&quot;match,match,match,blabla,match,match,&quot;);\r\n    while(matcher.find())\r\n      count++;\r\n    System.out.println(count); // Results in 5\r\n\r\n    count = 0;\r\n    pattern = java.util.regex.Pattern.compile(&quot;\\\\Gmatch,&quot;);\r\n    matcher = pattern.matcher(&quot;match,match,match,blabla,match,match,&quot;);\r\n    while(matcher.find())\r\n      count++;\r\n    System.out.println(count); // Results in 3\r\n\r\n---\r\n\r\nBut how does `.split(&quot;(?&lt;=\\\\G..)&quot;)` work exactly when using `\\G` inside the split?  \r\nAnd why does `.split(&quot;(?=\\\\G..)&quot;)` not work?\r\n\r\n[**Here a &quot;Try it online&quot;-link for all code-snippets described above to see them in action.**](https://tio.run/##xVRba8IwFH73V4Q@NbgFL5sXzspQKUWwOhQRnHuIbad1tS1t6iabv71LL2O6sZtWByEhOed833dOTrKgK3q@0B/CULOo7yOVmvZzDiE3mFqmhnxGGV9WjqmjJTeJA@aZ9uz2DlEcuSE0WPvMWBInYMTlJmbZ4oJjkoCZFml4Hl37hDlJmCg0LqBZg9YQZBXkEchlUCqg1KFdhE4VumPoFaBfgsGlQHzXMpkogIAxhr2omrXWUFblkVxWKkq9XexUu@NeoV/aQhevr6TJRCEEf0vDLXsooDAFDfTDU/kIFKkGnB1almCJtpcY9HdF5TukOYHNpELi@07nGTPjiaiUaXPD4w2YrNInjxvKmOHZRHOWrmkZohC7ngmYpDFvJ9vz1KJ87BwJqdrHeYSSxpJ709ZFjBOR@fyXCcX2FGEnoT8I583479ozewBZPsFDaQg58kciHTuDqFDH5zjFXcTF4jynqNePNElrb3KbMHwF)",
+            "link": "https://stackoverflow.com/questions/50365295/how-does-g-work-in-split",
+            "title": "How does \\G work in .split?",
+            "body": "<p>I like to do code-golfing in Java (even though Java way too verbose to be competitive), which is completing a certain challenge in as few bytes as possible. In one of my answers I had the following piece of code:</p>\n\n<pre><code>for(var p:\"A4;B8;CU;EM;EW;E3;G6;G9;I1;L7;NZ;O0;R2;S5\".split(\";\"))\n</code></pre>\n\n<p>Which basically loops over the 2-char Strings after we converted it into a String-array with <code>.split</code>. Someone suggested I could golf it to this instead to save 4 bytes:</p>\n\n<pre><code>for(var p:\"A4B8CUEMEWE3G6G9I1L7NZO0R2S5\".split(\"(?&lt;=\\\\G..)\"))\n</code></pre>\n\n<p>The functionality is still the same. It loops over the 2-char Strings.</p>\n\n<p>However, neither of us was 100% sure how this works, hence this question.</p>\n\n<hr>\n\n<p><strong>What I know:</strong></p>\n\n<p>I know <code>.split(\"(?&lt;= ... )\")</code> is used to split, but keep the trailing delimiter.<br>\nThere is also a way to keep a leading delimiter, or delimiter as separated item:</p>\n\n<pre><code>\"a;b;c;d\".split(\"(?&lt;=;)\")            // Results in [\"a;\", \"b;\", \"c;\", \"d\"]\n\"a;b;c;d\".split(\"(?=;)\")             // Results in [\"a\", \";b\", \";c\", \";d\"]\n\"a;b;c;d\".split(\"((?&lt;=;)|(?=;))\")    // Results in [\"a\", \";\", \"b\", \";\", \"c\", \";\", \"d\"]\n</code></pre>\n\n<p><s>I know <code>\\G</code> is used to stop after a non-match is encountered.</s><br>\nEDIT: <em><code>\\G</code> is used to indicate the position where the last match ended (or the start of the string for the first run).</em> Corrected definition thanks to <em>@SebastianProske</em>.</p>\n\n<pre><code>int count = 0;\njava.util.regex.Pattern pattern = java.util.regex.Pattern.compile(\"match,\");\njava.util.regex.Matcher matcher = pattern.matcher(\"match,match,match,blabla,match,match,\");\nwhile(matcher.find())\n  count++;\nSystem.out.println(count); // Results in 5\n\ncount = 0;\npattern = java.util.regex.Pattern.compile(\"\\\\Gmatch,\");\nmatcher = pattern.matcher(\"match,match,match,blabla,match,match,\");\nwhile(matcher.find())\n  count++;\nSystem.out.println(count); // Results in 3\n</code></pre>\n\n<hr>\n\n<p>But how does <code>.split(\"(?&lt;=\\\\G..)\")</code> work exactly when using <code>\\G</code> inside the split?<br>\nAnd why does <code>.split(\"(?=\\\\G..)\")</code> not work?</p>\n\n<p><a href=\"https://tio.run/##xVRba8IwFH73V4Q@NbgFL5sXzspQKUWwOhQRnHuIbad1tS1t6iabv71LL2O6sZtWByEhOed833dOTrKgK3q@0B/CULOo7yOVmvZzDiE3mFqmhnxGGV9WjqmjJTeJA@aZ9uz2DlEcuSE0WPvMWBInYMTlJmbZ4oJjkoCZFml4Hl37hDlJmCg0LqBZg9YQZBXkEchlUCqg1KFdhE4VumPoFaBfgsGlQHzXMpkogIAxhr2omrXWUFblkVxWKkq9XexUu@NeoV/aQhevr6TJRCEEf0vDLXsooDAFDfTDU/kIFKkGnB1almCJtpcY9HdF5TukOYHNpELi@07nGTPjiaiUaXPD4w2YrNInjxvKmOHZRHOWrmkZohC7ngmYpDFvJ9vz1KJ87BwJqdrHeYSSxpJ709ZFjBOR@fyXCcX2FGEnoT8I583479ozewBZPsFDaQg58kciHTuDqFDH5zjFXcTF4jynqNePNElrb3KbMHwF\" rel=\"noreferrer\"><strong>Here a \"Try it online\"-link for all code-snippets described above to see them in action.</strong></a></p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "vuejs2",
+                "vue-component"
+            ],
+            "owner": {
+                "reputation": 15,
+                "user_id": 6733955,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1257294547637551/picture?type=large",
+                "display_name": "Anna Kizilova",
+                "link": "https://stackoverflow.com/users/6733955/anna-kizilova"
+            },
+            "is_answered": true,
+            "view_count": 27,
+            "accepted_answer_id": 50366254,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526460799,
+            "creation_date": 1526452608,
+            "last_edit_date": 1526452667,
+            "question_id": 50363938,
+            "body_markdown": "I have a number of checkboxes looking like this\r\n \r\n\r\n    &lt;input :disabled=&quot;update.spinner&quot; v-model=&quot;searchRequest.age&quot; :value=&quot;age&quot; type=&quot;checkbox&quot; :id=&quot;age&quot; @click=&quot;getFilters(searchRequest)&quot;&gt;&lt;/input&gt;\r\n\r\nand I have a Vue component \r\n\r\n    Vue.component(&#39;filters&#39;,{\r\n            template:filtertemplate,\r\n            props: [&#39;filters&#39;, &#39;loadLimit&#39;,&#39;students&#39;, &#39;counter&#39;, &#39;hobbies&#39;,&#39;update&#39;,&#39;filterParams&#39;, &#39;filterLoaded&#39;],\r\n            data(){\r\n                return{\r\n                    filteredData: this.filters,\r\n                    selectedHobbies:[],\r\n                    searchRequest:{\r\n                        gender:[],\r\n                        age: [],\r\n                        hobby:[],\r\n                    }\r\n                }\r\n            },\r\n            components: {\r\n                &#39;v-select&#39;: (&#39;v-select&#39;, VueSelect.VueSelect)\r\n            },\r\n            methods:{\r\n                getFilters: function (obj) {\r\n                    debugger\r\n                    var self = this;\r\n                    //check if filterParams empty if true encode to uri\r\n                    if(!obj == 0){studentProfiles.getDatasAsUriParameters(obj)}\r\n                },\r\n                sendRequest: function(counter,url) {\r\n                    var self = this;\r\n                    studentProfiles.counter = 0;\r\n                    studentProfiles.students = [];\r\n                    studentProfiles.update.spinner = true;\r\n                    studentProfiles.getData(counter,url,this.filterParams);\r\n                }\r\n            }\r\n        });\r\n\r\nWhen i check a box first time, is appears to be checked on screen, but the **filterParams** are not updated. When i uncheck this box or check another one, the value of the first box is passed to **filterParams**. \r\n\r\nWhat can prevent the checkbox from passing its value to params? \r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50363938/checkbox-passes-nothing-to-vue-object-on-the-first-click",
+            "title": "Checkbox passes nothing to Vue object on the first click",
+            "body": "<p>I have a number of checkboxes looking like this</p>\n\n<pre><code>&lt;input :disabled=\"update.spinner\" v-model=\"searchRequest.age\" :value=\"age\" type=\"checkbox\" :id=\"age\" @click=\"getFilters(searchRequest)\"&gt;&lt;/input&gt;\n</code></pre>\n\n<p>and I have a Vue component </p>\n\n<pre><code>Vue.component('filters',{\n        template:filtertemplate,\n        props: ['filters', 'loadLimit','students', 'counter', 'hobbies','update','filterParams', 'filterLoaded'],\n        data(){\n            return{\n                filteredData: this.filters,\n                selectedHobbies:[],\n                searchRequest:{\n                    gender:[],\n                    age: [],\n                    hobby:[],\n                }\n            }\n        },\n        components: {\n            'v-select': ('v-select', VueSelect.VueSelect)\n        },\n        methods:{\n            getFilters: function (obj) {\n                debugger\n                var self = this;\n                //check if filterParams empty if true encode to uri\n                if(!obj == 0){studentProfiles.getDatasAsUriParameters(obj)}\n            },\n            sendRequest: function(counter,url) {\n                var self = this;\n                studentProfiles.counter = 0;\n                studentProfiles.students = [];\n                studentProfiles.update.spinner = true;\n                studentProfiles.getData(counter,url,this.filterParams);\n            }\n        }\n    });\n</code></pre>\n\n<p>When i check a box first time, is appears to be checked on screen, but the <strong>filterParams</strong> are not updated. When i uncheck this box or check another one, the value of the first box is passed to <strong>filterParams</strong>. </p>\n\n<p>What can prevent the checkbox from passing its value to params? </p>\n"
+        },
+        {
+            "tags": [
+                "ms-access",
+                "vbscript"
+            ],
+            "owner": {
+                "reputation": 118,
+                "user_id": 6158286,
+                "user_type": "registered",
+                "accept_rate": 41,
+                "profile_image": "https://www.gravatar.com/avatar/cdeb0d9ef71c19671a809a0f5f486bd2?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Mike S",
+                "link": "https://stackoverflow.com/users/6158286/mike-s"
+            },
+            "is_answered": true,
+            "view_count": 30,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526460797,
+            "creation_date": 1526410945,
+            "question_id": 50357487,
+            "body_markdown": "can you advice if I can convert that string into Date in my MS Access db, which I assume uses VB. I got this CustNum created during tx and looks like takes a TimeStamp which I want to use for my date calculation, looks like I need do some parsing, hyphen replacement before converting with CDate, I  tried couple of ways and failed so far. Ultimately I want to use this value to calculate how much time passed.\r\n\r\n        CustNum = &#39;2018-05-14-154540&#39;\r\n        CDate([CustNum]     ##.... something like this\r\n    ## to be used in query builder as \r\n        DaysPassed: CDate([CustNum]) - Now()\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50357487/ms-access-vb-script-convert-string-to-date",
+            "title": "MS-Access VB script convert string to Date",
+            "body": "<p>can you advice if I can convert that string into Date in my MS Access db, which I assume uses VB. I got this CustNum created during tx and looks like takes a TimeStamp which I want to use for my date calculation, looks like I need do some parsing, hyphen replacement before converting with CDate, I  tried couple of ways and failed so far. Ultimately I want to use this value to calculate how much time passed.</p>\n\n<pre><code>    CustNum = '2018-05-14-154540'\n    CDate([CustNum]     ##.... something like this\n## to be used in query builder as \n    DaysPassed: CDate([CustNum]) - Now()\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "iis",
+                "active-directory",
+                "gpo"
+            ],
+            "owner": {
+                "reputation": 4,
+                "user_id": 3829857,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/aef4c322eab6e7bd818e8d6723bc2e9e?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3829857",
+                "link": "https://stackoverflow.com/users/3829857/user3829857"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526460796,
+            "creation_date": 1526460796,
+            "question_id": 50366384,
+            "body_markdown": "I have developers using IIS. There is a new policy in place where these users shouldn&#39;t have local admin rigts.\r\nIs there a way how to give them IIS management permission based on their AD group memmbership ? ",
+            "link": "https://stackoverflow.com/questions/50366384/iis-management-rights-for-non-admin-users-assigned-by-gpo",
+            "title": "IIS management rights for non admin users assigned by GPO",
+            "body": "<p>I have developers using IIS. There is a new policy in place where these users shouldn't have local admin rigts.\nIs there a way how to give them IIS management permission based on their AD group memmbership ? </p>\n"
+        },
+        {
+            "tags": [
+                "arrays",
+                "string",
+                "go",
+                "char",
+                "cgo"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9798842,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3d1e981b1afbeef75c2d3ade3ce2d35f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "LJC",
+                "link": "https://stackoverflow.com/users/9798842/ljc"
+            },
+            "is_answered": false,
+            "view_count": 32,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526460785,
+            "creation_date": 1526460381,
+            "last_edit_date": 1526460785,
+            "question_id": 50366243,
+            "body_markdown": "**have a problem**\r\n\r\n** I have a c function as below:**\r\n\r\n```void sign(const char *in, int in_size, char *out, int *out_size);```\r\n\r\n**how to use it in go?**\r\n\r\n**Am I correct?**\r\n\r\n    data:=&quot;123456&quot;\r\n    cData := C.CString(data)\r\n    defer C.free(unsafe.Pointer(cData))\r\n\r\n    var _skcy [30]C.char\r\n    var outLen C.int\r\n    C.sign(cData, C.int(len(data)), &amp;_skcy[0], &amp;outLen)\r\n\r\n    skcy := C.GoStringN(&amp;_skcy[0], outLen-1)",
+            "link": "https://stackoverflow.com/questions/50366243/how-to-get-the-out-parameter-from-c-function-in-go",
+            "title": "How to get the out parameter from C function in go?",
+            "body": "<p><strong>I have a C function as below:</strong></p>\n\n<p><code>void sign(const char *in, int in_size, char *out, int *out_size);</code></p>\n\n<p><strong>How do I use it in Go?</strong></p>\n\n<p><strong>Am I correct?</strong></p>\n\n<pre><code>data:=\"123456\"\ncData := C.CString(data)\ndefer C.free(unsafe.Pointer(cData))\n\nvar _skcy [30]C.char\nvar outLen C.int\nC.sign(cData, C.int(len(data)), &amp;_skcy[0], &amp;outLen)\n\nskcy := C.GoStringN(&amp;_skcy[0], outLen-1)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "u-sql",
+                "azure-data-factory-2"
+            ],
+            "owner": {
+                "reputation": 35,
+                "user_id": 2956121,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/05f2b750fdf560c777585d12373f6977?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user2956121",
+                "link": "https://stackoverflow.com/users/2956121/user2956121"
+            },
+            "is_answered": false,
+            "view_count": 37,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526460780,
+            "creation_date": 1525775527,
+            "question_id": 50231490,
+            "body_markdown": "I have a filename of test.csv and I want the output to be test.txt.\r\n\r\nI can extract the filename of the input but don&#39;t know how to use it for the output?\r\n\r\n    OUTPUT @result TO &quot;/output/{filename}.txt&quot;\r\n    USING Outputters.Text(outputHeader:false, quoting:false);\r\n\r\nThe filename is in the @result.\r\n\r\nThis feature isn&#39;t supported as of yet.\r\n\r\nDoes anyone have a work around?\r\n\r\nhttps://stackoverflow.com/questions/40998910/u-sql-how-can-i-get-the-current-filename-being-processed-to-add-to-my-extract-ou\r\n\r\nIdeally I would like dd-mm-yy-test.text?\r\n\r\nHow do I append the day month and year?\r\n\r\nI am using USQL for this.\r\n\r\nThanks\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50231490/u-sql-get-filename-of-input-and-use-for-output",
+            "title": "U-SQL get filename of input and use for output",
+            "body": "<p>I have a filename of test.csv and I want the output to be test.txt.</p>\n\n<p>I can extract the filename of the input but don't know how to use it for the output?</p>\n\n<pre><code>OUTPUT @result TO \"/output/{filename}.txt\"\nUSING Outputters.Text(outputHeader:false, quoting:false);\n</code></pre>\n\n<p>The filename is in the @result.</p>\n\n<p>This feature isn't supported as of yet.</p>\n\n<p>Does anyone have a work around?</p>\n\n<p><a href=\"https://stackoverflow.com/questions/40998910/u-sql-how-can-i-get-the-current-filename-being-processed-to-add-to-my-extract-ou\">U-SQL How can I get the current filename being processed to add to my extract output?</a></p>\n\n<p>Ideally I would like dd-mm-yy-test.text?</p>\n\n<p>How do I append the day month and year?</p>\n\n<p>I am using USQL for this.</p>\n\n<p>Thanks</p>\n"
+        },
+        {
+            "tags": [
+                "html",
+                "css",
+                "css-selectors"
+            ],
+            "owner": {
+                "reputation": 31,
+                "user_id": 5670441,
+                "user_type": "registered",
+                "accept_rate": 67,
+                "profile_image": "https://i.stack.imgur.com/VPPBg.jpg?s=128&g=1",
+                "display_name": "Jack Wolther",
+                "link": "https://stackoverflow.com/users/5670441/jack-wolther"
+            },
+            "is_answered": true,
+            "view_count": 30,
+            "accepted_answer_id": 50366147,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526460776,
+            "creation_date": 1526459043,
+            "question_id": 50365794,
+            "body_markdown": "I have a list of items and 4 checkboxes that correspond to item colors. What I need to achieve is when a checkbox is clicked all items that don&#39;t match the color are filtered out. \r\nI have managed to achieve a behavior where the whole list of items is not visible at first and desired items appear on click. But I need to have them all visible at first and desired items to stay whereas not desired items must disappear.\r\n\r\nMy HTML \r\n\r\n    &lt;div class=&quot;left-column&quot;&gt;\r\n                &lt;input type=&quot;checkbox&quot; checked name=&quot;blue&quot; id=&quot;blue&quot;&gt;\r\n                &lt;label for=&quot;blue&quot; class=&quot;blue&quot;&gt;&lt;/label&gt;\r\n                &lt;input type=&quot;checkbox&quot; checked name=&quot;green&quot; id=&quot;green&quot;&gt;\r\n                &lt;label for=&quot;green&quot; class=&quot;green&quot;&gt;&lt;/label&gt;\r\n                &lt;input type=&quot;checkbox&quot; checked name=&quot;pink&quot; id=&quot;pink&quot;&gt;\r\n                &lt;label for=&quot;pink&quot; class=&quot;pink&quot;&gt;&lt;/label&gt;\r\n                &lt;input type=&quot;checkbox&quot; checked name=&quot;red&quot; id=&quot;red&quot;&gt;\r\n                &lt;label for=&quot;red&quot; class=&quot;red&quot;&gt;&lt;/label&gt;\r\n                &lt;div class=&quot;filter-items&quot;&gt;\r\n                    &lt;div class=&quot;green item&quot;&gt;&lt;/div&gt;\r\n                    &lt;div class=&quot;red item&quot;&gt;&lt;/div&gt;\r\n                    &lt;div class=&quot;green item&quot;&gt;&lt;/div&gt;\r\n                    &lt;div class=&quot;pink item&quot;&gt;&lt;/div&gt;\r\n                    &lt;div class=&quot;blue item&quot;&gt;&lt;/div&gt;\r\n                    &lt;div class=&quot;red item&quot;&gt;&lt;/div&gt;\r\n                    &lt;div class=&quot;green item&quot;&gt;&lt;/div&gt;\r\n                    &lt;div class=&quot;pink item&quot;&gt;&lt;/div&gt;\r\n                    &lt;div class=&quot;blue item&quot;&gt;&lt;/div&gt;\r\n                    &lt;div class=&quot;blue item&quot;&gt;&lt;/div&gt;\r\n                    &lt;div class=&quot;red item&quot;&gt;&lt;/div&gt;\r\n                    &lt;div class=&quot;blue item&quot;&gt;&lt;/div&gt;\r\n                    &lt;div class=&quot;red item&quot;&gt;&lt;/div&gt;\r\n                &lt;/div&gt;\r\n            &lt;/div&gt;\r\nMy CSS\r\n\r\n    input{\r\n    display: none;\r\n    }\r\n    label{\r\n        padding-left: 1px;\r\n        display: inline-block;\r\n        background-color: green;\r\n        width: 44px;\r\n        height: 25px;\r\n        cursor: pointer;\r\n      }\r\n    .blue{background-color: blue}\r\n    .green{background-color: green}\r\n    .pink{background-color: pink}\r\n    .red{background-color: red}\r\n    \r\n    .filter-items{\r\n        width: 100%;\r\n        height: 600px;\r\n        background-color: darkcyan;\r\n    }\r\n    .item{\r\n        height: 20px;\r\n        line-height: 20px;\r\n        margin-top: 5px;\r\n    }\r\n    input{display: none}\r\n      \r\n    input#green:checked ~ .filter-items .item.green,\r\n    input#red:checked ~ .filter-items .item.red,\r\n    input#pink:checked ~ .filter-items .item.pink,\r\n    input#blue:checked ~ .filter-items .item.blue{\r\n        display: none;\r\n        border: 1px solid rgb(128, 5, 5);\r\n        \r\n    }\r\n      input:not(:checked) + label{\r\n        background: none;\r\n        box-shadow: none;\r\n        margin: 5px 3p 1px;\r\n      }\r\n\r\nCould this be achieved using `combinator selectors` or should I look somewhere else? Thanks!",
+            "link": "https://stackoverflow.com/questions/50365794/using-css-combinators-to-create-a-filter-for-item",
+            "title": "Using CSS combinators to create a &quot;filter&quot; for item",
+            "body": "<p>I have a list of items and 4 checkboxes that correspond to item colors. What I need to achieve is when a checkbox is clicked all items that don't match the color are filtered out. \nI have managed to achieve a behavior where the whole list of items is not visible at first and desired items appear on click. But I need to have them all visible at first and desired items to stay whereas not desired items must disappear.</p>\n\n<p>My HTML </p>\n\n<pre><code>&lt;div class=\"left-column\"&gt;\n            &lt;input type=\"checkbox\" checked name=\"blue\" id=\"blue\"&gt;\n            &lt;label for=\"blue\" class=\"blue\"&gt;&lt;/label&gt;\n            &lt;input type=\"checkbox\" checked name=\"green\" id=\"green\"&gt;\n            &lt;label for=\"green\" class=\"green\"&gt;&lt;/label&gt;\n            &lt;input type=\"checkbox\" checked name=\"pink\" id=\"pink\"&gt;\n            &lt;label for=\"pink\" class=\"pink\"&gt;&lt;/label&gt;\n            &lt;input type=\"checkbox\" checked name=\"red\" id=\"red\"&gt;\n            &lt;label for=\"red\" class=\"red\"&gt;&lt;/label&gt;\n            &lt;div class=\"filter-items\"&gt;\n                &lt;div class=\"green item\"&gt;&lt;/div&gt;\n                &lt;div class=\"red item\"&gt;&lt;/div&gt;\n                &lt;div class=\"green item\"&gt;&lt;/div&gt;\n                &lt;div class=\"pink item\"&gt;&lt;/div&gt;\n                &lt;div class=\"blue item\"&gt;&lt;/div&gt;\n                &lt;div class=\"red item\"&gt;&lt;/div&gt;\n                &lt;div class=\"green item\"&gt;&lt;/div&gt;\n                &lt;div class=\"pink item\"&gt;&lt;/div&gt;\n                &lt;div class=\"blue item\"&gt;&lt;/div&gt;\n                &lt;div class=\"blue item\"&gt;&lt;/div&gt;\n                &lt;div class=\"red item\"&gt;&lt;/div&gt;\n                &lt;div class=\"blue item\"&gt;&lt;/div&gt;\n                &lt;div class=\"red item\"&gt;&lt;/div&gt;\n            &lt;/div&gt;\n        &lt;/div&gt;\n</code></pre>\n\n<p>My CSS</p>\n\n<pre><code>input{\ndisplay: none;\n}\nlabel{\n    padding-left: 1px;\n    display: inline-block;\n    background-color: green;\n    width: 44px;\n    height: 25px;\n    cursor: pointer;\n  }\n.blue{background-color: blue}\n.green{background-color: green}\n.pink{background-color: pink}\n.red{background-color: red}\n\n.filter-items{\n    width: 100%;\n    height: 600px;\n    background-color: darkcyan;\n}\n.item{\n    height: 20px;\n    line-height: 20px;\n    margin-top: 5px;\n}\ninput{display: none}\n\ninput#green:checked ~ .filter-items .item.green,\ninput#red:checked ~ .filter-items .item.red,\ninput#pink:checked ~ .filter-items .item.pink,\ninput#blue:checked ~ .filter-items .item.blue{\n    display: none;\n    border: 1px solid rgb(128, 5, 5);\n\n}\n  input:not(:checked) + label{\n    background: none;\n    box-shadow: none;\n    margin: 5px 3p 1px;\n  }\n</code></pre>\n\n<p>Could this be achieved using <code>combinator selectors</code> or should I look somewhere else? Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "django",
+                "model",
+                "meta"
+            ],
+            "owner": {
+                "reputation": 550,
+                "user_id": 1305860,
+                "user_type": "registered",
+                "accept_rate": 45,
+                "profile_image": "https://www.gravatar.com/avatar/9ee80f029b13d945a5218b56d2406e1b?s=128&d=identicon&r=PG",
+                "display_name": "paynestrike",
+                "link": "https://stackoverflow.com/users/1305860/paynestrike"
+            },
+            "is_answered": true,
+            "view_count": 333,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526460773,
+            "creation_date": 1357799807,
+            "last_edit_date": 1357800037,
+            "question_id": 14252128,
+            "body_markdown": "suppose I have three model like this:\r\n\r\n     class video(models.Model):\r\n           name=models.CharField(max_length = 100)\r\n\r\n     class image(models.Model):\r\n           name=models.CharField(max_length = 100)\r\n\r\n     class comments(models.Model):\r\n           content=models.CharField(max_length = 100)\r\n\r\nnow i want to notic the user if their video or image get an comment\r\n\r\nthis is what i want \r\n\r\nthe message model:\r\n\r\n    class message(models.Model):\r\n           type=models.CharField(max_length = 100) # &#39;video&#39; or &#39;image&#39;\r\n           video_or_image=models.ForeignKey(video or image)\r\n\r\n           #the type is just a string to tell if the comment is about the video or image\r\n           #video_or_image need to be video foreignkey or image foreignkey depends on type\r\n\r\nis it possible.\r\n\r\nI currently work around this by two method\r\n\r\n**first**：\r\n\r\n       class message(models.Model):\r\n           type = models.CharField(max_length = 100) # &#39;video&#39; or &#39;image&#39;\r\n           video_or_image_id = models.IntegerField(default = 1)\r\n           # \r\n\r\n**second**\r\n\r\n      class message(models.Model):\r\n           type=models.CharField(max_length = 100) # &#39;video&#39; or &#39;image&#39;\r\n           video=models.ForeignKey(video)\r\n           image=models.ForeignKey(image)\r\n           # if the comment is about video just leave the image empty\r\n           \r\nif the one field to multiple model can not be done, then which my work around method is better, or help me with a better one!",
+            "link": "https://stackoverflow.com/questions/14252128/how-can-a-django-model-field-relate-to-multiple-model",
+            "title": "How can a django model field relate to multiple model?",
+            "body": "<p>suppose I have three model like this:</p>\n\n<pre><code> class video(models.Model):\n       name=models.CharField(max_length = 100)\n\n class image(models.Model):\n       name=models.CharField(max_length = 100)\n\n class comments(models.Model):\n       content=models.CharField(max_length = 100)\n</code></pre>\n\n<p>now i want to notic the user if their video or image get an comment</p>\n\n<p>this is what i want </p>\n\n<p>the message model:</p>\n\n<pre><code>class message(models.Model):\n       type=models.CharField(max_length = 100) # 'video' or 'image'\n       video_or_image=models.ForeignKey(video or image)\n\n       #the type is just a string to tell if the comment is about the video or image\n       #video_or_image need to be video foreignkey or image foreignkey depends on type\n</code></pre>\n\n<p>is it possible.</p>\n\n<p>I currently work around this by two method</p>\n\n<p><strong>first</strong>：</p>\n\n<pre><code>   class message(models.Model):\n       type = models.CharField(max_length = 100) # 'video' or 'image'\n       video_or_image_id = models.IntegerField(default = 1)\n       # \n</code></pre>\n\n<p><strong>second</strong></p>\n\n<pre><code>  class message(models.Model):\n       type=models.CharField(max_length = 100) # 'video' or 'image'\n       video=models.ForeignKey(video)\n       image=models.ForeignKey(image)\n       # if the comment is about video just leave the image empty\n</code></pre>\n\n<p>if the one field to multiple model can not be done, then which my work around method is better, or help me with a better one!</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "eclipse",
+                "electric-cloud"
+            ],
+            "owner": {
+                "reputation": 32,
+                "user_id": 3354299,
+                "user_type": "registered",
+                "accept_rate": 54,
+                "profile_image": "https://www.gravatar.com/avatar/2a7a851f66d515238acc782e82339aaa?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Sangli",
+                "link": "https://stackoverflow.com/users/3354299/sangli"
+            },
+            "is_answered": false,
+            "view_count": 5,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526460773,
+            "creation_date": 1526460773,
+            "question_id": 50366377,
+            "body_markdown": "I&#39;m working on a project to automate the process of electric commander where each time the user needs to manually supply the parameters (such as SVN tag URL, resource etc..) to kick start an EC job which would deploy the artifacts into our company&#39;s main release repo. We use SVN. I followed some instructions on various sites to setup Eclipse/Python and also installed ElectricCommander module and here&#39;s my code which just halts the execution without raising any exceptions/errors when run through Eclipse and also through a command prompt - \r\n\r\n    from ec import ElectricCommander\r\n\r\n    def release():\r\n        cmdr = ElectricCommander(&#39;commander.myCompany.corp&#39;, 8443)\r\n        try:\r\n        xml = cmdr.getProperty(dict(propertyName=&#39;/server/myprop&#39;))\r\n        xml = cmdr.login(&#39;userName&#39;,&#39;Password&#39;)\r\n        except Exception as inst:\r\n        print(inst)\r\n        cmdr.createRequest(&quot;run_procedure&quot;,dict())\r\n        print(cmdr.issueRequest(&quot;getProject&quot;,dict(projectName = &#39;ProjectName&#39;)))\r\n        #release the translation requests\r\n        print(cmdr.issueRequest(&quot;runProcedure&quot;,dict(projectName =&#39;ProjectName&#39;,\r\n                                 procedureName =&#39;Build - Release&#39;,\r\n                                 actualParameter= [dict\r\n                                 (actualParameterName=&#39;JavaVersion&#39;,\r\n                                 value=&#39;1.7&#39;),                           \r\n                                 dict(actualParameterName=&#39;MavenVersion&#39;,\r\n                                 value=&#39;3.1.0&#39;),                                                          \r\n                                 dict(actualParameterName=&#39;DryRun&#39;,\r\n                                 value=&#39;true&#39;),\r\n                                 dict(actualParameterName=&#39;Repository&#39;,\r\n                                 value=&#39;internal&#39;),                                                            \r\n                                 dict(actualParameterName=&#39;Url&#39;,\r\n                                 value=&#39;SVNTagUrlPath&#39;),                                                               \r\n                                 dict(actualParameterName=\r\n                                      &#39;EnvironmentVariables&#39;,\r\n                                 value=&#39;MAVEN_OPTS=-Xms256m -Xmx1024m \r\n                                      -XX:MaxPermSize=256m&#39;)])))\r\n        print(cmdr.httpPost(cmdr.createRequest(&quot;run_procedure&quot;,dict(projecName \r\n                                               =&#39;ProjectName&#39;,procedureName \r\n                                               =&#39;Build - Release&#39;))))  \r\n        return \r\n \r\n    release()\r\n\r\nThe code execution just halts at the first line in the TRY block - xml = cmdr.getProperty(dict(propertyName=&#39;/server/myprop&#39;)) without raising any errors/exceptions, also tried initializing the ElectricCommander object without the optional PORT parameters (8443), I debugged a little further and noticed that the code exactly halts the execution while issuing a httpPost request in the ElectricCommander python module, any help is appreciated.\r\n\r\nAlso is there a JAVA API for accessing Electric Commander server and invoke jobs? or is there a way I can do this through Jenkins?",
+            "link": "https://stackoverflow.com/questions/50366377/electriccommander-python-module",
+            "title": "ElectricCommander Python module",
+            "body": "<p>I'm working on a project to automate the process of electric commander where each time the user needs to manually supply the parameters (such as SVN tag URL, resource etc..) to kick start an EC job which would deploy the artifacts into our company's main release repo. We use SVN. I followed some instructions on various sites to setup Eclipse/Python and also installed ElectricCommander module and here's my code which just halts the execution without raising any exceptions/errors when run through Eclipse and also through a command prompt - </p>\n\n<pre><code>from ec import ElectricCommander\n\ndef release():\n    cmdr = ElectricCommander('commander.myCompany.corp', 8443)\n    try:\n    xml = cmdr.getProperty(dict(propertyName='/server/myprop'))\n    xml = cmdr.login('userName','Password')\n    except Exception as inst:\n    print(inst)\n    cmdr.createRequest(\"run_procedure\",dict())\n    print(cmdr.issueRequest(\"getProject\",dict(projectName = 'ProjectName')))\n    #release the translation requests\n    print(cmdr.issueRequest(\"runProcedure\",dict(projectName ='ProjectName',\n                             procedureName ='Build - Release',\n                             actualParameter= [dict\n                             (actualParameterName='JavaVersion',\n                             value='1.7'),                           \n                             dict(actualParameterName='MavenVersion',\n                             value='3.1.0'),                                                          \n                             dict(actualParameterName='DryRun',\n                             value='true'),\n                             dict(actualParameterName='Repository',\n                             value='internal'),                                                            \n                             dict(actualParameterName='Url',\n                             value='SVNTagUrlPath'),                                                               \n                             dict(actualParameterName=\n                                  'EnvironmentVariables',\n                             value='MAVEN_OPTS=-Xms256m -Xmx1024m \n                                  -XX:MaxPermSize=256m')])))\n    print(cmdr.httpPost(cmdr.createRequest(\"run_procedure\",dict(projecName \n                                           ='ProjectName',procedureName \n                                           ='Build - Release'))))  \n    return \n\nrelease()\n</code></pre>\n\n<p>The code execution just halts at the first line in the TRY block - xml = cmdr.getProperty(dict(propertyName='/server/myprop')) without raising any errors/exceptions, also tried initializing the ElectricCommander object without the optional PORT parameters (8443), I debugged a little further and noticed that the code exactly halts the execution while issuing a httpPost request in the ElectricCommander python module, any help is appreciated.</p>\n\n<p>Also is there a JAVA API for accessing Electric Commander server and invoke jobs? or is there a way I can do this through Jenkins?</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "task-parallel-library"
+            ],
+            "owner": {
+                "reputation": 1230,
+                "user_id": 687554,
+                "user_type": "registered",
+                "accept_rate": 89,
+                "profile_image": "https://www.gravatar.com/avatar/1c784d527835dd252003dfc058a8e873?s=128&d=identicon&r=PG",
+                "display_name": "user687554",
+                "link": "https://stackoverflow.com/users/687554/user687554"
+            },
+            "is_answered": true,
+            "view_count": 60,
+            "accepted_answer_id": 50116577,
+            "answer_count": 3,
+            "score": 1,
+            "last_activity_date": 1526460765,
+            "creation_date": 1525177637,
+            "question_id": 50116458,
+            "body_markdown": "I have a C# app that must run blocks of code in parallel. Here is the basic structure of two of those blocks of code. In reality, there will be many more.\r\n\r\n    private async Task MyFirstTask()\r\n    {\r\n       // do stuff\r\n    \r\n       await FirstTaskImplementation();\r\n    \r\n       // cleanup\r\n    }\r\n    \r\n    private async Task MySecondTask()\r\n    {\r\n       // do stuff\r\n    \r\n       await SecondTaskImplementation();\r\n    \r\n       // cleanup\r\n    }\r\n\r\nSome of these blocks of code will run on a timer. Some will run repeatedly. In an attempt to accomplish, I have the following:\r\n\r\n    Task.Run(() =&gt; MyFirstTask());\r\n    Task.Run(() =&gt; MySecondTask());\r\n\r\nWhen `MyFirstTask` has completed, I want to run it again. In fact, I want to run it over-and-over again until the program stops. Yet, I want `MySecondTask` to run in parallel of `MyFirstTask`. My question is, how do I execute `MyFirstTask` repeatedly, while still being parallel to `MySecondTask`? \r\n\r\nI reviewed several of the related SO questions.  I also do not see a `Complete` kind of event handler. So, I&#39;m kind of lost in terms of how to implement this. I appreciate your help!\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50116458/call-c-task-repeatedly-on-conclusion",
+            "title": "Call C# Task Repeatedly on conclusion",
+            "body": "<p>I have a C# app that must run blocks of code in parallel. Here is the basic structure of two of those blocks of code. In reality, there will be many more.</p>\n\n<pre><code>private async Task MyFirstTask()\n{\n   // do stuff\n\n   await FirstTaskImplementation();\n\n   // cleanup\n}\n\nprivate async Task MySecondTask()\n{\n   // do stuff\n\n   await SecondTaskImplementation();\n\n   // cleanup\n}\n</code></pre>\n\n<p>Some of these blocks of code will run on a timer. Some will run repeatedly. In an attempt to accomplish, I have the following:</p>\n\n<pre><code>Task.Run(() =&gt; MyFirstTask());\nTask.Run(() =&gt; MySecondTask());\n</code></pre>\n\n<p>When <code>MyFirstTask</code> has completed, I want to run it again. In fact, I want to run it over-and-over again until the program stops. Yet, I want <code>MySecondTask</code> to run in parallel of <code>MyFirstTask</code>. My question is, how do I execute <code>MyFirstTask</code> repeatedly, while still being parallel to <code>MySecondTask</code>? </p>\n\n<p>I reviewed several of the related SO questions.  I also do not see a <code>Complete</code> kind of event handler. So, I'm kind of lost in terms of how to implement this. I appreciate your help!</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "jquery",
+                "html",
+                "html5",
+                "html-table"
+            ],
+            "owner": {
+                "reputation": 7,
+                "user_id": 7158897,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/f39f140ae86b44342c941db1891ec055?s=128&d=identicon&r=PG&f=1",
+                "display_name": "unknown artist01",
+                "link": "https://stackoverflow.com/users/7158897/unknown-artist01"
+            },
+            "is_answered": true,
+            "view_count": 20,
+            "accepted_answer_id": 50366374,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526460763,
+            "creation_date": 1526459121,
+            "last_edit_date": 1526460424,
+            "question_id": 50365819,
+            "body_markdown": "I am trying to display a table with different content, based on the area that you click.\r\n\r\nFor example if I click on A (map area) I want to see only the information about A. And if I click on B (map area) I want see only information about B.\r\n\r\n&lt;!-- language: lang-html --&gt;\r\n\r\n    &lt;script src=&quot;https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js&quot;&gt;&lt;/script&gt;\r\n    &lt;map class=&quot;list-group&quot; name=&quot;map&quot;&gt;\r\n      &lt;area id=&quot;section-1&quot; class=&quot;list-group-item&quot; shape=&quot;rect&quot; coords=&quot;198,368,142,337&quot; href=&quot;#section-1&quot; /&gt;\r\n    &lt;/map&gt;\r\n\r\n    &lt;img alt=&quot;Picture1&quot; src=&quot;http://via.placeholder.com/680x466/444444/DDDDDD?text=Placeholder&quot; width=&quot;680&quot; height=&quot;466&quot; usemap=&quot;map&quot; data-cms=&quot;{&#39;contentId&#39;:95875}&quot; /&gt;\r\n\r\n    &lt;table class=&quot;hide section-1&quot; style=&quot;margin-left: auto; margin-right: auto;&quot;&gt;\r\n      &lt;tbody&gt;\r\n        &lt;tr&gt;\r\n          &lt;th&gt;\r\n            &lt;strong&gt;Name&amp;nbsp;&lt;/strong&gt;\r\n          &lt;/th&gt;\r\n          &lt;th&gt;\r\n            &lt;strong&gt;&amp;nbsp;Surname&lt;/strong&gt;\r\n          &lt;/th&gt;\r\n          &lt;th&gt;\r\n            &lt;strong&gt;Addressf&amp;nbsp;&lt;/strong&gt;\r\n          &lt;/th&gt;\r\n          &lt;th&gt;\r\n            &lt;strong&gt;Postecode&lt;/strong&gt;&amp;nbsp;\r\n          &lt;/th&gt;\r\n        &lt;/tr&gt;\r\n        &lt;tr&gt;\r\n          &lt;td&gt;test&amp;nbsp;&lt;/td&gt;\r\n          &lt;td&gt;test&amp;nbsp;&lt;/td&gt;\r\n          &lt;td&gt;test&amp;nbsp;&lt;/td&gt;\r\n          &lt;td&gt;test&amp;nbsp;&lt;/td&gt;\r\n        &lt;/tr&gt;\r\n      &lt;/tbody&gt;\r\n    &lt;/table&gt;\r\n\r\n&lt;!-- language: lang-js --&gt;\r\n\r\n    $(function() {\r\n      $(&#39;.list-group a&#39;).on(&#39;click&#39;, function(e) {\r\n        e.preventDefault();\r\n        $(&#39;.hide&#39;).hide();\r\n        $(&#39;.&#39; + this.id).show();\r\n      });\r\n    });",
+            "link": "https://stackoverflow.com/questions/50365819/how-to-show-hide-different-table-content-based-on-map-area-click",
+            "title": "How to show/hide different table content based on map area click",
+            "body": "<p>I am trying to display a table with different content, based on the area that you click.</p>\n\n<p>For example if I click on A (map area) I want to see only the information about A. And if I click on B (map area) I want see only information about B.</p>\n\n<pre class=\"lang-html prettyprint-override\"><code>&lt;script src=\"https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js\"&gt;&lt;/script&gt;\n&lt;map class=\"list-group\" name=\"map\"&gt;\n  &lt;area id=\"section-1\" class=\"list-group-item\" shape=\"rect\" coords=\"198,368,142,337\" href=\"#section-1\" /&gt;\n&lt;/map&gt;\n\n&lt;img alt=\"Picture1\" src=\"http://via.placeholder.com/680x466/444444/DDDDDD?text=Placeholder\" width=\"680\" height=\"466\" usemap=\"map\" data-cms=\"{'contentId':95875}\" /&gt;\n\n&lt;table class=\"hide section-1\" style=\"margin-left: auto; margin-right: auto;\"&gt;\n  &lt;tbody&gt;\n    &lt;tr&gt;\n      &lt;th&gt;\n        &lt;strong&gt;Name&amp;nbsp;&lt;/strong&gt;\n      &lt;/th&gt;\n      &lt;th&gt;\n        &lt;strong&gt;&amp;nbsp;Surname&lt;/strong&gt;\n      &lt;/th&gt;\n      &lt;th&gt;\n        &lt;strong&gt;Addressf&amp;nbsp;&lt;/strong&gt;\n      &lt;/th&gt;\n      &lt;th&gt;\n        &lt;strong&gt;Postecode&lt;/strong&gt;&amp;nbsp;\n      &lt;/th&gt;\n    &lt;/tr&gt;\n    &lt;tr&gt;\n      &lt;td&gt;test&amp;nbsp;&lt;/td&gt;\n      &lt;td&gt;test&amp;nbsp;&lt;/td&gt;\n      &lt;td&gt;test&amp;nbsp;&lt;/td&gt;\n      &lt;td&gt;test&amp;nbsp;&lt;/td&gt;\n    &lt;/tr&gt;\n  &lt;/tbody&gt;\n&lt;/table&gt;\n</code></pre>\n\n<pre class=\"lang-js prettyprint-override\"><code>$(function() {\n  $('.list-group a').on('click', function(e) {\n    e.preventDefault();\n    $('.hide').hide();\n    $('.' + this.id).show();\n  });\n});\n</code></pre>\n\n<p>Here is the fiddle <a href=\"https://jsfiddle.net/or17ny60/\" rel=\"nofollow noreferrer\">https://jsfiddle.net/or17ny60/</a></p>\n"
+        },
+        {
+            "tags": [
+                "vsts",
+                "vsts-build-task",
+                "vsts-package-management"
+            ],
+            "owner": {
+                "reputation": 166,
+                "user_id": 1396618,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/42fd118a406e1b5eba323c5802973e6d?s=128&d=identicon&r=PG",
+                "display_name": "Edward Wilson",
+                "link": "https://stackoverflow.com/users/1396618/edward-wilson"
+            },
+            "is_answered": true,
+            "view_count": 719,
+            "accepted_answer_id": 36694668,
+            "answer_count": 2,
+            "score": 4,
+            "last_activity_date": 1526460759,
+            "creation_date": 1460979204,
+            "last_edit_date": 1460983940,
+            "question_id": 36692811,
+            "body_markdown": "I am using VSTS vNext build system to build a C# solution.\r\nBelow you can see the settings for the NuGet Packager. The path to nuspec files is set to reference the .csproj files. \r\n\r\n[![enter image description here][1]][1]\r\n\r\n\r\n  [1]: http://i.stack.imgur.com/x7CSj.png\r\n\r\nHowever this includes all .csproj files; I need to **exclude** test projects. Ignoring &#39;Core.Test.csproj&#39; but still packaging &#39;Core.csproj&#39;.\r\n\r\nI have tried &#39;**\\*.csproj;-:!**\\*test.csproj&#39; and other combinations but have had no luck figuring this out! Does anyone know how the pattern matching works for vNext build?",
+            "link": "https://stackoverflow.com/questions/36692811/vsts-nuget-pack-exclude-test-projects",
+            "title": "VSTS NuGet pack exclude test projects",
+            "body": "<p>I am using VSTS vNext build system to build a C# solution.\nBelow you can see the settings for the NuGet Packager. The path to nuspec files is set to reference the .csproj files. </p>\n\n<p><a href=\"https://i.stack.imgur.com/x7CSj.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/x7CSj.png\" alt=\"enter image description here\"></a></p>\n\n<p>However this includes all .csproj files; I need to <strong>exclude</strong> test projects. Ignoring 'Core.Test.csproj' but still packaging 'Core.csproj'.</p>\n\n<p>I have tried '<strong>*.csproj;-:!</strong>*test.csproj' and other combinations but have had no luck figuring this out! Does anyone know how the pattern matching works for vNext build?</p>\n"
+        },
+        {
+            "tags": [
+                "asp.net-mvc",
+                "fullcalendar",
+                "fullcalendar-scheduler"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 9649420,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "Dinho",
+                "link": "https://stackoverflow.com/users/9649420/dinho"
+            },
+            "is_answered": false,
+            "view_count": 18,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526460748,
+            "creation_date": 1526460748,
+            "question_id": 50366369,
+            "body_markdown": "I am implementing a calendar, but in the part of removing the calendar event, it has given me an error and I have not been able to remove this same event.\r\n\r\n**JavaScript code**\r\n\r\n    $(&#39;#btnDelete&#39;).click(function () {\r\n                    if (selectedEvent != null &amp;&amp; confirm(&#39;Are you sure?&#39;)) {\r\n                        $.ajax({\r\n                            type: &quot;POST&quot;,\r\n                            url: &#39;/Calend&#225;rioReservas/DeleteEvent&#39;,\r\n                            data: { &#39;eventID&#39;: selectedEvent.eventID },\r\n                            success: function (data) {\r\n                                if (data.status) {\r\n                                    //Refresh the calender\r\n                                    FetchEventAndRenderCalendar();\r\n                                    $(&#39;#myModal&#39;).modal(&#39;hide&#39;);\r\n                                }\r\n                            },\r\n                            error: function () {\r\n                                alert(&#39;Failed&#39;);\r\n                            }\r\n                        })\r\n                    }\r\n                })\r\n\r\n**Method**\r\n\r\n    [HttpPost]\r\n            public JsonResult DeleteEvent(int eventID)\r\n            {\r\n                var status = false;\r\n                using (HotelEntities dc = new HotelEntities())\r\n                {\r\n                    var v = dc.Reserva.Where(a =&gt; a.ID_Reserva == eventID).FirstOrDefault();\r\n                    if (v != null)\r\n                    {\r\n                        dc.Reserva.Remove(v);\r\n                        dc.SaveChanges();\r\n                        status = true;\r\n                    }\r\n                }\r\n                return new JsonResult { Data = new { status = status } };\r\n            }",
+            "link": "https://stackoverflow.com/questions/50366369/mvc-full-calendar-delete-events",
+            "title": "mvc Full Calendar Delete Events",
+            "body": "<p>I am implementing a calendar, but in the part of removing the calendar event, it has given me an error and I have not been able to remove this same event.</p>\n\n<p><strong>JavaScript code</strong></p>\n\n<pre><code>$('#btnDelete').click(function () {\n                if (selectedEvent != null &amp;&amp; confirm('Are you sure?')) {\n                    $.ajax({\n                        type: \"POST\",\n                        url: '/CalendárioReservas/DeleteEvent',\n                        data: { 'eventID': selectedEvent.eventID },\n                        success: function (data) {\n                            if (data.status) {\n                                //Refresh the calender\n                                FetchEventAndRenderCalendar();\n                                $('#myModal').modal('hide');\n                            }\n                        },\n                        error: function () {\n                            alert('Failed');\n                        }\n                    })\n                }\n            })\n</code></pre>\n\n<p><strong>Method</strong></p>\n\n<pre><code>[HttpPost]\n        public JsonResult DeleteEvent(int eventID)\n        {\n            var status = false;\n            using (HotelEntities dc = new HotelEntities())\n            {\n                var v = dc.Reserva.Where(a =&gt; a.ID_Reserva == eventID).FirstOrDefault();\n                if (v != null)\n                {\n                    dc.Reserva.Remove(v);\n                    dc.SaveChanges();\n                    status = true;\n                }\n            }\n            return new JsonResult { Data = new { status = status } };\n        }\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "pandas"
+            ],
+            "owner": {
+                "reputation": 206,
+                "user_id": 3446351,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/7ec161106a18696941e8057f1dd5be8c?s=128&d=identicon&r=PG",
+                "display_name": "Ymareth",
+                "link": "https://stackoverflow.com/users/3446351/ymareth"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526460741,
+            "creation_date": 1526459414,
+            "last_edit_date": 1526460741,
+            "question_id": 50365919,
+            "body_markdown": "This series...\r\n\r\n    pd.Series([pd.Timestamp.utcnow() for v in range(5)])\r\n\r\n    0   2018-05-16 08:24:29.673274+00:00\r\n    1   2018-05-16 08:24:29.673274+00:00\r\n    2   2018-05-16 08:24:29.673274+00:00\r\n    3   2018-05-16 08:24:29.673274+00:00\r\n    4   2018-05-16 08:24:29.673274+00:00\r\n    dtype: datetime64[ns, UTC]\r\n\r\n...can be seen to have dtype = datetime64[ns, UTC].\r\n\r\nBut setting it explicitly raises a TypeError.\r\n\r\n    pd.Series([pd.Timestamp.utcnow() for v in range(5)], dtype=&#39;datetime64[ns, UTC]&#39;)\r\n    TypeError: data type not understood\r\n\r\nEven setting it to the explicit value from an identical series does the same...\r\n\r\n    pd.Series([pd.Timestamp.utcnow() for v in range(5)],\r\n              dtype=pd.Series([pd.Timestamp.utcnow() for v in range(5)]).dtype)\r\n    TypeError: data type not understood\r\n\r\nIt seems odd to reject a dtype that would be selected automatically.",
+            "link": "https://stackoverflow.com/questions/50365919/why-does-setting-a-series-dtype-raise-a-typeerror-when-the-dtype-is-apparently",
+            "title": "Why does setting a Series dtype raise a TypeError when the dtype is (apparently) what would be chosen anyway?",
+            "body": "<p>This series...</p>\n\n<pre><code>pd.Series([pd.Timestamp.utcnow() for v in range(5)])\n\n0   2018-05-16 08:24:29.673274+00:00\n1   2018-05-16 08:24:29.673274+00:00\n2   2018-05-16 08:24:29.673274+00:00\n3   2018-05-16 08:24:29.673274+00:00\n4   2018-05-16 08:24:29.673274+00:00\ndtype: datetime64[ns, UTC]\n</code></pre>\n\n<p>...can be seen to have dtype = datetime64[ns, UTC].</p>\n\n<p>But setting it explicitly raises a TypeError.</p>\n\n<pre><code>pd.Series([pd.Timestamp.utcnow() for v in range(5)], dtype='datetime64[ns, UTC]')\nTypeError: data type not understood\n</code></pre>\n\n<p>Even setting it to the explicit value from an identical series does the same...</p>\n\n<pre><code>pd.Series([pd.Timestamp.utcnow() for v in range(5)],\n          dtype=pd.Series([pd.Timestamp.utcnow() for v in range(5)]).dtype)\nTypeError: data type not understood\n</code></pre>\n\n<p>It seems odd to reject a dtype that would be selected automatically.</p>\n"
+        },
+        {
+            "tags": [
+                "swift",
+                "xcode",
+                "github"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9446451,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "ali aseman",
+                "link": "https://stackoverflow.com/users/9446451/ali-aseman"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "closed_date": 1526461753,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526460738,
+            "creation_date": 1526460738,
+            "question_id": 50366365,
+            "body_markdown": "i want to know how to **import**  git swift **library** to a **project**.\r\n  notice:I created **pod file** but don&#39;t know what should to do.\r\n  Thanks.",
+            "link": "https://stackoverflow.com/questions/50366365/import-library-from-github",
+            "closed_reason": "duplicate",
+            "title": "Import library from github",
+            "body": "<p>i want to know how to <strong>import</strong>  git swift <strong>library</strong> to a <strong>project</strong>.\n  notice:I created <strong>pod file</strong> but don't know what should to do.\n  Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "json",
+                "parsing"
+            ],
+            "owner": {
+                "reputation": 66,
+                "user_id": 9057608,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/ec95dc4de8fdfc434f08143458250ca5?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Frameman",
+                "link": "https://stackoverflow.com/users/9057608/frameman"
+            },
+            "is_answered": false,
+            "view_count": 32,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526460729,
+            "creation_date": 1526460729,
+            "question_id": 50366362,
+            "body_markdown": "i want to parse Json Feed from my localhost \r\n\r\nhttp://localhost/hardfeed.json\r\nthis Json file content is ::\r\n\r\n    {\r\n    \t&quot;bpi&quot;: {\r\n    \t\t&quot;2018-04-14&quot;: 8003.6813,\r\n    \t\t&quot;2018-04-15&quot;: 8357.0375,\r\n    \t\t&quot;2018-04-16&quot;: 8051.345,\r\n    \t\t&quot;2018-04-17&quot;: 7890.15,\r\n    \t\t&quot;2018-04-18&quot;: 8163.69,\r\n    \t\t&quot;2018-04-19&quot;: 8273.7413,\r\n    \t\t&quot;2018-04-20&quot;: 8863.5025,\r\n    \t\t&quot;2018-04-21&quot;: 8917.5963,\r\n    \t\t&quot;2018-04-22&quot;: 8792.83,\r\n    \t\t&quot;2018-04-23&quot;: 8938.3038,\r\n    \t\t&quot;2018-04-24&quot;: 9652.1563,\r\n    \t\t&quot;2018-04-25&quot;: 8864.0875,\r\n    \t\t&quot;2018-04-26&quot;: 9278.9975,\r\n    \t\t&quot;2018-04-27&quot;: 8978.3325,\r\n    \t\t&quot;2018-04-28&quot;: 9342.4713,\r\n    \t\t&quot;2018-04-29&quot;: 9392.0313,\r\n    \t\t&quot;2018-04-30&quot;: 9244.3225,\r\n    \t\t&quot;2018-05-01&quot;: 9067.715,\r\n    \t\t&quot;2018-05-02&quot;: 9219.8638,\r\n    \t\t&quot;2018-05-03&quot;: 9734.675,\r\n    \t\t&quot;2018-05-04&quot;: 9692.7175,\r\n    \t\t&quot;2018-05-05&quot;: 9826.5975,\r\n    \t\t&quot;2018-05-06&quot;: 9619.1438,\r\n    \t\t&quot;2018-05-07&quot;: 9362.5338,\r\n    \t\t&quot;2018-05-08&quot;: 9180.1588,\r\n    \t\t&quot;2018-05-09&quot;: 9306,\r\n    \t\t&quot;2018-05-10&quot;: 9014.615,\r\n    \t\t&quot;2018-05-11&quot;: 8406.175,\r\n    \t\t&quot;2018-05-12&quot;: 8467.6563,\r\n    \t\t&quot;2018-05-13&quot;: 8688.0288,\r\n    \t\t&quot;2018-05-14&quot;: 8675.2063\r\n    \t},\r\n    \t&quot;disclaimer&quot;: &quot;This Test is generated from Localhost&quot;,\r\n    \t&quot;time&quot;: {\r\n    \t\t&quot;updated&quot;: &quot;May 15, 2018 00:03:00 UTC&quot;,\r\n    \t\t&quot;updatedISO&quot;: &quot;2018-05-15T00:03:00+00:00&quot;\r\n    \t}\r\n    }\r\n\r\nwhen parsing the file data i got a non valid result without quotes for the bpi object\r\n [![parse non valid data ][1]][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/ZXlmd.png\r\n\r\nthis is my JS method \r\n\r\n        $.getJSON(&#39;http://localhost/hardfeed.json&#39;, function(data) {\r\n            \r\n    console.log(data) ; \r\n    \r\n    \r\n        });",
+            "link": "https://stackoverflow.com/questions/50366362/parse-json-return-non-valid-object",
+            "title": "Parse json return non valid object",
+            "body": "<p>i want to parse Json Feed from my localhost </p>\n\n<p><a href=\"http://localhost/hardfeed.json\" rel=\"nofollow noreferrer\">http://localhost/hardfeed.json</a>\nthis Json file content is ::</p>\n\n<pre><code>{\n    \"bpi\": {\n        \"2018-04-14\": 8003.6813,\n        \"2018-04-15\": 8357.0375,\n        \"2018-04-16\": 8051.345,\n        \"2018-04-17\": 7890.15,\n        \"2018-04-18\": 8163.69,\n        \"2018-04-19\": 8273.7413,\n        \"2018-04-20\": 8863.5025,\n        \"2018-04-21\": 8917.5963,\n        \"2018-04-22\": 8792.83,\n        \"2018-04-23\": 8938.3038,\n        \"2018-04-24\": 9652.1563,\n        \"2018-04-25\": 8864.0875,\n        \"2018-04-26\": 9278.9975,\n        \"2018-04-27\": 8978.3325,\n        \"2018-04-28\": 9342.4713,\n        \"2018-04-29\": 9392.0313,\n        \"2018-04-30\": 9244.3225,\n        \"2018-05-01\": 9067.715,\n        \"2018-05-02\": 9219.8638,\n        \"2018-05-03\": 9734.675,\n        \"2018-05-04\": 9692.7175,\n        \"2018-05-05\": 9826.5975,\n        \"2018-05-06\": 9619.1438,\n        \"2018-05-07\": 9362.5338,\n        \"2018-05-08\": 9180.1588,\n        \"2018-05-09\": 9306,\n        \"2018-05-10\": 9014.615,\n        \"2018-05-11\": 8406.175,\n        \"2018-05-12\": 8467.6563,\n        \"2018-05-13\": 8688.0288,\n        \"2018-05-14\": 8675.2063\n    },\n    \"disclaimer\": \"This Test is generated from Localhost\",\n    \"time\": {\n        \"updated\": \"May 15, 2018 00:03:00 UTC\",\n        \"updatedISO\": \"2018-05-15T00:03:00+00:00\"\n    }\n}\n</code></pre>\n\n<p>when parsing the file data i got a non valid result without quotes for the bpi object\n <a href=\"https://i.stack.imgur.com/ZXlmd.png\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/ZXlmd.png\" alt=\"parse non valid data \"></a></p>\n\n<p>this is my JS method </p>\n\n<pre><code>    $.getJSON('http://localhost/hardfeed.json', function(data) {\n\nconsole.log(data) ; \n\n\n    });\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "react-native",
+                "react-navigation"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9789733,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-7Gkp1LNrYqc/AAAAAAAAAAI/AAAAAAAAADQ/vZ1eNHtS5S4/photo.jpg?sz=128",
+                "display_name": "Eric Dulin",
+                "link": "https://stackoverflow.com/users/9789733/eric-dulin"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526460729,
+            "creation_date": 1526409485,
+            "last_edit_date": 1526410074,
+            "question_id": 50357148,
+            "body_markdown": "I&#39;ve been trying to center the text in the StackNavigation Header, but nothing I have used has successfully moved the header. I&#39;m unsure if I&#39;m just using the wrong CSS to address it.\r\n\r\n    class CryptoInfo extends React.Component {\r\n    static navigationOptions = ({ navigation, navigationOptions }) =&gt; {\r\n      const { params } = navigation.state;\r\n  \r\n      return {\r\n        title: params ? params.otherParam : &#39;Cryptopedia&#39;,\r\n        /* These values are used instead of the shared configuration! */\r\n        headerStyle: {\r\n          backgroundColor: navigationOptions.headerStyle.backgroundColor,\r\n          textAlign: &#39;center&#39;,\r\n      alignSelf: &#39;center&#39;,\r\n        },\r\n        headerTintColor: navigationOptions.headerTintColor,\r\n      };\r\n    };\r\n  \r\n    render() {\r\n      /* 2. Read the params from the navigation state */\r\n      const { params } = this.props.navigation.state;\r\n      const itemId = params ? params.itemId : null;\r\n      const otherParam = params ? params.otherParam : null;\r\n  \r\n      return (\r\n        &lt;View style={{ flex: 1, alignItems: &#39;flex-start&#39;, justifyContent: &#39;flex-start&#39;, backgroundColor: &#39;#68BFAC&#39; }}&gt;\r\n          &lt;ETHCard/&gt;\r\n          \r\n        &lt;/View&gt;\r\n        \r\n      );\r\n    }\r\n  }\r\n\r\nI originally didn&#39;t use textAlign or alignSelf, but haven&#39;t had any luck with anything. I&#39;ve read that headerStyleTitle is another method, but had no luck with that either. Thanks for the help!\r\n\r\nP.S - I attempted headerText as well below:\r\n\r\n    return {\r\n        title: params ? params.otherParam : &#39;Cryptopedia&#39;,\r\n        /* These values are used instead of the shared configuration! */\r\n        headerTitleStyle: {\r\n          backgroundColor: navigationOptions.headerStyle.backgroundColor,\r\n        },\r\n        headerTintColor: navigationOptions.headerTintColor,\r\n        headerText: {\r\n          textAlign: &#39;center&#39;,\r\n          alignSelf: &#39;center&#39;,\r\n        },\r\n      };\r\n    };\r\n\r\nStill no effect :(",
+            "link": "https://stackoverflow.com/questions/50357148/react-native-stacknavigation-unable-to-center-header",
+            "title": "React Native StackNavigation Unable to Center Header",
+            "body": "<p>I've been trying to center the text in the StackNavigation Header, but nothing I have used has successfully moved the header. I'm unsure if I'm just using the wrong CSS to address it.</p>\n\n<pre><code>class CryptoInfo extends React.Component {\nstatic navigationOptions = ({ navigation, navigationOptions }) =&gt; {\n  const { params } = navigation.state;\n\n  return {\n    title: params ? params.otherParam : 'Cryptopedia',\n    /* These values are used instead of the shared configuration! */\n    headerStyle: {\n      backgroundColor: navigationOptions.headerStyle.backgroundColor,\n      textAlign: 'center',\n  alignSelf: 'center',\n    },\n    headerTintColor: navigationOptions.headerTintColor,\n  };\n};\n\nrender() {\n  /* 2. Read the params from the navigation state */\n  const { params } = this.props.navigation.state;\n  const itemId = params ? params.itemId : null;\n  const otherParam = params ? params.otherParam : null;\n\n  return (\n    &lt;View style={{ flex: 1, alignItems: 'flex-start', justifyContent: 'flex-start', backgroundColor: '#68BFAC' }}&gt;\n      &lt;ETHCard/&gt;\n\n    &lt;/View&gt;\n\n  );\n}\n</code></pre>\n\n<p>}</p>\n\n<p>I originally didn't use textAlign or alignSelf, but haven't had any luck with anything. I've read that headerStyleTitle is another method, but had no luck with that either. Thanks for the help!</p>\n\n<p>P.S - I attempted headerText as well below:</p>\n\n<pre><code>return {\n    title: params ? params.otherParam : 'Cryptopedia',\n    /* These values are used instead of the shared configuration! */\n    headerTitleStyle: {\n      backgroundColor: navigationOptions.headerStyle.backgroundColor,\n    },\n    headerTintColor: navigationOptions.headerTintColor,\n    headerText: {\n      textAlign: 'center',\n      alignSelf: 'center',\n    },\n  };\n};\n</code></pre>\n\n<p>Still no effect :(</p>\n"
+        },
+        {
+            "tags": [
+                "redis",
+                "redis-sentinel"
+            ],
+            "owner": {
+                "reputation": 13251,
+                "user_id": 1282674,
+                "user_type": "registered",
+                "accept_rate": 88,
+                "profile_image": "https://www.gravatar.com/avatar/11c9d16270ce6dc317790db98545eb1a?s=128&d=identicon&r=PG",
+                "display_name": "drinchev",
+                "link": "https://stackoverflow.com/users/1282674/drinchev"
+            },
+            "is_answered": false,
+            "view_count": 10,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526460720,
+            "creation_date": 1526460720,
+            "question_id": 50366360,
+            "body_markdown": "## The setup\r\n\r\nI have a failover redis setup that consists of three sentinels and two redis servers, which are all on separate boxes.\r\n\r\nThe setup looks like :\r\n\r\n    -------------------\r\n    | Sentinel1 - AMS |\\\r\n    ------------------- \\  ---------------------------\r\n             |           -/| Redis Server1 (M) - FRA |\r\n    -------------------  / ---------------------------\r\n    | Sentinel2 - FRA |--\r\n    -------------------  \\ ---------------------------\r\n             |           -\\| Redis Server2 (S) - AMS |\r\n    ------------------- /  ---------------------------\r\n    | Sentinel3 - LON |/\r\n    -------------------\r\n\r\nAll sentinels and servers can see each other via VPN.\r\n\r\nThe configuration for the sentinels is :\r\n\r\n    # Ansible managed\r\n\r\n    daemonize yes\r\n    pidfile &quot;/var/run/redis/redis-sentinel.pid&quot;\r\n    logfile &quot;/var/log/redis/redis-sentinel.log&quot;\r\n\r\n    # Note the ip changes for each sentinel  - 12,13,14\r\n\r\n    bind 192.168.1.14\r\n    port 26379\r\n    dir &quot;/var/lib/redis&quot;\r\n\r\n    sentinel monitor q-redis-01 192.168.1.10 6379 2\r\n    sentinel down-after-milliseconds q-redis-01 10000\r\n    sentinel auth-pass q-redis-01 XXX\r\n\r\nAnd the *excerpt* configuration for the redis servers is :\r\n\r\n    # Ansible managed\r\n\r\n    daemonize yes\r\n    pidfile &quot;/var/run/redis/redis-server.pid&quot;\r\n    port 6379\r\n    tcp-backlog 511\r\n\r\n    # Note the ip changes for each server  - 10, 11\r\n    bind 192.168.1.10\r\n\r\n    timeout 0\r\n    tcp-keepalive 0\r\n    loglevel notice\r\n    logfile &quot;/var/log/redis/redis-server.log&quot;\r\n    databases 10\r\n\r\n    save 900 1\r\n    save 300 10\r\n    save 60 10000\r\n    stop-writes-on-bgsave-error yes\r\n    rdbcompression yes\r\n    rdbchecksum yes\r\n    dbfilename &quot;dump.rdb&quot;\r\n    dir &quot;/var/lib/redis&quot;\r\n\r\n    masterauth &quot;XXX&quot;\r\n\r\n    slave-serve-stale-data yes\r\n    slave-read-only yes\r\n    repl-diskless-sync no\r\n    repl-diskless-sync-delay 5\r\n    repl-disable-tcp-nodelay no\r\n\r\n    # Note Server 1 has priority 10 and Server 2 has 20\r\n    slave-priority 10\r\n\r\n    requirepass &quot;XXX&quot;\r\n\r\n    ...\r\n\r\nAs the configuration in Server2 I also have this line :\r\n\r\n    slaveof 192.168.1.10 6379\r\n\r\n## The problem\r\n\r\nThe setup works and when **Server 1** is unreachable, **Server 2** is promoted to master. \r\n\r\nWhat I want to achieve though is when **Server 1** recovers, I want to become the master again automatically.\r\n\r\nI need this to happen, because the datacenter of FRA is closer to the rest of the infrastructure and the whole setup is used for failover, not for scalability.\r\n\r\n## The question \r\n\r\nIs it possible to configure the redis sentinels to promote back a recovered master node to be the master in the group automatically?\r\n",
+            "link": "https://stackoverflow.com/questions/50366360/how-to-configure-redis-sentinels-to-bring-back-a-recovered-node-as-a-master",
+            "title": "How to configure redis sentinels to bring back a recovered node as a master?",
+            "body": "<h2>The setup</h2>\n\n<p>I have a failover redis setup that consists of three sentinels and two redis servers, which are all on separate boxes.</p>\n\n<p>The setup looks like :</p>\n\n<pre><code>-------------------\n| Sentinel1 - AMS |\\\n------------------- \\  ---------------------------\n         |           -/| Redis Server1 (M) - FRA |\n-------------------  / ---------------------------\n| Sentinel2 - FRA |--\n-------------------  \\ ---------------------------\n         |           -\\| Redis Server2 (S) - AMS |\n------------------- /  ---------------------------\n| Sentinel3 - LON |/\n-------------------\n</code></pre>\n\n<p>All sentinels and servers can see each other via VPN.</p>\n\n<p>The configuration for the sentinels is :</p>\n\n<pre><code># Ansible managed\n\ndaemonize yes\npidfile \"/var/run/redis/redis-sentinel.pid\"\nlogfile \"/var/log/redis/redis-sentinel.log\"\n\n# Note the ip changes for each sentinel  - 12,13,14\n\nbind 192.168.1.14\nport 26379\ndir \"/var/lib/redis\"\n\nsentinel monitor q-redis-01 192.168.1.10 6379 2\nsentinel down-after-milliseconds q-redis-01 10000\nsentinel auth-pass q-redis-01 XXX\n</code></pre>\n\n<p>And the <em>excerpt</em> configuration for the redis servers is :</p>\n\n<pre><code># Ansible managed\n\ndaemonize yes\npidfile \"/var/run/redis/redis-server.pid\"\nport 6379\ntcp-backlog 511\n\n# Note the ip changes for each server  - 10, 11\nbind 192.168.1.10\n\ntimeout 0\ntcp-keepalive 0\nloglevel notice\nlogfile \"/var/log/redis/redis-server.log\"\ndatabases 10\n\nsave 900 1\nsave 300 10\nsave 60 10000\nstop-writes-on-bgsave-error yes\nrdbcompression yes\nrdbchecksum yes\ndbfilename \"dump.rdb\"\ndir \"/var/lib/redis\"\n\nmasterauth \"XXX\"\n\nslave-serve-stale-data yes\nslave-read-only yes\nrepl-diskless-sync no\nrepl-diskless-sync-delay 5\nrepl-disable-tcp-nodelay no\n\n# Note Server 1 has priority 10 and Server 2 has 20\nslave-priority 10\n\nrequirepass \"XXX\"\n\n...\n</code></pre>\n\n<p>As the configuration in Server2 I also have this line :</p>\n\n<pre><code>slaveof 192.168.1.10 6379\n</code></pre>\n\n<h2>The problem</h2>\n\n<p>The setup works and when <strong>Server 1</strong> is unreachable, <strong>Server 2</strong> is promoted to master. </p>\n\n<p>What I want to achieve though is when <strong>Server 1</strong> recovers, I want to become the master again automatically.</p>\n\n<p>I need this to happen, because the datacenter of FRA is closer to the rest of the infrastructure and the whole setup is used for failover, not for scalability.</p>\n\n<h2>The question</h2>\n\n<p>Is it possible to configure the redis sentinels to promote back a recovered master node to be the master in the group automatically?</p>\n"
+        },
+        {
+            "tags": [
+                "queue",
+                "buffer",
+                "infinite",
+                "ns2"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 7212841,
+                "user_type": "registered",
+                "profile_image": "https://lh6.googleusercontent.com/-BI5ZrTdv4JQ/AAAAAAAAAAI/AAAAAAAACU8/GqO9-YX2bf0/photo.jpg?sz=128",
+                "display_name": "Yoseph Teki",
+                "link": "https://stackoverflow.com/users/7212841/yoseph-teki"
+            },
+            "is_answered": false,
+            "view_count": 5,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526460718,
+            "creation_date": 1526460718,
+            "question_id": 50366358,
+            "body_markdown": "i have been working to make Infinite Buffer on ns2 with dumbbell topology but i think something is not right because i dont even know how big buffer/queue limit i can set. this is my work\r\n\r\n    set ns [new Simulator]\r\n    set tr [open out1.tr w]\r\n    $ns trace-all $tr\r\n    set ftr [open &quot;out.nam&quot; w]\r\n    $ns namtrace-all $ftr\r\n    \r\n    set n0 [$ns node]\r\n    set n1 [$ns node]\r\n    set n2 [$ns node]\r\n    set n3 [$ns node]\r\n    set n4 [$ns node]\r\n    set n5 [$ns node]\r\n     \r\n    $ns duplex-link $n0 $n2 10mb 0ms DropTail \r\n    $ns duplex-link $n1 $n2 10mb 0ms DropTail \r\n    $ns duplex-link $n2 $n3 1mb 0ms DropTail \r\n    $ns duplex-link $n4 $n3 10mb 0ms DropTail \r\n    $ns duplex-link $n5 $n3 10mb 0ms DropTail\r\n     \r\n    $ns queue-limit $n2 $n3 100000\r\n    $ns duplex-link-op $n2 $n3 queuePos 10\r\n     \r\n    set tcp0 [new Agent/TCP]\r\n    $tcp0 set fid_ 1\r\n    set tcp1 [new Agent/TCP]\r\n    $tcp1 set fid_ 2\r\n    set sink0 [new Agent/TCPSink]\r\n    set sink1 [new Agent/TCPSink]\r\n\r\n    $ns attach-agent $n0 $tcp0\r\n    $ns attach-agent $n1 $tcp1\r\n    $ns attach-agent $n4 $sink0\r\n    $ns attach-agent $n5 $sink1\r\n     \r\n    $ns connect $tcp0 $sink0\r\n    $ns connect $tcp1 $sink1\r\n     \r\n    set ftp0 [new Application/FTP]\r\n    $ftp0 attach-agent $tcp0\r\n    set ftp1 [new Application/FTP]\r\n    $ftp1 attach-agent $tcp1\r\n     \r\n    proc finish { } {\r\n\tglobal ns tr ftr\r\n\t$ns flush-trace\r\n\tclose $tr\r\n\tclose $ftr\r\n\texec nam out.nam &amp;\r\n\texec awk -f output.awk out1.tr &amp;\r\n\texec awk -f throughputtest.awk out1.tr &amp;\r\n\texec awk -f throughputtest.awk out1.tr &gt; dataout.xg &amp;\r\n\texit\r\n\t}\r\n    $ns at 0.1 &quot;$ftp0 start&quot;\r\n    $ns at 0.2 &quot;$ftp1 start&quot;\r\n    $ns at 300 &quot;finish&quot;\r\n    $ns run\r\n\r\nis there any trick or way to make the buffer into infinite? i still got some dropped packet, ",
+            "link": "https://stackoverflow.com/questions/50366358/how-to-make-infinite-buffer-on-network-simulator-2",
+            "title": "How to make Infinite Buffer on network simulator 2?",
+            "body": "<p>i have been working to make Infinite Buffer on ns2 with dumbbell topology but i think something is not right because i dont even know how big buffer/queue limit i can set. this is my work</p>\n\n<pre><code>set ns [new Simulator]\nset tr [open out1.tr w]\n$ns trace-all $tr\nset ftr [open \"out.nam\" w]\n$ns namtrace-all $ftr\n\nset n0 [$ns node]\nset n1 [$ns node]\nset n2 [$ns node]\nset n3 [$ns node]\nset n4 [$ns node]\nset n5 [$ns node]\n\n$ns duplex-link $n0 $n2 10mb 0ms DropTail \n$ns duplex-link $n1 $n2 10mb 0ms DropTail \n$ns duplex-link $n2 $n3 1mb 0ms DropTail \n$ns duplex-link $n4 $n3 10mb 0ms DropTail \n$ns duplex-link $n5 $n3 10mb 0ms DropTail\n\n$ns queue-limit $n2 $n3 100000\n$ns duplex-link-op $n2 $n3 queuePos 10\n\nset tcp0 [new Agent/TCP]\n$tcp0 set fid_ 1\nset tcp1 [new Agent/TCP]\n$tcp1 set fid_ 2\nset sink0 [new Agent/TCPSink]\nset sink1 [new Agent/TCPSink]\n\n$ns attach-agent $n0 $tcp0\n$ns attach-agent $n1 $tcp1\n$ns attach-agent $n4 $sink0\n$ns attach-agent $n5 $sink1\n\n$ns connect $tcp0 $sink0\n$ns connect $tcp1 $sink1\n\nset ftp0 [new Application/FTP]\n$ftp0 attach-agent $tcp0\nset ftp1 [new Application/FTP]\n$ftp1 attach-agent $tcp1\n\nproc finish { } {\nglobal ns tr ftr\n$ns flush-trace\nclose $tr\nclose $ftr\nexec nam out.nam &amp;\nexec awk -f output.awk out1.tr &amp;\nexec awk -f throughputtest.awk out1.tr &amp;\nexec awk -f throughputtest.awk out1.tr &gt; dataout.xg &amp;\nexit\n}\n$ns at 0.1 \"$ftp0 start\"\n$ns at 0.2 \"$ftp1 start\"\n$ns at 300 \"finish\"\n$ns run\n</code></pre>\n\n<p>is there any trick or way to make the buffer into infinite? i still got some dropped packet, </p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 133
+}

@@ -1,0 +1,822 @@
+{
+    "items": [
+        {
+            "tags": [
+                "powershell",
+                "jwt",
+                "x509certificate2",
+                "system.security"
+            ],
+            "owner": {
+                "reputation": 307,
+                "user_id": 1475623,
+                "user_type": "registered",
+                "accept_rate": 96,
+                "profile_image": "https://i.stack.imgur.com/PsnKb.png?s=128&g=1",
+                "display_name": "Fidelis",
+                "link": "https://stackoverflow.com/users/1475623/fidelis"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526423815,
+            "creation_date": 1526411300,
+            "last_edit_date": 1526412657,
+            "question_id": 50357575,
+            "body_markdown": "I am working on a project to create a JWT connector with Box that multiple teams can use for their own applications. \r\n\r\nI am running into an issue with the *Private Key* and when creating the signature. I don&#39;t have a clear understanding of Certifications and what to do here. Could someone explain what I am doing wrong and what I need to do?\r\n\r\nHere is the code I am writing:\r\n\r\n    class BoxJWT\r\n    {\r\n        [string]$url;\r\n        [string]$clientID;\r\n        [string]$clientSecret;\r\n        [string]$enterpriseID;    \r\n        [string]$publicKeyID;    \r\n        [string]$privateKeyID;\r\n        [string]$passphrase;\r\n\r\n        &lt;# ========&amp;&amp;==========&amp;&amp;==========&amp;&amp;==========&amp;&amp;======== #&gt;\r\n        &lt;# ========&amp;&amp;========= Connect to Box =========&amp;&amp;======== #&gt;\r\n        &lt;# ========&amp;&amp;==========&amp;&amp;==========&amp;&amp;==========&amp;&amp;======== #&gt;\r\n        [object]BoxConnect()\r\n        {\r\n            #Get the bytes of the PrivateKey\r\n            $prik = [System.Text.Encoding]::UTF8.GetBytes($this.privateKeyID)\r\n            $exp = [int][double]::parse((Get-Date -Date $((Get-Date).AddSeconds(60).ToUniversalTime()) -UFormat %s)) \r\n\r\n            #Create the header\r\n            $headers = @{\r\n               &quot;alg&quot; = &quot;RS256&quot;; \r\n               &quot;typ&quot; = &quot;JWT&quot;; \r\n            } | ConvertTo-Json -Compress\r\n\r\n            #Create the claim\r\n            $claim = @{\r\n               &quot;iss&quot; = $this.clientID;\r\n               &quot;sub&quot; = $this.enterpriseID; \r\n               &quot;box_sub_type&quot; = &quot;enterprise&quot;;\r\n               &quot;aud&quot; = &#39;https://api.box.com/oauth2/token&#39;;\r\n               &quot;exp&quot; = $exp;\r\n               &quot;jti&quot; = (1..20 | %{ &#39;{0:X}&#39; -f (Get-Random -Max 128) }) -join &#39;&#39;\r\n            } | ConvertTo-Json -Compress\r\n\r\n            $headers_base64 = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($headers)).Split(&#39;=&#39;)[0].Replace(&#39;+&#39;, &#39;-&#39;).Replace(&#39;/&#39;, &#39;_&#39;) \r\n            $claim_base64 = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($claim)).Split(&#39;=&#39;)[0].Replace(&#39;+&#39;, &#39;-&#39;).Replace(&#39;/&#39;, &#39;_&#39;) \r\n        \r\n           #Prepare the signature.\r\n           $pre_signature = ($headers_base64 + &quot;.&quot; + $claim_base64)\r\n\r\n           $encyption = New-Object -TypeName System.Security.Cryptography.X509Certificates.X509Certificate2\r\n           $encyption.Import($prik)\r\n        \r\n           #$JWTAssertion = &quot;$headers_base64.$claim_base64.$signature&quot; \r\n\r\n           #$body = &#39;grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&amp;client_id=&#39; + $this.clientID + &#39;&amp;client_secret=&#39; + $this.clientSecret + &#39;&amp;assertion=&#39;+ $JWTAssertion\r\n           #Invoke-RestMethod -Uri $this.url -Body $body -Method Post -ContentType &quot;application/x-www-form-urlencoded&quot;\r\n\r\n           return &#39;&#39;;\r\n     }\r\n    }\r\n\r\n    $file = &quot;$env:userprofile\\Desktop\\box_config.json&quot;\r\n    $cont = Get-Content $file | ConvertFrom-Json\r\n    $v = New-Object -TypeName BoxJWT\r\n    $v.url = &quot;https://api.box.com/oauth2/token&quot;;\r\n    $v.clientID = $cont.boxAppSettings.clientID\r\n    $v.clientSecret = $cont.boxAppSettings.clientSecret\r\n    $v.enterpriseID = $cont.enterpriseID\r\n    $v.passphrase = $cont.boxAppSettings.appAuth.passphrase\r\n    $v.privateKeyID = $cont.boxAppSettings.appAuth.privateKey\r\n    $v.publicKeyID = $cont.boxAppSettings.appAuth.publicKeyID\r\n\r\n    $v.BoxConnect()\r\n\r\nError:\r\n\r\n    Exception calling &quot;Import&quot; with &quot;1&quot; argument(s): &quot;Cannot find the requested \r\n    object.\r\n    &quot;\r\n    At C:\\Users\\username\\Box\\username\\object-jwt.ps1:44 char:9\r\n    +         $encyption.Import($prik)\r\n    +         ~~~~~~~~~~~~~~~~~~~~~~~~   \r\n        + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException\r\n        + FullyQualifiedErrorId : CryptographicException\r\n\r\nAny help is greatly appreciated.\r\n\r\nThank you!",
+            "link": "https://stackoverflow.com/questions/50357575/powershell-jwt-privatekey-x509certificates",
+            "title": "PowerShell JWT PrivateKey x509Certificates",
+            "body": "<p>I am working on a project to create a JWT connector with Box that multiple teams can use for their own applications. </p>\n\n<p>I am running into an issue with the <em>Private Key</em> and when creating the signature. I don't have a clear understanding of Certifications and what to do here. Could someone explain what I am doing wrong and what I need to do?</p>\n\n<p>Here is the code I am writing:</p>\n\n<pre><code>class BoxJWT\n{\n    [string]$url;\n    [string]$clientID;\n    [string]$clientSecret;\n    [string]$enterpriseID;    \n    [string]$publicKeyID;    \n    [string]$privateKeyID;\n    [string]$passphrase;\n\n    &lt;# ========&amp;&amp;==========&amp;&amp;==========&amp;&amp;==========&amp;&amp;======== #&gt;\n    &lt;# ========&amp;&amp;========= Connect to Box =========&amp;&amp;======== #&gt;\n    &lt;# ========&amp;&amp;==========&amp;&amp;==========&amp;&amp;==========&amp;&amp;======== #&gt;\n    [object]BoxConnect()\n    {\n        #Get the bytes of the PrivateKey\n        $prik = [System.Text.Encoding]::UTF8.GetBytes($this.privateKeyID)\n        $exp = [int][double]::parse((Get-Date -Date $((Get-Date).AddSeconds(60).ToUniversalTime()) -UFormat %s)) \n\n        #Create the header\n        $headers = @{\n           \"alg\" = \"RS256\"; \n           \"typ\" = \"JWT\"; \n        } | ConvertTo-Json -Compress\n\n        #Create the claim\n        $claim = @{\n           \"iss\" = $this.clientID;\n           \"sub\" = $this.enterpriseID; \n           \"box_sub_type\" = \"enterprise\";\n           \"aud\" = 'https://api.box.com/oauth2/token';\n           \"exp\" = $exp;\n           \"jti\" = (1..20 | %{ '{0:X}' -f (Get-Random -Max 128) }) -join ''\n        } | ConvertTo-Json -Compress\n\n        $headers_base64 = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($headers)).Split('=')[0].Replace('+', '-').Replace('/', '_') \n        $claim_base64 = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($claim)).Split('=')[0].Replace('+', '-').Replace('/', '_') \n\n       #Prepare the signature.\n       $pre_signature = ($headers_base64 + \".\" + $claim_base64)\n\n       $encyption = New-Object -TypeName System.Security.Cryptography.X509Certificates.X509Certificate2\n       $encyption.Import($prik)\n\n       #$JWTAssertion = \"$headers_base64.$claim_base64.$signature\" \n\n       #$body = 'grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&amp;client_id=' + $this.clientID + '&amp;client_secret=' + $this.clientSecret + '&amp;assertion='+ $JWTAssertion\n       #Invoke-RestMethod -Uri $this.url -Body $body -Method Post -ContentType \"application/x-www-form-urlencoded\"\n\n       return '';\n }\n}\n\n$file = \"$env:userprofile\\Desktop\\box_config.json\"\n$cont = Get-Content $file | ConvertFrom-Json\n$v = New-Object -TypeName BoxJWT\n$v.url = \"https://api.box.com/oauth2/token\";\n$v.clientID = $cont.boxAppSettings.clientID\n$v.clientSecret = $cont.boxAppSettings.clientSecret\n$v.enterpriseID = $cont.enterpriseID\n$v.passphrase = $cont.boxAppSettings.appAuth.passphrase\n$v.privateKeyID = $cont.boxAppSettings.appAuth.privateKey\n$v.publicKeyID = $cont.boxAppSettings.appAuth.publicKeyID\n\n$v.BoxConnect()\n</code></pre>\n\n<p>Error:</p>\n\n<pre><code>Exception calling \"Import\" with \"1\" argument(s): \"Cannot find the requested \nobject.\n\"\nAt C:\\Users\\username\\Box\\username\\object-jwt.ps1:44 char:9\n+         $encyption.Import($prik)\n+         ~~~~~~~~~~~~~~~~~~~~~~~~   \n    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException\n    + FullyQualifiedErrorId : CryptographicException\n</code></pre>\n\n<p>Any help is greatly appreciated.</p>\n\n<p>Thank you!</p>\n"
+        },
+        {
+            "tags": [
+                "mapbox"
+            ],
+            "owner": {
+                "reputation": 66,
+                "user_id": 8025240,
+                "user_type": "registered",
+                "accept_rate": 14,
+                "profile_image": "https://www.gravatar.com/avatar/1a831d2452dad30daf940d4c2458cfd3?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Jay",
+                "link": "https://stackoverflow.com/users/8025240/jay"
+            },
+            "is_answered": false,
+            "view_count": 72,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526423813,
+            "creation_date": 1498788588,
+            "question_id": 44837565,
+            "body_markdown": "Apparently, the &quot;stroke-width&quot; property is fixed at 1px and cannot be changed. Are there any workarounds?",
+            "link": "https://stackoverflow.com/questions/44837565/increase-the-stroke-width-of-a-polygon-in-mapbox-studio",
+            "title": "Increase the stroke-width of a polygon in Mapbox Studio",
+            "body": "<p>Apparently, the \"stroke-width\" property is fixed at 1px and cannot be changed. Are there any workarounds?</p>\n"
+        },
+        {
+            "tags": [
+                "ssms"
+            ],
+            "owner": {
+                "reputation": 57,
+                "user_id": 3761541,
+                "user_type": "registered",
+                "accept_rate": 5,
+                "profile_image": "https://www.gravatar.com/avatar/07c7488ac43a5145a47275fa9a77fd71?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user3761541",
+                "link": "https://stackoverflow.com/users/3761541/user3761541"
+            },
+            "is_answered": true,
+            "view_count": 8,
+            "accepted_answer_id": 50360071,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526423807,
+            "creation_date": 1526422534,
+            "question_id": 50359898,
+            "body_markdown": "I need to create a table similar to the one on another server.\r\n\r\nHow can I do this using ssms?\r\n\r\nI am able to copy table from one server to another with data using Tasks | Export data but not sure how to create without data.\r\n\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50359898/ssms-how-to-create-table-same-as-table-on-another-server-without-data",
+            "title": "ssms -- how to create table same as table on another server without data",
+            "body": "<p>I need to create a table similar to the one on another server.</p>\n\n<p>How can I do this using ssms?</p>\n\n<p>I am able to copy table from one server to another with data using Tasks | Export data but not sure how to create without data.</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "sqlite"
+            ],
+            "owner": {
+                "reputation": 3,
+                "user_id": 9731390,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/1036233809874819/picture?type=large",
+                "display_name": "Eric Daniel",
+                "link": "https://stackoverflow.com/users/9731390/eric-daniel"
+            },
+            "is_answered": true,
+            "view_count": 19,
+            "accepted_answer_id": 50140157,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526423777,
+            "creation_date": 1525279264,
+            "last_edit_date": 1525280484,
+            "question_id": 50139598,
+            "body_markdown": "I need help with summing the values in one of the columns in my database. I need sum values by a specific parameter, for example a foreign key.\r\n\r\n    Cursor cursor = db.rawQuery(&quot;SELECT SUM(&quot; + tool.CAMP_PRICE + &quot;) FROM &quot; + tool.TABLE_DATE + &quot; WHERE &quot; + tool.ID_PAC_FOREIGN);\r\n\r\n - `CAMP_PRICE` is the camp that i want sum\r\n \r\n - `TABLE_DATE` is the table\r\n - `ID_PAC_FOREIGN` is the foreign key\r\n\r\n\r\n\r\nPls anyone help to me. Thank u\r\n",
+            "link": "https://stackoverflow.com/questions/50139598/android-sqlite-select-sum-filter-by-specific-column",
+            "title": "Android SQLite SELECT SUM filter by specific column",
+            "body": "<p>I need help with summing the values in one of the columns in my database. I need sum values by a specific parameter, for example a foreign key.</p>\n\n<pre><code>Cursor cursor = db.rawQuery(\"SELECT SUM(\" + tool.CAMP_PRICE + \") FROM \" + tool.TABLE_DATE + \" WHERE \" + tool.ID_PAC_FOREIGN);\n</code></pre>\n\n<ul>\n<li><p><code>CAMP_PRICE</code> is the camp that I want sum</p></li>\n<li><p><code>TABLE_DATE</code> is the table</p></li>\n<li><code>ID_PAC_FOREIGN</code> is the foreign key</li>\n</ul>\n\n<p>Thank you.</p>\n"
+        },
+        {
+            "tags": [
+                "excel",
+                "vba",
+                "excel-vba",
+                "powerpoint"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 9612772,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/2e58c1893180a158bcd8b11526d4b309?s=128&d=identicon&r=PG&f=1",
+                "display_name": "MaxF",
+                "link": "https://stackoverflow.com/users/9612772/maxf"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526423756,
+            "creation_date": 1526422885,
+            "question_id": 50359952,
+            "body_markdown": "I am trying to load data in Powerpoint VBA array from Excel. This data will be used later to perform find/replace in powerpoint. I get stuck at the last line of the code below. I accepted this code to load the array for future operations:\r\n\r\n    Dim FindList As Variant &#39;&lt;- this is array to be loaded with data\r\n    Dim xlApp As Object\r\n    Dim xlBook As Object\r\n        \r\n    Set xlApp = CreateObject(&quot;Excel.Application&quot;)\r\n    Set xlBook = xlApp.Workbooks.Open(&quot;C:\\Users\\Boxync\\findreplace.xlsx&quot;)\r\n    Set FindList = xlBook.Worksheets(&quot;Sheet1&quot;).Range(&quot;A1:A4&quot;).Value",
+            "link": "https://stackoverflow.com/questions/50359952/loading-data-in-powerpoint-array-with-vba",
+            "title": "Loading data in Powerpoint array with VBA",
+            "body": "<p>I am trying to load data in Powerpoint VBA array from Excel. This data will be used later to perform find/replace in powerpoint. I get stuck at the last line of the code below. I accepted this code to load the array for future operations:</p>\n\n<pre><code>Dim FindList As Variant '&lt;- this is array to be loaded with data\nDim xlApp As Object\nDim xlBook As Object\n\nSet xlApp = CreateObject(\"Excel.Application\")\nSet xlBook = xlApp.Workbooks.Open(\"C:\\Users\\Boxync\\findreplace.xlsx\")\nSet FindList = xlBook.Worksheets(\"Sheet1\").Range(\"A1:A4\").Value\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "wordpress"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 7193389,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/fa256508a332fce17f5f9c41c73b4e43?s=128&d=identicon&r=PG&f=1",
+                "display_name": "C.Hopewell",
+                "link": "https://stackoverflow.com/users/7193389/c-hopewell"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1526423718,
+            "creation_date": 1526423718,
+            "question_id": 50360061,
+            "body_markdown": "My website loads at the bottom of the page on mobile devices and I&#39;m unsure as to why.\r\nIf anyone can help that would be great. \r\nSite is https://www.thesurebettor.com/",
+            "link": "https://stackoverflow.com/questions/50360061/website-loads-at-the-bottom-of-the-page-on-mobile",
+            "title": "Website loads at the bottom of the page on mobile",
+            "body": "<p>My website loads at the bottom of the page on mobile devices and I'm unsure as to why.\nIf anyone can help that would be great. \nSite is <a href=\"https://www.thesurebettor.com/\" rel=\"nofollow noreferrer\">https://www.thesurebettor.com/</a></p>\n"
+        },
+        {
+            "tags": [
+                "amazon-web-services",
+                "deployment",
+                "continuous-integration",
+                "continuous-deployment",
+                "aws-code-deploy"
+            ],
+            "owner": {
+                "reputation": 460,
+                "user_id": 3223340,
+                "user_type": "registered",
+                "accept_rate": 38,
+                "profile_image": "https://www.gravatar.com/avatar/87d73fd07f3012c05adced372dcc2f51?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Jugi",
+                "link": "https://stackoverflow.com/users/3223340/jugi"
+            },
+            "is_answered": false,
+            "view_count": 55,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526423716,
+            "creation_date": 1522216384,
+            "question_id": 49527054,
+            "body_markdown": "I was looking around aws code deploy to perform deployment. My application will have multiple services like apache, tomcat, database, cassandra, kafka and etc..\r\n\r\nEach services will run in different machines. As per my knowledge it looks like i need to create different deployment group for each services(because each services running in different instances) and different deployment for each services. \r\n\r\nSo for example, if i have around 5 different services in my application and each running in different instance, do i need to create 5 deployment group and 5 different deployment in aws code deploy ? Is there any option to perform deployment for all the services using a single deployment/appspec file ? I would like to get some ideas from experts on how we can accomplish this effectively.",
+            "link": "https://stackoverflow.com/questions/49527054/aws-code-deploy-how-to-use-single-deployment-to-deploy-the-artifacts-for-multi",
+            "title": "AWS Code deploy - How to use single deployment to deploy the artifacts for multiple services in multiple machines",
+            "body": "<p>I was looking around aws code deploy to perform deployment. My application will have multiple services like apache, tomcat, database, cassandra, kafka and etc..</p>\n\n<p>Each services will run in different machines. As per my knowledge it looks like i need to create different deployment group for each services(because each services running in different instances) and different deployment for each services. </p>\n\n<p>So for example, if i have around 5 different services in my application and each running in different instance, do i need to create 5 deployment group and 5 different deployment in aws code deploy ? Is there any option to perform deployment for all the services using a single deployment/appspec file ? I would like to get some ideas from experts on how we can accomplish this effectively.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "eve"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 9141506,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/bCjkT.png?s=128&g=1",
+                "display_name": "j2logo",
+                "link": "https://stackoverflow.com/users/9141506/j2logo"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526423711,
+            "creation_date": 1526423711,
+            "question_id": 50360058,
+            "body_markdown": "I am using python eve to build a data storage service. All my collections are schemaless, so I&#39;ve set `ALLOW_UNKNOWN` setting to True. Everything works fine except with fields referencing another ones. I&#39;m trying to request a collection filtering by an object id string and I am always getting an empty list.\r\n\r\nFor example, I have `apps` and `task` collections set in `DOMAIN` setting.\r\n\r\nThe sequence of request I do is as follow:\r\n\r\nPOST &#39;/apps&#39;:\r\n\r\n    {\r\n        &quot;name&quot;: &quot;test&quot;\r\n    }\r\n\r\nGET &#39;/apps&#39;:\r\n\r\n    {\r\n        &quot;_items&quot;: [\r\n            {\r\n                &quot;_id&quot;: &quot;5afb45872fb8d57c7d93d8fa&quot;,\r\n                &quot;name&quot;: &quot;Test app&quot;,\r\n                &quot;_updated&quot;: &quot;Tue, 15 May 2018 20:39:35 GMT&quot;,\r\n                &quot;_created&quot;: &quot;Tue, 15 May 2018 20:39:35 GMT&quot;\r\n            }\r\n        ],\r\n        &quot;_meta&quot;: {\r\n            &quot;page&quot;: 1,\r\n            &quot;max_results&quot;: 25,\r\n            &quot;total&quot;: 1\r\n        }\r\n    }\r\n\r\nPOST &#39;/tasks&#39;:\r\n\r\n    {\r\n        &quot;title&quot;: &quot;Check log files&quot;,\r\n        &quot;app_id&quot;: &quot;5afb45872fb8d57c7d93d8fa&quot;\r\n    }\r\n\r\nGET &#39;/tasks&#39;:\r\n\r\n    {\r\n        &quot;_items&quot;: [\r\n            {\r\n                &quot;_id&quot;: &quot;5afb4bcd2fb8d57c7d93d912&quot;,\r\n                &quot;title&quot;: &quot;Check log files&quot;,\r\n                &quot;app_id&quot;: &quot;5afb45872fb8d57c7d93d8fa&quot;,\r\n                &quot;_updated&quot;: &quot;Tue, 15 May 2018 21:06:21 GMT&quot;,\r\n                &quot;_created&quot;: &quot;Tue, 15 May 2018 21:06:21 GMT&quot;\r\n            }\r\n        ],\r\n        &quot;_meta&quot;: {\r\n            &quot;page&quot;: 1,\r\n            &quot;max_results&quot;: 25,\r\n            &quot;total&quot;: 1\r\n        }\r\n    }\r\n\r\nGET &#39;/tasks/?where={&quot;app_id&quot;: &quot;5afb45872fb8d57c7d93d8fa&quot;}:\r\n\r\n    {\r\n        &quot;_items&quot;: [],\r\n        &quot;_meta&quot;: {\r\n            &quot;page&quot;: 1,\r\n            &quot;max_results&quot;: 25,\r\n            &quot;total&quot;: 0\r\n        }\r\n    }\r\n\r\nMy question are:\r\n\r\n- How can I post an ObjectId field without a defined schema?\r\n- How can I retrieve tasks filtering by `app_id`?\r\n\r\nLooking at docs I&#39;ve found the `query_objectid_as_string` setting, however document endpoints return 404 error.\r\n\r\nGET /tasks/5afb4bcd2fb8d57c7d93d912 -&gt; Not found",
+            "link": "https://stackoverflow.com/questions/50360058/how-to-filter-in-python-eve-by-object-id-string-without-schema",
+            "title": "How to filter in python eve by object id string without schema",
+            "body": "<p>I am using python eve to build a data storage service. All my collections are schemaless, so I've set <code>ALLOW_UNKNOWN</code> setting to True. Everything works fine except with fields referencing another ones. I'm trying to request a collection filtering by an object id string and I am always getting an empty list.</p>\n\n<p>For example, I have <code>apps</code> and <code>task</code> collections set in <code>DOMAIN</code> setting.</p>\n\n<p>The sequence of request I do is as follow:</p>\n\n<p>POST '/apps':</p>\n\n<pre><code>{\n    \"name\": \"test\"\n}\n</code></pre>\n\n<p>GET '/apps':</p>\n\n<pre><code>{\n    \"_items\": [\n        {\n            \"_id\": \"5afb45872fb8d57c7d93d8fa\",\n            \"name\": \"Test app\",\n            \"_updated\": \"Tue, 15 May 2018 20:39:35 GMT\",\n            \"_created\": \"Tue, 15 May 2018 20:39:35 GMT\"\n        }\n    ],\n    \"_meta\": {\n        \"page\": 1,\n        \"max_results\": 25,\n        \"total\": 1\n    }\n}\n</code></pre>\n\n<p>POST '/tasks':</p>\n\n<pre><code>{\n    \"title\": \"Check log files\",\n    \"app_id\": \"5afb45872fb8d57c7d93d8fa\"\n}\n</code></pre>\n\n<p>GET '/tasks':</p>\n\n<pre><code>{\n    \"_items\": [\n        {\n            \"_id\": \"5afb4bcd2fb8d57c7d93d912\",\n            \"title\": \"Check log files\",\n            \"app_id\": \"5afb45872fb8d57c7d93d8fa\",\n            \"_updated\": \"Tue, 15 May 2018 21:06:21 GMT\",\n            \"_created\": \"Tue, 15 May 2018 21:06:21 GMT\"\n        }\n    ],\n    \"_meta\": {\n        \"page\": 1,\n        \"max_results\": 25,\n        \"total\": 1\n    }\n}\n</code></pre>\n\n<p>GET '/tasks/?where={\"app_id\": \"5afb45872fb8d57c7d93d8fa\"}:</p>\n\n<pre><code>{\n    \"_items\": [],\n    \"_meta\": {\n        \"page\": 1,\n        \"max_results\": 25,\n        \"total\": 0\n    }\n}\n</code></pre>\n\n<p>My question are:</p>\n\n<ul>\n<li>How can I post an ObjectId field without a defined schema?</li>\n<li>How can I retrieve tasks filtering by <code>app_id</code>?</li>\n</ul>\n\n<p>Looking at docs I've found the <code>query_objectid_as_string</code> setting, however document endpoints return 404 error.</p>\n\n<p>GET /tasks/5afb4bcd2fb8d57c7d93d912 -> Not found</p>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "pointers"
+            ],
+            "owner": {
+                "reputation": 16,
+                "user_id": 8196307,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/1a00fa9ce2f3dbf632ce53e6227e1952?s=128&d=identicon&r=PG",
+                "display_name": "Tushar Vatsal",
+                "link": "https://stackoverflow.com/users/8196307/tushar-vatsal"
+            },
+            "is_answered": true,
+            "view_count": 63,
+            "closed_date": 1526299817,
+            "accepted_answer_id": 50330179,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1526423710,
+            "creation_date": 1526299552,
+            "last_edit_date": 1526299788,
+            "question_id": 50329888,
+            "body_markdown": "I am new to c++ coding and this question may seem childish to you all. But I am really not able to come up on a solution to my problem. Please help.    \r\n    \r\n    #include &lt;iostream&gt;\r\n    using namespace std;\r\n    \r\n    int* getnew(int* x){\r\n       int temp = *x;\r\n       int* y = &amp;temp;\r\n       cout &lt;&lt; &quot;from function address of y = &quot; &lt;&lt; y\r\n            &lt;&lt; &quot; and value of y = &quot; &lt;&lt; *y &lt;&lt; endl;\r\n       return y;\r\n    }\r\n    \r\n    int main(){\r\n        int x = 100;\r\n        int* y = getnew(&amp;x);\r\n        cout &lt;&lt; &quot;address of y = &quot; &lt;&lt; y;\r\n        cout &lt;&lt; &quot; and value of y = &quot; &lt;&lt; *y &lt;&lt; endl;\r\n        return 0;\r\n    }\r\nOutput of this code :\r\n\r\n    from function address of y = 0x7ffee52aa914 and value of y = 100\r\n    address of y = 0x7ffee52aa914 and value of y = 1\r\n\r\nWhat I thought should be the output :\r\n\r\n    from function address of y = 0x7ffee52aa914 and value of y = 100\r\n    address of y = 0x7ffee52aa914 and value of y = 100\r\nCan someone explain where am I going wrong ?",
+            "link": "https://stackoverflow.com/questions/50329888/changing-pointers-in-functions",
+            "closed_reason": "duplicate",
+            "title": "Changing pointers in functions",
+            "body": "<p>I am new to c++ coding and this question may seem childish to you all. But I am really not able to come up on a solution to my problem. Please help.    </p>\n\n<pre><code>#include &lt;iostream&gt;\nusing namespace std;\n\nint* getnew(int* x){\n   int temp = *x;\n   int* y = &amp;temp;\n   cout &lt;&lt; \"from function address of y = \" &lt;&lt; y\n        &lt;&lt; \" and value of y = \" &lt;&lt; *y &lt;&lt; endl;\n   return y;\n}\n\nint main(){\n    int x = 100;\n    int* y = getnew(&amp;x);\n    cout &lt;&lt; \"address of y = \" &lt;&lt; y;\n    cout &lt;&lt; \" and value of y = \" &lt;&lt; *y &lt;&lt; endl;\n    return 0;\n}\n</code></pre>\n\n<p>Output of this code :</p>\n\n<pre><code>from function address of y = 0x7ffee52aa914 and value of y = 100\naddress of y = 0x7ffee52aa914 and value of y = 1\n</code></pre>\n\n<p>What I thought should be the output :</p>\n\n<pre><code>from function address of y = 0x7ffee52aa914 and value of y = 100\naddress of y = 0x7ffee52aa914 and value of y = 100\n</code></pre>\n\n<p>Can someone explain where am I going wrong ?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9796864,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/5KMqp.jpg?s=128&g=1",
+                "display_name": "AhPawLow",
+                "link": "https://stackoverflow.com/users/9796864/ahpawlow"
+            },
+            "is_answered": false,
+            "view_count": 36,
+            "answer_count": 3,
+            "score": 0,
+            "last_activity_date": 1526423710,
+            "creation_date": 1526422479,
+            "question_id": 50359886,
+            "body_markdown": "HTML CODE FILE &quot;index.html&quot;:\r\n\r\n    &lt;!DOCTYPE html&gt;\r\n    &lt;html&gt;\r\n    &lt;head&gt;\r\n    &lt;/head&gt;\r\n    &lt;body&gt;\r\n    \t&lt;src = &quot;main.js&quot;&gt;\r\n    \t&lt;div id = &quot;dna&quot;&gt;&lt;/div&gt;\r\n    &lt;/body&gt;\r\n    &lt;/html&gt;\r\n\r\nJAVASCRIPT CODE FILE &quot;main.js&quot;:\r\n\r\n    function promptDNA(){\r\n    \tvar dna = prompt(&quot;Enter the DNA: &quot;);\r\n    }\r\n    document.getElementById(&quot;dna&quot;).innerHTML = &quot;DNA: &quot; + dna;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50359886/how-do-i-output-a-variable-from-javascript-to-html",
+            "title": "How do I output a variable from Javascript to html?",
+            "body": "<p>HTML CODE FILE \"index.html\":</p>\n\n<pre><code>&lt;!DOCTYPE html&gt;\n&lt;html&gt;\n&lt;head&gt;\n&lt;/head&gt;\n&lt;body&gt;\n    &lt;src = \"main.js\"&gt;\n    &lt;div id = \"dna\"&gt;&lt;/div&gt;\n&lt;/body&gt;\n&lt;/html&gt;\n</code></pre>\n\n<p>JAVASCRIPT CODE FILE \"main.js\":</p>\n\n<pre><code>function promptDNA(){\n    var dna = prompt(\"Enter the DNA: \");\n}\ndocument.getElementById(\"dna\").innerHTML = \"DNA: \" + dna;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "printing"
+            ],
+            "owner": {
+                "reputation": 105,
+                "user_id": 7586897,
+                "user_type": "registered",
+                "accept_rate": 82,
+                "profile_image": "https://www.gravatar.com/avatar/9f8b7a148f0de5b8eb410e649d5d7e14?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Joey Arnanzo",
+                "link": "https://stackoverflow.com/users/7586897/joey-arnanzo"
+            },
+            "is_answered": true,
+            "view_count": 45,
+            "accepted_answer_id": 50359832,
+            "answer_count": 1,
+            "score": 2,
+            "last_activity_date": 1526423706,
+            "creation_date": 1526418738,
+            "last_edit_date": 1526423706,
+            "question_id": 50359240,
+            "body_markdown": "I&#39;m working on receipt printing using C# and WinForms. The problem is that after clicking the print button, it only prints the first item in the datagrid view and half of the second item, like this:\r\n\r\n[![enter image description here][1]][1]\r\n\r\nHere is the code I&#39;m using:\r\n\r\n    private void btnSave_Click(object sender, EventArgs e)\r\n    {\r\n        for (int i = 0; i&lt;dataGridView1.Rows.Count; i++ )\r\n        {\r\n            OleDbConnection conn = new OleDbConnection(@&quot;Provider=Microsoft.ACE.OLEDB.12.0;Data Source=TS-POS.accdb&quot;);\r\n            OleDbCommand cmd = new OleDbCommand(&quot;INSERT INTO Sales (InvoiceNo,InvoiceDate, Pname, Pprice, Bcode, Staff) VALUES (&#39;&quot; + txtInvoiceNo.Text + &quot;&#39;,&#39;&quot; + dateTimePicker1.Value + &quot;&#39;, &#39;&quot; + dataGridView1.Rows[i].Cells[1].Value + &quot;&#39;, &#39;&quot; + dataGridView1.Rows[i].Cells[3].Value + &quot;&#39;, &#39;&quot; + dataGridView1.Rows[i].Cells[0].Value + &quot;&#39;, &#39;&quot; + lblUser.Text + &quot;&#39;)&quot;, conn);\r\n           // cmd.Parameters.AddWithValue(&quot;@staff&quot;, OleDbType.VarChar).Value = lblUser.Text;\r\n            conn.Open();\r\n            cmd.ExecuteNonQuery(); \r\n            conn.Close();\r\n        \r\n        }\r\n        \r\n        printready();\r\n        \r\n        PrintDialog pd = new PrintDialog();\r\n        \r\n        pd.PrinterSettings = new PrinterSettings();\r\n        \r\n        if (DialogResult.OK == pd.ShowDialog(this))\r\n        {\r\n            PrintDocument pdoc = new PrintDocument();\r\n        \r\n            pdoc.PrintPage += new PrintPageEventHandler(pqr);\r\n        \r\n            pdoc.Print();\r\n        }\r\n    }\r\n    \r\n    void pqr(object o, PrintPageEventArgs e)\r\n    {\r\n        System.Drawing.Image i = this.pictureBox1.Image;\r\n    \r\n        Point p = new Point(1, 1);\r\n        e.Graphics.DrawImage(i, p);\r\n    }\r\n    \r\n    private void printready()\r\n    { \r\n        string welcome = &quot;Thank You For Visiting Dulabk&quot;;\r\n        string InvoiceNo = txtInvoiceNo.Text;\r\n        string InvoiceDate = dateTimePicker1.Value.ToLongDateString();\r\n        Bitmap bitm = new Bitmap(welcome.Length * 30, 90);\r\n    \r\n        using (Graphics graphic = Graphics.FromImage(bitm))\r\n        {\r\n            int startX = 0;\r\n            int startY = 0;\r\n            int Offset = 0;\r\n    \r\n            Font newfont = new Font(&quot;Arial Black&quot;, 8);\r\n            Font newfont2 = new Font(&quot;Arial Black&quot;, 10);\r\n            PointF point = new PointF(40f, 2f);\r\n            SolidBrush black = new SolidBrush(Color.Black);\r\n            SolidBrush white = new SolidBrush(Color.White);\r\n            graphic.FillRectangle(white, 0, 0, bitm.Width, bitm.Height);\r\n            graphic.DrawString(&quot;&quot; + InvoiceNo + &quot;&quot;, newfont2, black, startX, startY + Offset);\r\n            Offset = Offset + 20;\r\n            PointF pointPrice = new PointF(15f, 45f);\r\n            graphic.DrawString(&quot;&quot; + InvoiceDate + &quot;&quot;, newfont2, black, startX, startY + Offset);\r\n            Offset = Offset + 20;\r\n            PointF pointPname = new PointF(10f, 65f); \r\n            PointF pointBar = new PointF(10f, 65f);\r\n            graphic.DrawString(&quot;&quot; + welcome + &quot;&quot;, newfont2, black, startX, startY + Offset);\r\n    \t\tOffset = Offset + 20;\r\n    \t\tPointF pointList = new PointF(10f, 65f); \r\n            \r\n            for (int i = 0; i &lt; dataGridView1.Rows.Count; i++)\r\n            {\r\n                int ii = 1;\r\n                ii++;\r\n    \r\n                graphic.DrawString(&quot; &quot; + dataGridView1.Rows[i].Cells[1].Value +&quot;  &quot; + dataGridView1.Rows[i].Cells[2].Value +&quot;  &quot; + dataGridView1.Rows[i].Cells[3].Value +&quot;&quot; , new Font(&quot;Arial Bold&quot;, 11),\r\n                         new SolidBrush(Color.Black), startX, startY + Offset);\r\n                Offset = Offset + 20;\r\n    \t\t\tgraphic.DrawString(&quot; ---------- &quot;, newfont2, black, startX, startY + Offset);\r\n            }\r\n        }\r\n       \r\n        using (MemoryStream Mmst = new MemoryStream())\r\n        {\r\n            bitm.Save(&quot;ms&quot;, ImageFormat.Jpeg);\r\n            pictureBox1.Image = bitm;\r\n            pictureBox1.Width = bitm.Width;\r\n            pictureBox1.Height = bitm.Height;\r\n    \r\n    \r\n        }\r\n    }\r\n\r\n\r\nI&#39;m not sure what is causing this: I have tried increasing offsets and adding more lines below the datagridview rows but nothing more is getting printed.\r\n\r\n**EDIT**\r\n\r\nOk, I found the problem, it is in this line:\r\n\r\n    Bitmap bitm = new Bitmap(welcome.Length * 30, 90);\r\n\r\nHow can I make the image size dynamic and not according to a value I set in the code?\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/03bkr.jpg",
+            "link": "https://stackoverflow.com/questions/50359240/how-to-size-a-bitmap-to-the-text-to-be-shown-in-it",
+            "title": "How to size a bitmap to the text to be shown in it?",
+            "body": "<p>I'm working on receipt printing using C# and WinForms. The problem is that after clicking the print button, it only prints the first item in the datagrid view and half of the second item, like this:</p>\n\n<p><a href=\"https://i.stack.imgur.com/03bkr.jpg\" rel=\"nofollow noreferrer\"><img src=\"https://i.stack.imgur.com/03bkr.jpg\" alt=\"enter image description here\"></a></p>\n\n<p>Here is the code I'm using:</p>\n\n<pre><code>private void btnSave_Click(object sender, EventArgs e)\n{\n    for (int i = 0; i&lt;dataGridView1.Rows.Count; i++ )\n    {\n        OleDbConnection conn = new OleDbConnection(@\"Provider=Microsoft.ACE.OLEDB.12.0;Data Source=TS-POS.accdb\");\n        OleDbCommand cmd = new OleDbCommand(\"INSERT INTO Sales (InvoiceNo,InvoiceDate, Pname, Pprice, Bcode, Staff) VALUES ('\" + txtInvoiceNo.Text + \"','\" + dateTimePicker1.Value + \"', '\" + dataGridView1.Rows[i].Cells[1].Value + \"', '\" + dataGridView1.Rows[i].Cells[3].Value + \"', '\" + dataGridView1.Rows[i].Cells[0].Value + \"', '\" + lblUser.Text + \"')\", conn);\n       // cmd.Parameters.AddWithValue(\"@staff\", OleDbType.VarChar).Value = lblUser.Text;\n        conn.Open();\n        cmd.ExecuteNonQuery(); \n        conn.Close();\n\n    }\n\n    printready();\n\n    PrintDialog pd = new PrintDialog();\n\n    pd.PrinterSettings = new PrinterSettings();\n\n    if (DialogResult.OK == pd.ShowDialog(this))\n    {\n        PrintDocument pdoc = new PrintDocument();\n\n        pdoc.PrintPage += new PrintPageEventHandler(pqr);\n\n        pdoc.Print();\n    }\n}\n\nvoid pqr(object o, PrintPageEventArgs e)\n{\n    System.Drawing.Image i = this.pictureBox1.Image;\n\n    Point p = new Point(1, 1);\n    e.Graphics.DrawImage(i, p);\n}\n\nprivate void printready()\n{ \n    string welcome = \"Thank You For Visiting Dulabk\";\n    string InvoiceNo = txtInvoiceNo.Text;\n    string InvoiceDate = dateTimePicker1.Value.ToLongDateString();\n    Bitmap bitm = new Bitmap(welcome.Length * 30, 90);\n\n    using (Graphics graphic = Graphics.FromImage(bitm))\n    {\n        int startX = 0;\n        int startY = 0;\n        int Offset = 0;\n\n        Font newfont = new Font(\"Arial Black\", 8);\n        Font newfont2 = new Font(\"Arial Black\", 10);\n        PointF point = new PointF(40f, 2f);\n        SolidBrush black = new SolidBrush(Color.Black);\n        SolidBrush white = new SolidBrush(Color.White);\n        graphic.FillRectangle(white, 0, 0, bitm.Width, bitm.Height);\n        graphic.DrawString(\"\" + InvoiceNo + \"\", newfont2, black, startX, startY + Offset);\n        Offset = Offset + 20;\n        PointF pointPrice = new PointF(15f, 45f);\n        graphic.DrawString(\"\" + InvoiceDate + \"\", newfont2, black, startX, startY + Offset);\n        Offset = Offset + 20;\n        PointF pointPname = new PointF(10f, 65f); \n        PointF pointBar = new PointF(10f, 65f);\n        graphic.DrawString(\"\" + welcome + \"\", newfont2, black, startX, startY + Offset);\n        Offset = Offset + 20;\n        PointF pointList = new PointF(10f, 65f); \n\n        for (int i = 0; i &lt; dataGridView1.Rows.Count; i++)\n        {\n            int ii = 1;\n            ii++;\n\n            graphic.DrawString(\" \" + dataGridView1.Rows[i].Cells[1].Value +\"  \" + dataGridView1.Rows[i].Cells[2].Value +\"  \" + dataGridView1.Rows[i].Cells[3].Value +\"\" , new Font(\"Arial Bold\", 11),\n                     new SolidBrush(Color.Black), startX, startY + Offset);\n            Offset = Offset + 20;\n            graphic.DrawString(\" ---------- \", newfont2, black, startX, startY + Offset);\n        }\n    }\n\n    using (MemoryStream Mmst = new MemoryStream())\n    {\n        bitm.Save(\"ms\", ImageFormat.Jpeg);\n        pictureBox1.Image = bitm;\n        pictureBox1.Width = bitm.Width;\n        pictureBox1.Height = bitm.Height;\n\n\n    }\n}\n</code></pre>\n\n<p>I'm not sure what is causing this: I have tried increasing offsets and adding more lines below the datagridview rows but nothing more is getting printed.</p>\n\n<p><strong>EDIT</strong></p>\n\n<p>Ok, I found the problem, it is in this line:</p>\n\n<pre><code>Bitmap bitm = new Bitmap(welcome.Length * 30, 90);\n</code></pre>\n\n<p>How can I make the image size dynamic and not according to a value I set in the code?</p>\n"
+        },
+        {
+            "tags": [
+                "android",
+                "shortcut",
+                "homescreen"
+            ],
+            "owner": {
+                "reputation": 815,
+                "user_id": 280560,
+                "user_type": "registered",
+                "accept_rate": 84,
+                "profile_image": "https://www.gravatar.com/avatar/15cd5ae112ffefb60c61a966ca039347?s=128&d=identicon&r=PG",
+                "display_name": "Sgotenks",
+                "link": "https://stackoverflow.com/users/280560/sgotenks"
+            },
+            "is_answered": true,
+            "view_count": 81915,
+            "accepted_answer_id": 6337645,
+            "answer_count": 8,
+            "score": 51,
+            "last_activity_date": 1526423698,
+            "creation_date": 1308006386,
+            "last_edit_date": 1495535491,
+            "question_id": 6337431,
+            "body_markdown": "What I want to do is: \r\n\r\n1) I&#39;m inside an activity, there are 2 buttons. If I click the first one a shortcut is created in my home screen. The shortcut open an `html` page that has been previously downloaded, so I want it to use the default browser but I don&#39;t want to use internet cause I already have the page.\r\n\r\n2)The second button create another shortcut that starts an activity. And i want to pass to the activity some extra arguments (As strings for example)...........\r\n\r\n\r\nAre those things possible? I found some link and some similar questions like  https://stackoverflow.com/questions/5676090/android-is-there-a-programming-way-to-create-a-web-shortcut-on-home-screen\r\n\r\nThey seem to be the answer to my question but someone told me that this code is not gonna work on all devices and that is deprecated and that what i want to do is not possible.......\r\n\r\n&gt; This technique is not recommended. This is an internal implementation, not part of the Android SDK. It will not work on all home screen implementations. It may not work on all past versions of Android. It may not work in future versions of Android, as Google is not obligated to maintain internal undocumented interfaces. Please do not use this\r\n\r\nWhat means internal implementation? Is that code trustable or not.....help me pls.....",
+            "link": "https://stackoverflow.com/questions/6337431/android-create-shortcuts-on-the-home-screen",
+            "title": "Android create shortcuts on the home screen",
+            "body": "<p>What I want to do is: </p>\n\n<p>1) I'm inside an activity, there are 2 buttons. If I click the first one a shortcut is created in my home screen. The shortcut open an <code>html</code> page that has been previously downloaded, so I want it to use the default browser but I don't want to use internet cause I already have the page.</p>\n\n<p>2)The second button create another shortcut that starts an activity. And i want to pass to the activity some extra arguments (As strings for example)...........</p>\n\n<p>Are those things possible? I found some link and some similar questions like  <a href=\"https://stackoverflow.com/questions/5676090/android-is-there-a-programming-way-to-create-a-web-shortcut-on-home-screen\">Android: Is there a programming way to create a web shortcut on home screen</a></p>\n\n<p>They seem to be the answer to my question but someone told me that this code is not gonna work on all devices and that is deprecated and that what i want to do is not possible.......</p>\n\n<blockquote>\n  <p>This technique is not recommended. This is an internal implementation, not part of the Android SDK. It will not work on all home screen implementations. It may not work on all past versions of Android. It may not work in future versions of Android, as Google is not obligated to maintain internal undocumented interfaces. Please do not use this</p>\n</blockquote>\n\n<p>What means internal implementation? Is that code trustable or not.....help me pls.....</p>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "sql-server",
+                "tsql"
+            ],
+            "owner": {
+                "reputation": 176,
+                "user_id": 9393635,
+                "user_type": "registered",
+                "accept_rate": 33,
+                "profile_image": "https://www.gravatar.com/avatar/2a956540dcbaa39914322d6a5e442125?s=128&d=identicon&r=PG&f=1",
+                "display_name": "user9393635",
+                "link": "https://stackoverflow.com/users/9393635/user9393635"
+            },
+            "is_answered": false,
+            "view_count": 38,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526423667,
+            "creation_date": 1526418802,
+            "last_edit_date": 1526418873,
+            "question_id": 50359256,
+            "body_markdown": "I have a stored procedure with a GroupUserTVP table-valued parameter:\r\n\r\n    CREATE TYPE [dbo].[GroupUserTVP] AS TABLE\r\n    (\r\n    \t[GroupId] [uniqueidentifier] NULL,\r\n    \t[UserId] [uniqueidentifier] NULL\r\n    )\r\n\r\nI have a `GroupUser` table with the following structure:\r\n\r\n    CREATE TABLE [dbo].[GroupUser]\r\n    (\r\n    \t[GroupId] [uniqueidentifier] NOT NULL,\r\n    \t[UserId] [uniqueidentifier] NOT NULL\r\n    )\r\n\r\nThe TVP will contain a collection of GroupId&#39;s and UserId&#39;s.  If the GroupUser table has group-users which don&#39;t exist in the TVP then those group-users should be deleted.\r\n\r\nIs there a way to do some type of dynamic delete statement based on a join to accomplish this? I can break this into pieces and use table variables, etc but was wondering if there&#39;s a SQL expert here who could write this delete in a single statement or maybe 2 statements?",
+            "link": "https://stackoverflow.com/questions/50359256/dynamic-delete-statement-based-on-join",
+            "title": "Dynamic delete statement based on join?",
+            "body": "<p>I have a stored procedure with a GroupUserTVP table-valued parameter:</p>\n\n<pre><code>CREATE TYPE [dbo].[GroupUserTVP] AS TABLE\n(\n    [GroupId] [uniqueidentifier] NULL,\n    [UserId] [uniqueidentifier] NULL\n)\n</code></pre>\n\n<p>I have a <code>GroupUser</code> table with the following structure:</p>\n\n<pre><code>CREATE TABLE [dbo].[GroupUser]\n(\n    [GroupId] [uniqueidentifier] NOT NULL,\n    [UserId] [uniqueidentifier] NOT NULL\n)\n</code></pre>\n\n<p>The TVP will contain a collection of GroupId's and UserId's.  If the GroupUser table has group-users which don't exist in the TVP then those group-users should be deleted.</p>\n\n<p>Is there a way to do some type of dynamic delete statement based on a join to accomplish this? I can break this into pieces and use table variables, etc but was wondering if there's a SQL expert here who could write this delete in a single statement or maybe 2 statements?</p>\n"
+        },
+        {
+            "tags": [
+                "http",
+                "laravel",
+                "ssl",
+                "https",
+                "blade"
+            ],
+            "owner": {
+                "reputation": 893,
+                "user_id": 2321515,
+                "user_type": "registered",
+                "accept_rate": 97,
+                "profile_image": "https://www.gravatar.com/avatar/4288126d574a1c7aa64045b3ced1f266?s=128&d=identicon&r=PG",
+                "display_name": "Grigio",
+                "link": "https://stackoverflow.com/users/2321515/grigio"
+            },
+            "is_answered": true,
+            "view_count": 10305,
+            "accepted_answer_id": 34378163,
+            "answer_count": 5,
+            "score": 6,
+            "last_activity_date": 1526423651,
+            "creation_date": 1450587489,
+            "question_id": 34378122,
+            "body_markdown": "I am loading my css using this format:\r\n    `&lt;link href=&quot;{{ asset(&#39;assets/mdi/css/materialdesignicons.min.css&#39;) }}&quot; media=&quot;all&quot; rel=&quot;stylesheet&quot; type=&quot;text/css&quot; /&gt;`\r\nand it loads fine for all http requests\r\n\r\nBut when I load my login page with SSL (https), I get a `...page... was loaded over HTTPS, but requested an insecure stylesheet &#39;http...`\r\n\r\nCan someone please tell me how do I make blade load assets over https instead of http?\r\n\r\nShould I be trying to load the assets securely? Or is it not Blade&#39;s job?\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/34378122/load-blade-assets-with-https-in-laravel",
+            "title": "Load Blade assets with https in Laravel",
+            "body": "<p>I am loading my css using this format:\n    <code>&lt;link href=\"{{ asset('assets/mdi/css/materialdesignicons.min.css') }}\" media=\"all\" rel=\"stylesheet\" type=\"text/css\" /&gt;</code>\nand it loads fine for all http requests</p>\n\n<p>But when I load my login page with SSL (https), I get a <code>...page... was loaded over HTTPS, but requested an insecure stylesheet 'http...</code></p>\n\n<p>Can someone please tell me how do I make blade load assets over https instead of http?</p>\n\n<p>Should I be trying to load the assets securely? Or is it not Blade's job?</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "mutex",
+                "recursive-mutex"
+            ],
+            "owner": {
+                "reputation": 3111,
+                "user_id": 746100,
+                "user_type": "registered",
+                "accept_rate": 73,
+                "profile_image": "https://www.gravatar.com/avatar/914de3c94a1b67e5eed78568dc9dcc4f?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Doug Null",
+                "link": "https://stackoverflow.com/users/746100/doug-null"
+            },
+            "is_answered": true,
+            "view_count": 21,
+            "answer_count": 1,
+            "score": -3,
+            "last_activity_date": 1526423643,
+            "creation_date": 1526422785,
+            "question_id": 50359940,
+            "body_markdown": "In my code, it would be convenient if my thread calls .WaitOne() more than once before calling .ReleaseMutex().\r\n\r\nAnd vice versa:  Calling .ReleaseMutex() a few times before restarting a loop which begins with call to .WaitOne().\r\n\r\nSome operating systems / compiler combinations allow this.  Some don&#39;t.",
+            "link": "https://stackoverflow.com/questions/50359940/can-a-thread-call-waitone-of-a-mutex-more-than-once-before-calling-releasemu",
+            "title": "Can a thread call .WaitOne() of a Mutex more than once before calling .ReleaseMutex() and vice versa?",
+            "body": "<p>In my code, it would be convenient if my thread calls .WaitOne() more than once before calling .ReleaseMutex().</p>\n\n<p>And vice versa:  Calling .ReleaseMutex() a few times before restarting a loop which begins with call to .WaitOne().</p>\n\n<p>Some operating systems / compiler combinations allow this.  Some don't.</p>\n"
+        },
+        {
+            "tags": [
+                "regex",
+                "perl",
+                "replace"
+            ],
+            "owner": {
+                "reputation": 914,
+                "user_id": 1236569,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/f0f377976002909c580d08c57f3c3676?s=128&d=identicon&r=PG",
+                "display_name": "giordano",
+                "link": "https://stackoverflow.com/users/1236569/giordano"
+            },
+            "is_answered": true,
+            "view_count": 73,
+            "accepted_answer_id": 50348066,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526423606,
+            "creation_date": 1526380231,
+            "last_edit_date": 1526405192,
+            "question_id": 50347984,
+            "body_markdown": "I have a regex which captures some parts of a string. I want to remove/replace some character of one of the captured string using s///g but it has a strange behaviour. With tr///d it gives the desired result.\r\n\r\nFirst here the output of what I want using the code with tr:\r\n\r\n    use strict;\r\n    use warnings;\r\n\r\n    my $x = &#39;01_02_john_jane_fred_2017.xml&#39;;\r\n\r\n    $x =~ /^(\\d\\d)_(\\d\\d)_((?:[a-z]+_?)+)_(\\d{4})\\.xml$/;\r\n\r\n    my $desc = $3;\r\n\r\n    $desc =~ tr/_//d;\r\n\r\n    print &quot;---print \\$1: $1\\n&quot;;\r\n    print &quot;---print \\$2: $2\\n&quot;;\r\n    print &quot;---print \\$3: $3\\n&quot;;\r\n    print &quot;---print \\$desc: $desc\\n&quot;;\r\n    print &quot;---print \\$4: $4\\n&quot;;\r\n\r\nThis is what I get:\r\n\r\n    D:\\&gt;perl p0018.pl\r\n    ---print $1: 01\r\n    ---print $2: 02\r\n    ---print $3: john_jane_fred\r\n    ---print $desc: johnjanefred\r\n    ---print $4: 2017\r\n\r\n\r\nBut if I use s///g instead of tr///d:\r\n\r\n    $desc =~ s/_//g;\r\n\r\nI get this:\r\n\r\n    D:\\&gt;perl p0018.pl\r\n    Use of uninitialized value $1 in concatenation (.) or string at p0018.pl line 14.\r\n    ---print $1:\r\n    Use of uninitialized value $2 in concatenation (.) or string at p0018.pl line 15.\r\n    ---print $2:\r\n    Use of uninitialized value $3 in concatenation (.) or string at p0018.pl line 16.\r\n    ---print $3:\r\n    ---print $desc: johnjanefred\r\n    Use of uninitialized value $4 in concatenation (.) or string at p0018.pl line 18.\r\n    ---print $4:\r\n\r\n\r\nIs there an explanation for this behaviour? How I could use s instead of tr to get the desired result?\r\n\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50347984/perl-strange-behaviour-of-s-g",
+            "title": "Perl: Strange behaviour of s///g",
+            "body": "<p>I have a regex which captures some parts of a string. I want to remove/replace some character of one of the captured string using s///g but it has a strange behaviour. With tr///d it gives the desired result.</p>\n\n<p>First here the output of what I want using the code with tr:</p>\n\n<pre><code>use strict;\nuse warnings;\n\nmy $x = '01_02_john_jane_fred_2017.xml';\n\n$x =~ /^(\\d\\d)_(\\d\\d)_((?:[a-z]+_?)+)_(\\d{4})\\.xml$/;\n\nmy $desc = $3;\n\n$desc =~ tr/_//d;\n\nprint \"---print \\$1: $1\\n\";\nprint \"---print \\$2: $2\\n\";\nprint \"---print \\$3: $3\\n\";\nprint \"---print \\$desc: $desc\\n\";\nprint \"---print \\$4: $4\\n\";\n</code></pre>\n\n<p>This is what I get:</p>\n\n<pre><code>D:\\&gt;perl p0018.pl\n---print $1: 01\n---print $2: 02\n---print $3: john_jane_fred\n---print $desc: johnjanefred\n---print $4: 2017\n</code></pre>\n\n<p>But if I use s///g instead of tr///d:</p>\n\n<pre><code>$desc =~ s/_//g;\n</code></pre>\n\n<p>I get this:</p>\n\n<pre><code>D:\\&gt;perl p0018.pl\nUse of uninitialized value $1 in concatenation (.) or string at p0018.pl line 14.\n---print $1:\nUse of uninitialized value $2 in concatenation (.) or string at p0018.pl line 15.\n---print $2:\nUse of uninitialized value $3 in concatenation (.) or string at p0018.pl line 16.\n---print $3:\n---print $desc: johnjanefred\nUse of uninitialized value $4 in concatenation (.) or string at p0018.pl line 18.\n---print $4:\n</code></pre>\n\n<p>Is there an explanation for this behaviour? How I could use s instead of tr to get the desired result?</p>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "line"
+            ],
+            "owner": {
+                "reputation": 131,
+                "user_id": 2061477,
+                "user_type": "registered",
+                "accept_rate": 17,
+                "profile_image": "https://www.gravatar.com/avatar/101ae83fb78b92dfcdb7b52f43ad9c44?s=128&d=identicon&r=PG",
+                "display_name": "Usman Mahmood",
+                "link": "https://stackoverflow.com/users/2061477/usman-mahmood"
+            },
+            "is_answered": true,
+            "view_count": 25783,
+            "answer_count": 5,
+            "score": 17,
+            "last_activity_date": 1526423598,
+            "creation_date": 1374043481,
+            "question_id": 17692922,
+            "body_markdown": "I have drawn a line between two points A(x,y)---B(x,y)\r\nNow I have a third point C(x,y). I want to know that if C lies on the line which is  drawn between A and B. \r\nI want to do it in java language. I have found couple of answers similar to this. But, all have some problems and no one is perfect.\r\n",
+            "link": "https://stackoverflow.com/questions/17692922/check-is-a-point-x-y-is-between-two-points-drawn-on-a-straight-line",
+            "title": "Check is a point (x,y) is between two points drawn on a straight line",
+            "body": "<p>I have drawn a line between two points A(x,y)---B(x,y)\nNow I have a third point C(x,y). I want to know that if C lies on the line which is  drawn between A and B. \nI want to do it in java language. I have found couple of answers similar to this. But, all have some problems and no one is perfect.</p>\n"
+        },
+        {
+            "tags": [
+                "r"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9796966,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/10200229061666185/picture?type=large",
+                "display_name": "Mitchell Graham",
+                "link": "https://stackoverflow.com/users/9796966/mitchell-graham"
+            },
+            "is_answered": false,
+            "view_count": 24,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526423571,
+            "creation_date": 1526423571,
+            "question_id": 50360039,
+            "body_markdown": "I am trying to create a custom package in R and I have been unable to overcome this issue. I created the package using the interface in R studio It seems like as soon as I save the f\r\n\r\nHere is my code:\r\n\r\n    #&#39; Imports Multiple files from a given folder\r\n    #&#39; @param \r\n    #&#39; @keywords \r\n    #&#39; @export\r\n    #&#39; @examples\r\n    #&#39; import_folder\r\n    import_folder &lt;- function(path,skip){\r\n      hdr &lt;- NA\r\n      files &lt;- list.files(path)\r\n      for(i in 1:length(files)){\r\n        if(substr(files[i],nchar(files[i])-3,nchar(files[i]))==&quot;.csv&quot;){\r\n          assign(tolower(make.names(files[i])),read.csv(files[i]),envir=globalenv())\r\n    \r\n        } else if (substr(files[i],nchar(files[i])-3,nchar(files[i]))==&quot;.txt&quot;){\r\n          hdr[i] &lt;- read.table(files[i],header = FALSE, skip = if(missing(skip)){1} else {skip}, sep = &quot;*&quot;, row.names = NULL, fill = TRUE, nrows = 1)\r\n          assign(tolower(make.names(files[i])), read.fwf(files[i],\r\n                                                         widths=nchar(strsplit(as.character(hdr[[i]]),&quot;\\\\|&quot;)[[1]])+1,\r\n                                                         header=FALSE,\r\n                                                         skip=2,\r\n                                                         row.names = NULL,\r\n                                                         fill=TRUE),envir=globalenv())\r\n          remove(hdr)\r\n    \r\n        } else if (substr(files[i],nchar(files[i])-3,nchar(files[i]))==&quot;xlsx&quot;){\r\n          assign(tolower(make.names(files[i])),read.xlsx(files[i],sheet=1),envir=globalenv())\r\n    \r\n        } else\r\n          print(paste(&quot;Could not read&quot;,make.names(files[i]),sep=&quot; &quot;),envir=globalenv())\r\n    \r\n      }\r\n    }\r\n    \r\n    devtools::document()\r\n\r\n\r\nHowever when I run the document line I get this:\r\n\r\n    Updating mghnywl documentation\r\n    Loading mghnywl\r\n    Updating mghnywl documentation\r\n    Loading mghnywl\r\n    Updating mghnywl documentation\r\n    Loading mghnywl\r\n    Updating mghnywl documentation\r\n    Loading mghnywl\r\n    Updating mghnywl documentation\r\n    Loading mghnywl\r\n\r\n.....\r\n\r\nwhich doesn&#39;t stop until times out.\r\n\r\nI am totally lost. What am I doing wrong?\r\n",
+            "link": "https://stackoverflow.com/questions/50360039/unable-to-create-package-in-r",
+            "title": "Unable to Create Package in R",
+            "body": "<p>I am trying to create a custom package in R and I have been unable to overcome this issue. I created the package using the interface in R studio It seems like as soon as I save the f</p>\n\n<p>Here is my code:</p>\n\n<pre><code>#' Imports Multiple files from a given folder\n#' @param \n#' @keywords \n#' @export\n#' @examples\n#' import_folder\nimport_folder &lt;- function(path,skip){\n  hdr &lt;- NA\n  files &lt;- list.files(path)\n  for(i in 1:length(files)){\n    if(substr(files[i],nchar(files[i])-3,nchar(files[i]))==\".csv\"){\n      assign(tolower(make.names(files[i])),read.csv(files[i]),envir=globalenv())\n\n    } else if (substr(files[i],nchar(files[i])-3,nchar(files[i]))==\".txt\"){\n      hdr[i] &lt;- read.table(files[i],header = FALSE, skip = if(missing(skip)){1} else {skip}, sep = \"*\", row.names = NULL, fill = TRUE, nrows = 1)\n      assign(tolower(make.names(files[i])), read.fwf(files[i],\n                                                     widths=nchar(strsplit(as.character(hdr[[i]]),\"\\\\|\")[[1]])+1,\n                                                     header=FALSE,\n                                                     skip=2,\n                                                     row.names = NULL,\n                                                     fill=TRUE),envir=globalenv())\n      remove(hdr)\n\n    } else if (substr(files[i],nchar(files[i])-3,nchar(files[i]))==\"xlsx\"){\n      assign(tolower(make.names(files[i])),read.xlsx(files[i],sheet=1),envir=globalenv())\n\n    } else\n      print(paste(\"Could not read\",make.names(files[i]),sep=\" \"),envir=globalenv())\n\n  }\n}\n\ndevtools::document()\n</code></pre>\n\n<p>However when I run the document line I get this:</p>\n\n<pre><code>Updating mghnywl documentation\nLoading mghnywl\nUpdating mghnywl documentation\nLoading mghnywl\nUpdating mghnywl documentation\nLoading mghnywl\nUpdating mghnywl documentation\nLoading mghnywl\nUpdating mghnywl documentation\nLoading mghnywl\n</code></pre>\n\n<p>.....</p>\n\n<p>which doesn't stop until times out.</p>\n\n<p>I am totally lost. What am I doing wrong?</p>\n"
+        },
+        {
+            "tags": [
+                "makefile",
+                "latex",
+                "knitr",
+                "pandoc"
+            ],
+            "owner": {
+                "reputation": 1096,
+                "user_id": 1873697,
+                "user_type": "registered",
+                "accept_rate": 31,
+                "profile_image": "https://www.gravatar.com/avatar/125fefb76359bb49c33ad85d72c3df0a?s=128&d=identicon&r=PG",
+                "display_name": "user101089",
+                "link": "https://stackoverflow.com/users/1873697/user101089"
+            },
+            "is_answered": true,
+            "view_count": 23,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526423564,
+            "creation_date": 1526321846,
+            "last_edit_date": 1526387400,
+            "question_id": 50336629,
+            "body_markdown": "The combination of knitr, pandoc and R Studio is great for writing academic papers in `.Rmd` format, but now that my article has been accepted, I&#39;m stumped on how to prepare a `.zip` file containing all the LaTeX sources required for the journal.   The instructions I was given are:\r\n\r\n     INSTRUCTIONS FOR AUTHORS\r\n     WE ASK THAT YOU UPLOAD YOUR SOURCE FILES AT THIS TIME.\r\n     Please upload the following:\r\n     • A PDF of your final paper\r\n     • The TeX or Word file containing your final paper\r\n     • All figure files as separate files\r\n     • Any additional files needed to compile your article. For example, .bbl and .bib files if you used BiBTeX (and we hope you did!), and any special macros\r\n     • Any files to be posted as online supplementary material\r\n\r\nWhen I write directly in LaTeX, I have a workflow for this, that essentially creates a `Makefile` to create `article.zip` from `article.{tex,aux,log}` and all other dependencies when I type `make zip` in the article directory.\r\n\r\n* It uses a perl script, `texdepend` https://ctan.org/pkg/texdepend?lang=en, to find all dependencies (figures, style files, ...) from `article.{tex,aux,log}` and writes lines that can be used in the `Makefile`.\r\n\r\n* I also use the perl script `aux2bib`, http://ctan.mirror.rafal.ca/biblio/bibtex/utils/bibtools/aux2bib or `bibtool`, http://www.gerd-neugebauer.de/software/TeX/BibTool/en/, to generate a `.bib` file for the article from multiple local `.bib` files, as given in the `.aux` file.\r\n\r\nThis workflow doesn&#39;t work with PDF files generated by `knitr` and `pandoc`.\r\n\r\n* Everything is produced in a single PDF file.  I can get the `.tex` file by including `keep_tex: yes` in the YAML header, but there is no `article.aux` or `article.log` produced. Hence, I can&#39;t use any standard tools to find the dependencies, particularly the figure files that are used with `\\includegraphics{}`.\r\n\r\n* Bibliography references are included inline by `pandoc` in the `article.tex` file, but they seem to be formatted in such a way that it would be difficult for the journal to produce the article in their particular format. It doesn&#39;t use `\\bibitem`, but rather just formats the references directly, e.g.,\r\n\r\n&gt;  \\hypertarget{ref-Van_Aelst:2011}{}  Aelst, S. V., \\&amp; Willems, G.\r\n&gt; (2011). Robust and efficient one-way MANOVA  tests. \\emph{Journal of\r\n&gt; the American Statistical Association},  \\emph{106}(494), 706--718. \r\n&gt; \\url{http://doi.org/10.1198/jasa.2011.tm09748}\r\n\r\n\r\n**Edit**\r\nI should add that the reason I need to use `aux2bib` or `bibtool` is that my references are pulled in from various `.bib` files:\r\n\r\n    bibliography: \r\n      - &quot;../localtexmf/bibtex/bib/statistics.bib&quot;\r\n      - &quot;../localtexmf/bibtex/bib/graphics.bib&quot;\r\n      - &quot;../localtexmf/bibtex/bib/Rpackages.bib&quot;\r\n",
+            "link": "https://stackoverflow.com/questions/50336629/knitr-pandoc-how-to-prepare-a-journal-tex-submission-zip-file-from-an-rmd-file",
+            "title": "knitr, pandoc: How to prepare a journal TeX submission ZIP file from an Rmd file?",
+            "body": "<p>The combination of knitr, pandoc and R Studio is great for writing academic papers in <code>.Rmd</code> format, but now that my article has been accepted, I'm stumped on how to prepare a <code>.zip</code> file containing all the LaTeX sources required for the journal.   The instructions I was given are:</p>\n\n<pre><code> INSTRUCTIONS FOR AUTHORS\n WE ASK THAT YOU UPLOAD YOUR SOURCE FILES AT THIS TIME.\n Please upload the following:\n • A PDF of your final paper\n • The TeX or Word file containing your final paper\n • All figure files as separate files\n • Any additional files needed to compile your article. For example, .bbl and .bib files if you used BiBTeX (and we hope you did!), and any special macros\n • Any files to be posted as online supplementary material\n</code></pre>\n\n<p>When I write directly in LaTeX, I have a workflow for this, that essentially creates a <code>Makefile</code> to create <code>article.zip</code> from <code>article.{tex,aux,log}</code> and all other dependencies when I type <code>make zip</code> in the article directory.</p>\n\n<ul>\n<li><p>It uses a perl script, <code>texdepend</code> <a href=\"https://ctan.org/pkg/texdepend?lang=en\" rel=\"nofollow noreferrer\">https://ctan.org/pkg/texdepend?lang=en</a>, to find all dependencies (figures, style files, ...) from <code>article.{tex,aux,log}</code> and writes lines that can be used in the <code>Makefile</code>.</p></li>\n<li><p>I also use the perl script <code>aux2bib</code>, <a href=\"http://ctan.mirror.rafal.ca/biblio/bibtex/utils/bibtools/aux2bib\" rel=\"nofollow noreferrer\">http://ctan.mirror.rafal.ca/biblio/bibtex/utils/bibtools/aux2bib</a> or <code>bibtool</code>, <a href=\"http://www.gerd-neugebauer.de/software/TeX/BibTool/en/\" rel=\"nofollow noreferrer\">http://www.gerd-neugebauer.de/software/TeX/BibTool/en/</a>, to generate a <code>.bib</code> file for the article from multiple local <code>.bib</code> files, as given in the <code>.aux</code> file.</p></li>\n</ul>\n\n<p>This workflow doesn't work with PDF files generated by <code>knitr</code> and <code>pandoc</code>.</p>\n\n<ul>\n<li><p>Everything is produced in a single PDF file.  I can get the <code>.tex</code> file by including <code>keep_tex: yes</code> in the YAML header, but there is no <code>article.aux</code> or <code>article.log</code> produced. Hence, I can't use any standard tools to find the dependencies, particularly the figure files that are used with <code>\\includegraphics{}</code>.</p></li>\n<li><p>Bibliography references are included inline by <code>pandoc</code> in the <code>article.tex</code> file, but they seem to be formatted in such a way that it would be difficult for the journal to produce the article in their particular format. It doesn't use <code>\\bibitem</code>, but rather just formats the references directly, e.g.,</p></li>\n</ul>\n\n<blockquote>\n  <p>\\hypertarget{ref-Van_Aelst:2011}{}  Aelst, S. V., \\&amp; Willems, G.\n  (2011). Robust and efficient one-way MANOVA  tests. \\emph{Journal of\n  the American Statistical Association},  \\emph{106}(494), 706--718. \n  \\url{<a href=\"http://doi.org/10.1198/jasa.2011.tm09748\" rel=\"nofollow noreferrer\">http://doi.org/10.1198/jasa.2011.tm09748</a>}</p>\n</blockquote>\n\n<p><strong>Edit</strong>\nI should add that the reason I need to use <code>aux2bib</code> or <code>bibtool</code> is that my references are pulled in from various <code>.bib</code> files:</p>\n\n<pre><code>bibliography: \n  - \"../localtexmf/bibtex/bib/statistics.bib\"\n  - \"../localtexmf/bibtex/bib/graphics.bib\"\n  - \"../localtexmf/bibtex/bib/Rpackages.bib\"\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "r",
+                "bigdata",
+                "igraph"
+            ],
+            "owner": {
+                "reputation": 57,
+                "user_id": 2097088,
+                "user_type": "registered",
+                "accept_rate": 78,
+                "profile_image": "https://www.gravatar.com/avatar/f0dba33f453f865621c19fd8cf6bcab8?s=128&d=identicon&r=PG",
+                "display_name": "km5041",
+                "link": "https://stackoverflow.com/users/2097088/km5041"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526423554,
+            "creation_date": 1526423554,
+            "question_id": 50360035,
+            "body_markdown": "I have a very large network based on 100K unique vertices and 500M edges (note: edges are all distance 1 (binary) and undirected).\r\n\r\nI need to create a 100K by 100K matrix of the shortest distances between each vertex pair.\r\n\r\nI am using `igraph` and the `distances()` command, which creates exactly what I want with something like this:\r\n\r\n    distance_mat &lt;- distances(network, v=V(network), to=V(network), weights=NA)\r\n\r\nHowever, it gets very slow with a network of this magnitude - current estimates have my code needing &gt; 10 days to complete on a 2.5 GHz i7 Mac with 16GB of RAM.\r\n\r\nHas anyone optimized a routine to do something like this with such a large network or have ideas on how to speed this up?\r\n\r\nHere is some sample code to build a large (but not full size) network to practice on if it helps:\r\n\r\n    require(igraph)\r\n    \r\n    n_id &lt;- 100000\r\n    n_connect &lt;- 100000000\r\n    id1 &lt;- sample(1:n_id,n_connect,replace=T)\r\n    id2 &lt;- sample(1:n_id,n_connect,replace=T)\r\n    nbr &lt;- rep(1,n_connect)\r\n    idall &lt;- unique(c(id1,id2))\r\n    df &lt;- as.data.frame(cbind(id1,id2,nbr))\r\n    \r\n    network &lt;- graph_from_data_frame(d=df, vertices=idall, directed=F)\r\n    \r\n    Sys.time()\r\n    dist_df &lt;- distances(network, v=V(network)[1:1000], to=V(network)[1:1000], weights=NA)\r\n    Sys.time()",
+            "link": "https://stackoverflow.com/questions/50360035/r-igraph-big-data-calculating-vertex-to-vertex-shortest-distance-with-very-la",
+            "title": "R, igraph, Big Data: Calculating Vertex to Vertex Shortest Distance with Very Large Network",
+            "body": "<p>I have a very large network based on 100K unique vertices and 500M edges (note: edges are all distance 1 (binary) and undirected).</p>\n\n<p>I need to create a 100K by 100K matrix of the shortest distances between each vertex pair.</p>\n\n<p>I am using <code>igraph</code> and the <code>distances()</code> command, which creates exactly what I want with something like this:</p>\n\n<pre><code>distance_mat &lt;- distances(network, v=V(network), to=V(network), weights=NA)\n</code></pre>\n\n<p>However, it gets very slow with a network of this magnitude - current estimates have my code needing > 10 days to complete on a 2.5 GHz i7 Mac with 16GB of RAM.</p>\n\n<p>Has anyone optimized a routine to do something like this with such a large network or have ideas on how to speed this up?</p>\n\n<p>Here is some sample code to build a large (but not full size) network to practice on if it helps:</p>\n\n<pre><code>require(igraph)\n\nn_id &lt;- 100000\nn_connect &lt;- 100000000\nid1 &lt;- sample(1:n_id,n_connect,replace=T)\nid2 &lt;- sample(1:n_id,n_connect,replace=T)\nnbr &lt;- rep(1,n_connect)\nidall &lt;- unique(c(id1,id2))\ndf &lt;- as.data.frame(cbind(id1,id2,nbr))\n\nnetwork &lt;- graph_from_data_frame(d=df, vertices=idall, directed=F)\n\nSys.time()\ndist_df &lt;- distances(network, v=V(network)[1:1000], to=V(network)[1:1000], weights=NA)\nSys.time()\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "vb.net"
+            ],
+            "owner": {
+                "reputation": 2,
+                "user_id": 9796825,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/492e655d624d6eed9594a30fd248f0c2?s=128&d=identicon&r=PG&f=1",
+                "display_name": "GAVIOTA",
+                "link": "https://stackoverflow.com/users/9796825/gaviota"
+            },
+            "is_answered": true,
+            "view_count": 40,
+            "accepted_answer_id": 50359971,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526423543,
+            "creation_date": 1526421930,
+            "last_edit_date": 1526422136,
+            "question_id": 50359805,
+            "body_markdown": "With this sql query i can randomize `IDcolumn1`, `Packett1`, `Packett2` and display the result in `DataGridView`. How to add in this query other column named `Packett3` from another table and randomize it all together. Table 2 contains `IDcolumn2` and `Packett3`.\r\nMy query :\r\n\r\n    Dim sql As String = String.Format(\r\n        &quot;SELECT Top {0} \r\n             IDcolumn1, \r\n             Packett1, \r\n             Packett2 \r\n         FROM \r\n             MASTER\r\n         ORDER BY\r\n             NEWID()&quot;, rows)",
+            "link": "https://stackoverflow.com/questions/50359805/randomize-sql-query-with-two-tables",
+            "title": "Randomize Sql query with two Tables",
+            "body": "<p>With this sql query i can randomize <code>IDcolumn1</code>, <code>Packett1</code>, <code>Packett2</code> and display the result in <code>DataGridView</code>. How to add in this query other column named <code>Packett3</code> from another table and randomize it all together. Table 2 contains <code>IDcolumn2</code> and <code>Packett3</code>.\nMy query :</p>\n\n<pre><code>Dim sql As String = String.Format(\n    \"SELECT Top {0} \n         IDcolumn1, \n         Packett1, \n         Packett2 \n     FROM \n         MASTER\n     ORDER BY\n         NEWID()\", rows)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "java",
+                "oop",
+                "event-listener"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9796926,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/1555fcc84ee81f72163452570764e630?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Hamza S. Rajih",
+                "link": "https://stackoverflow.com/users/9796926/hamza-s-rajih"
+            },
+            "is_answered": false,
+            "view_count": 29,
+            "closed_date": 1526427432,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526423526,
+            "creation_date": 1526423526,
+            "question_id": 50360034,
+            "body_markdown": "My coworker and I were having an argument which approach should we take when adding listeners to our ui component. We are considering two major options for adding support to listeners. For the sake of keeping it simple, lets say we have three events: on failure, on processing begin, and on processing end.\r\n\r\nThe first option we were thinking of was having an interface which declares on all the functions, i.e:\r\n\r\n    /** General Listener. */\r\n    public interface Listener {\r\n      /** Called when processing begins. */\r\n      void onProcessingBegin(EventInfo info);\r\n    \r\n      /** Called when processing ends with success. */\r\n      void onProcessingSuccess();\r\n    \r\n      /** Called when processing ends with failure. */\r\n      void onProcessingError(ErrorInfo error);\r\n    }\r\n\r\nWhere the second option is to have a listener for each event separately:\r\n\r\n    /** Begin Listener. */\r\n    public interface ProcessingBeginListener {\r\n      /** Called when processing begins. */\r\n      void onProcessingBegin(EventInfo info);\r\n    }\r\n\r\n    /** Success Listener. */\r\n    public interface ProcessingSuccessListener {\r\n      /** Called when processing ends with success. */\r\n      void onProcessingSuccess();\r\n    }\r\n\r\n    /** Failure Listener. */\r\n    public interface ProcessingFailureListener {\r\n      /** Called when processing ends with failure. */\r\n      void onProcessingError(ErrorInfo error);\r\n    }\r\n\r\nI was wondering if there&#39;s any difference between these suggestions, and when should we prefer one over another. Any what is generally the best practice, and why?\r\n\r\nThanks.",
+            "link": "https://stackoverflow.com/questions/50360034/listeners-class-design-for-ui",
+            "closed_reason": "primarily opinion-based",
+            "title": "Listeners class design for UI",
+            "body": "<p>My coworker and I were having an argument which approach should we take when adding listeners to our ui component. We are considering two major options for adding support to listeners. For the sake of keeping it simple, lets say we have three events: on failure, on processing begin, and on processing end.</p>\n\n<p>The first option we were thinking of was having an interface which declares on all the functions, i.e:</p>\n\n<pre><code>/** General Listener. */\npublic interface Listener {\n  /** Called when processing begins. */\n  void onProcessingBegin(EventInfo info);\n\n  /** Called when processing ends with success. */\n  void onProcessingSuccess();\n\n  /** Called when processing ends with failure. */\n  void onProcessingError(ErrorInfo error);\n}\n</code></pre>\n\n<p>Where the second option is to have a listener for each event separately:</p>\n\n<pre><code>/** Begin Listener. */\npublic interface ProcessingBeginListener {\n  /** Called when processing begins. */\n  void onProcessingBegin(EventInfo info);\n}\n\n/** Success Listener. */\npublic interface ProcessingSuccessListener {\n  /** Called when processing ends with success. */\n  void onProcessingSuccess();\n}\n\n/** Failure Listener. */\npublic interface ProcessingFailureListener {\n  /** Called when processing ends with failure. */\n  void onProcessingError(ErrorInfo error);\n}\n</code></pre>\n\n<p>I was wondering if there's any difference between these suggestions, and when should we prefer one over another. Any what is generally the best practice, and why?</p>\n\n<p>Thanks.</p>\n"
+        },
+        {
+            "tags": [
+                "css",
+                "html5",
+                "css3",
+                "zurb-foundation",
+                "zurb-foundation-6"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9782433,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/b00a0c3628b007038faa4e64827fb350?s=128&d=identicon&r=PG&f=1",
+                "display_name": "The Learner",
+                "link": "https://stackoverflow.com/users/9782433/the-learner"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526423511,
+            "creation_date": 1526423511,
+            "question_id": 50360031,
+            "body_markdown": "\r\nWhat does the header, footer,and body classes in Zurb Foundation 6 do?\r\nWhere do you find the documentation for the header, footer, body classes in Foundation?  For example,\r\n\r\n\r\n&lt;div class=&quot;cell shrink header medium-cell-block-container&quot;&gt;\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50360031/header-footer-body-classes-in-zurb-foundation-6",
+            "title": "Header, Footer, Body Classes in Zurb Foundation 6?",
+            "body": "<p>What does the header, footer,and body classes in Zurb Foundation 6 do?\nWhere do you find the documentation for the header, footer, body classes in Foundation?  For example,</p>\n\n<p></p>\n"
+        },
+        {
+            "tags": [
+                "azure-active-directory",
+                "onedrive"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9796960,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/aca7c6d63e844ada5e3ece62cc527dc6?s=128&d=identicon&r=PG&f=1",
+                "display_name": "XR220",
+                "link": "https://stackoverflow.com/users/9796960/xr220"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": -2,
+            "last_activity_date": 1526423500,
+            "creation_date": 1526423500,
+            "question_id": 50360029,
+            "body_markdown": "We have a hybrid AD domain with On Prem syncing with Azure AD. We are looking to lock down OneDrive so that it will only allow syncing with machines in our domain. To do this, we provide the domain GUID in the OneDrive management portal. This bit is easy as you can run:-\r\n $domains = (Get-ADForest).Domains; foreach($d in $domains) {Get-ADDomain -Identity $d | Select ObjectGuid}\r\nBut, we have some machines that are joined to the Azure AD domain directly (i.e. not the on prem one - even though these are the same?) Do they have the same domain GUID?",
+            "link": "https://stackoverflow.com/questions/50360029/azure-active-directory-domain-guid",
+            "title": "Azure Active Directory Domain GUID",
+            "body": "<p>We have a hybrid AD domain with On Prem syncing with Azure AD. We are looking to lock down OneDrive so that it will only allow syncing with machines in our domain. To do this, we provide the domain GUID in the OneDrive management portal. This bit is easy as you can run:-\n $domains = (Get-ADForest).Domains; foreach($d in $domains) {Get-ADDomain -Identity $d | Select ObjectGuid}\nBut, we have some machines that are joined to the Azure AD domain directly (i.e. not the on prem one - even though these are the same?) Do they have the same domain GUID?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "loops",
+                "tkinter"
+            ],
+            "owner": {
+                "reputation": 11,
+                "user_id": 9751224,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/3ed553e069e586e34d35f2be6e89716a?s=128&d=identicon&r=PG&f=1",
+                "display_name": "mohamed abdallah",
+                "link": "https://stackoverflow.com/users/9751224/mohamed-abdallah"
+            },
+            "is_answered": true,
+            "view_count": 43,
+            "accepted_answer_id": 50339687,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526423500,
+            "creation_date": 1526286472,
+            "last_edit_date": 1526329237,
+            "question_id": 50325985,
+            "body_markdown": "I am making a simple program for cafe management system that  reads food names as  a buttons from a table also I want to read  the the food price from the table and multiply it by the number of button clicks and then save them into a `Text` how I can do this please \r\n\r\n[this is the image that show  where are the two main isues are][1]\r\n\r\n     \r\n    from tkinter import *\r\n    from tkinter import ttk\r\n    import sqlite3\r\n    import time\r\n    import datetime\r\n    import random\r\n\r\n\r\n    variable = 1\r\n    bttn_clicks=0\r\n    button_dict = {}\r\n    button_dic = {}\r\n    conn = sqlite3.connect(&#39;hoteldb.db&#39;)\r\n    c = conn.cursor()\r\n\r\n    def showqurec():\r\n       global button,data2\r\n       data2 = readqurec()\r\n       for index, dat in enumerate(data2):\r\n         button= ttk.Button(master, text=dat[0],command=lambda dat=dat:update_count(dat))\r\n         button.grid(row=index+1, column=0,padx=0, pady=0)\r\n         button_dict[dat] = button\r\n\r\n    def showqado():\r\n        global button,data2\r\n        data2 = readqado()\r\n        for index, dat in enumerate(data2):\r\n            button = ttk.Button(master, text=dat[0],command=lambda dat=dat: update_count(dat))\r\n            button.grid(row=index+1, column=1,pady=0,padx=0)\r\n            button_dict[dat] = button\r\n\r\n\r\n    def showcasho():\r\n       global button,data2\r\n       data2 = readcasho()\r\n       for index, dat in enumerate(data2):\r\n            button=ttk.Button(master, text=dat[0],command=lambda dat=dat:update_count(dat))\r\n           button.grid(row=index+1, column=2,padx=0, pady=0)\r\n           button_dict[dat] = button\r\n\r\n\r\n\r\n    def readfromdatabase():\r\n       cur.execute(&quot;SELECT qureec.name,qado.name,casho.name FROM qureec,qado,casho&quot;)\r\n       return cur.fetchall()\r\n    def readqurec():\r\n       cur.execute(&quot;SELECT name FROM qureec &quot;)\r\n       return cur.fetchall()\r\n  \r\n    def readqado():\r\n        cur.execute(&quot;SELECT name FROM qado &quot;)\r\n        return cur.fetchall()\r\n\r\n    def readcasho():\r\n        cur.execute(&quot;SELECT name FROM casho &quot;)\r\n        return cur.fetchall()\r\n\r\n\r\n    def update_count(x):\r\n        global bttn_clicks,my_text,price\r\n        my_text=StringVar()\r\n        for name in data2:\r\n            my_text = button_dict[x].cget(&#39;text&#39;)\r\n        bttn_clicks += 1\r\n     \r\n\r\n\r\n    def Receipt():\r\n       txtReceipt.delete(&quot;1.0&quot;, &quot;4.0&quot;)\r\n       x = random.randint(10908, 500876)\r\n       randomRef = str(x)\r\n       Receipt_Ref.set(&quot;BILL&quot; + randomRef)\r\n   \r\n    \r\n\r\n       txtReceipt.insert(&quot;1.0&quot;, &#39;Receipt Ref: \\t\\t\\t&#39;+Receipt_Ref.get()+&quot;\\t\\t&quot;+DateofOrder.get()+&quot;\\n&quot;)\r\n       txtReceipt.insert(&quot;2.0&quot;, &#39;Items\\t\\t&#39;+&#39;Quantity\\t\\t\\t&#39;+&quot;Price \\n\\n&quot;)\r\n       if variable !=0:\r\n           txtReceipt.insert(END, str(my_text)+&#39;\\t\\t&#39;+str(bttn_clicks)+&#39;\\t\\t\\t&#39;+&quot;&quot;+str(bttn_clicks*3)+&quot;\\n&quot;)\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n    master=Tk()\r\n    master.geometry(&#39;630x350+100+200&#39;)\r\n    master.title(&#39;Records&#39;)\r\n    Label = Button(master, text=&quot;meal&quot;, width=10,command=showqurec)\r\n    Label.grid(row=0, column=0)\r\n\r\n    BMILabel = Button(master, text=&quot;tea&quot;, width=10,command=showqado)\r\n    BMILabel.grid(row=0, column=1)\r\n\r\n    stateLabel = Button(master, text=&quot;fast food&quot;, width=10,command=showcasho)\r\n    stateLabel.grid(row=0, column=2)\r\n\r\n    lblReceipt = Button(master,text=&quot;Get Receipt:&quot;,anchor=&#39;w&#39;,command=Receipt)\r\n    lblReceipt.grid(row=0,column=4,sticky=W)\r\n    txtReceipt = Text(master,bg=&quot;white&quot;,width=47,height=17.5)\r\n    txtReceipt.grid(row=1,column=4,rowspan=4,columnspan=40)\r\n\r\n    Receipt_Ref=StringVar()\r\n    DateofOrder = StringVar()\r\n    master.mainloop()\r\n\r\n\r\nNow  I declared the prices but how I can get them from database\r\n I also have another of buttons clicks are incrementing on every buttons clicked how on specied button\r\n\r\n \r\n\r\n\r\n  [1]: https://i.stack.imgur.com/w23tO.png",
+            "link": "https://stackoverflow.com/questions/50325985/tkinter-mutliplying-the-price-from-table",
+            "title": "tkinter mutliplying the price from table",
+            "body": "<p>I am making a simple program for cafe management system that  reads food names as  a buttons from a table also I want to read  the the food price from the table and multiply it by the number of button clicks and then save them into a <code>Text</code> how I can do this please </p>\n\n<p><a href=\"https://i.stack.imgur.com/w23tO.png\" rel=\"nofollow noreferrer\">this is the image that show  where are the two main isues are</a></p>\n\n<pre><code>from tkinter import *\nfrom tkinter import ttk\nimport sqlite3\nimport time\nimport datetime\nimport random\n\n\nvariable = 1\nbttn_clicks=0\nbutton_dict = {}\nbutton_dic = {}\nconn = sqlite3.connect('hoteldb.db')\nc = conn.cursor()\n\ndef showqurec():\n   global button,data2\n   data2 = readqurec()\n   for index, dat in enumerate(data2):\n     button= ttk.Button(master, text=dat[0],command=lambda dat=dat:update_count(dat))\n     button.grid(row=index+1, column=0,padx=0, pady=0)\n     button_dict[dat] = button\n\ndef showqado():\n    global button,data2\n    data2 = readqado()\n    for index, dat in enumerate(data2):\n        button = ttk.Button(master, text=dat[0],command=lambda dat=dat: update_count(dat))\n        button.grid(row=index+1, column=1,pady=0,padx=0)\n        button_dict[dat] = button\n\n\ndef showcasho():\n   global button,data2\n   data2 = readcasho()\n   for index, dat in enumerate(data2):\n        button=ttk.Button(master, text=dat[0],command=lambda dat=dat:update_count(dat))\n       button.grid(row=index+1, column=2,padx=0, pady=0)\n       button_dict[dat] = button\n\n\n\ndef readfromdatabase():\n   cur.execute(\"SELECT qureec.name,qado.name,casho.name FROM qureec,qado,casho\")\n   return cur.fetchall()\ndef readqurec():\n   cur.execute(\"SELECT name FROM qureec \")\n   return cur.fetchall()\n\ndef readqado():\n    cur.execute(\"SELECT name FROM qado \")\n    return cur.fetchall()\n\ndef readcasho():\n    cur.execute(\"SELECT name FROM casho \")\n    return cur.fetchall()\n\n\ndef update_count(x):\n    global bttn_clicks,my_text,price\n    my_text=StringVar()\n    for name in data2:\n        my_text = button_dict[x].cget('text')\n    bttn_clicks += 1\n\n\n\ndef Receipt():\n   txtReceipt.delete(\"1.0\", \"4.0\")\n   x = random.randint(10908, 500876)\n   randomRef = str(x)\n   Receipt_Ref.set(\"BILL\" + randomRef)\n\n\n\n   txtReceipt.insert(\"1.0\", 'Receipt Ref: \\t\\t\\t'+Receipt_Ref.get()+\"\\t\\t\"+DateofOrder.get()+\"\\n\")\n   txtReceipt.insert(\"2.0\", 'Items\\t\\t'+'Quantity\\t\\t\\t'+\"Price \\n\\n\")\n   if variable !=0:\n       txtReceipt.insert(END, str(my_text)+'\\t\\t'+str(bttn_clicks)+'\\t\\t\\t'+\"\"+str(bttn_clicks*3)+\"\\n\")\n\n\n\n\n\n\n\n\n\n\nmaster=Tk()\nmaster.geometry('630x350+100+200')\nmaster.title('Records')\nLabel = Button(master, text=\"meal\", width=10,command=showqurec)\nLabel.grid(row=0, column=0)\n\nBMILabel = Button(master, text=\"tea\", width=10,command=showqado)\nBMILabel.grid(row=0, column=1)\n\nstateLabel = Button(master, text=\"fast food\", width=10,command=showcasho)\nstateLabel.grid(row=0, column=2)\n\nlblReceipt = Button(master,text=\"Get Receipt:\",anchor='w',command=Receipt)\nlblReceipt.grid(row=0,column=4,sticky=W)\ntxtReceipt = Text(master,bg=\"white\",width=47,height=17.5)\ntxtReceipt.grid(row=1,column=4,rowspan=4,columnspan=40)\n\nReceipt_Ref=StringVar()\nDateofOrder = StringVar()\nmaster.mainloop()\n</code></pre>\n\n<p>Now  I declared the prices but how I can get them from database\n I also have another of buttons clicks are incrementing on every buttons clicked how on specied button</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "wpf",
+                "binding"
+            ],
+            "owner": {
+                "reputation": 66,
+                "user_id": 9702668,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-awz6lUjdFg4/AAAAAAAAAAI/AAAAAAAACxk/9BlaUFmwjPc/photo.jpg?sz=128",
+                "display_name": "Hanna Bilous",
+                "link": "https://stackoverflow.com/users/9702668/hanna-bilous"
+            },
+            "is_answered": true,
+            "view_count": 51,
+            "accepted_answer_id": 50332071,
+            "answer_count": 2,
+            "score": 2,
+            "last_activity_date": 1526423488,
+            "creation_date": 1526304475,
+            "question_id": 50331531,
+            "body_markdown": "I have a &#39;Button&#39; which needs to be enabled/disabled programmatically. I want to achieve this using a binding to a bool. Here is the Button XAML:\r\n\r\n    &lt;Button x:Name=&quot;logInButton&quot; Height=&quot;30&quot; IsEnabled=&quot;{Binding IsLoggedIn}&quot;&gt;\r\n    \t\t\t\t\t\t\t&lt;Image Source=&quot;/images/img.png&quot;&gt;&lt;/Image&gt;\r\n    \t\t\t\t\t\t&lt;/Button&gt;\r\n\r\nAnd I call this code\r\n\r\n    \t\tpublic MainWindow()\r\n    \t\t{\r\n    \t\t\tInitializeComponent();\r\n    \t\t\tenabled = false;\r\n    \t\t}\r\n    \t\tprivate bool enabled;\r\n    \t\tpublic bool IsLoggedIn\r\n    \t\t{\r\n    \t\t\tget\r\n    \t\t\t{\r\n    \t\t\t\treturn enabled;\r\n    \t\t\t}\r\n    \t\t\tset\r\n    \t\t\t{\r\n    \t\t\t\tenabled = value;\r\n    \t\t\t}\r\n    \t\t} \r\n\r\nThe value of the property `IsLoggedIn` is assigned correctly. But `IsEnabled` is not assigned the value I need. \r\n[For example][1]\r\n\r\n\r\n  [1]: https://i.stack.imgur.com/0MXN5.png\r\n\r\nI tried setting the value with `Binding Path` and `Binding Source` but nothing came to do. \r\nPlease advise what may be wrong.",
+            "link": "https://stackoverflow.com/questions/50331531/bind-isenabled-property-for-button-in-wpf",
+            "title": "Bind IsEnabled property for Button in WPF",
+            "body": "<p>I have a 'Button' which needs to be enabled/disabled programmatically. I want to achieve this using a binding to a bool. Here is the Button XAML:</p>\n\n<pre><code>&lt;Button x:Name=\"logInButton\" Height=\"30\" IsEnabled=\"{Binding IsLoggedIn}\"&gt;\n                            &lt;Image Source=\"/images/img.png\"&gt;&lt;/Image&gt;\n                        &lt;/Button&gt;\n</code></pre>\n\n<p>And I call this code</p>\n\n<pre><code>        public MainWindow()\n        {\n            InitializeComponent();\n            enabled = false;\n        }\n        private bool enabled;\n        public bool IsLoggedIn\n        {\n            get\n            {\n                return enabled;\n            }\n            set\n            {\n                enabled = value;\n            }\n        } \n</code></pre>\n\n<p>The value of the property <code>IsLoggedIn</code> is assigned correctly. But <code>IsEnabled</code> is not assigned the value I need. \n<a href=\"https://i.stack.imgur.com/0MXN5.png\" rel=\"nofollow noreferrer\">For example</a></p>\n\n<p>I tried setting the value with <code>Binding Path</code> and <code>Binding Source</code> but nothing came to do. \nPlease advise what may be wrong.</p>\n"
+        },
+        {
+            "tags": [
+                "sql",
+                "sql-server",
+                "sql-server-2008"
+            ],
+            "owner": {
+                "reputation": 2033,
+                "user_id": 2040286,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://www.gravatar.com/avatar/38346fd1ac7ec2130b6644fa44acb88c?s=128&d=identicon&r=PG",
+                "display_name": "Paresh J",
+                "link": "https://stackoverflow.com/users/2040286/paresh-j"
+            },
+            "is_answered": true,
+            "view_count": 2799,
+            "accepted_answer_id": 27119980,
+            "answer_count": 3,
+            "score": 2,
+            "last_activity_date": 1526423451,
+            "creation_date": 1416895571,
+            "question_id": 27119834,
+            "body_markdown": "I have following tables which are BankDetails and Transactiondetails. Using these two tables, I want to get the current balance of the account name.\r\n\r\nTables:\r\n\r\n    Create table Bankdetails\r\n    (\r\n    AccName varchar(50),\r\n    AccNo int,\r\n    OpBal numeric(18,2)\r\n    )\r\n    \r\n    Create table Trandetails\r\n    (\r\n    AccNo int,\r\n    Amount numeric(18,2),\r\n    Trantype varchar(10)\r\n    )\r\n\r\nInsert scripts for both tables:\r\n\r\n    insert into Bankdetails values(&#39;A&#39;, 12345, 30000.00)\r\n    insert into Bankdetails values(&#39;B&#39;, 13345, 30000.00)\r\n    insert into Bankdetails values(&#39;C&#39;, 14545, 30000.00)\r\n    insert into Bankdetails values(&#39;D&#39;, 15045, 30000.00)\r\n    \r\n    insert into Trandetails values(12345, 5000.00, &#39;Credit&#39;)\r\n    insert into Trandetails values(13345, 5000.00, &#39;Debit&#39;)\r\n    insert into Trandetails values(15045, 5000.00, &#39;Debit&#39;)\r\n    insert into Trandetails values(13345, 5000.00, &#39;Credit&#39;)\r\n    insert into Trandetails values(12345, 5000.00, &#39;Debit&#39;)\r\n    insert into Trandetails values(13345, 5000.00, &#39;Debit&#39;)\r\n    insert into Trandetails values(14545, 5000.00, &#39;Credit&#39;)\r\n    insert into Trandetails values(15045, 5000.00, &#39;Debit&#39;)\r\n    insert into Trandetails values(14545, 5000.00, &#39;Debit&#39;)\r\n\r\nOutput would be like this:\r\n\r\n    AccName Accno    CurrBal\r\n      A\t    12345\t30000.00 \r\n      B\t    13345\t25000.00\r\n      C\t    14545\t30000.00\r\n      D\t    15045\t20000.00\r\n\r\nI need Account Holdername, Account No and current balance using the above two tables.\r\n\r\nBelow is my query, I want to get optimized query i.e without using subqueries if possible.\r\n**Note:** In my case, credit = amount added into account and debit = amount subracted from account.\r\n\r\n    Select bd.accname, bd.accno, \r\n    (bd.opbal - isnull((select SUM(Amount) from Trandetails where Trantype = &#39;Debit&#39; and accno = bd.accno group by accno),0) + isnull((select SUM(Amount) from Trandetails where Trantype = &#39;Credit&#39;  and accno = bd.accno group by accno),0)) as Bal\r\n    From Bankdetails BD inner join Trandetails TD on td.AccNo = bd.AccNo\r\n    group by bd.accno, bd.accname, bd.opbal\r\n\r\n\r\nMy apologies for not following proper naming conventions for tables. Any help will be appreciated.\r\n\r\nThanks,\r\n\r\nParesh J",
+            "link": "https://stackoverflow.com/questions/27119834/optimizing-the-sql-query-for-calculating-account-balance",
+            "title": "Optimizing the SQL Query for Calculating account balance",
+            "body": "<p>I have following tables which are BankDetails and Transactiondetails. Using these two tables, I want to get the current balance of the account name.</p>\n\n<p>Tables:</p>\n\n<pre><code>Create table Bankdetails\n(\nAccName varchar(50),\nAccNo int,\nOpBal numeric(18,2)\n)\n\nCreate table Trandetails\n(\nAccNo int,\nAmount numeric(18,2),\nTrantype varchar(10)\n)\n</code></pre>\n\n<p>Insert scripts for both tables:</p>\n\n<pre><code>insert into Bankdetails values('A', 12345, 30000.00)\ninsert into Bankdetails values('B', 13345, 30000.00)\ninsert into Bankdetails values('C', 14545, 30000.00)\ninsert into Bankdetails values('D', 15045, 30000.00)\n\ninsert into Trandetails values(12345, 5000.00, 'Credit')\ninsert into Trandetails values(13345, 5000.00, 'Debit')\ninsert into Trandetails values(15045, 5000.00, 'Debit')\ninsert into Trandetails values(13345, 5000.00, 'Credit')\ninsert into Trandetails values(12345, 5000.00, 'Debit')\ninsert into Trandetails values(13345, 5000.00, 'Debit')\ninsert into Trandetails values(14545, 5000.00, 'Credit')\ninsert into Trandetails values(15045, 5000.00, 'Debit')\ninsert into Trandetails values(14545, 5000.00, 'Debit')\n</code></pre>\n\n<p>Output would be like this:</p>\n\n<pre><code>AccName Accno    CurrBal\n  A     12345   30000.00 \n  B     13345   25000.00\n  C     14545   30000.00\n  D     15045   20000.00\n</code></pre>\n\n<p>I need Account Holdername, Account No and current balance using the above two tables.</p>\n\n<p>Below is my query, I want to get optimized query i.e without using subqueries if possible.\n<strong>Note:</strong> In my case, credit = amount added into account and debit = amount subracted from account.</p>\n\n<pre><code>Select bd.accname, bd.accno, \n(bd.opbal - isnull((select SUM(Amount) from Trandetails where Trantype = 'Debit' and accno = bd.accno group by accno),0) + isnull((select SUM(Amount) from Trandetails where Trantype = 'Credit'  and accno = bd.accno group by accno),0)) as Bal\nFrom Bankdetails BD inner join Trandetails TD on td.AccNo = bd.AccNo\ngroup by bd.accno, bd.accname, bd.opbal\n</code></pre>\n\n<p>My apologies for not following proper naming conventions for tables. Any help will be appreciated.</p>\n\n<p>Thanks,</p>\n\n<p>Paresh J</p>\n"
+        },
+        {
+            "tags": [
+                "wordpress"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 3501194,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/100002132207010/picture?type=large",
+                "display_name": "user3501194",
+                "link": "https://stackoverflow.com/users/3501194/user3501194"
+            },
+            "is_answered": false,
+            "view_count": 6,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526423446,
+            "creation_date": 1526423446,
+            "question_id": 50360022,
+            "body_markdown": "I&#39;m trying to import my content xml file to my live server.\r\n\r\nBut the university servers are protected with a vpn admin panel is not able to make the upload . Is there a way to do this manually and launch the import ?",
+            "link": "https://stackoverflow.com/questions/50360022/import-xml-content-file-to-vpn-protected-server",
+            "title": "Import xml content file to vpn protected server",
+            "body": "<p>I'm trying to import my content xml file to my live server.</p>\n\n<p>But the university servers are protected with a vpn admin panel is not able to make the upload . Is there a way to do this manually and launch the import ?</p>\n"
+        },
+        {
+            "tags": [
+                "javascript",
+                "html",
+                "css"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9796885,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/738e732415bbd531e3e804721725bf40?s=128&d=identicon&r=PG&f=1",
+                "display_name": "J_code_master",
+                "link": "https://stackoverflow.com/users/9796885/j-code-master"
+            },
+            "is_answered": false,
+            "view_count": 11,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526423441,
+            "creation_date": 1526422646,
+            "last_edit_date": 1526423441,
+            "question_id": 50359913,
+            "body_markdown": "Hello i am trying to learn some basic things in GIS, and curently i want to link the marker &#39;qendra&#39; with the complex polyline. I don&#39;t know what is wrong with the code because the map shows the marker and poliline but cant link them together.I want to start polyline from a marker &#39;qendra&#39; and to finish to another   static marker . Hope someone helps me !     \r\n \r\n\r\n    &lt;script src=&quot;http://maps.googleapis.com/maps/api/js?key=AIzaSyA1_1NrgPfu0dk-r3U9hg28fRHbtVBJ6a8&amp;sensor=false&quot;&gt;&lt;/script&gt;\r\n\r\n    var poly;        \r\n    var map;        \r\n    var myCenter = new google.maps.LatLng(40.4708, 19.4914);\r\n        \r\n    function initialize() {\r\n       var chicago = new google.maps.LatLng(40.4708, 19.4914);\r\n       var mapOptions = {\r\n         zoom: 7,\r\n         center: chicago,\r\n         mapTypeId: google.maps.MapTypeId.ROADMAP\r\n       };\r\n        \r\n       map = new google.maps.Map(document.getElementById(&#39;map-canvas&#39;), mapOptions);\r\n        \r\n       var polyOptions = {\r\n          path: new google.maps.LatLng(40.4708, 19.4914),\r\n          strokeColor: &#39;#000000&#39;,\r\n          strokeOpacity: 1.0,\r\n          strokeWeight: 3\r\n       }\r\n        \r\n       poly = new google.maps.Polyline(polyOptions);\r\n       poly.setMap(map); \r\n       google.maps.event.addListener(map, &#39;click&#39;, addLatLng);\r\n        \r\n       var qendra = new google.maps.Marker({\r\n          position:myCenter,\r\n          map:map\r\n       });\r\n        \r\n       marker.setMap(map);\r\n       marker.addListener(&#39;click&#39;, function(){\r\n        \r\n       });\r\n    }\r\n        \r\n        \r\n    function addLatLng(event) {\r\n       var path =    poly.getPath();\r\n       path.push(event.latLng);\r\n          \r\n       var marker = new google.maps.Marker({\r\n         position: event.latLng,\r\n         title: &#39;#&#39; + path.getLength(),\r\n         map: map\r\n       });        \r\n    }\r\n        \r\n    google.maps.event.addDomListener(window, &#39;load&#39;, initialize);\r\n        \r\n        ",
+            "link": "https://stackoverflow.com/questions/50359913/how-to-link-a-static-marker-with-a-complex-polyline",
+            "title": "How to link a static marker with a complex polyline?",
+            "body": "<p>Hello i am trying to learn some basic things in GIS, and curently i want to link the marker 'qendra' with the complex polyline. I don't know what is wrong with the code because the map shows the marker and poliline but cant link them together.I want to start polyline from a marker 'qendra' and to finish to another   static marker . Hope someone helps me !     </p>\n\n<pre><code>&lt;script src=\"http://maps.googleapis.com/maps/api/js?key=AIzaSyA1_1NrgPfu0dk-r3U9hg28fRHbtVBJ6a8&amp;sensor=false\"&gt;&lt;/script&gt;\n\nvar poly;        \nvar map;        \nvar myCenter = new google.maps.LatLng(40.4708, 19.4914);\n\nfunction initialize() {\n   var chicago = new google.maps.LatLng(40.4708, 19.4914);\n   var mapOptions = {\n     zoom: 7,\n     center: chicago,\n     mapTypeId: google.maps.MapTypeId.ROADMAP\n   };\n\n   map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);\n\n   var polyOptions = {\n      path: new google.maps.LatLng(40.4708, 19.4914),\n      strokeColor: '#000000',\n      strokeOpacity: 1.0,\n      strokeWeight: 3\n   }\n\n   poly = new google.maps.Polyline(polyOptions);\n   poly.setMap(map); \n   google.maps.event.addListener(map, 'click', addLatLng);\n\n   var qendra = new google.maps.Marker({\n      position:myCenter,\n      map:map\n   });\n\n   marker.setMap(map);\n   marker.addListener('click', function(){\n\n   });\n}\n\n\nfunction addLatLng(event) {\n   var path =    poly.getPath();\n   path.push(event.latLng);\n\n   var marker = new google.maps.Marker({\n     position: event.latLng,\n     title: '#' + path.getLength(),\n     map: map\n   });        \n}\n\ngoogle.maps.event.addDomListener(window, 'load', initialize);\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python-3.x",
+                "iteration",
+                "generator",
+                "yield",
+                "next"
+            ],
+            "owner": {
+                "reputation": 53,
+                "user_id": 1110884,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/184ace2ea573b24a785a6caf7a811cd0?s=128&d=identicon&r=PG",
+                "display_name": "madamada",
+                "link": "https://stackoverflow.com/users/1110884/madamada"
+            },
+            "is_answered": true,
+            "view_count": 6275,
+            "accepted_answer_id": 8598773,
+            "answer_count": 4,
+            "score": 10,
+            "last_activity_date": 1526423384,
+            "creation_date": 1324517510,
+            "question_id": 8598473,
+            "body_markdown": "When I use a generator in a for loop, it seems to &quot;know&quot;, when there are no more elements yielded. Now, I have to use a generator WITHOUT a for loop, and use __next__() by hand, to get the next element. My problem is, how do I know, if there are no more elements?\r\n\r\nI know only: __next__() raises an exception (StopIteration), if there is nothing left, BUT isn&#39;t an exception a little bit too &quot;heavy&quot; for such a simple problem? Isn&#39;t there a method like __has_next__() or so?\r\n\r\nThe following lines should make clear, what I mean:\r\n    \r\n    #!/usr/bin/python3\r\n    \r\n    # define a list of some objects\r\n    bar = [&#39;abc&#39;, 123, None, True, 456.789]\r\n    \r\n    # our primitive generator\r\n    def foo(bar):\r\n        for b in bar:\r\n            yield b\r\n    \r\n    # iterate, using the generator above\r\n    print(&#39;--- TEST A (for loop) ---&#39;)\r\n    for baz in foo(bar):\r\n        print(baz)\r\n    print()\r\n    \r\n    # assign a new iterator to a variable\r\n    foobar = foo(bar)\r\n    \r\n    print(&#39;--- TEST B (try-except) ---&#39;)\r\n    while True:\r\n        try:\r\n            print(foobar.__next__())\r\n        except StopIteration:\r\n            break\r\n    print()\r\n    \r\n    # assign a new iterator to a variable\r\n    foobar = foo(bar)\r\n    \r\n    # display generator members\r\n    print(&#39;--- GENERATOR MEMBERS ---&#39;)\r\n    print(&#39;, &#39;.join(dir(foobar)))\r\n\r\nThe output is as follows:\r\n\r\n    --- TEST A (for loop) ---\r\n    abc\r\n    123\r\n    None\r\n    True\r\n    456.789\r\n    \r\n    --- TEST B (try-except) ---\r\n    abc\r\n    123\r\n    None\r\n    True\r\n    456.789\r\n    \r\n    --- GENERATOR MEMBERS ---\r\n    __class__, __delattr__, __doc__, __eq__, __format__, __ge__, __getattribute__, __gt__, __hash__, __init__, __iter__, __le__, __lt__, __name__, __ne__, __new__, __next__, __reduce__, __reduce_ex__, __repr__, __setattr__, __sizeof__, __str__, __subclasshook__, close, gi_code, gi_frame, gi_running, send, throw\r\n\r\nThanks to everybody, and have a nice day! :)",
+            "link": "https://stackoverflow.com/questions/8598473/python-3-x-test-if-generator-has-elements-remaining",
+            "title": "Python 3.x: Test if generator has elements remaining",
+            "body": "<p>When I use a generator in a for loop, it seems to \"know\", when there are no more elements yielded. Now, I have to use a generator WITHOUT a for loop, and use <strong>next</strong>() by hand, to get the next element. My problem is, how do I know, if there are no more elements?</p>\n\n<p>I know only: <strong>next</strong>() raises an exception (StopIteration), if there is nothing left, BUT isn't an exception a little bit too \"heavy\" for such a simple problem? Isn't there a method like <strong>has_next</strong>() or so?</p>\n\n<p>The following lines should make clear, what I mean:</p>\n\n<pre><code>#!/usr/bin/python3\n\n# define a list of some objects\nbar = ['abc', 123, None, True, 456.789]\n\n# our primitive generator\ndef foo(bar):\n    for b in bar:\n        yield b\n\n# iterate, using the generator above\nprint('--- TEST A (for loop) ---')\nfor baz in foo(bar):\n    print(baz)\nprint()\n\n# assign a new iterator to a variable\nfoobar = foo(bar)\n\nprint('--- TEST B (try-except) ---')\nwhile True:\n    try:\n        print(foobar.__next__())\n    except StopIteration:\n        break\nprint()\n\n# assign a new iterator to a variable\nfoobar = foo(bar)\n\n# display generator members\nprint('--- GENERATOR MEMBERS ---')\nprint(', '.join(dir(foobar)))\n</code></pre>\n\n<p>The output is as follows:</p>\n\n<pre><code>--- TEST A (for loop) ---\nabc\n123\nNone\nTrue\n456.789\n\n--- TEST B (try-except) ---\nabc\n123\nNone\nTrue\n456.789\n\n--- GENERATOR MEMBERS ---\n__class__, __delattr__, __doc__, __eq__, __format__, __ge__, __getattribute__, __gt__, __hash__, __init__, __iter__, __le__, __lt__, __name__, __ne__, __new__, __next__, __reduce__, __reduce_ex__, __repr__, __setattr__, __sizeof__, __str__, __subclasshook__, close, gi_code, gi_frame, gi_running, send, throw\n</code></pre>\n\n<p>Thanks to everybody, and have a nice day! :)</p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 299
+}

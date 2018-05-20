@@ -1,0 +1,830 @@
+{
+    "items": [
+        {
+            "tags": [
+                "python",
+                "pandas",
+                "dataframe",
+                "moving-average"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 8178519,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/669829087877e273216b4253a271565b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Manuel T",
+                "link": "https://stackoverflow.com/users/8178519/manuel-t"
+            },
+            "is_answered": true,
+            "view_count": 67,
+            "accepted_answer_id": 50359636,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1526421771,
+            "creation_date": 1526053408,
+            "last_edit_date": 1526072100,
+            "question_id": 50295833,
+            "body_markdown": "I would like to calculate buy and sell signals for stocks based on simple moving average (SMA) crossing.  A buy signal should be given as soon as the *SMA_short* is higher than the *SMA_long* (i.e., *SMA_difference* &gt; 0). In order to avoid that the position is sold too quickly, I would like to have a sell signal only once the *SMA_shor*t has moved beyond the cross considerably (i.e., *SMA_difference* &lt; -1), and, importantly, even if this would be for longer than one day. \r\n\r\nI managed, by this [help](https://stackoverflow.com/questions/34855859/is-there-a-way-in-pandas-to-use-previous-row-value-in-dataframe-apply-when-previ) to implement it (see below): \r\n\r\n- Buy and sell signals are indicated by *in* and *out*. \r\n- Column *Position* takes first the  *buy_limit* into account.\r\n- In *Position_extended* an *in* is then set for all the cases where the *SMA_short* just crossed through the *SMA_long* (*SMA_short* &lt; *SMA_long*) but *SMA_short* &gt; -1. For this it is taking the *Position extended* of i-1 into account in case the crossing was more than one day ago but *SMA_short* remained: `0 &gt; SMA_short &gt; -1`.\r\n\r\nPython code\r\n\r\n    import pandas as pd\r\n    import numpy as np\r\n    \r\n    index = pd.date_range(&#39;20180101&#39;, periods=6)\r\n    df = pd.DataFrame(index=index)\r\n    df[&quot;SMA_short&quot;] = [9,10,11,10,10,9]\r\n    df[&quot;SMA_long&quot;] = 10\r\n    df[&quot;SMA_difference&quot;] = df[&quot;SMA_short&quot;] - df[&quot;SMA_long&quot;]\r\n    buy_limit = 0\r\n    sell_limit = -1\r\n\r\n    df[&quot;Position&quot;] = np.where((df[&quot;SMA_difference&quot;] &gt; buy_limit),&quot;in&quot;,&quot;out&quot;)\r\n    df[&quot;Position_extended&quot;] = df[&quot;Position&quot;]\r\n    for i in range(1,len(df)):\r\n        df.loc[index[i],&quot;Position_extended&quot;] =  \\\r\n        np.where((df.loc[index[i], &quot;SMA_difference&quot;] &gt; sell_limit) \\\r\n                  &amp; (df.loc[index[i-1],&quot;Position_extended&quot;] == &quot;in&quot;) \\\r\n                  ,&quot;in&quot;,df.loc[index[i],&#39;Position&#39;])\r\n    print df \r\n\r\nThe result is:\r\n\r\n                  SMA_short  SMA_long  SMA_difference Position Position_extended\r\n    2018-01-01          9        10              -1      out               out\r\n    2018-01-02         10        10               0      out               out\r\n    2018-01-03         11        10               1       in                in\r\n    2018-01-04         10        10               0      out                in\r\n    2018-01-05         10        10               0      out                in\r\n    2018-01-06          9        10              -1      out               out\r\n\r\nThe code works, however, it makes use of a `for` loop, which slows down the script considerably and becomes inapplicable in the larger context of this analysis. As SMA crossing is such a highly used tool, I was wondering whether somebody could see a more elegant and faster solution for this.\r\n",
+            "link": "https://stackoverflow.com/questions/50295833/avoid-looping-to-calculate-simple-moving-average-crossing-derived-signals",
+            "title": "Avoid looping to calculate simple moving average crossing-derived signals",
+            "body": "<p>I would like to calculate buy and sell signals for stocks based on simple moving average (SMA) crossing.  A buy signal should be given as soon as the <em>SMA_short</em> is higher than the <em>SMA_long</em> (i.e., <em>SMA_difference</em> > 0). In order to avoid that the position is sold too quickly, I would like to have a sell signal only once the <em>SMA_shor</em>t has moved beyond the cross considerably (i.e., <em>SMA_difference</em> &lt; -1), and, importantly, even if this would be for longer than one day. </p>\n\n<p>I managed, by this <a href=\"https://stackoverflow.com/questions/34855859/is-there-a-way-in-pandas-to-use-previous-row-value-in-dataframe-apply-when-previ\">help</a> to implement it (see below): </p>\n\n<ul>\n<li>Buy and sell signals are indicated by <em>in</em> and <em>out</em>. </li>\n<li>Column <em>Position</em> takes first the  <em>buy_limit</em> into account.</li>\n<li>In <em>Position_extended</em> an <em>in</em> is then set for all the cases where the <em>SMA_short</em> just crossed through the <em>SMA_long</em> (<em>SMA_short</em> &lt; <em>SMA_long</em>) but <em>SMA_short</em> > -1. For this it is taking the <em>Position extended</em> of i-1 into account in case the crossing was more than one day ago but <em>SMA_short</em> remained: <code>0 &gt; SMA_short &gt; -1</code>.</li>\n</ul>\n\n<p>Python code</p>\n\n<pre><code>import pandas as pd\nimport numpy as np\n\nindex = pd.date_range('20180101', periods=6)\ndf = pd.DataFrame(index=index)\ndf[\"SMA_short\"] = [9,10,11,10,10,9]\ndf[\"SMA_long\"] = 10\ndf[\"SMA_difference\"] = df[\"SMA_short\"] - df[\"SMA_long\"]\nbuy_limit = 0\nsell_limit = -1\n\ndf[\"Position\"] = np.where((df[\"SMA_difference\"] &gt; buy_limit),\"in\",\"out\")\ndf[\"Position_extended\"] = df[\"Position\"]\nfor i in range(1,len(df)):\n    df.loc[index[i],\"Position_extended\"] =  \\\n    np.where((df.loc[index[i], \"SMA_difference\"] &gt; sell_limit) \\\n              &amp; (df.loc[index[i-1],\"Position_extended\"] == \"in\") \\\n              ,\"in\",df.loc[index[i],'Position'])\nprint df \n</code></pre>\n\n<p>The result is:</p>\n\n<pre><code>              SMA_short  SMA_long  SMA_difference Position Position_extended\n2018-01-01          9        10              -1      out               out\n2018-01-02         10        10               0      out               out\n2018-01-03         11        10               1       in                in\n2018-01-04         10        10               0      out                in\n2018-01-05         10        10               0      out                in\n2018-01-06          9        10              -1      out               out\n</code></pre>\n\n<p>The code works, however, it makes use of a <code>for</code> loop, which slows down the script considerably and becomes inapplicable in the larger context of this analysis. As SMA crossing is such a highly used tool, I was wondering whether somebody could see a more elegant and faster solution for this.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "asp.net",
+                "web-config",
+                "iis-7.5"
+            ],
+            "owner": {
+                "reputation": 181,
+                "user_id": 4855909,
+                "user_type": "registered",
+                "accept_rate": 38,
+                "profile_image": "https://www.gravatar.com/avatar/33b06cf9f71db95ab2471b2aad852c3b?s=128&d=identicon&r=PG&f=1",
+                "display_name": "andre",
+                "link": "https://stackoverflow.com/users/4855909/andre"
+            },
+            "is_answered": true,
+            "view_count": 15594,
+            "answer_count": 4,
+            "score": 14,
+            "last_activity_date": 1526421763,
+            "creation_date": 1466523623,
+            "last_edit_date": 1466524844,
+            "question_id": 37948865,
+            "body_markdown": "I am getting the following error when I try to launch my ASP.Net Core App using IIS Server v7.5 ... I published the website (File System option in Visual Studio) to a specific directory successfully. It launches fine from approot/web.cmd file. But when I try to hook it up to IIS Server and point it to the wwwroot folder, I get the following error:\r\n\r\n&gt; HTTP Error 500.19 - Internal Server Error\r\n\r\n&gt; The requested page cannot be accessed because the related configuration data for the page is invalid.\r\n\r\n&gt; - Detailed Error Information\r\n&gt; - Module\tIIS Web Core\r\n&gt; - Notification\tUnknown\r\n&gt; - Handler\tNot yet determined\r\n&gt; - Error Code\t0x8007000d\r\n&gt; - Config Error\t\r\n&gt; - Config File\t\\\\?\\D:\\WebDevelopment\\UAT\\creativeNamePROD\\wwwroot\\web.config\r\n&gt; - Requested URL\thttp://10.2.177.226:59/\r\n&gt; - Physical Path\t\r\n&gt; - Logon Method\tNot yet determined\r\n&gt; - Logon User\tNot yet determined\r\n&gt; - Failed Request Tracing Log Directory\r\n\r\nBelow are two different web.config files I tried any neither one worked. When I try to get into Configuration Editor within IIS, I get an unclear error as well. Any help would be greatly appreciated!!!\r\n\r\n    &lt;configuration&gt;\r\n    &lt;system.web&gt;\r\n      &lt;httpRuntime maxQueryStringLength=&quot;64768&quot; maxUrlLength=&quot;65536&quot; /&gt;\r\n    &lt;/system.web&gt;\r\n    &lt;system.webServer&gt;\r\n    &lt;security&gt;\r\n      &lt;requestFiltering&gt;\r\n        &lt;requestLimits maxQueryString=&quot;64768&quot; /&gt;\r\n      &lt;/requestFiltering&gt;\r\n    &lt;/security&gt;\r\n    &lt;handlers&gt;\r\n      &lt;add name=&quot;httpplatformhandler&quot; path=&quot;*&quot; verb=&quot;*&quot; modules=&quot;httpPlatformHandler&quot; resourceType=&quot;Unspecified&quot; /&gt;\r\n    &lt;/handlers&gt;\r\n    &lt;httpPlatform processPath=&quot;..\\approot\\web.cmd&quot; arguments=&quot;&quot; stdoutLogEnabled=&quot;false&quot; stdoutLogFile=&quot;..\\logs\\stdout.log&quot; startupTimeLimit=&quot;3600&quot;&gt;&lt;/httpPlatform&gt;\r\n    &lt;/system.webServer&gt;\r\n    &lt;/configuration&gt;\r\n\r\nWeb.config #2 -gets the same error\r\n\r\n    &lt;configuration&gt;\r\n      &lt;system.webServer&gt;\r\n        &lt;handlers&gt;\r\n          &lt;add name=&quot;httpplatformhandler&quot; path=&quot;*&quot; verb=&quot;*&quot; modules=&quot;httpPlatformHandler&quot; resourceType=&quot;Unspecified&quot; /&gt;\r\n        &lt;/handlers&gt;\r\n        &lt;httpPlatform processPath=&quot;..\\approot\\web.cmd&quot; arguments=&quot;&quot; stdoutLogEnabled=&quot;false&quot; stdoutLogFile=&quot;..\\logs\\stdout.log&quot; startupTimeLimit=&quot;3600&quot;&gt;&lt;/httpPlatform&gt;\r\n      &lt;/system.webServer&gt;\r\n    &lt;/configuration&gt;\r\n",
+            "link": "https://stackoverflow.com/questions/37948865/iis-server-asp-net-core-page-cannot-be-accessed-because-the-related-configur",
+            "title": "IIS Server &amp; ASP.Net Core - page cannot be accessed because the related configuration data for the page is invalid",
+            "body": "<p>I am getting the following error when I try to launch my ASP.Net Core App using IIS Server v7.5 ... I published the website (File System option in Visual Studio) to a specific directory successfully. It launches fine from approot/web.cmd file. But when I try to hook it up to IIS Server and point it to the wwwroot folder, I get the following error:</p>\n\n<blockquote>\n  <p>HTTP Error 500.19 - Internal Server Error</p>\n  \n  <p>The requested page cannot be accessed because the related configuration data for the page is invalid.</p>\n  \n  <ul>\n  <li>Detailed Error Information</li>\n  <li>Module  IIS Web Core</li>\n  <li>Notification    Unknown</li>\n  <li>Handler Not yet determined</li>\n  <li>Error Code  0x8007000d</li>\n  <li>Config Error    </li>\n  <li>Config File \\?\\D:\\WebDevelopment\\UAT\\creativeNamePROD\\wwwroot\\web.config</li>\n  <li>Requested URL   <a href=\"http://10.2.177.226:59/\" rel=\"noreferrer\">http://10.2.177.226:59/</a></li>\n  <li>Physical Path   </li>\n  <li>Logon Method    Not yet determined</li>\n  <li>Logon User  Not yet determined</li>\n  <li>Failed Request Tracing Log Directory</li>\n  </ul>\n</blockquote>\n\n<p>Below are two different web.config files I tried any neither one worked. When I try to get into Configuration Editor within IIS, I get an unclear error as well. Any help would be greatly appreciated!!!</p>\n\n<pre><code>&lt;configuration&gt;\n&lt;system.web&gt;\n  &lt;httpRuntime maxQueryStringLength=\"64768\" maxUrlLength=\"65536\" /&gt;\n&lt;/system.web&gt;\n&lt;system.webServer&gt;\n&lt;security&gt;\n  &lt;requestFiltering&gt;\n    &lt;requestLimits maxQueryString=\"64768\" /&gt;\n  &lt;/requestFiltering&gt;\n&lt;/security&gt;\n&lt;handlers&gt;\n  &lt;add name=\"httpplatformhandler\" path=\"*\" verb=\"*\" modules=\"httpPlatformHandler\" resourceType=\"Unspecified\" /&gt;\n&lt;/handlers&gt;\n&lt;httpPlatform processPath=\"..\\approot\\web.cmd\" arguments=\"\" stdoutLogEnabled=\"false\" stdoutLogFile=\"..\\logs\\stdout.log\" startupTimeLimit=\"3600\"&gt;&lt;/httpPlatform&gt;\n&lt;/system.webServer&gt;\n&lt;/configuration&gt;\n</code></pre>\n\n<p>Web.config #2 -gets the same error</p>\n\n<pre><code>&lt;configuration&gt;\n  &lt;system.webServer&gt;\n    &lt;handlers&gt;\n      &lt;add name=\"httpplatformhandler\" path=\"*\" verb=\"*\" modules=\"httpPlatformHandler\" resourceType=\"Unspecified\" /&gt;\n    &lt;/handlers&gt;\n    &lt;httpPlatform processPath=\"..\\approot\\web.cmd\" arguments=\"\" stdoutLogEnabled=\"false\" stdoutLogFile=\"..\\logs\\stdout.log\" startupTimeLimit=\"3600\"&gt;&lt;/httpPlatform&gt;\n  &lt;/system.webServer&gt;\n&lt;/configuration&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "jquery",
+                "asp.net-mvc-3",
+                "jquery-validate",
+                "requiredfieldvalidator",
+                "client-side-validation"
+            ],
+            "owner": {
+                "reputation": 24912,
+                "user_id": 111435,
+                "user_type": "registered",
+                "accept_rate": 66,
+                "profile_image": "https://www.gravatar.com/avatar/3d7de11fb1c0a98dc2aee865c558f7cc?s=128&d=identicon&r=PG",
+                "display_name": "Prasad",
+                "link": "https://stackoverflow.com/users/111435/prasad"
+            },
+            "is_answered": true,
+            "view_count": 17507,
+            "accepted_answer_id": 5744530,
+            "answer_count": 4,
+            "score": 20,
+            "last_activity_date": 1526421762,
+            "creation_date": 1303309036,
+            "last_edit_date": 1391117781,
+            "question_id": 5731788,
+            "body_markdown": "I am using the `[Required]` attribute for the client-side validation in ASP.NET MVC 3.\r\n\r\nThe class looks as:\r\n\r\n&lt;!-- language: c# --!&gt;\r\n\r\n    public class User\r\n    {\r\n        [Required(ErrorMessage = &quot;First Name is required&quot;)]\r\n        public string FirstName { get; set; }\r\n    }\r\n\r\nI want the field `FirstName` to be validated only if it&#39;s visible, which will be shown only on certain conditions. How can I do that?\r\n\r\nI have used the following, but still it looks to validate for the required field of that hidden field.\r\n\r\n&lt;!-- language: javascript --!&gt;\r\n\r\n    $(&#39;#registerForm&#39;).validate({ ignore: &quot;:not(:visible)&quot; });\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/5731788/require-validation-only-if-the-field-is-visible",
+            "title": "Require validation only if the field is visible",
+            "body": "<p>I am using the <code>[Required]</code> attribute for the client-side validation in ASP.NET MVC 3.</p>\n\n<p>The class looks as:</p>\n\n<p></p>\n\n<pre><code>public class User\n{\n    [Required(ErrorMessage = \"First Name is required\")]\n    public string FirstName { get; set; }\n}\n</code></pre>\n\n<p>I want the field <code>FirstName</code> to be validated only if it's visible, which will be shown only on certain conditions. How can I do that?</p>\n\n<p>I have used the following, but still it looks to validate for the required field of that hidden field.</p>\n\n<p></p>\n\n<pre><code>$('#registerForm').validate({ ignore: \":not(:visible)\" });\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "iphone",
+                "swift",
+                "search",
+                "uisearchbar"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 4100584,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/8988c7053cf2847374f79d518774b4a4?s=128&d=identicon&r=PG&f=1",
+                "display_name": "lebrain",
+                "link": "https://stackoverflow.com/users/4100584/lebrain"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526421753,
+            "creation_date": 1526421753,
+            "question_id": 50359771,
+            "body_markdown": "Attempting to do a search highlight with a next button:\r\n\r\n`searchBar.returnKeyType = UIReturnKeyType.next`\r\n\r\n    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {\r\n        if searchBar.text != nil || searchBar.text != &quot;&quot; {\r\n    //move on to the next search match\r\n            self.setNextCurrentHighlightedIndex()\r\n    //scroll to\r\n            self.jumpToCurrentHighlight()\r\n        }\r\n    }\r\n    \r\n    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {\r\n        if searchText == &quot;&quot; {\r\n            isSearching = false\r\n            self.tableView.reloadData()\r\n        } else {\r\n            isSearching = true\r\n            if searchText.count &gt; 2 {\r\n    // delay for user to finish typing before executing search\r\n                DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(1)) {\r\n                    self.processSearch(searchString: searchText)\r\n                }\r\n                self.tableView.reloadData()\r\n                self.searchBar.endEditing(false)\r\n            }\r\n        }\r\n    }\r\n\r\nMy highlight and search works great except the keyboard with the next button keeps getting dismissed when I enter the search for the first time and click next. Things I&#39;ve tried:\r\n\r\n    searchBar.endEditing(false)\r\n    searchBar.becomeFirstResponder()\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50359771/how-to-prevent-uisearchbar-from-dismissing-the-keyboard",
+            "title": "How to prevent UISearchBar from dismissing the keyboard",
+            "body": "<p>Attempting to do a search highlight with a next button:</p>\n\n<p><code>searchBar.returnKeyType = UIReturnKeyType.next</code></p>\n\n<pre><code>func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {\n    if searchBar.text != nil || searchBar.text != \"\" {\n//move on to the next search match\n        self.setNextCurrentHighlightedIndex()\n//scroll to\n        self.jumpToCurrentHighlight()\n    }\n}\n\nfunc searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {\n    if searchText == \"\" {\n        isSearching = false\n        self.tableView.reloadData()\n    } else {\n        isSearching = true\n        if searchText.count &gt; 2 {\n// delay for user to finish typing before executing search\n            DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(1)) {\n                self.processSearch(searchString: searchText)\n            }\n            self.tableView.reloadData()\n            self.searchBar.endEditing(false)\n        }\n    }\n}\n</code></pre>\n\n<p>My highlight and search works great except the keyboard with the next button keeps getting dismissed when I enter the search for the first time and click next. Things I've tried:</p>\n\n<pre><code>searchBar.endEditing(false)\nsearchBar.becomeFirstResponder()\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "neo4j"
+            ],
+            "owner": {
+                "reputation": 14,
+                "user_id": 5070533,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/JU2Fr.jpg?s=128&g=1",
+                "display_name": "havenwang",
+                "link": "https://stackoverflow.com/users/5070533/havenwang"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526421752,
+            "creation_date": 1526415841,
+            "question_id": 50358637,
+            "body_markdown": "Is there a way in Neo4j 3 to set edge multiplicity settings for edges with a given label or property?\r\n\r\nFor example, if I had a &quot;biological mother&quot; relationship, I would want to enforce a many-to-one edge multiplicity for relationships of this type.\r\n\r\nI&#39;m looking for something similar as the edge multiplicity settings [in JanusGraph](http://docs.janusgraph.org/0.2.0/schema.html#_edge_label_multiplicity).\r\n\r\nAs a follow up question, what setting values are available if defining edge multiplicity is possible?",
+            "link": "https://stackoverflow.com/questions/50358637/neo4j-edge-multiplicity-settings",
+            "title": "Neo4j Edge Multiplicity Settings",
+            "body": "<p>Is there a way in Neo4j 3 to set edge multiplicity settings for edges with a given label or property?</p>\n\n<p>For example, if I had a \"biological mother\" relationship, I would want to enforce a many-to-one edge multiplicity for relationships of this type.</p>\n\n<p>I'm looking for something similar as the edge multiplicity settings <a href=\"http://docs.janusgraph.org/0.2.0/schema.html#_edge_label_multiplicity\" rel=\"nofollow noreferrer\">in JanusGraph</a>.</p>\n\n<p>As a follow up question, what setting values are available if defining edge multiplicity is possible?</p>\n"
+        },
+        {
+            "tags": [
+                "hibernate",
+                "postgresql",
+                "jpa",
+                "postgresql-9.1"
+            ],
+            "owner": {
+                "reputation": 43,
+                "user_id": 5387828,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/89d67b836152f10a26afe9e9111ec990?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Manish Shukla",
+                "link": "https://stackoverflow.com/users/5387828/manish-shukla"
+            },
+            "is_answered": false,
+            "view_count": 1211,
+            "answer_count": 3,
+            "score": 5,
+            "last_activity_date": 1526421720,
+            "creation_date": 1444034075,
+            "last_edit_date": 1456901528,
+            "question_id": 32944267,
+            "body_markdown": "I have to convert a bytea entry for a query to bigint. How could this be done?\r\n\r\n**More Info:** \r\n\r\nI have a hibernate repository as below -\r\n\r\n     @Query(value = &quot;update Sample_Table set other_id = ?1 where id = ?2&quot;, nativeQuery = true)\r\n     void saveOrUpdateOtherId(Long other_id, Long id);\r\n\r\nHibernate somehow taking `id` (in where clause) as `bytea` and since &#39;*Sample_Table*&#39; has this id field as `bigint` and thus it throws type mismatch problem. \r\n\r\nI have tried using CAST to convert `bytea` to `bigint` but it didn&#39;t succeed and error msg says `bytea` can not be casted to `bigint`. \r\n\r\nHow can i change `bytea` to `bigint`? \r\n\r\n---------------\r\n\r\n**Edit:**\r\n\r\nSample_Table DAO:\r\n    \r\n    @Table(name = &quot;Sample_Table&quot;)\r\n    public class Sample{\r\n        @Id\r\n        @Column(name = &quot;id&quot;, unique = true)\r\n        @GeneratedValue\r\n        private Long id;\r\n    \r\n        @Column(name = &quot;other_id&quot;)\r\n        private Long other_id;\r\n    }\r\n\r\n`id` field is defined in here as Long.\r\n\r\n---------------\r\n**Edit-2**\r\nIf someone get such issue, most likely he is passing null value in the query. ",
+            "link": "https://stackoverflow.com/questions/32944267/postgresql-converting-bytea-to-bigint",
+            "title": "postgresql: Converting bytea to bigint",
+            "body": "<p>I have to convert a bytea entry for a query to bigint. How could this be done?</p>\n\n<p><strong>More Info:</strong> </p>\n\n<p>I have a hibernate repository as below -</p>\n\n<pre><code> @Query(value = \"update Sample_Table set other_id = ?1 where id = ?2\", nativeQuery = true)\n void saveOrUpdateOtherId(Long other_id, Long id);\n</code></pre>\n\n<p>Hibernate somehow taking <code>id</code> (in where clause) as <code>bytea</code> and since '<em>Sample_Table</em>' has this id field as <code>bigint</code> and thus it throws type mismatch problem. </p>\n\n<p>I have tried using CAST to convert <code>bytea</code> to <code>bigint</code> but it didn't succeed and error msg says <code>bytea</code> can not be casted to <code>bigint</code>. </p>\n\n<p>How can i change <code>bytea</code> to <code>bigint</code>? </p>\n\n<hr>\n\n<p><strong>Edit:</strong></p>\n\n<p>Sample_Table DAO:</p>\n\n<pre><code>@Table(name = \"Sample_Table\")\npublic class Sample{\n    @Id\n    @Column(name = \"id\", unique = true)\n    @GeneratedValue\n    private Long id;\n\n    @Column(name = \"other_id\")\n    private Long other_id;\n}\n</code></pre>\n\n<p><code>id</code> field is defined in here as Long.</p>\n\n<hr>\n\n<p><strong>Edit-2</strong>\nIf someone get such issue, most likely he is passing null value in the query. </p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "oop"
+            ],
+            "owner": {
+                "reputation": 99,
+                "user_id": 6770249,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/451c0eb5e676ea8dc2c5dd297db8d136?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Lee Toffolo",
+                "link": "https://stackoverflow.com/users/6770249/lee-toffolo"
+            },
+            "is_answered": true,
+            "view_count": 58,
+            "accepted_answer_id": 50359444,
+            "answer_count": 4,
+            "score": 1,
+            "last_activity_date": 1526421715,
+            "creation_date": 1526419463,
+            "question_id": 50359359,
+            "body_markdown": "I have a very simple utility program I have built in C#. It only has one namespace and one class. I am just wondering what the best practice is in regards to adding accessibility keywords to the methods/variables in this context. Is it okay to just leave the accessibility keyword out here? It seems to me that adding one will be unproductive, but the methods just feels so &quot;naked&quot; without one. ",
+            "link": "https://stackoverflow.com/questions/50359359/accessibility-levels-in-a-single-class-project",
+            "title": "Accessibility levels in a single class project",
+            "body": "<p>I have a very simple utility program I have built in C#. It only has one namespace and one class. I am just wondering what the best practice is in regards to adding accessibility keywords to the methods/variables in this context. Is it okay to just leave the accessibility keyword out here? It seems to me that adding one will be unproductive, but the methods just feels so \"naked\" without one. </p>\n"
+        },
+        {
+            "tags": [
+                "latex"
+            ],
+            "owner": {
+                "reputation": 8,
+                "user_id": 9340081,
+                "user_type": "registered",
+                "profile_image": "https://lh5.googleusercontent.com/-h_j0PYbYK64/AAAAAAAAAAI/AAAAAAAAAAc/R9lz0fZifSs/photo.jpg?sz=128",
+                "display_name": "Jen-Li Chen",
+                "link": "https://stackoverflow.com/users/9340081/jen-li-chen"
+            },
+            "is_answered": true,
+            "view_count": 19,
+            "accepted_answer_id": 50359056,
+            "answer_count": 1,
+            "score": 1,
+            "last_activity_date": 1526421712,
+            "creation_date": 1526417580,
+            "question_id": 50359007,
+            "body_markdown": "I was trying to type &quot;Microsoft&quot; with Latex,\r\nthe command I used was:\r\n\\textsc{Microsoft Office}\r\n\r\nBut this attempt would be all capital words.\r\nWould anyone provide me with some advice?\r\nThank you!",
+            "link": "https://stackoverflow.com/questions/50359007/how-to-use-latex-create-microsoft-in-my-document",
+            "title": "How to use latex create &quot;Microsoft&quot; in my document?",
+            "body": "<p>I was trying to type \"Microsoft\" with Latex,\nthe command I used was:\n\\textsc{Microsoft Office}</p>\n\n<p>But this attempt would be all capital words.\nWould anyone provide me with some advice?\nThank you!</p>\n"
+        },
+        {
+            "tags": [
+                "alembic",
+                "flask-migrate"
+            ],
+            "owner": {
+                "reputation": 449,
+                "user_id": 2196094,
+                "user_type": "registered",
+                "accept_rate": 58,
+                "profile_image": "https://i.stack.imgur.com/L1bvt.png?s=128&g=1",
+                "display_name": "cornelinux",
+                "link": "https://stackoverflow.com/users/2196094/cornelinux"
+            },
+            "is_answered": true,
+            "view_count": 4227,
+            "accepted_answer_id": 28158057,
+            "answer_count": 2,
+            "score": 1,
+            "last_activity_date": 1526421708,
+            "creation_date": 1422219983,
+            "question_id": 28141521,
+            "body_markdown": "I have an existing project that is based on pylons and sqlalchemy. I did not use alembic or any wrapper in this project, yet.\r\n\r\nI migrated the project to flask and sqlalchemy. \r\nI took the old database of the old version 1.5 and generated the first migration script with Flast-Migrate. Hm, I realized I will have to do many things manually.\r\n\r\nI am already stuck, when renaming columns. I am doing this with an SQLite database.\r\n\r\nThe old project had a table &quot;Token&quot;, which was renamed to &quot;token&quot;. Obviously there are some database that do not care about upper or lower case. \r\nWhen I try to rename the first column like this:\r\n\r\n    op.alter_column(&#39;token&#39;, &#39;privacyIDEATokenId&#39;, new_column_name=&#39;id&#39;)\r\n\r\nI get this error:\r\n\r\n    sqlalchemy.exc.OperationalError: (OperationalError) near \\\r\n    &quot;&quot;privacyIDEATokenId&quot;&quot;: syntax error u&#39;ALTER TABLE token RENAME \\\r\n    &quot;privacyIDEATokenId&quot; TO id&#39; ()\r\n\r\nThe column Token.privacyIDEATokenId is the primary key that should be token.id in the new version.\r\nThe same happens to columns that are not the primary key.\r\n\r\nFull trace:\r\n\r\n    Traceback (most recent call last):\r\n      File &quot;./manage.py&quot;, line 107, in &lt;module&gt;\r\n        manager.run()\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/flask_script/__init__.py&quot;, line 412, in run\r\n        result = self.handle(sys.argv[0], sys.argv[1:])\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/flask_script/__init__.py&quot;, line 383, in handle\r\n        res = handle(*args, **config)\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/flask_script/commands.py&quot;, line 216, in __call__\r\n        return self.run(*args, **kwargs)\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/flask_migrate/__init__.py&quot;, line 98, in upgrade\r\n        command.upgrade(config, revision, sql = sql, tag = tag)\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/command.py&quot;, line 129, in upgrade\r\n        script.run_env()\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/script.py&quot;, line 208, in run_env\r\n        util.load_python_file(self.dir, &#39;env.py&#39;)\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/util.py&quot;, line 230, in load_python_file\r\n        module = load_module_py(module_id, path)\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/compat.py&quot;, line 63, in load_module_py\r\n        mod = imp.load_source(module_id, path, fp)\r\n      File &quot;migrations/env.py&quot;, line 72, in &lt;module&gt;\r\n        run_migrations_online()\r\n      File &quot;migrations/env.py&quot;, line 65, in run_migrations_online\r\n        context.run_migrations()\r\n      File &quot;&lt;string&gt;&quot;, line 7, in run_migrations\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/environment.py&quot;, line 696, in run_migrations\r\n        self.get_context().run_migrations(**kw)\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/migration.py&quot;, line 266, in run_migrations\r\n        change(**kw)\r\n      File &quot;migrations/versions/112475c7f45_.py&quot;, line 103, in upgrade\r\n        _upgrade_token_table()\r\n      File &quot;migrations/versions/112475c7f45_.py&quot;, line 49, in _upgrade_token_table\r\n        op.alter_column(&#39;token&#39;, &#39;privacyIDEATokenId&#39;, new_column_name=&#39;id&#39;)\r\n      File &quot;&lt;string&gt;&quot;, line 7, in alter_column\r\n      File &quot;&lt;string&gt;&quot;, line 1, in &lt;lambda&gt;\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/util.py&quot;, line 353, in go\r\n        return fn(*arg, **kw)\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/operations.py&quot;, line 329, in alter_column\r\n        existing_autoincrement=existing_autoincrement\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/ddl/impl.py&quot;, line 131, in alter_column\r\n        existing_nullable=existing_nullable,\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/ddl/impl.py&quot;, line 81, in _exec\r\n        conn.execute(construct, *multiparams, **params)\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/engine/base.py&quot;, line 729, in execute\r\n        return meth(self, multiparams, params)\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/sql/ddl.py&quot;, line 69, in _execute_on_connection\r\n        return connection._execute_ddl(self, multiparams, params)\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/engine/base.py&quot;, line 783, in _execute_ddl\r\n        compiled\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/engine/base.py&quot;, line 958, in _execute_context\r\n        context)\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/engine/base.py&quot;, line 1159, in _handle_dbapi_exception\r\n        exc_info\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/util/compat.py&quot;, line 199, in raise_from_cause\r\n        reraise(type(exception), exception, tb=exc_tb)\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/engine/base.py&quot;, line 951, in _execute_context\r\n        context)\r\n      File &quot;/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/engine/default.py&quot;, line 436, in do_execute\r\n        cursor.execute(statement, parameters)\r\n    sqlalchemy.exc.OperationalError: (OperationalError) near &quot;&quot;privacyIDEATokenId&quot;&quot;: syntax error u&#39;ALTER TABLE token RENAME &quot;privacyIDEATokenId&quot; TO id&#39; ()\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/28141521/can-not-rename-column-using-alter-column",
+            "title": "can not rename column using alter_column",
+            "body": "<p>I have an existing project that is based on pylons and sqlalchemy. I did not use alembic or any wrapper in this project, yet.</p>\n\n<p>I migrated the project to flask and sqlalchemy. \nI took the old database of the old version 1.5 and generated the first migration script with Flast-Migrate. Hm, I realized I will have to do many things manually.</p>\n\n<p>I am already stuck, when renaming columns. I am doing this with an SQLite database.</p>\n\n<p>The old project had a table \"Token\", which was renamed to \"token\". Obviously there are some database that do not care about upper or lower case. \nWhen I try to rename the first column like this:</p>\n\n<pre><code>op.alter_column('token', 'privacyIDEATokenId', new_column_name='id')\n</code></pre>\n\n<p>I get this error:</p>\n\n<pre><code>sqlalchemy.exc.OperationalError: (OperationalError) near \\\n\"\"privacyIDEATokenId\"\": syntax error u'ALTER TABLE token RENAME \\\n\"privacyIDEATokenId\" TO id' ()\n</code></pre>\n\n<p>The column Token.privacyIDEATokenId is the primary key that should be token.id in the new version.\nThe same happens to columns that are not the primary key.</p>\n\n<p>Full trace:</p>\n\n<pre><code>Traceback (most recent call last):\n  File \"./manage.py\", line 107, in &lt;module&gt;\n    manager.run()\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/flask_script/__init__.py\", line 412, in run\n    result = self.handle(sys.argv[0], sys.argv[1:])\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/flask_script/__init__.py\", line 383, in handle\n    res = handle(*args, **config)\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/flask_script/commands.py\", line 216, in __call__\n    return self.run(*args, **kwargs)\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/flask_migrate/__init__.py\", line 98, in upgrade\n    command.upgrade(config, revision, sql = sql, tag = tag)\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/command.py\", line 129, in upgrade\n    script.run_env()\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/script.py\", line 208, in run_env\n    util.load_python_file(self.dir, 'env.py')\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/util.py\", line 230, in load_python_file\n    module = load_module_py(module_id, path)\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/compat.py\", line 63, in load_module_py\n    mod = imp.load_source(module_id, path, fp)\n  File \"migrations/env.py\", line 72, in &lt;module&gt;\n    run_migrations_online()\n  File \"migrations/env.py\", line 65, in run_migrations_online\n    context.run_migrations()\n  File \"&lt;string&gt;\", line 7, in run_migrations\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/environment.py\", line 696, in run_migrations\n    self.get_context().run_migrations(**kw)\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/migration.py\", line 266, in run_migrations\n    change(**kw)\n  File \"migrations/versions/112475c7f45_.py\", line 103, in upgrade\n    _upgrade_token_table()\n  File \"migrations/versions/112475c7f45_.py\", line 49, in _upgrade_token_table\n    op.alter_column('token', 'privacyIDEATokenId', new_column_name='id')\n  File \"&lt;string&gt;\", line 7, in alter_column\n  File \"&lt;string&gt;\", line 1, in &lt;lambda&gt;\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/util.py\", line 353, in go\n    return fn(*arg, **kw)\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/operations.py\", line 329, in alter_column\n    existing_autoincrement=existing_autoincrement\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/ddl/impl.py\", line 131, in alter_column\n    existing_nullable=existing_nullable,\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/alembic/ddl/impl.py\", line 81, in _exec\n    conn.execute(construct, *multiparams, **params)\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/engine/base.py\", line 729, in execute\n    return meth(self, multiparams, params)\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/sql/ddl.py\", line 69, in _execute_on_connection\n    return connection._execute_ddl(self, multiparams, params)\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/engine/base.py\", line 783, in _execute_ddl\n    compiled\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/engine/base.py\", line 958, in _execute_context\n    context)\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/engine/base.py\", line 1159, in _handle_dbapi_exception\n    exc_info\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/util/compat.py\", line 199, in raise_from_cause\n    reraise(type(exception), exception, tb=exc_tb)\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/engine/base.py\", line 951, in _execute_context\n    context)\n  File \"/home/cornelius/src/privacyidea/venv/local/lib/python2.7/site-packages/sqlalchemy/engine/default.py\", line 436, in do_execute\n    cursor.execute(statement, parameters)\nsqlalchemy.exc.OperationalError: (OperationalError) near \"\"privacyIDEATokenId\"\": syntax error u'ALTER TABLE token RENAME \"privacyIDEATokenId\" TO id' ()\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "file-handling"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9541063,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/TMsaq.jpg?s=128&g=1",
+                "display_name": "Idaisa",
+                "link": "https://stackoverflow.com/users/9541063/idaisa"
+            },
+            "is_answered": false,
+            "view_count": 37,
+            "closed_date": 1526421488,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526421704,
+            "creation_date": 1526421184,
+            "question_id": 50359669,
+            "body_markdown": "I&#39;m practicing file handling. I made a text file and wrote some characters in it, now I want the cursor to go to the beginning of the file and put a character there using seekp.\r\n\r\nHere is the code\r\n\r\n    fstream ofile;\r\n\r\n\tchar ch = &#39;g&#39;;\r\n\r\n\tofile.open(&quot;test.txt&quot;, ios::out | ios::app);\r\n\t\r\n    ofile.seekp(0, ios::beg);\r\n\tofile.put(ch);\r\n\r\n\tofile.close();\r\n\r\n**Expected Result:**\r\nIt writes g at the start of file.\r\n\r\n**Actual Result:**\r\nIt appends g at the end.\r\n\r\nI tried removing the ios::app tag but ios::out alone truncates the file before writing anything.",
+            "link": "https://stackoverflow.com/questions/50359669/how-to-go-to-the-beginning-of-the-file-in-fstream",
+            "closed_reason": "duplicate",
+            "title": "How to go to the beginning of the file in fstream?",
+            "body": "<p>I'm practicing file handling. I made a text file and wrote some characters in it, now I want the cursor to go to the beginning of the file and put a character there using seekp.</p>\n\n<p>Here is the code</p>\n\n<pre><code>fstream ofile;\n\nchar ch = 'g';\n\nofile.open(\"test.txt\", ios::out | ios::app);\n\nofile.seekp(0, ios::beg);\nofile.put(ch);\n\nofile.close();\n</code></pre>\n\n<p><strong>Expected Result:</strong>\nIt writes g at the start of file.</p>\n\n<p><strong>Actual Result:</strong>\nIt appends g at the end.</p>\n\n<p>I tried removing the ios::app tag but ios::out alone truncates the file before writing anything.</p>\n"
+        },
+        {
+            "tags": [
+                "c++",
+                "algorithm",
+                "binary-tree",
+                "postorder"
+            ],
+            "owner": {
+                "reputation": 52,
+                "user_id": 4780940,
+                "user_type": "registered",
+                "accept_rate": 80,
+                "profile_image": "https://lh4.googleusercontent.com/--WXiUdgReng/AAAAAAAAAAI/AAAAAAAAAFQ/ozYjEKUOr54/photo.jpg?sz=128",
+                "display_name": "Vedant Dixit",
+                "link": "https://stackoverflow.com/users/4780940/vedant-dixit"
+            },
+            "is_answered": true,
+            "view_count": 52,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526421678,
+            "creation_date": 1526418566,
+            "last_edit_date": 1526420281,
+            "question_id": 50359204,
+            "body_markdown": "I am trying the get my head around understanding DFS tree traversals using stack. I find it quite intuitive in converting a recursive solution to an iterative one for preorder traversal. However, I find it hardly difficult to understand postorder traversal using this link. https://www.geeksforgeeks.org/iterative-postorder-traversal-using-stack/. Is there an intuitive and simpler way of thinking about this? \r\n Preorder code:\r\n\r\n    void iterativePreorder(node *root)\r\n    {\r\n        // Base Case\r\n        if (root == NULL)\r\n           return;\r\n     \r\n        // Create an empty stack and push root to it\r\n        stack&lt;node *&gt; nodeStack;\r\n        nodeStack.push(root);\r\n     \r\n        /* Pop all items one by one. Do following for every popped item\r\n           a) print it\r\n           b) push its right child\r\n           c) push its left child\r\n        Note that right child is pushed first so that left is processed first */\r\n        while (nodeStack.empty() == false)\r\n        {\r\n            // Pop the top item from stack and print it\r\n            struct node *node = nodeStack.top();\r\n            printf (&quot;%d &quot;, node-&gt;data);\r\n            nodeStack.pop();\r\n     \r\n            // Push right and left children of the popped node to stack\r\n            if (node-&gt;right)\r\n                nodeStack.push(node-&gt;right);\r\n            if (node-&gt;left)\r\n                nodeStack.push(node-&gt;left);\r\n        }\r\n    }\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50359204/postorder-traversal-using-one-stack",
+            "title": "PostOrder Traversal using one stack",
+            "body": "<p>I am trying the get my head around understanding DFS tree traversals using stack. I find it quite intuitive in converting a recursive solution to an iterative one for preorder traversal. However, I find it hardly difficult to understand postorder traversal using this link. <a href=\"https://www.geeksforgeeks.org/iterative-postorder-traversal-using-stack/\" rel=\"nofollow noreferrer\">https://www.geeksforgeeks.org/iterative-postorder-traversal-using-stack/</a>. Is there an intuitive and simpler way of thinking about this? \n Preorder code:</p>\n\n<pre><code>void iterativePreorder(node *root)\n{\n    // Base Case\n    if (root == NULL)\n       return;\n\n    // Create an empty stack and push root to it\n    stack&lt;node *&gt; nodeStack;\n    nodeStack.push(root);\n\n    /* Pop all items one by one. Do following for every popped item\n       a) print it\n       b) push its right child\n       c) push its left child\n    Note that right child is pushed first so that left is processed first */\n    while (nodeStack.empty() == false)\n    {\n        // Pop the top item from stack and print it\n        struct node *node = nodeStack.top();\n        printf (\"%d \", node-&gt;data);\n        nodeStack.pop();\n\n        // Push right and left children of the popped node to stack\n        if (node-&gt;right)\n            nodeStack.push(node-&gt;right);\n        if (node-&gt;left)\n            nodeStack.push(node-&gt;left);\n    }\n}\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "c",
+                "list",
+                "pointers"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 6589010,
+                "user_type": "registered",
+                "profile_image": "https://graph.facebook.com/934790623298309/picture?type=large",
+                "display_name": "Vladut Maican",
+                "link": "https://stackoverflow.com/users/6589010/vladut-maican"
+            },
+            "is_answered": false,
+            "view_count": 45,
+            "closed_date": 1526443593,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1526421677,
+            "creation_date": 1526415955,
+            "last_edit_date": 1526421418,
+            "question_id": 50358661,
+            "body_markdown": "I have written this code and I get the following errors:\r\n\r\n    [Warning] passing argument 2 of &#39;fopen&#39; makes pointer from integer without a cast`\r\n    [Error] ld returned 1 exit status`\r\n    [Warning] passing argument 1 of &#39;fopen&#39; makes pointer from integer without a cast`\r\n\r\nHere is my code:\r\n\r\n    #include &lt;stdio.h&gt;\r\n    #include &lt;conio.h&gt;\r\n    #include &lt;string.h&gt;\r\n    #include &lt;stdlib.h&gt;\r\n    char date[20];\r\n    char uname[20];\r\n    char bname[20];\r\n    char mno[15];\r\n    int cost;\r\n    int n,i;\r\n    char dat[20];\r\n    char unam[20];\r\n    char bnam[20];\r\n    char mn[15];\r\n    int cost;\r\n\r\n    //writing data\r\n\r\n    void write()\r\n    {\r\n\t    FILE *fp;\r\n\t\r\n\tprintf(&quot;Enter date  :&quot;);\r\n\tscanf(&quot;%s&quot;,dat);\r\n\tprintf(&quot;Enter name  :&quot;);\r\n\tscanf(&quot;%s&quot;, unam);\r\n\tprintf(&quot;Enter mobile number  :&quot;);\r\n\tscanf(&quot;%s&quot;,mn);\r\n\tprintf(&quot;Enter book name   :&quot;);\r\n\tscanf(&quot;%s&quot;,bnam);\r\n\tprintf(&quot;Enter cost   :&quot;);\r\n\tscanf(&quot;%d&quot;,&amp;cost);\r\n\t\r\n\tfp=fopen(&#39;book.txt&#39;,&#39;a&#39;);\r\n\t\r\n\tfprint(fp,&quot;%s %s %s  %s  %d\\n&quot;,dat,unam,mn,bnam,cost);\r\n\t\r\n\tprintf(&quot;Entries succesfully registered&quot;);\r\n\t\r\n\tfclose(fp);\r\n\tgetch();\r\n\t\r\n    }//end of write\r\n\r\n    //display fucntion\r\n    void display(char da[])\r\n    {\r\n\tFILE *fp;\r\n\tint res;\r\n\tfp = fopen(&#39;book.txt&#39;,&#39;r&#39;);\r\n\t\r\n\twhile(fscan(fp, &quot;%s %s %s %s %d\\n&quot;,date,unam,mn,bnam,&amp;cost)!=EOF)\r\n\t{\r\n\t\tres=strcmp(date,da);\r\n\t\tif(res==0)\r\n\t\t{\r\n\t\t\tprintf(&quot;\\n\\nCustomer name= %s&quot;,unam);\r\n\t\t\tprintf(&quot;\\n Mobile number = %s&quot;,mn);\r\n\t\t\tprintf(&quot;\\n Book name     = %s&quot;,bnam);\r\n\t\t\tprintf(&quot;\\n Book cost     = %d&quot;,cost);\r\n\t\t}\r\n\t\r\n\t\tif (res==1)\r\n\t\t{\r\n\t\t\tprintf(&quot;No such record found&quot;);\r\n\t\t}\r\n\t}\r\n\tfclose(fp);\r\n\tgetch;\r\n    }\t\r\n\r\n    void main()\r\n    {\r\n\tchar ch;\r\n\tchar lm[20];\r\n\t\r\n\tdo{\r\n\t\tclrscr();\r\n\t\tprintf(&quot;\\t--------WELCOME TO UPB BOOKSHOP--------\\n&quot;);\r\n\t\tprintf(&quot;press &lt;1&gt; to create entry for a book\\n&quot;);\r\n\t\tprintf(&quot;press &lt;2&gt; to display books by a specific date\\n&quot;);\r\n\t\tprintf(&quot;press &lt;0&gt; to exit&quot;);\r\n\t\tprintf(&quot;\\n\\n Enter your choice&quot;);\r\n\t\tscanf(&quot;%d&quot;,&amp;ch);\r\n\t\t\r\n\t\tswitch(ch)\r\n\t\t{\r\n\t\t\tcase 1:\r\n\t\t\t\t{\r\n\t\t\t\t\twrite();\r\n\t\t\t\t\tprintf(&quot;Data entered succesfully&quot;);\r\n\t\t\t\t\tbreak;\r\n\t\t\t\t}\r\n\t\t\t\t\r\n\t\t\tcase 2:\r\n\t\t\t\t{\r\n\t\t\t\t\tprintf(&quot;\\n Enter date:&quot;);\r\n\t\t\t\t\tscanf(&quot;%s&quot;,&amp;lm);\r\n\t\t\t\t\tdisplay(lm);\r\n\t\t\t\t\tbreak;\r\n\t\t\t\t}\r\n\t\t\t\t\r\n\t\t\tcase 0:\r\n\t\t\t\t{\r\n\t\t\t\t\texit(0);\r\n\t\t\t\t}\r\n\t\t\t\tdefault: printf(&quot;\\n Invalid selection&quot;);\r\n\t\t}\t\r\n\t\t}\r\n\t\twhile (ch!=0);\r\n\t\tgetch();\r\n    }\r\n\r\nHow do I resolve these errors?",
+            "link": "https://stackoverflow.com/questions/50358661/errors-in-book-management-system",
+            "closed_reason": "off-topic",
+            "title": "Errors in book management system",
+            "body": "<p>I have written this code and I get the following errors:</p>\n\n<pre><code>[Warning] passing argument 2 of 'fopen' makes pointer from integer without a cast`\n[Error] ld returned 1 exit status`\n[Warning] passing argument 1 of 'fopen' makes pointer from integer without a cast`\n</code></pre>\n\n<p>Here is my code:</p>\n\n<pre><code>#include &lt;stdio.h&gt;\n#include &lt;conio.h&gt;\n#include &lt;string.h&gt;\n#include &lt;stdlib.h&gt;\nchar date[20];\nchar uname[20];\nchar bname[20];\nchar mno[15];\nint cost;\nint n,i;\nchar dat[20];\nchar unam[20];\nchar bnam[20];\nchar mn[15];\nint cost;\n\n//writing data\n\nvoid write()\n{\n    FILE *fp;\n\nprintf(\"Enter date  :\");\nscanf(\"%s\",dat);\nprintf(\"Enter name  :\");\nscanf(\"%s\", unam);\nprintf(\"Enter mobile number  :\");\nscanf(\"%s\",mn);\nprintf(\"Enter book name   :\");\nscanf(\"%s\",bnam);\nprintf(\"Enter cost   :\");\nscanf(\"%d\",&amp;cost);\n\nfp=fopen('book.txt','a');\n\nfprint(fp,\"%s %s %s  %s  %d\\n\",dat,unam,mn,bnam,cost);\n\nprintf(\"Entries succesfully registered\");\n\nfclose(fp);\ngetch();\n\n}//end of write\n\n//display fucntion\nvoid display(char da[])\n{\nFILE *fp;\nint res;\nfp = fopen('book.txt','r');\n\nwhile(fscan(fp, \"%s %s %s %s %d\\n\",date,unam,mn,bnam,&amp;cost)!=EOF)\n{\n    res=strcmp(date,da);\n    if(res==0)\n    {\n        printf(\"\\n\\nCustomer name= %s\",unam);\n        printf(\"\\n Mobile number = %s\",mn);\n        printf(\"\\n Book name     = %s\",bnam);\n        printf(\"\\n Book cost     = %d\",cost);\n    }\n\n    if (res==1)\n    {\n        printf(\"No such record found\");\n    }\n}\nfclose(fp);\ngetch;\n}   \n\nvoid main()\n{\nchar ch;\nchar lm[20];\n\ndo{\n    clrscr();\n    printf(\"\\t--------WELCOME TO UPB BOOKSHOP--------\\n\");\n    printf(\"press &lt;1&gt; to create entry for a book\\n\");\n    printf(\"press &lt;2&gt; to display books by a specific date\\n\");\n    printf(\"press &lt;0&gt; to exit\");\n    printf(\"\\n\\n Enter your choice\");\n    scanf(\"%d\",&amp;ch);\n\n    switch(ch)\n    {\n        case 1:\n            {\n                write();\n                printf(\"Data entered succesfully\");\n                break;\n            }\n\n        case 2:\n            {\n                printf(\"\\n Enter date:\");\n                scanf(\"%s\",&amp;lm);\n                display(lm);\n                break;\n            }\n\n        case 0:\n            {\n                exit(0);\n            }\n            default: printf(\"\\n Invalid selection\");\n    }   \n    }\n    while (ch!=0);\n    getch();\n}\n</code></pre>\n\n<p>How do I resolve these errors?</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-3.x"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9351113,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e1f251540ced72db16ff54313a64d2e4?s=128&d=identicon&r=PG&f=1",
+                "display_name": "abdul basit",
+                "link": "https://stackoverflow.com/users/9351113/abdul-basit"
+            },
+            "is_answered": false,
+            "view_count": 13,
+            "answer_count": 0,
+            "score": -4,
+            "last_activity_date": 1526421676,
+            "creation_date": 1526232673,
+            "last_edit_date": 1526421676,
+            "question_id": 50318797,
+            "body_markdown": "[this program is based upon namap extral python API][1]\r\n\r\n\r\n    import nmap\r\n    nm = nmap.PortScanner()\r\n    a=nm.namp_version()\r\n    print(a)\r\n\r\n",
+            "link": "https://stackoverflow.com/questions/50318797/i-got-this-error-in-my-very-first-nmap-script",
+            "title": "I got this error in my very first nmap script",
+            "body": "<p>[this program is based upon namap extral python API][1]</p>\n\n<pre><code>import nmap\nnm = nmap.PortScanner()\na=nm.namp_version()\nprint(a)\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "datetime",
+                "sas"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9796666,
+                "user_type": "registered",
+                "profile_image": "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg?sz=128",
+                "display_name": "katy2018",
+                "link": "https://stackoverflow.com/users/9796666/katy2018"
+            },
+            "is_answered": true,
+            "view_count": 30,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526421666,
+            "creation_date": 1526417554,
+            "question_id": 50359004,
+            "body_markdown": "I am having trouble figuring out how to calculate duration of sleep between a sleep time variable and an awake time variable.\r\n\r\nThese variables are in military time (HHMM). I&#39;ve tried to play with the intck function in sas but it seems my times need to be formated as &quot;00:00:00&quot;. \r\n\r\nAny thoughts on how to tackle this?\r\n\r\nThanks!",
+            "link": "https://stackoverflow.com/questions/50359004/calculating-time-difference-in-sas-military-time",
+            "title": "Calculating time difference in sas (military time)",
+            "body": "<p>I am having trouble figuring out how to calculate duration of sleep between a sleep time variable and an awake time variable.</p>\n\n<p>These variables are in military time (HHMM). I've tried to play with the intck function in sas but it seems my times need to be formated as \"00:00:00\". </p>\n\n<p>Any thoughts on how to tackle this?</p>\n\n<p>Thanks!</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "xml",
+                "xpath"
+            ],
+            "owner": {
+                "reputation": 30,
+                "user_id": 1332245,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/5c9288a83a4ef58915bca852c1271f0d?s=128&d=identicon&r=PG",
+                "display_name": "C. Michael Warden",
+                "link": "https://stackoverflow.com/users/1332245/c-michael-warden"
+            },
+            "is_answered": true,
+            "view_count": 56,
+            "accepted_answer_id": 50357241,
+            "answer_count": 3,
+            "score": 1,
+            "last_activity_date": 1526421647,
+            "creation_date": 1526409287,
+            "last_edit_date": 1526409717,
+            "question_id": 50357099,
+            "body_markdown": "I&#39;m sure I&#39;m missing something simple here but I&#39;ve wrestled with it for a few days.  I&#39;m hoping someone can point out what I am missing.\r\n\r\nI receive a XML message from an outside source in the following simplified format:\r\n\r\n    &lt;root&gt;\r\n      &lt;A&gt;\r\n        &lt;B xmlns=&quot;http://www.something.com/Document&gt;\r\n          &lt;C&gt;Value1&lt;/C&gt; \r\n          &lt;D&gt;Value2&lt;/D&gt;\r\n          &lt;E&gt;Value3&lt;/E&gt;\r\n        &lt;/B&gt;\r\n      &lt;/A&gt;\r\n      &lt;A&gt;\r\n        &lt;B xmlns=&quot;http://www.something.com/Document&gt;\r\n          &lt;D&gt;Value5&lt;/D&gt;\r\n          &lt;E&gt;Value6&lt;/E&gt;\r\n        &lt;/B&gt;\r\n      &lt;/A&gt;\r\n    &lt;/root&gt;\r\n\r\nI&#39;m trying to pull out the D elements.\r\n\r\nI&#39;ve tried:\r\n\r\n    XmlNodeList xmlResults = xdPayload.SelectNodes(&quot;//D&quot;)\r\n\r\nThis returned no results. Then thinking that the namespace was the issue I tried:\r\n\r\n    XmlNamespaceManager nsmgr = new XmlNamespaceManager(xdPayload.NameTable);\r\n    xnlResults = xdPayload.SelectNodes(&quot;//D&quot;, nsmgr);\r\n\r\nAgain no results.  I didn&#39;t think I needed to add in the default namespace but when thinking smart doesn&#39;t work think stupid.  So I tried this:\r\n\r\n    XmlNamespaceManager nsmgr = new XmlNamespaceManager(xdPayload.NameTable);\r\n    nsmgr.AddNamespace(&quot;&quot;, &quot;http://www.something.com/Document&quot;);\r\n    xnlResults = xdPayload.SelectNodes(&quot;//D&quot;, nsmgr);\r\n\r\nStill no results. I&#39;ve tried more descriptive XPaths like &quot;/root/A/B/D&quot; and &quot;/root/A/B[@xmlns=&quot;http://www.somewhere.com/Document&quot;]/D&quot; as well with no results as well.  \r\n\r\nI&#39;m not sure what I&#39;m missing here.  Any help appreciated.",
+            "link": "https://stackoverflow.com/questions/50357099/c-select-nodes-not-finding-nodes",
+            "title": "C# Select Nodes not finding nodes",
+            "body": "<p>I'm sure I'm missing something simple here but I've wrestled with it for a few days.  I'm hoping someone can point out what I am missing.</p>\n\n<p>I receive a XML message from an outside source in the following simplified format:</p>\n\n<pre><code>&lt;root&gt;\n  &lt;A&gt;\n    &lt;B xmlns=\"http://www.something.com/Document&gt;\n      &lt;C&gt;Value1&lt;/C&gt; \n      &lt;D&gt;Value2&lt;/D&gt;\n      &lt;E&gt;Value3&lt;/E&gt;\n    &lt;/B&gt;\n  &lt;/A&gt;\n  &lt;A&gt;\n    &lt;B xmlns=\"http://www.something.com/Document&gt;\n      &lt;D&gt;Value5&lt;/D&gt;\n      &lt;E&gt;Value6&lt;/E&gt;\n    &lt;/B&gt;\n  &lt;/A&gt;\n&lt;/root&gt;\n</code></pre>\n\n<p>I'm trying to pull out the D elements.</p>\n\n<p>I've tried:</p>\n\n<pre><code>XmlNodeList xmlResults = xdPayload.SelectNodes(\"//D\")\n</code></pre>\n\n<p>This returned no results. Then thinking that the namespace was the issue I tried:</p>\n\n<pre><code>XmlNamespaceManager nsmgr = new XmlNamespaceManager(xdPayload.NameTable);\nxnlResults = xdPayload.SelectNodes(\"//D\", nsmgr);\n</code></pre>\n\n<p>Again no results.  I didn't think I needed to add in the default namespace but when thinking smart doesn't work think stupid.  So I tried this:</p>\n\n<pre><code>XmlNamespaceManager nsmgr = new XmlNamespaceManager(xdPayload.NameTable);\nnsmgr.AddNamespace(\"\", \"http://www.something.com/Document\");\nxnlResults = xdPayload.SelectNodes(\"//D\", nsmgr);\n</code></pre>\n\n<p>Still no results. I've tried more descriptive XPaths like \"/root/A/B/D\" and \"/root/A/B[@xmlns=\"http://www.somewhere.com/Document\"]/D\" as well with no results as well.  </p>\n\n<p>I'm not sure what I'm missing here.  Any help appreciated.</p>\n"
+        },
+        {
+            "tags": [
+                "python",
+                "python-3.x",
+                "pickle"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 9783929,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/7dfad2e2a5acf32d38d75c6a3e751656?s=128&d=identicon&r=PG&f=1",
+                "display_name": "MelvinCERBA",
+                "link": "https://stackoverflow.com/users/9783929/melvincerba"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "closed_date": 1526460075,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526421645,
+            "creation_date": 1526246790,
+            "last_edit_date": 1526421645,
+            "question_id": 50320783,
+            "body_markdown": "I made a program that allows the user to create a list and then pickles it into a .txt file, but I need to unpickle it later and it doesn&#39;t work. I think it is because it&#39;s not in the same function.\r\nHere&#39;s my code (there&#39;s a lot around it, so I cut it short, maybe I shouldn&#39;t have?)\r\n\r\n\r\n    def function_1():\r\n        with open(NmClass, &quot;wb&quot;) as fp:   #Pickling\r\n            pickle.dump(list, fp)\r\n\r\nLater in the program:\r\n\r\n    def function_2(): \r\n        \r\n        with open(NameClass, &quot;rb&quot;) as fp:   # Unpickling\r\n            liste = pickle.load(fp)                        \r\n        print (list)\r\n\r\nAnd I get : \r\n\r\n    {{&lt;function Init at 0x0000017C75E992F0&gt;}100 100}\r\n\r\nThank you (sorry if I&#39;m not clear) !\r\n    ",
+            "link": "https://stackoverflow.com/questions/50320783/pickling-a-file-in-a-function-and-unpickling-it-in-another",
+            "closed_reason": "off-topic",
+            "title": "Pickling a file in a function and unpickling it in another",
+            "body": "<p>I made a program that allows the user to create a list and then pickles it into a .txt file, but I need to unpickle it later and it doesn't work. I think it is because it's not in the same function.\nHere's my code (there's a lot around it, so I cut it short, maybe I shouldn't have?)</p>\n\n<pre><code>def function_1():\n    with open(NmClass, \"wb\") as fp:   #Pickling\n        pickle.dump(list, fp)\n</code></pre>\n\n<p>Later in the program:</p>\n\n<pre><code>def function_2(): \n\n    with open(NameClass, \"rb\") as fp:   # Unpickling\n        liste = pickle.load(fp)                        \n    print (list)\n</code></pre>\n\n<p>And I get : </p>\n\n<pre><code>{{&lt;function Init at 0x0000017C75E992F0&gt;}100 100}\n</code></pre>\n\n<p>Thank you (sorry if I'm not clear) !</p>\n"
+        },
+        {
+            "tags": [
+                "kubernetes"
+            ],
+            "owner": {
+                "reputation": 177,
+                "user_id": 344337,
+                "user_type": "registered",
+                "accept_rate": 40,
+                "profile_image": "https://www.gravatar.com/avatar/5a489aed9c65c481983a7ecaba6f41b2?s=128&d=identicon&r=PG",
+                "display_name": "Mr_E",
+                "link": "https://stackoverflow.com/users/344337/mr-e"
+            },
+            "is_answered": false,
+            "view_count": 20,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526421643,
+            "creation_date": 1526421643,
+            "question_id": 50359750,
+            "body_markdown": "I am trying to run a p2p client (IOTA) which requires the node I am connecting to to be able to connect back to be on the same ip address I made the request from and to a very specific port.\r\n\r\nNodePort won&#39;t work because it exposes as a different port then what I want.\r\nLoadBalancer won&#39;t work because the other node won&#39;t know my load balancer ip address.\r\n\r\nHow are people able to use p2p clients like bitcoin or iota on kubernetes?",
+            "link": "https://stackoverflow.com/questions/50359750/expose-a-specific-port-to-be-accessible-by-my-outgoing-ip-address-on-kubernetes",
+            "title": "Expose a specific port to be accessible by my outgoing ip address on kubernetes",
+            "body": "<p>I am trying to run a p2p client (IOTA) which requires the node I am connecting to to be able to connect back to be on the same ip address I made the request from and to a very specific port.</p>\n\n<p>NodePort won't work because it exposes as a different port then what I want.\nLoadBalancer won't work because the other node won't know my load balancer ip address.</p>\n\n<p>How are people able to use p2p clients like bitcoin or iota on kubernetes?</p>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "firebase",
+                "firebase-database"
+            ],
+            "owner": {
+                "reputation": 6,
+                "user_id": 2130110,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/e643ffb7a8cbf5f61692000e7faf7c8a?s=128&d=identicon&r=PG",
+                "display_name": "Ali Al-Munayer",
+                "link": "https://stackoverflow.com/users/2130110/ali-al-munayer"
+            },
+            "is_answered": false,
+            "view_count": 130,
+            "answer_count": 0,
+            "score": 1,
+            "last_activity_date": 1526421642,
+            "creation_date": 1525831950,
+            "last_edit_date": 1525869749,
+            "question_id": 50244563,
+            "body_markdown": "I&#39;ve built an Angular app which uses Firebase Database. The app runs fine when using the `ng serve` command, however, after building the app and publishing to production it no longer renders and the **exception** `Cannot read property &#39;myID&#39; of undefined` is shown in the console. I would like to know if this is a programming issue! or a bug in firebase.\r\n\r\n** Edit -- Added console log and typescript/html code\r\n\r\n** Error on chrome console **\r\n\r\n    [2018-05-09T12:40:48.707Z]  @firebase/database: FIREBASE WARNING: Exception was thrown by user callback. TypeError: Cannot read property &#39;myID&#39; of undefined\r\n        at https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1723933\r\n        at t.newRequest_ (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1723980)\r\n        at t.startLongPoll (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1723701)\r\n        at t.start (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1719991)\r\n        at t.onHandshake_ (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1734602)\r\n        at t.onControl_ (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1733956)\r\n        at t.onPrimaryMessageReceived_ (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1733507)\r\n        at t.onMessage_ (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1731758)\r\n        at https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1717476\r\n        at K (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1619201) \r\n    a @ main.66c1874d7f8af223e4e8.bundle.js:1\r\n    t.warn @ main.66c1874d7f8af223e4e8.bundle.js:1\r\n    I @ main.66c1874d7f8af223e4e8.bundle.js:1\r\n    (anonymous) @ main.66c1874d7f8af223e4e8.bundle.js:1\r\n    t.invokeTask @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\r\n    n.runTask @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\r\n    n.invokeTask @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\r\n    invoke @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\r\n    e.args.(anonymous function) @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\r\n    setTimeout (async)\r\n    u @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\r\n    t.scheduleTask @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\r\n    n.scheduleTask @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\r\n    n.scheduleMacroTask @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\r\n    v @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\r\n    (anonymous) @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\r\n    F.i.(anonymous function) @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\r\n    K @ main.66c1874d7f8af223e4e8.bundle.js:1\r\n    e @ main.66c1874d7f8af223e4e8.bundle.js:1\r\n    r @ main.66c1874d7f8af223e4e8.bundle.js:1\r\n    t.handleResponse @ main.66c1874d7f8af223e4e8.bundle.js:1\r\n    (anonymous) @ main.66c1874d7f8af223e4e8.bundle.js:1\r\n    pRTLPCB @ .lp?start=t&amp;ser=97147125&amp;cb=1&amp;v=5&amp;ns=speed-test-29d7f:6\r\n    (anonymous) @ .lp?start=t&amp;ser=97147125&amp;cb=1&amp;v=5&amp;ns=speed-test-29d7f:9\r\n    polyfills.dbaf5fa354a8d018d4e5.bundle.js:1 Uncaught TypeError: Cannot read property &#39;myID&#39; of undefined\r\n        at main.66c1874d7f8af223e4e8.bundle.js:1\r\n        at t.newRequest_ (main.66c1874d7f8af223e4e8.bundle.js:1)\r\n        at t.startLongPoll (main.66c1874d7f8af223e4e8.bundle.js:1)\r\n        at t.start (main.66c1874d7f8af223e4e8.bundle.js:1)\r\n        at t.onHandshake_ (main.66c1874d7f8af223e4e8.bundle.js:1)\r\n        at t.onControl_ (main.66c1874d7f8af223e4e8.bundle.js:1)\r\n        at t.onPrimaryMessageReceived_ (main.66c1874d7f8af223e4e8.bundle.js:1)\r\n        at t.onMessage_ (main.66c1874d7f8af223e4e8.bundle.js:1)\r\n        at main.66c1874d7f8af223e4e8.bundle.js:1\r\n        at K (main.66c1874d7f8af223e4e8.bundle.js:1)\r\n\r\n**Typescript code**\r\n\r\n    import { Component, OnInit, ChangeDetectorRef, ChangeDetectionStrategy, HostListener } from &#39;@angular/core&#39;;\r\n    import { Observable } from &#39;rxjs&#39;;\r\n    import { Toastr } from &#39;../../services/index&#39;;\r\n    import { ToastrService } from &#39;ngx-toastr&#39;;\r\n    import { AngularFireDatabase, AngularFireObject } from &#39;angularfire2/database&#39;;\r\n    import &#39;rxjs/add/operator/map&#39;;\r\n    import { PapaParseService } from &#39;ngx-papaparse&#39;;\r\n    import &#39;jspdf-autotable&#39;;\r\n    import * as $ from &#39;jquery&#39;;\r\n    import { PageLoadComponent } from &#39;../pageload.component&#39;;\r\n    \r\n    @Component({\r\n      templateUrl: &#39;dashboard.component.html&#39;,\r\n      changeDetection: ChangeDetectionStrategy.OnPush\r\n    })\r\n    \r\n    export class DashboardComponent extends PageLoadComponent implements OnInit {\r\n      listOfUsers = [];\r\n    \r\n      usersObservable: Observable&lt;any[]&gt;;\r\n      selectedUserPingObservable: Observable&lt;any[]&gt;;\r\n      selectedUserBandwidthObservable: Observable&lt;any[]&gt;;\r\n    \r\n      showUserInfo: boolean = false;\r\n      pingView: boolean = true;\r\n    \r\n      numOfOnline: number = 0;\r\n      numOfOffline: number = 0;\r\n    \r\n      selectedUser;\r\n    \r\n      constructor(\r\n        private toastr: ToastrService,\r\n        private cdr: ChangeDetectorRef,\r\n        private db: AngularFireDatabase) {\r\n          super();\r\n    \r\n          this.db.list(&#39;/users&#39;).snapshotChanges().subscribe(listOfUsers =&gt; {\r\n            this.listOfUsers = [];\r\n    \r\n            this.numOfOnline = 0;\r\n            this.numOfOffline = 0;\r\n    \r\n            listOfUsers.forEach(item =&gt; {\r\n              if(item){\r\n                this.listOfUsers.push(item.payload.val())\r\n                if(item.payload.val().status){\r\n                  this.numOfOnline++;\r\n                }else{\r\n                  this.numOfOffline++;\r\n                }\r\n              }\r\n            });\r\n          });\r\n      }\r\n    \r\n      ngAfterViewChecked() {\r\n        this.cdr.detectChanges();\r\n      }\r\n    \r\n      ngOnInit() {\r\n        this.toast = new Toastr(this.toastr);\r\n        this.selectedUser = &#39;&#39;;\r\n      }\r\n    \r\n      viewUser(accountNt){\r\n        this.selectedUser = accountNt;\r\n        this.showUserInfo = true;\r\n        this.getListOfPingsForUser(accountNt);\r\n        this.getListOfBandwidthsForUser(accountNt);\r\n      }\r\n    \r\n      getPingAvg(user){\r\n        //todo\r\n      }\r\n    \r\n      getBandwidthAvg(user){\r\n        //todo\r\n      }\r\n    \r\n      showPing(){\r\n        this.pingView = true;\r\n      }\r\n    \r\n      showBandwidth(){\r\n        this.pingView = false;\r\n      }\r\n    \r\n      closeUser(){\r\n        this.showUserInfo = false;\r\n        this.selectedUser = &#39;&#39;;\r\n      }\r\n    \r\n      getListOfPingsForUser(accountNt){\r\n        this.selectedUserPingObservable = this.db.list(&#39;/users/&#39; + accountNt + &#39;/pings&#39;).valueChanges();\r\n      }\r\n    \r\n      getListOfBandwidthsForUser(accountNt){\r\n        this.selectedUserBandwidthObservable = this.db.list(&#39;/users/&#39; + accountNt + &#39;/bandwidths&#39;).valueChanges();\r\n      }\r\n    \r\n      startPing(user){\r\n        this.db.object(&#39;users/&#39; + user.accountNt + &#39;/commands&#39;).set({action: 1});\r\n        this.toast.showSuccess(&quot;Ping requested!&quot;);\r\n      }\r\n    \r\n      stopPing(user){\r\n        this.db.object(&#39;users/&#39; + user.accountNt + &#39;/commands&#39;).set({action: 2});\r\n        this.toast.showSuccess(&quot;Ping stopped!&quot;);\r\n      }\r\n    \r\n      startBandwidthTest(user){\r\n        this.db.object(&#39;users/&#39; + user.accountNt + &#39;/commands&#39;).set({action: 3});\r\n        this.toast.showSuccess(&quot;Bandwidth test requested!&quot;);\r\n      }\r\n    }\r\n\r\nHTML code\r\n\r\n    &lt;div class=&quot;animated fadeIn&quot;&gt;\r\n      &lt;div class=&quot;row&quot;&gt;\r\n        &lt;div class=&quot;col-md-6&quot;&gt;\r\n          &lt;div class=&quot;card&quot;&gt;\r\n          &lt;div class=&quot;card-body&quot;&gt;\r\n            &lt;div class=&quot;h1 text-muted text-right mb-4&quot;&gt;\r\n              &lt;i class=&quot;icon-user-follow&quot;&gt;&lt;/i&gt;\r\n            &lt;/div&gt;\r\n            &lt;div class=&quot;h4 mb-0&quot;&gt;{{numOfOnline + &quot; / &quot; + listOfUsers.length}}&lt;/div&gt;\r\n            &lt;small class=&quot;text-uppercase text-success font-weight-bold&quot;&gt;Online Users&lt;/small&gt;\r\n          &lt;/div&gt;\r\n        &lt;/div&gt;\r\n        &lt;/div&gt;\r\n        &lt;div class=&quot;col-md-6&quot;&gt;\r\n          &lt;div class=&quot;card&quot;&gt;\r\n          &lt;div class=&quot;card-body&quot;&gt;\r\n            &lt;div class=&quot;h1 text-muted text-right mb-4&quot;&gt;\r\n              &lt;i class=&quot;icon-user-follow&quot;&gt;&lt;/i&gt;\r\n            &lt;/div&gt;\r\n            &lt;div class=&quot;h4 mb-0&quot;&gt;{{numOfOffline + &quot; / &quot; + listOfUsers.length}}&lt;/div&gt;\r\n            &lt;small class=&quot;text-uppercase text-danger font-weight-bold&quot;&gt;Offline Users&lt;/small&gt;\r\n          &lt;/div&gt;\r\n        &lt;/div&gt;\r\n        &lt;/div&gt;\r\n      &lt;/div&gt;\r\n    \r\n      &lt;div class=&quot;card card-accent-warning&quot; *ngIf=&quot;!showUserInfo&quot;&gt;\r\n        &lt;div class=&quot;card-header {{theme+2}}&quot;&gt;\r\n          &lt;h6 class=&quot;font-Size-{{fontSize}}&quot;&gt;\r\n            &lt;i class=&quot;fa fa-list&quot;&gt;&lt;/i&gt;&amp;nbsp;Command Center&lt;/h6&gt;\r\n        &lt;/div&gt;\r\n        &lt;div class=&quot;card-body {{theme+5}}&quot;&gt;\r\n          &lt;div class=&quot;form-group&quot;&gt;\r\n            &lt;div class=&quot;row&quot;&gt;\r\n              &lt;div class=&quot;col-md-12&quot;&gt;\r\n                &lt;div class=&quot;input-group&quot;&gt;\r\n                  &lt;input type=&quot;search&quot; id=&quot;mySubmissionSearch&quot; name=&quot;mySubmissionSearch&quot; class=&quot;{{theme+2}} search form-control&quot;\r\n                    placeholder=&quot;{{&#39;placeholder.search&#39; | translate}}&quot; [(ngModel)]=&quot;searchMyText&quot;&gt;\r\n                  &lt;span class=&quot;input-group-text&quot;&gt;\r\n                    &lt;i class=&quot;fa fa-search&quot; aria-label=&quot;Search Users&quot;&gt;&lt;/i&gt;\r\n                  &lt;/span&gt;\r\n                &lt;/div&gt;\r\n              &lt;/div&gt;\r\n            &lt;/div&gt;\r\n          &lt;/div&gt;\r\n    \r\n          &lt;table class=&quot;table table-responsive-sm table-hover table-outline mb-0&quot;&gt;\r\n            &lt;thead class=&quot;table-secondary {{theme+2}}&quot;&gt;\r\n              &lt;tr&gt;\r\n                &lt;th&gt;Status&lt;/th&gt;\r\n                &lt;th&gt;Username&lt;/th&gt;\r\n                &lt;th&gt;Site&lt;/th&gt;\r\n                &lt;th&gt;Ping&lt;/th&gt;\r\n                &lt;th&gt;Bandwidth&lt;/th&gt;\r\n                &lt;th style=&quot;width: 30%&quot;&gt;Actions&lt;/th&gt;\r\n              &lt;/tr&gt;\r\n            &lt;/thead&gt;\r\n            &lt;tbody&gt;\r\n              &lt;tr *ngFor=&quot;let user of listOfUsers | filter : searchMyText&quot;&gt;\r\n                &lt;td&gt;&lt;span class=&quot;badge badge-{{user.status?&#39;success&#39;:&#39;danger&#39;}}&quot;&gt;{{user.status ? &#39;Online&#39; : &#39;Offline&#39;}}&lt;/span&gt;&lt;/td&gt;\r\n                &lt;td&gt;\r\n                  &lt;div&gt;&lt;a [routerLink]=&quot;&quot; (click)=&quot;viewUser(user.accountNt)&quot;&gt;{{user.firstName + &quot; &quot; + user.lastName}}&lt;/a&gt;&lt;/div&gt;\r\n                  &lt;div class=&quot;small&quot;&gt;{{user.accountNt}}&lt;/div&gt;\r\n                &lt;/td&gt;\r\n                &lt;td&gt;{{user.site}}&lt;/td&gt;\r\n                &lt;td&gt;\r\n                  &lt;div&gt;#: {{user.numOfPing}}&lt;/div&gt;\r\n                  &lt;div class=&quot;small&quot;&gt;Avg: 0&lt;/div&gt;\r\n                &lt;/td&gt;\r\n                &lt;td&gt;\r\n                  &lt;div&gt;#: {{user.numOfBandwidth}}&lt;/div&gt;\r\n                  &lt;div class=&quot;small&quot;&gt;Avg: 0&lt;/div&gt;\r\n                &lt;/td&gt;\r\n                &lt;td&gt;\r\n                  &lt;button class=&quot;btn btn-sm btn-success&quot; [disabled]=&quot;!user.status&quot; (click)=&quot;startPing(user)&quot;&gt;Request ping&lt;/button&gt;\r\n                  | &lt;button class=&quot;btn btn-sm btn-danger&quot; [disabled]=&quot;!user.status&quot; (click)=&quot;stopPing(user)&quot;&gt;Stop ping&lt;/button&gt;\r\n                  | &lt;button class=&quot;btn btn-sm btn-primary&quot; [disabled]=&quot;!user.status&quot; (click)=&quot;startBandwidthTest(user)&quot;&gt;Bandwidth&lt;/button&gt;\r\n                &lt;/td&gt;\r\n              &lt;/tr&gt;\r\n              &lt;tr *ngIf=&quot;listOfUsers.length==0&quot;&gt;\r\n                &lt;td colspan=&quot;6&quot;&gt;No users found!&lt;/td&gt;\r\n              &lt;/tr&gt;\r\n            &lt;/tbody&gt;\r\n          &lt;/table&gt;\r\n        &lt;/div&gt;\r\n      &lt;/div&gt;\r\n    \r\n      &lt;div class=&quot;card card-accent-danger&quot; *ngIf=&quot;showUserInfo&quot;&gt;\r\n        &lt;div class=&quot;card-header {{theme+2}}&quot;&gt;\r\n          &lt;h6 class=&quot;font-Size-{{fontSize}}&quot;&gt;\r\n            &lt;i class=&quot;fa fa-list&quot;&gt;&lt;/i&gt;&amp;nbsp;Information for {{selectedUser}}&lt;/h6&gt;\r\n        &lt;/div&gt;\r\n        &lt;div class=&quot;card-body {{theme+5}}&quot;&gt;\r\n          &lt;ul class=&quot;nav nav-tabs&quot; role=&quot;tablist&quot;&gt;\r\n            &lt;li class=&quot;nav-item&quot;&gt;\r\n              &lt;a class=&quot;nav-link {{pingView? &#39;show active&#39; : &#39;&#39;}}&quot; (click)=&quot;showPing()&quot; data-toggle=&quot;tab&quot;&gt;Ping&lt;/a&gt;\r\n            &lt;/li&gt;\r\n            &lt;li class=&quot;nav-item&quot;&gt;\r\n              &lt;a class=&quot;nav-link {{!pingView? &#39;show active&#39; : &#39;&#39;}}&quot; (click)=&quot;showBandwidth()&quot; data-toggle=&quot;tab&quot;&gt;Bandwidth&lt;/a&gt;\r\n            &lt;/li&gt;\r\n          &lt;/ul&gt;\r\n    \r\n          &lt;table class=&quot;table table-responsive-sm table-hover table-outline mb-0&quot; *ngIf=&quot;pingView&quot;&gt;\r\n            &lt;thead class=&quot;table-secondary {{theme+2}}&quot;&gt;\r\n              &lt;tr&gt;\r\n                &lt;th style=&quot;width: 50%&quot;&gt;Timestamp&lt;/th&gt;\r\n                &lt;th style=&quot;width: 50%&quot;&gt;Ping&lt;/th&gt;\r\n              &lt;/tr&gt;\r\n            &lt;/thead&gt;\r\n            &lt;tbody&gt;\r\n              &lt;tr *ngFor=&quot;let ping of (selectedUserPingObservable | async)&quot;&gt;\r\n                &lt;td&gt;{{ping.timestamp | date: short}}&lt;/td&gt;\r\n                &lt;td&gt;{{ping.ping | number:&#39;1.0-0&#39;}} ms&lt;/td&gt;\r\n              &lt;/tr&gt;\r\n              &lt;tr *ngIf=&quot;(selectedUserPingObservable | async)?.length==0&quot;&gt;\r\n                &lt;td colspan=&quot;2&quot;&gt;No data&lt;/td&gt;\r\n              &lt;/tr&gt;\r\n            &lt;/tbody&gt;\r\n          &lt;/table&gt;\r\n    \r\n          &lt;table class=&quot;table table-responsive-sm table-hover table-outline mb-0&quot; *ngIf=&quot;!pingView&quot;&gt;\r\n            &lt;thead class=&quot;table-secondary {{theme+2}}&quot;&gt;\r\n              &lt;tr&gt;\r\n                &lt;th style=&quot;width: 50%&quot;&gt;Timestamp&lt;/th&gt;\r\n                &lt;th style=&quot;width: 50%&quot;&gt;Bandwidth&lt;/th&gt;\r\n              &lt;/tr&gt;\r\n            &lt;/thead&gt;\r\n            &lt;tbody&gt;\r\n              &lt;tr *ngFor=&quot;let bandwidth of (selectedUserBandwidthObservable | async)&quot;&gt;\r\n                &lt;td&gt;{{bandwidth.timestamp | date: short}}&lt;/td&gt;\r\n                &lt;td&gt;{{bandwidth.download | number:&#39;1.0-0&#39;}} Mbps&lt;/td&gt;\r\n              &lt;/tr&gt;\r\n              &lt;tr *ngIf=&quot;(selectedUserBandwidthObservable | async)?.length==0&quot;&gt;\r\n                &lt;td colspan=&quot;2&quot;&gt;No data&lt;/td&gt;\r\n              &lt;/tr&gt;\r\n            &lt;/tbody&gt;\r\n          &lt;/table&gt;\r\n        &lt;/div&gt;\r\n        &lt;div class=&quot;card-footer&quot;&gt;\r\n          &lt;button (click)=&quot;closeUser()&quot; class=&quot;btn btn-primary&quot;&gt;Close&lt;/button&gt;\r\n        &lt;/div&gt;\r\n      &lt;/div&gt;\r\n    &lt;/div&gt;",
+            "link": "https://stackoverflow.com/questions/50244563/firebase-warning-cannot-read-property-myid-of-undefined",
+            "title": "FIREBASE WARNING: Cannot read property &#39;myID&#39; of undefined",
+            "body": "<p>I've built an Angular app which uses Firebase Database. The app runs fine when using the <code>ng serve</code> command, however, after building the app and publishing to production it no longer renders and the <strong>exception</strong> <code>Cannot read property 'myID' of undefined</code> is shown in the console. I would like to know if this is a programming issue! or a bug in firebase.</p>\n\n<p>** Edit -- Added console log and typescript/html code</p>\n\n<p>** Error on chrome console **</p>\n\n<pre><code>[2018-05-09T12:40:48.707Z]  @firebase/database: FIREBASE WARNING: Exception was thrown by user callback. TypeError: Cannot read property 'myID' of undefined\n    at https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1723933\n    at t.newRequest_ (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1723980)\n    at t.startLongPoll (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1723701)\n    at t.start (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1719991)\n    at t.onHandshake_ (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1734602)\n    at t.onControl_ (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1733956)\n    at t.onPrimaryMessageReceived_ (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1733507)\n    at t.onMessage_ (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1731758)\n    at https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1717476\n    at K (https://somesiteonazure/main.66c1874d7f8af223e4e8.bundle.js:1:1619201) \na @ main.66c1874d7f8af223e4e8.bundle.js:1\nt.warn @ main.66c1874d7f8af223e4e8.bundle.js:1\nI @ main.66c1874d7f8af223e4e8.bundle.js:1\n(anonymous) @ main.66c1874d7f8af223e4e8.bundle.js:1\nt.invokeTask @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\nn.runTask @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\nn.invokeTask @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\ninvoke @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\ne.args.(anonymous function) @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\nsetTimeout (async)\nu @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\nt.scheduleTask @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\nn.scheduleTask @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\nn.scheduleMacroTask @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\nv @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\n(anonymous) @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\nF.i.(anonymous function) @ polyfills.dbaf5fa354a8d018d4e5.bundle.js:1\nK @ main.66c1874d7f8af223e4e8.bundle.js:1\ne @ main.66c1874d7f8af223e4e8.bundle.js:1\nr @ main.66c1874d7f8af223e4e8.bundle.js:1\nt.handleResponse @ main.66c1874d7f8af223e4e8.bundle.js:1\n(anonymous) @ main.66c1874d7f8af223e4e8.bundle.js:1\npRTLPCB @ .lp?start=t&amp;ser=97147125&amp;cb=1&amp;v=5&amp;ns=speed-test-29d7f:6\n(anonymous) @ .lp?start=t&amp;ser=97147125&amp;cb=1&amp;v=5&amp;ns=speed-test-29d7f:9\npolyfills.dbaf5fa354a8d018d4e5.bundle.js:1 Uncaught TypeError: Cannot read property 'myID' of undefined\n    at main.66c1874d7f8af223e4e8.bundle.js:1\n    at t.newRequest_ (main.66c1874d7f8af223e4e8.bundle.js:1)\n    at t.startLongPoll (main.66c1874d7f8af223e4e8.bundle.js:1)\n    at t.start (main.66c1874d7f8af223e4e8.bundle.js:1)\n    at t.onHandshake_ (main.66c1874d7f8af223e4e8.bundle.js:1)\n    at t.onControl_ (main.66c1874d7f8af223e4e8.bundle.js:1)\n    at t.onPrimaryMessageReceived_ (main.66c1874d7f8af223e4e8.bundle.js:1)\n    at t.onMessage_ (main.66c1874d7f8af223e4e8.bundle.js:1)\n    at main.66c1874d7f8af223e4e8.bundle.js:1\n    at K (main.66c1874d7f8af223e4e8.bundle.js:1)\n</code></pre>\n\n<p><strong>Typescript code</strong></p>\n\n<pre><code>import { Component, OnInit, ChangeDetectorRef, ChangeDetectionStrategy, HostListener } from '@angular/core';\nimport { Observable } from 'rxjs';\nimport { Toastr } from '../../services/index';\nimport { ToastrService } from 'ngx-toastr';\nimport { AngularFireDatabase, AngularFireObject } from 'angularfire2/database';\nimport 'rxjs/add/operator/map';\nimport { PapaParseService } from 'ngx-papaparse';\nimport 'jspdf-autotable';\nimport * as $ from 'jquery';\nimport { PageLoadComponent } from '../pageload.component';\n\n@Component({\n  templateUrl: 'dashboard.component.html',\n  changeDetection: ChangeDetectionStrategy.OnPush\n})\n\nexport class DashboardComponent extends PageLoadComponent implements OnInit {\n  listOfUsers = [];\n\n  usersObservable: Observable&lt;any[]&gt;;\n  selectedUserPingObservable: Observable&lt;any[]&gt;;\n  selectedUserBandwidthObservable: Observable&lt;any[]&gt;;\n\n  showUserInfo: boolean = false;\n  pingView: boolean = true;\n\n  numOfOnline: number = 0;\n  numOfOffline: number = 0;\n\n  selectedUser;\n\n  constructor(\n    private toastr: ToastrService,\n    private cdr: ChangeDetectorRef,\n    private db: AngularFireDatabase) {\n      super();\n\n      this.db.list('/users').snapshotChanges().subscribe(listOfUsers =&gt; {\n        this.listOfUsers = [];\n\n        this.numOfOnline = 0;\n        this.numOfOffline = 0;\n\n        listOfUsers.forEach(item =&gt; {\n          if(item){\n            this.listOfUsers.push(item.payload.val())\n            if(item.payload.val().status){\n              this.numOfOnline++;\n            }else{\n              this.numOfOffline++;\n            }\n          }\n        });\n      });\n  }\n\n  ngAfterViewChecked() {\n    this.cdr.detectChanges();\n  }\n\n  ngOnInit() {\n    this.toast = new Toastr(this.toastr);\n    this.selectedUser = '';\n  }\n\n  viewUser(accountNt){\n    this.selectedUser = accountNt;\n    this.showUserInfo = true;\n    this.getListOfPingsForUser(accountNt);\n    this.getListOfBandwidthsForUser(accountNt);\n  }\n\n  getPingAvg(user){\n    //todo\n  }\n\n  getBandwidthAvg(user){\n    //todo\n  }\n\n  showPing(){\n    this.pingView = true;\n  }\n\n  showBandwidth(){\n    this.pingView = false;\n  }\n\n  closeUser(){\n    this.showUserInfo = false;\n    this.selectedUser = '';\n  }\n\n  getListOfPingsForUser(accountNt){\n    this.selectedUserPingObservable = this.db.list('/users/' + accountNt + '/pings').valueChanges();\n  }\n\n  getListOfBandwidthsForUser(accountNt){\n    this.selectedUserBandwidthObservable = this.db.list('/users/' + accountNt + '/bandwidths').valueChanges();\n  }\n\n  startPing(user){\n    this.db.object('users/' + user.accountNt + '/commands').set({action: 1});\n    this.toast.showSuccess(\"Ping requested!\");\n  }\n\n  stopPing(user){\n    this.db.object('users/' + user.accountNt + '/commands').set({action: 2});\n    this.toast.showSuccess(\"Ping stopped!\");\n  }\n\n  startBandwidthTest(user){\n    this.db.object('users/' + user.accountNt + '/commands').set({action: 3});\n    this.toast.showSuccess(\"Bandwidth test requested!\");\n  }\n}\n</code></pre>\n\n<p>HTML code</p>\n\n<pre><code>&lt;div class=\"animated fadeIn\"&gt;\n  &lt;div class=\"row\"&gt;\n    &lt;div class=\"col-md-6\"&gt;\n      &lt;div class=\"card\"&gt;\n      &lt;div class=\"card-body\"&gt;\n        &lt;div class=\"h1 text-muted text-right mb-4\"&gt;\n          &lt;i class=\"icon-user-follow\"&gt;&lt;/i&gt;\n        &lt;/div&gt;\n        &lt;div class=\"h4 mb-0\"&gt;{{numOfOnline + \" / \" + listOfUsers.length}}&lt;/div&gt;\n        &lt;small class=\"text-uppercase text-success font-weight-bold\"&gt;Online Users&lt;/small&gt;\n      &lt;/div&gt;\n    &lt;/div&gt;\n    &lt;/div&gt;\n    &lt;div class=\"col-md-6\"&gt;\n      &lt;div class=\"card\"&gt;\n      &lt;div class=\"card-body\"&gt;\n        &lt;div class=\"h1 text-muted text-right mb-4\"&gt;\n          &lt;i class=\"icon-user-follow\"&gt;&lt;/i&gt;\n        &lt;/div&gt;\n        &lt;div class=\"h4 mb-0\"&gt;{{numOfOffline + \" / \" + listOfUsers.length}}&lt;/div&gt;\n        &lt;small class=\"text-uppercase text-danger font-weight-bold\"&gt;Offline Users&lt;/small&gt;\n      &lt;/div&gt;\n    &lt;/div&gt;\n    &lt;/div&gt;\n  &lt;/div&gt;\n\n  &lt;div class=\"card card-accent-warning\" *ngIf=\"!showUserInfo\"&gt;\n    &lt;div class=\"card-header {{theme+2}}\"&gt;\n      &lt;h6 class=\"font-Size-{{fontSize}}\"&gt;\n        &lt;i class=\"fa fa-list\"&gt;&lt;/i&gt;&amp;nbsp;Command Center&lt;/h6&gt;\n    &lt;/div&gt;\n    &lt;div class=\"card-body {{theme+5}}\"&gt;\n      &lt;div class=\"form-group\"&gt;\n        &lt;div class=\"row\"&gt;\n          &lt;div class=\"col-md-12\"&gt;\n            &lt;div class=\"input-group\"&gt;\n              &lt;input type=\"search\" id=\"mySubmissionSearch\" name=\"mySubmissionSearch\" class=\"{{theme+2}} search form-control\"\n                placeholder=\"{{'placeholder.search' | translate}}\" [(ngModel)]=\"searchMyText\"&gt;\n              &lt;span class=\"input-group-text\"&gt;\n                &lt;i class=\"fa fa-search\" aria-label=\"Search Users\"&gt;&lt;/i&gt;\n              &lt;/span&gt;\n            &lt;/div&gt;\n          &lt;/div&gt;\n        &lt;/div&gt;\n      &lt;/div&gt;\n\n      &lt;table class=\"table table-responsive-sm table-hover table-outline mb-0\"&gt;\n        &lt;thead class=\"table-secondary {{theme+2}}\"&gt;\n          &lt;tr&gt;\n            &lt;th&gt;Status&lt;/th&gt;\n            &lt;th&gt;Username&lt;/th&gt;\n            &lt;th&gt;Site&lt;/th&gt;\n            &lt;th&gt;Ping&lt;/th&gt;\n            &lt;th&gt;Bandwidth&lt;/th&gt;\n            &lt;th style=\"width: 30%\"&gt;Actions&lt;/th&gt;\n          &lt;/tr&gt;\n        &lt;/thead&gt;\n        &lt;tbody&gt;\n          &lt;tr *ngFor=\"let user of listOfUsers | filter : searchMyText\"&gt;\n            &lt;td&gt;&lt;span class=\"badge badge-{{user.status?'success':'danger'}}\"&gt;{{user.status ? 'Online' : 'Offline'}}&lt;/span&gt;&lt;/td&gt;\n            &lt;td&gt;\n              &lt;div&gt;&lt;a [routerLink]=\"\" (click)=\"viewUser(user.accountNt)\"&gt;{{user.firstName + \" \" + user.lastName}}&lt;/a&gt;&lt;/div&gt;\n              &lt;div class=\"small\"&gt;{{user.accountNt}}&lt;/div&gt;\n            &lt;/td&gt;\n            &lt;td&gt;{{user.site}}&lt;/td&gt;\n            &lt;td&gt;\n              &lt;div&gt;#: {{user.numOfPing}}&lt;/div&gt;\n              &lt;div class=\"small\"&gt;Avg: 0&lt;/div&gt;\n            &lt;/td&gt;\n            &lt;td&gt;\n              &lt;div&gt;#: {{user.numOfBandwidth}}&lt;/div&gt;\n              &lt;div class=\"small\"&gt;Avg: 0&lt;/div&gt;\n            &lt;/td&gt;\n            &lt;td&gt;\n              &lt;button class=\"btn btn-sm btn-success\" [disabled]=\"!user.status\" (click)=\"startPing(user)\"&gt;Request ping&lt;/button&gt;\n              | &lt;button class=\"btn btn-sm btn-danger\" [disabled]=\"!user.status\" (click)=\"stopPing(user)\"&gt;Stop ping&lt;/button&gt;\n              | &lt;button class=\"btn btn-sm btn-primary\" [disabled]=\"!user.status\" (click)=\"startBandwidthTest(user)\"&gt;Bandwidth&lt;/button&gt;\n            &lt;/td&gt;\n          &lt;/tr&gt;\n          &lt;tr *ngIf=\"listOfUsers.length==0\"&gt;\n            &lt;td colspan=\"6\"&gt;No users found!&lt;/td&gt;\n          &lt;/tr&gt;\n        &lt;/tbody&gt;\n      &lt;/table&gt;\n    &lt;/div&gt;\n  &lt;/div&gt;\n\n  &lt;div class=\"card card-accent-danger\" *ngIf=\"showUserInfo\"&gt;\n    &lt;div class=\"card-header {{theme+2}}\"&gt;\n      &lt;h6 class=\"font-Size-{{fontSize}}\"&gt;\n        &lt;i class=\"fa fa-list\"&gt;&lt;/i&gt;&amp;nbsp;Information for {{selectedUser}}&lt;/h6&gt;\n    &lt;/div&gt;\n    &lt;div class=\"card-body {{theme+5}}\"&gt;\n      &lt;ul class=\"nav nav-tabs\" role=\"tablist\"&gt;\n        &lt;li class=\"nav-item\"&gt;\n          &lt;a class=\"nav-link {{pingView? 'show active' : ''}}\" (click)=\"showPing()\" data-toggle=\"tab\"&gt;Ping&lt;/a&gt;\n        &lt;/li&gt;\n        &lt;li class=\"nav-item\"&gt;\n          &lt;a class=\"nav-link {{!pingView? 'show active' : ''}}\" (click)=\"showBandwidth()\" data-toggle=\"tab\"&gt;Bandwidth&lt;/a&gt;\n        &lt;/li&gt;\n      &lt;/ul&gt;\n\n      &lt;table class=\"table table-responsive-sm table-hover table-outline mb-0\" *ngIf=\"pingView\"&gt;\n        &lt;thead class=\"table-secondary {{theme+2}}\"&gt;\n          &lt;tr&gt;\n            &lt;th style=\"width: 50%\"&gt;Timestamp&lt;/th&gt;\n            &lt;th style=\"width: 50%\"&gt;Ping&lt;/th&gt;\n          &lt;/tr&gt;\n        &lt;/thead&gt;\n        &lt;tbody&gt;\n          &lt;tr *ngFor=\"let ping of (selectedUserPingObservable | async)\"&gt;\n            &lt;td&gt;{{ping.timestamp | date: short}}&lt;/td&gt;\n            &lt;td&gt;{{ping.ping | number:'1.0-0'}} ms&lt;/td&gt;\n          &lt;/tr&gt;\n          &lt;tr *ngIf=\"(selectedUserPingObservable | async)?.length==0\"&gt;\n            &lt;td colspan=\"2\"&gt;No data&lt;/td&gt;\n          &lt;/tr&gt;\n        &lt;/tbody&gt;\n      &lt;/table&gt;\n\n      &lt;table class=\"table table-responsive-sm table-hover table-outline mb-0\" *ngIf=\"!pingView\"&gt;\n        &lt;thead class=\"table-secondary {{theme+2}}\"&gt;\n          &lt;tr&gt;\n            &lt;th style=\"width: 50%\"&gt;Timestamp&lt;/th&gt;\n            &lt;th style=\"width: 50%\"&gt;Bandwidth&lt;/th&gt;\n          &lt;/tr&gt;\n        &lt;/thead&gt;\n        &lt;tbody&gt;\n          &lt;tr *ngFor=\"let bandwidth of (selectedUserBandwidthObservable | async)\"&gt;\n            &lt;td&gt;{{bandwidth.timestamp | date: short}}&lt;/td&gt;\n            &lt;td&gt;{{bandwidth.download | number:'1.0-0'}} Mbps&lt;/td&gt;\n          &lt;/tr&gt;\n          &lt;tr *ngIf=\"(selectedUserBandwidthObservable | async)?.length==0\"&gt;\n            &lt;td colspan=\"2\"&gt;No data&lt;/td&gt;\n          &lt;/tr&gt;\n        &lt;/tbody&gt;\n      &lt;/table&gt;\n    &lt;/div&gt;\n    &lt;div class=\"card-footer\"&gt;\n      &lt;button (click)=\"closeUser()\" class=\"btn btn-primary\"&gt;Close&lt;/button&gt;\n    &lt;/div&gt;\n  &lt;/div&gt;\n&lt;/div&gt;\n</code></pre>\n"
+        },
+        {
+            "tags": [
+                "python-3.x",
+                "pycharm",
+                "pyqt5"
+            ],
+            "owner": {
+                "reputation": 140,
+                "user_id": 7795072,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/b4RRH.jpg?s=128&g=1",
+                "display_name": "X Black",
+                "link": "https://stackoverflow.com/users/7795072/x-black"
+            },
+            "is_answered": false,
+            "view_count": 19,
+            "answer_count": 0,
+            "score": -1,
+            "last_activity_date": 1526421634,
+            "creation_date": 1526421634,
+            "question_id": 50359746,
+            "body_markdown": "How to filter files to be displayed from their last modified date in comparison to a given time using PyQt5",
+            "link": "https://stackoverflow.com/questions/50359746/how-to-filter-files-from-their-last-modified-date-in-comparison-to-a-given-time",
+            "title": "How to filter files from their last modified date in comparison to a given time - PyQt5",
+            "body": "<p>How to filter files to be displayed from their last modified date in comparison to a given time using PyQt5</p>\n"
+        },
+        {
+            "tags": [
+                "windows",
+                "powershell",
+                "network-programming",
+                "powershell-v2.0",
+                "ipv6"
+            ],
+            "owner": {
+                "reputation": 215,
+                "user_id": 150767,
+                "user_type": "registered",
+                "accept_rate": 100,
+                "profile_image": "https://www.gravatar.com/avatar/f474221aea4041c1a8542ad6dd32692f?s=128&d=identicon&r=PG",
+                "display_name": "Ben Short",
+                "link": "https://stackoverflow.com/users/150767/ben-short"
+            },
+            "is_answered": true,
+            "view_count": 21251,
+            "accepted_answer_id": 2270451,
+            "answer_count": 7,
+            "score": 2,
+            "last_activity_date": 1526421615,
+            "creation_date": 1263777875,
+            "last_edit_date": 1265623187,
+            "question_id": 2083412,
+            "body_markdown": "I am writing a powershell script that will act as a build compliance test for our servers. One of the things I need to do is detect if IPv6 networking has been disabled.\r\n\r\nWMI indicates that this information can be found in the IPAddress Property of Win32_NetworkAdapterConfiguration but can be both IPv6 or IPv4. This does not give me a &quot;yes/no&quot; answer I am hoping to find.\r\n\r\nOther caveats are that I would prefer not to scrape the details by accessing the registry directly, nor scrape from the output of a command such as ipconfig.\r\n\r\nGiven our environment has a mix of 2003/2008 machines, can anyone think of a way to test for IPv6? \r\n\r\nCheers",
+            "link": "https://stackoverflow.com/questions/2083412/detect-if-ipv6-is-enabled-on-windows-machines",
+            "title": "Detect If IPv6 is Enabled on Windows Machines",
+            "body": "<p>I am writing a powershell script that will act as a build compliance test for our servers. One of the things I need to do is detect if IPv6 networking has been disabled.</p>\n\n<p>WMI indicates that this information can be found in the IPAddress Property of Win32_NetworkAdapterConfiguration but can be both IPv6 or IPv4. This does not give me a \"yes/no\" answer I am hoping to find.</p>\n\n<p>Other caveats are that I would prefer not to scrape the details by accessing the registry directly, nor scrape from the output of a command such as ipconfig.</p>\n\n<p>Given our environment has a mix of 2003/2008 machines, can anyone think of a way to test for IPv6? </p>\n\n<p>Cheers</p>\n"
+        },
+        {
+            "tags": [
+                "ios",
+                "swift",
+                "core-data",
+                "alamofire"
+            ],
+            "owner": {
+                "reputation": 1583,
+                "user_id": 458811,
+                "user_type": "registered",
+                "accept_rate": 91,
+                "profile_image": "https://www.gravatar.com/avatar/4862d716e47216eace801d08f4754c17?s=128&d=identicon&r=PG",
+                "display_name": "syedfa",
+                "link": "https://stackoverflow.com/users/458811/syedfa"
+            },
+            "is_answered": true,
+            "view_count": 247,
+            "accepted_answer_id": 50335306,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526421592,
+            "creation_date": 1526260949,
+            "last_edit_date": 1526329743,
+            "question_id": 50322067,
+            "body_markdown": "I&#39;m using Alamofire to submit a request to an endpoint using Swift.  I parse the JSON objects that I receive from the response using the Codable protocol, and then try to insert the objects into Core Data using Managed Object Subclasses.  However, when I do this, I keep receiving an error saying that my parent Managed Object Context (MOC) is nil.  This doesn&#39;t make sense to me because I set the MOC via Dependency Injection from the AppDelegate, and confirm that it has a value by printing out it&#39;s value to the console in the viewDidLoad() method.\r\n\r\nHere is my relevant code:\r\n\r\nI set my MOC here:\r\n\r\n    class ViewController: UIViewController {\r\n    \r\n    var managedObjectContext: NSManagedObjectContext! {\r\n        didSet {\r\n            print(&quot;moc set&quot;)\r\n        }\r\n    }\r\n    \r\n    \r\n    override func viewDidLoad() {\r\n        super.viewDidLoad()\r\n        print(managedObjectContext)\r\n    }\r\n\r\n///\r\n\r\n    func registerUser(userID: String, password: String) {\r\n        \r\n        let parameters: [String: Any] = [&quot;email&quot;: userID, &quot;password&quot;: password, &quot;domain_id&quot;: 1]\r\n        let headers: HTTPHeaders = [&quot;Accept&quot;: &quot;application/json&quot;]\r\n        \r\n        Alamofire.request(registerURL, method: .patch, parameters: parameters, encoding: JSONEncoding.default, headers: headers).responseJSON { response in\r\n            \r\n            switch response.result {\r\n            case .success:\r\n                \r\n                if let value = response.result.value {\r\n                    print(value)\r\n                    let jsonDecoder = JSONDecoder()\r\n                    \r\n                    do {\r\n                        let jsonData = try jsonDecoder.decode(JSONData.self, from: response.data!)\r\n                        print(jsonData.data.userName)\r\n                        print(jsonData.data.identifier)\r\n                        print(self.managedObjectContext)\r\n                        \r\n                        let privateContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)\r\n                        privateContext.parent = self.managedObjectContext\r\n                        \r\n                        let user = UserLogin(context: privateContext)\r\n                        user.userName = jsonData.data.userName\r\n                        user.domainID = Int16(jsonData.data.identifier)\r\n                        user.password = &quot;blah&quot;\r\n                        \r\n                        do {\r\n                            try privateContext.save()\r\n                            try privateContext.parent?.save()\r\n                        } catch let saveErr {\r\n                            print(&quot;Failed to save user&quot;, saveErr)\r\n                        }\r\n                        \r\n                    } catch let jsonDecodeErr{\r\n                        print(&quot;Failed to decode&quot;, jsonDecodeErr)\r\n                    }\r\n                    \r\n                }\r\n            case .failure(let error):\r\n                print(error)\r\n            }\r\n        }\r\n    }\r\n\r\nThe specific error message I&#39;m getting is:\r\n\r\n    Terminating app due to uncaught exception &#39;NSInvalidArgumentException&#39;, reason: &#39;Parent NSManagedObjectContext must not be nil.&#39;\r\n\r\n\r\nI realize that Alamofire is download the data on a background thread, which is why I use a child context, but I&#39;m not sure why the parent is nil.\r\n\r\nHere is the setup code for my Managed Object Context:\r\n\r\n    class AppDelegate: UIResponder, UIApplicationDelegate {\r\n\r\n    var persistentContainer: NSPersistentContainer!\r\n    var window: UIWindow?\r\n\r\n\r\n    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -&gt; Bool {\r\n        // Override point for customization after application launch.\r\n        \r\n        createContainer { container in\r\n            \r\n            self.persistentContainer = container\r\n            let storyboard = self.window?.rootViewController?.storyboard\r\n            guard let vc = storyboard?.instantiateViewController(withIdentifier: &quot;RootViewController&quot;) as? ViewController else { fatalError(&quot;Cannot instantiate root view controller&quot;)}\r\n            vc.managedObjectContext = container.viewContext\r\n            self.window?.rootViewController = vc\r\n            \r\n        }\r\n        \r\n        return true\r\n    }\r\n    \r\n    func createContainer(completion: @escaping(NSPersistentContainer) -&gt; ()) {\r\n        \r\n        let container = NSPersistentContainer(name: &quot;Test&quot;)\r\n        container.loadPersistentStores { _, error in\r\n            \r\n            guard error == nil else { fatalError(&quot;Failed to load store: \\(error!)&quot;) }\r\n            DispatchQueue.main.async { completion(container) }\r\n            \r\n        }\r\n    }\r\n\r\nCan anyone see what it is I&#39;m doing wrong?",
+            "link": "https://stackoverflow.com/questions/50322067/managed-object-context-is-nil-for-some-reason-in-ios",
+            "title": "Managed Object Context is nil for some reason in iOS",
+            "body": "<p>I'm using Alamofire to submit a request to an endpoint using Swift.  I parse the JSON objects that I receive from the response using the Codable protocol, and then try to insert the objects into Core Data using Managed Object Subclasses.  However, when I do this, I keep receiving an error saying that my parent Managed Object Context (MOC) is nil.  This doesn't make sense to me because I set the MOC via Dependency Injection from the AppDelegate, and confirm that it has a value by printing out it's value to the console in the viewDidLoad() method.</p>\n\n<p>Here is my relevant code:</p>\n\n<p>I set my MOC here:</p>\n\n<pre><code>class ViewController: UIViewController {\n\nvar managedObjectContext: NSManagedObjectContext! {\n    didSet {\n        print(\"moc set\")\n    }\n}\n\n\noverride func viewDidLoad() {\n    super.viewDidLoad()\n    print(managedObjectContext)\n}\n</code></pre>\n\n<p>///</p>\n\n<pre><code>func registerUser(userID: String, password: String) {\n\n    let parameters: [String: Any] = [\"email\": userID, \"password\": password, \"domain_id\": 1]\n    let headers: HTTPHeaders = [\"Accept\": \"application/json\"]\n\n    Alamofire.request(registerURL, method: .patch, parameters: parameters, encoding: JSONEncoding.default, headers: headers).responseJSON { response in\n\n        switch response.result {\n        case .success:\n\n            if let value = response.result.value {\n                print(value)\n                let jsonDecoder = JSONDecoder()\n\n                do {\n                    let jsonData = try jsonDecoder.decode(JSONData.self, from: response.data!)\n                    print(jsonData.data.userName)\n                    print(jsonData.data.identifier)\n                    print(self.managedObjectContext)\n\n                    let privateContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)\n                    privateContext.parent = self.managedObjectContext\n\n                    let user = UserLogin(context: privateContext)\n                    user.userName = jsonData.data.userName\n                    user.domainID = Int16(jsonData.data.identifier)\n                    user.password = \"blah\"\n\n                    do {\n                        try privateContext.save()\n                        try privateContext.parent?.save()\n                    } catch let saveErr {\n                        print(\"Failed to save user\", saveErr)\n                    }\n\n                } catch let jsonDecodeErr{\n                    print(\"Failed to decode\", jsonDecodeErr)\n                }\n\n            }\n        case .failure(let error):\n            print(error)\n        }\n    }\n}\n</code></pre>\n\n<p>The specific error message I'm getting is:</p>\n\n<pre><code>Terminating app due to uncaught exception 'NSInvalidArgumentException', reason: 'Parent NSManagedObjectContext must not be nil.'\n</code></pre>\n\n<p>I realize that Alamofire is download the data on a background thread, which is why I use a child context, but I'm not sure why the parent is nil.</p>\n\n<p>Here is the setup code for my Managed Object Context:</p>\n\n<pre><code>class AppDelegate: UIResponder, UIApplicationDelegate {\n\nvar persistentContainer: NSPersistentContainer!\nvar window: UIWindow?\n\n\nfunc application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -&gt; Bool {\n    // Override point for customization after application launch.\n\n    createContainer { container in\n\n        self.persistentContainer = container\n        let storyboard = self.window?.rootViewController?.storyboard\n        guard let vc = storyboard?.instantiateViewController(withIdentifier: \"RootViewController\") as? ViewController else { fatalError(\"Cannot instantiate root view controller\")}\n        vc.managedObjectContext = container.viewContext\n        self.window?.rootViewController = vc\n\n    }\n\n    return true\n}\n\nfunc createContainer(completion: @escaping(NSPersistentContainer) -&gt; ()) {\n\n    let container = NSPersistentContainer(name: \"Test\")\n    container.loadPersistentStores { _, error in\n\n        guard error == nil else { fatalError(\"Failed to load store: \\(error!)\") }\n        DispatchQueue.main.async { completion(container) }\n\n    }\n}\n</code></pre>\n\n<p>Can anyone see what it is I'm doing wrong?</p>\n"
+        },
+        {
+            "tags": [
+                "django",
+                "django-templates",
+                "django-cms"
+            ],
+            "owner": {
+                "reputation": 42,
+                "user_id": 3002359,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/122fa77b2fe2d5a3660f1a3394cc1a9d?s=128&d=identicon&r=PG",
+                "display_name": "samroberts707",
+                "link": "https://stackoverflow.com/users/3002359/samroberts707"
+            },
+            "is_answered": false,
+            "view_count": 50,
+            "answer_count": 1,
+            "score": 0,
+            "last_activity_date": 1526421585,
+            "creation_date": 1500458380,
+            "question_id": 45187160,
+            "body_markdown": "I&#39;m trying to group my placeholders in Django CMS so that they don&#39;t appear in one long list. I want some sort of indication that some placeholders are linked together other than just their name.\r\n\r\nCurrently I want the user to be able to choose their own Header Image, Title and Subtitle so my placeholder tree looks like this: \r\n\r\n-- Header Image\r\n\r\n-- Header Title\r\n\r\n-- Header Subtitle\r\n\r\nI want to be able to group these together in my template to show a correlation like so:\r\n\r\n-- Header\r\n\r\n---- Header Image\r\n\r\n---- Header Title\r\n\r\n----  Header Subtitle\r\n\r\nI found [a post from 2013][1] that said this was possible but the plugin that was suggested that would give this functionality no longer exists. \r\n\r\n\r\n  [1]: https://github.com/divio/django-cms/issues/2471",
+            "link": "https://stackoverflow.com/questions/45187160/django-cms-group-nest-placeholders",
+            "title": "Django CMS Group/Nest Placeholders",
+            "body": "<p>I'm trying to group my placeholders in Django CMS so that they don't appear in one long list. I want some sort of indication that some placeholders are linked together other than just their name.</p>\n\n<p>Currently I want the user to be able to choose their own Header Image, Title and Subtitle so my placeholder tree looks like this: </p>\n\n<p>-- Header Image</p>\n\n<p>-- Header Title</p>\n\n<p>-- Header Subtitle</p>\n\n<p>I want to be able to group these together in my template to show a correlation like so:</p>\n\n<p>-- Header</p>\n\n<p>---- Header Image</p>\n\n<p>---- Header Title</p>\n\n<p>----  Header Subtitle</p>\n\n<p>I found <a href=\"https://github.com/divio/django-cms/issues/2471\" rel=\"nofollow noreferrer\">a post from 2013</a> that said this was possible but the plugin that was suggested that would give this functionality no longer exists. </p>\n"
+        },
+        {
+            "tags": [
+                "security",
+                "oauth",
+                "oauth-2.0"
+            ],
+            "owner": {
+                "reputation": 49,
+                "user_id": 5399752,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/iOl2w.jpg?s=128&g=1",
+                "display_name": "Serene Engineer",
+                "link": "https://stackoverflow.com/users/5399752/serene-engineer"
+            },
+            "is_answered": false,
+            "view_count": 8,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526421569,
+            "creation_date": 1526421569,
+            "question_id": 50359737,
+            "body_markdown": "In researching OAuth 2.0 grants, I found variation between sources on how many grants there were.\r\n\r\nSee links below:\r\n\r\n - https://oauth.net/2/grant-types/\r\n - https://alexbilbie.com/guide-to-oauth-2-grants/\r\n - https://tools.ietf.org/html/rfc6749#section-4.5/\r\n - https://www.youtube.com/watch?v=1ZX7554l8hY\r\n\r\nThey have six, five, four (excluding external grant), and five respectively.  In addition, beyond the core four (client credentials, resource owner credentials, implicit, and authorization code) there are variations on the extra grants.\r\n\r\nWhich is the official set of grants?  What are the extra grants, what do they do, and why do they matter?",
+            "link": "https://stackoverflow.com/questions/50359737/what-are-the-different-grants-of-oauth-and-what-do-they-do",
+            "title": "What are the different grants of OAuth and what do they do?",
+            "body": "<p>In researching OAuth 2.0 grants, I found variation between sources on how many grants there were.</p>\n\n<p>See links below:</p>\n\n<ul>\n<li><a href=\"https://oauth.net/2/grant-types/\" rel=\"nofollow noreferrer\">https://oauth.net/2/grant-types/</a></li>\n<li><a href=\"https://alexbilbie.com/guide-to-oauth-2-grants/\" rel=\"nofollow noreferrer\">https://alexbilbie.com/guide-to-oauth-2-grants/</a></li>\n<li><a href=\"https://tools.ietf.org/html/rfc6749#section-4.5/\" rel=\"nofollow noreferrer\">https://tools.ietf.org/html/rfc6749#section-4.5/</a></li>\n<li><a href=\"https://www.youtube.com/watch?v=1ZX7554l8hY\" rel=\"nofollow noreferrer\">https://www.youtube.com/watch?v=1ZX7554l8hY</a></li>\n</ul>\n\n<p>They have six, five, four (excluding external grant), and five respectively.  In addition, beyond the core four (client credentials, resource owner credentials, implicit, and authorization code) there are variations on the extra grants.</p>\n\n<p>Which is the official set of grants?  What are the extra grants, what do they do, and why do they matter?</p>\n"
+        },
+        {
+            "tags": [
+                "grails",
+                "gorm",
+                "criteria",
+                "grails-3.3"
+            ],
+            "owner": {
+                "reputation": 73,
+                "user_id": 4147764,
+                "user_type": "registered",
+                "profile_image": "https://i.stack.imgur.com/Dkj06.jpg?s=128&g=1",
+                "display_name": "MonetsChemist",
+                "link": "https://stackoverflow.com/users/4147764/monetschemist"
+            },
+            "is_answered": false,
+            "view_count": 26,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526421557,
+            "creation_date": 1526421557,
+            "question_id": 50359734,
+            "body_markdown": "According to [the latest GORM documentation][1], the count() method of CriteriaBuilder should return &quot;The result count&quot;.\r\n\r\nI find this not to be true when a projection is used in the CriteriaBuilder; then count() seems to return the total number of instances in the class.\r\n\r\nFor example, in my test application this code\r\n\r\n    def c = gtest01.TestA.createCriteria()\r\n    c.list {\r\n        projections {\r\n            groupProperty &#39;grouping&#39;\r\n            count()\r\n        }\r\n    }.each { t -&gt;\r\n        println &quot;t $t&quot;\r\n    }\r\n\r\nprints 8 lines, as expected:\r\n\r\n    t [1, 12]\r\n    t [2, 16]\r\n    t [3, 9]\r\n    t [4, 18]\r\n    t [5, 5]\r\n    t [6, 20]\r\n    t [7, 13]\r\n    t [8, 7]\r\n\r\nwhereas this code\r\n\r\n    c = gtest01.TestA.createCriteria()\r\n    c.count {\r\n        projections {\r\n            groupProperty &#39;grouping&#39;\r\n            count()\r\n        }\r\n    }.each { t -&gt;\r\n        println &quot;t $t&quot;\r\n    }\r\n\r\nprints\r\n\r\n    t 100\r\n\r\nwhich is the total number of instances of TestA.\r\n\r\nIt seems to me either the documentation is wrong or the count() code is wrong.  I&#39;d like the problem to be with the code, since I can always get the total number of instances of the class with a call to `gtest01.TestA.count()`\r\n\r\n  [1]: http://gorm.grails.org/latest/hibernate/api/index.html",
+            "link": "https://stackoverflow.com/questions/50359734/grails-gorm-critieria-builder-count-returns-incorrect-value",
+            "title": "grails gorm critieria builder count returns incorrect value?",
+            "body": "<p>According to <a href=\"http://gorm.grails.org/latest/hibernate/api/index.html\" rel=\"nofollow noreferrer\">the latest GORM documentation</a>, the count() method of CriteriaBuilder should return \"The result count\".</p>\n\n<p>I find this not to be true when a projection is used in the CriteriaBuilder; then count() seems to return the total number of instances in the class.</p>\n\n<p>For example, in my test application this code</p>\n\n<pre><code>def c = gtest01.TestA.createCriteria()\nc.list {\n    projections {\n        groupProperty 'grouping'\n        count()\n    }\n}.each { t -&gt;\n    println \"t $t\"\n}\n</code></pre>\n\n<p>prints 8 lines, as expected:</p>\n\n<pre><code>t [1, 12]\nt [2, 16]\nt [3, 9]\nt [4, 18]\nt [5, 5]\nt [6, 20]\nt [7, 13]\nt [8, 7]\n</code></pre>\n\n<p>whereas this code</p>\n\n<pre><code>c = gtest01.TestA.createCriteria()\nc.count {\n    projections {\n        groupProperty 'grouping'\n        count()\n    }\n}.each { t -&gt;\n    println \"t $t\"\n}\n</code></pre>\n\n<p>prints</p>\n\n<pre><code>t 100\n</code></pre>\n\n<p>which is the total number of instances of TestA.</p>\n\n<p>It seems to me either the documentation is wrong or the count() code is wrong.  I'd like the problem to be with the code, since I can always get the total number of instances of the class with a call to <code>gtest01.TestA.count()</code></p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "encryption",
+                "binary",
+                "cryptography",
+                "biginteger"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 9370310,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/cd063d8c7744893bf89f9cc57d04e725?s=128&d=identicon&r=PG&f=1",
+                "display_name": "jburcham",
+                "link": "https://stackoverflow.com/users/9370310/jburcham"
+            },
+            "is_answered": false,
+            "view_count": 43,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526421556,
+            "creation_date": 1526417239,
+            "question_id": 50358941,
+            "body_markdown": "Here is my specific problem. I need to represent an integer (like 1,2,3,..) as a binary literal with exactly 128 bits.\r\n\r\nThis is my string representing 1 in binary:\r\nstring = &quot;000...0001&quot;; // 128 characters. all zeros until the last 1\r\n\r\nIntended result:\r\nbx000...0001;\r\n\r\nThis issue is that 128 bits is larger than normal types like int, double, decimal, etc. Thus, I believe you must use the BigInteger class to hold this binary value??\r\n\r\nAnother way to frame this: How can I make sure my BigInteger value is 16 bytes big?\r\n\r\nBigInteger val = new BigInteger(1); // but must be 16 bytes exactly.",
+            "link": "https://stackoverflow.com/questions/50358941/how-to-parse-a-binary-string-to-a-binary-literal-in-c",
+            "title": "How to parse a binary string to a binary literal in C#",
+            "body": "<p>Here is my specific problem. I need to represent an integer (like 1,2,3,..) as a binary literal with exactly 128 bits.</p>\n\n<p>This is my string representing 1 in binary:\nstring = \"000...0001\"; // 128 characters. all zeros until the last 1</p>\n\n<p>Intended result:\nbx000...0001;</p>\n\n<p>This issue is that 128 bits is larger than normal types like int, double, decimal, etc. Thus, I believe you must use the BigInteger class to hold this binary value??</p>\n\n<p>Another way to frame this: How can I make sure my BigInteger value is 16 bytes big?</p>\n\n<p>BigInteger val = new BigInteger(1); // but must be 16 bytes exactly.</p>\n"
+        },
+        {
+            "tags": [
+                "c#",
+                "performance",
+                "for-loop",
+                "foreach"
+            ],
+            "owner": {
+                "reputation": 36,
+                "user_id": 9796658,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/d83886479a465242193ad3898a465160?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Amy",
+                "link": "https://stackoverflow.com/users/9796658/amy"
+            },
+            "is_answered": false,
+            "view_count": 57,
+            "closed_date": 1526422442,
+            "answer_count": 0,
+            "score": -3,
+            "last_activity_date": 1526421556,
+            "creation_date": 1526421027,
+            "last_edit_date": 1526421556,
+            "question_id": 50359638,
+            "body_markdown": "Which is faster &#39;for&#39; or &#39;for-each&#39; ?\r\n\r\nI read that a for loop works faster than a foreach. Is this true for all collections ? For ex. for iterating an array of 10.0000 strings which is faster ?",
+            "link": "https://stackoverflow.com/questions/50359638/which-is-faster-foreach-or-for",
+            "closed_reason": "duplicate",
+            "title": "Which is faster &quot;foreach&quot; or &quot;for&quot;?",
+            "body": "<p>Which is faster 'for' or 'for-each' ?</p>\n\n<p>I read that a for loop works faster than a foreach. Is this true for all collections ? For ex. for iterating an array of 10.0000 strings which is faster ?</p>\n"
+        },
+        {
+            "tags": [
+                "go"
+            ],
+            "owner": {
+                "reputation": 7,
+                "user_id": 9792000,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/eae0f1172a0c04954aa396c27943f7ed?s=128&d=identicon&r=PG&f=1",
+                "display_name": "d817db33",
+                "link": "https://stackoverflow.com/users/9792000/d817db33"
+            },
+            "is_answered": true,
+            "view_count": 83,
+            "answer_count": 2,
+            "score": 0,
+            "last_activity_date": 1526421555,
+            "creation_date": 1526359499,
+            "last_edit_date": 1526359667,
+            "question_id": 50342476,
+            "body_markdown": "how do I parse this json \r\n\r\n    [\r\n      [\r\n        [\r\n          &quot;Odio los lunes&quot;,\r\n          &quot;i hate mondays&quot;,\r\n          null,\r\n          null,\r\n          1\r\n        ]\r\n      ],\r\n      null,\r\n      &quot;en&quot;\r\n    ]\r\n\r\n to show just `Odio los lunes`?",
+            "link": "https://stackoverflow.com/questions/50342476/parsing-json-in-variable-in-golang",
+            "title": "Parsing Json in variable in golang",
+            "body": "<p>how do I parse this json </p>\n\n<pre><code>[\n  [\n    [\n      \"Odio los lunes\",\n      \"i hate mondays\",\n      null,\n      null,\n      1\n    ]\n  ],\n  null,\n  \"en\"\n]\n</code></pre>\n\n<p>to show just <code>Odio los lunes</code>?</p>\n"
+        },
+        {
+            "tags": [
+                "angular",
+                "oauth-2.0"
+            ],
+            "owner": {
+                "reputation": 646,
+                "user_id": 2104933,
+                "user_type": "registered",
+                "accept_rate": 60,
+                "profile_image": "https://www.gravatar.com/avatar/993105b7cd69115e899cda1f54abf060?s=128&d=identicon&r=PG",
+                "display_name": "lilbiscuit",
+                "link": "https://stackoverflow.com/users/2104933/lilbiscuit"
+            },
+            "is_answered": false,
+            "view_count": 17,
+            "answer_count": 1,
+            "score": -1,
+            "last_activity_date": 1526421534,
+            "creation_date": 1526409904,
+            "last_edit_date": 1526421534,
+            "question_id": 50357231,
+            "body_markdown": "I have a function to return a fresh access token from a remote server using a refresh token (to be used with HttpInterceptor in Angular 4.3+), based on this [Angular 4 Tutorial - Handling Refresh Token with New HttpInterceptor][1]:\r\n\r\n    doRefreshToken(): Observable&lt;string&gt; {\r\n       http.post(&#39;/my/api&#39;, refreshToken)\r\n            .subscribe(\r\n              (data) =&gt; {\r\n                this.newAccessToken = (&lt;any&gt;data).accessToken;\r\n                console.log(&quot;RECEIVED NEW TOKEN: &quot; + this.newAccessToken);\r\n              }, \r\n              (error) =&gt; { },\r\n              () =&gt; { }\r\n             );\r\n        console.log(&quot;RETURNING NEW TOKEN: &quot; + this.newAccessToken); \r\n        return Observable.of(this.newAccessToken);\r\n    }\r\n\r\nBut calling `doRefreshToken()` returns `undefined` before a token is received from the server.  Why is the function responding before the data arrives? \r\n    \r\n               \r\nThe console output:\r\n\r\n`RETURNING NEW TOKEN: undefined\r\nblah blah blah\r\nRECEIVED NEW TOKEN: abc123imanewtoken`\r\n\r\n\r\n  [1]: https://www.intertech.com/Blog/angular-4-tutorial-handling-refresh-token-with-new-httpinterceptor/",
+            "link": "https://stackoverflow.com/questions/50357231/angular-rxjs-observable-function-returning-without-the-http-data",
+            "title": "Angular / rxjs observable function returning without the HTTP data",
+            "body": "<p>I have a function to return a fresh access token from a remote server using a refresh token (to be used with HttpInterceptor in Angular 4.3+), based on this <a href=\"https://www.intertech.com/Blog/angular-4-tutorial-handling-refresh-token-with-new-httpinterceptor/\" rel=\"nofollow noreferrer\">Angular 4 Tutorial - Handling Refresh Token with New HttpInterceptor</a>:</p>\n\n<pre><code>doRefreshToken(): Observable&lt;string&gt; {\n   http.post('/my/api', refreshToken)\n        .subscribe(\n          (data) =&gt; {\n            this.newAccessToken = (&lt;any&gt;data).accessToken;\n            console.log(\"RECEIVED NEW TOKEN: \" + this.newAccessToken);\n          }, \n          (error) =&gt; { },\n          () =&gt; { }\n         );\n    console.log(\"RETURNING NEW TOKEN: \" + this.newAccessToken); \n    return Observable.of(this.newAccessToken);\n}\n</code></pre>\n\n<p>But calling <code>doRefreshToken()</code> returns <code>undefined</code> before a token is received from the server.  Why is the function responding before the data arrives? </p>\n\n<p>The console output:</p>\n\n<p><code>RETURNING NEW TOKEN: undefined\nblah blah blah\nRECEIVED NEW TOKEN: abc123imanewtoken</code></p>\n"
+        },
+        {
+            "tags": [
+                "node.js",
+                "for-loop",
+                "request",
+                "cheerio"
+            ],
+            "owner": {
+                "reputation": 1,
+                "user_id": 8560229,
+                "user_type": "registered",
+                "profile_image": "https://www.gravatar.com/avatar/7e886d47d6f0890ecc9ab70d6be768d2?s=128&d=identicon&r=PG&f=1",
+                "display_name": "Simion",
+                "link": "https://stackoverflow.com/users/8560229/simion"
+            },
+            "is_answered": false,
+            "view_count": 15,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526421519,
+            "creation_date": 1526421519,
+            "question_id": 50359732,
+            "body_markdown": "I scraped this website https://www.alza.sk/cpu-procesory/18842843-p1.htm this is big Czecho-Slovakia e-shop with pc components, i want to fetch data about CPU.\r\n\r\nI apologize for using the Slovak words in the code, but it doesn&#39;t matter.\r\n\r\n// CODE\r\n\r\n    url = &#39;https://www.alza.sk/cpu-procesory/18842843-p1.htm&#39;;\r\n    \r\n    var allCpu = new Array;\r\n    \r\n    request(url, function(error, response, html) {\r\n        if(error) {\r\n            console.log(error);\r\n        } else {\r\n            var $ = cheerio.load(html);\r\n            var box = $(&#39;#boxc .box&#39;);\r\n        \r\n        for(i = 0; i &lt; box.length; i++) {\r\n           console.log(i) // Output is numbers from 0 to 23\r\n\r\n            var cpu = {\r\n                meno: &#39;&#39;,\r\n                link: &#39;&#39;,\r\n                socket: &#39;&#39;,\r\n                radaCpu: &#39;&#39;,\r\n                xJadier: &#39;&#39;,\r\n                frekvenciaCpu: &#39;&#39;,\r\n                maxFrekvenciaCpu: &#39;&#39;\r\n            }\r\n            \r\n            box.eq(i).filter(function() {\r\n                cpu.meno = $(this).find(&#39;.fb a&#39;).text();\r\n                cpu.link = $(this).find(&#39;.fb a&#39;).attr(&#39;href&#39;);\r\n\r\n                request(&#39;https://www.alza.sk/&#39; + cpu.link, function(error, response, html) {\r\n                    if(error) {\r\n                        console.log(error);\r\n                    } else {\r\n                        var $socket = cheerio.load(html);\r\n                        var params = $socket(&#39;#popis .params .groupValues .row a&#39;);\r\n\r\n                        params.filter(function() {\r\n                            if($(this).text() == &#39;Socket&#39;) cpu.socket = $(this).parents(&#39;.row&#39;).find(&#39;.value&#39;).text();\r\n                            if($(this).text() == &#39;Rad procesora&#39;) cpu.radaCpu = $(this).parents(&#39;.row&#39;).find(&#39;.value&#39;).text();\r\n                            if($(this).text() == &#39;Počet jadier procesora&#39;) cpu.xJadier = $(this).parents(&#39;.row&#39;).find(&#39;.value&#39;).text();\r\n                            if($(this).text() == &#39;Frekvencie procesora&#39;) cpu.frekvenciaCpu = $(this).parents(&#39;.row&#39;).find(&#39;.value&#39;).text();\r\n                            if($(this).text() == &#39;Maxim&#225;lna frekvencia (OC)&#39;) cpu.maxFrekvenciaCpu = $(this).parents(&#39;.row&#39;).find(&#39;.value&#39;).text();\r\n                        });\r\n\r\n                        allCpu.push(cpu);\r\n                        \r\n                        console.log(i); // Output is 24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24\r\n                        \r\n                        if(i == box.length - 1) {\r\n                            \r\n                            fs.writeFile(&#39;output.json&#39;, JSON.stringify(allCpu, null, 4), function(err){\r\n                                console.log(&#39;File successfully written! - Check your project directory for the output.json file&#39;);\r\n                            });\r\n                        }\r\n                    }\r\n                });\r\n\r\n            });\r\n            \r\n        }\r\n        \r\n      }\r\n    });\r\n\r\nThis code work great if i fetch data from one specific CPU. ( box.eq(some_number) ).\r\n\r\nFirstly it execute request, find name and link to the CPU. Next it with this link execute next request, which find other detail information. \r\n\r\nBut if i use loop because i want to fetch data of all CPU on the page. I always get data only from last CPU.\r\nI let increment write to console on start my loop and on the end. On the start of loop i had numbers from 0 to 23 it&#39;s good. But on the end in the console i got 24 times number 24. I don&#39;t understand why.\r\n\r\nThank you for help. ",
+            "link": "https://stackoverflow.com/questions/50359732/nodejs-request-cheerio-scraping-website-with-for-loop",
+            "title": "Nodejs Request Cheerio - Scraping website with for loop",
+            "body": "<p>I scraped this website <a href=\"https://www.alza.sk/cpu-procesory/18842843-p1.htm\" rel=\"nofollow noreferrer\">https://www.alza.sk/cpu-procesory/18842843-p1.htm</a> this is big Czecho-Slovakia e-shop with pc components, i want to fetch data about CPU.</p>\n\n<p>I apologize for using the Slovak words in the code, but it doesn't matter.</p>\n\n<p>// CODE</p>\n\n<pre><code>url = 'https://www.alza.sk/cpu-procesory/18842843-p1.htm';\n\nvar allCpu = new Array;\n\nrequest(url, function(error, response, html) {\n    if(error) {\n        console.log(error);\n    } else {\n        var $ = cheerio.load(html);\n        var box = $('#boxc .box');\n\n    for(i = 0; i &lt; box.length; i++) {\n       console.log(i) // Output is numbers from 0 to 23\n\n        var cpu = {\n            meno: '',\n            link: '',\n            socket: '',\n            radaCpu: '',\n            xJadier: '',\n            frekvenciaCpu: '',\n            maxFrekvenciaCpu: ''\n        }\n\n        box.eq(i).filter(function() {\n            cpu.meno = $(this).find('.fb a').text();\n            cpu.link = $(this).find('.fb a').attr('href');\n\n            request('https://www.alza.sk/' + cpu.link, function(error, response, html) {\n                if(error) {\n                    console.log(error);\n                } else {\n                    var $socket = cheerio.load(html);\n                    var params = $socket('#popis .params .groupValues .row a');\n\n                    params.filter(function() {\n                        if($(this).text() == 'Socket') cpu.socket = $(this).parents('.row').find('.value').text();\n                        if($(this).text() == 'Rad procesora') cpu.radaCpu = $(this).parents('.row').find('.value').text();\n                        if($(this).text() == 'Počet jadier procesora') cpu.xJadier = $(this).parents('.row').find('.value').text();\n                        if($(this).text() == 'Frekvencie procesora') cpu.frekvenciaCpu = $(this).parents('.row').find('.value').text();\n                        if($(this).text() == 'Maximálna frekvencia (OC)') cpu.maxFrekvenciaCpu = $(this).parents('.row').find('.value').text();\n                    });\n\n                    allCpu.push(cpu);\n\n                    console.log(i); // Output is 24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24\n\n                    if(i == box.length - 1) {\n\n                        fs.writeFile('output.json', JSON.stringify(allCpu, null, 4), function(err){\n                            console.log('File successfully written! - Check your project directory for the output.json file');\n                        });\n                    }\n                }\n            });\n\n        });\n\n    }\n\n  }\n});\n</code></pre>\n\n<p>This code work great if i fetch data from one specific CPU. ( box.eq(some_number) ).</p>\n\n<p>Firstly it execute request, find name and link to the CPU. Next it with this link execute next request, which find other detail information. </p>\n\n<p>But if i use loop because i want to fetch data of all CPU on the page. I always get data only from last CPU.\nI let increment write to console on start my loop and on the end. On the start of loop i had numbers from 0 to 23 it's good. But on the end in the console i got 24 times number 24. I don't understand why.</p>\n\n<p>Thank you for help. </p>\n"
+        },
+        {
+            "tags": [
+                "requirejs",
+                "cdn",
+                "r.js"
+            ],
+            "owner": {
+                "reputation": 97,
+                "user_id": 2075591,
+                "user_type": "registered",
+                "accept_rate": 75,
+                "profile_image": "https://www.gravatar.com/avatar/665f8186110838ff181f7902f9c26828?s=128&d=identicon&r=PG",
+                "display_name": "Oscar Gardiazabal",
+                "link": "https://stackoverflow.com/users/2075591/oscar-gardiazabal"
+            },
+            "is_answered": false,
+            "view_count": 7,
+            "answer_count": 0,
+            "score": 0,
+            "last_activity_date": 1526421517,
+            "creation_date": 1526421517,
+            "question_id": 50359730,
+            "body_markdown": "**main.js**:\r\n\r\n    requirejs.config({\r\n        css: &quot;https://cdnjs.cloudflare.com/ajax/libs/require-css/0.1.10/css&quot;,\r\n        fontawesome: &quot;https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome&quot;\r\n    });\r\n    requirejs([&quot;css!fontawesome&quot;]);\r\n\r\n**app.build.js**:\r\n\r\n    ({\r\n        name: &quot;main&quot;,\r\n        out: &quot;built.js&quot;,\r\n        paths: {\r\n            css: &quot;empty:&quot;,\r\n            fontawesome: &quot;empty:&quot;\r\n        }\r\n    })\r\n\r\n`r.js -o app.build.js` **throws**:\r\n\r\n    Error: TypeError: Cannot read property &#39;normalize&#39; of undefined\r\n    In module tree:\r\n        main\r\n\r\n**Seems that options like &#39;exclude&#39; only works with modules?**\r\n",
+            "link": "https://stackoverflow.com/questions/50359730/can-requirejs-build-a-single-optimization-output-with-plugins-in-cdn",
+            "title": "Can requirejs build a single optimization output with plugins in cdn?",
+            "body": "<p><strong>main.js</strong>:</p>\n\n<pre><code>requirejs.config({\n    css: \"https://cdnjs.cloudflare.com/ajax/libs/require-css/0.1.10/css\",\n    fontawesome: \"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome\"\n});\nrequirejs([\"css!fontawesome\"]);\n</code></pre>\n\n<p><strong>app.build.js</strong>:</p>\n\n<pre><code>({\n    name: \"main\",\n    out: \"built.js\",\n    paths: {\n        css: \"empty:\",\n        fontawesome: \"empty:\"\n    }\n})\n</code></pre>\n\n<p><code>r.js -o app.build.js</code> <strong>throws</strong>:</p>\n\n<pre><code>Error: TypeError: Cannot read property 'normalize' of undefined\nIn module tree:\n    main\n</code></pre>\n\n<p><strong>Seems that options like 'exclude' only works with modules?</strong></p>\n"
+        }
+    ],
+    "has_more": true,
+    "quota_max": 300,
+    "quota_remaining": 299
+}

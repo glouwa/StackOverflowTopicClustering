@@ -3,11 +3,13 @@ from nltk.corpus import stopwords
 minwordlen = 3
 nltk_stop_words = list(stopwords.words('english')) 
 
-#anything part thing everything answer lot error step reason nothing idea side position result
+
 
 raw_stop_words = """
     user make run app application page new server page set method find add files image used line created 
-    item field user column row api
+    item field user column row api date day   
+    anything part thing everything answer lot error step reason nothing idea side position result err timeout lot
+    space word length index pattern argument edit expression attribute order exception count
     custom property size variables date parameter test cell statement difference program default
     output call found version string text array type number object variable access inside input update key element loop failed adding    
     project create something getting running like code function list table via 
@@ -63,6 +65,7 @@ def filterlemmed(lemword):
     return filterintern(lemword, lem_stop_words)
 
 def featurefilter(tkey):
+    return True
     return tkey != 'code' and tkey != 'inlinecode'
 
 """
