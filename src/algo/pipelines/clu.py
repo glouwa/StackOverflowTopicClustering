@@ -6,7 +6,7 @@ from sklearn import cluster
 from sklearn import mixture
 from sklearn import neighbors
 
-visdim = 3
+visdim = 4
 clustervis_pipelines = {
     'PCA': Pipeline([
         ('sca', preprocessing.MaxAbsScaler()),
@@ -17,12 +17,7 @@ clustervis_pipelines = {
         ('sca', preprocessing.MaxAbsScaler()),
         ('clu', decomposition.NMF(n_components=visdim, random_state=1, alpha=.1, l1_ratio=.5)),
         ('sca2', preprocessing.MaxAbsScaler()),
-    ]),
-    'FA': Pipeline([                
-        ('sca', preprocessing.MaxAbsScaler()),
-        ('clu', decomposition.FactorAnalysis(n_components=visdim)),
-        ('sca2', preprocessing.MaxAbsScaler()),
-    ]),
+    ]),    
     'LatentDA': Pipeline([                
         ('sca', preprocessing.MaxAbsScaler()),
         ('clu', decomposition.LatentDirichletAllocation(n_components=visdim, learning_method='online')),
@@ -32,13 +27,22 @@ clustervis_pipelines = {
         ('sca', preprocessing.MaxAbsScaler()),
         ('clu', decomposition.TruncatedSVD(n_components=visdim)),
         ('sca2', preprocessing.MaxAbsScaler()),
-    ]),
-    'FastICA': Pipeline([
+    ])    
+}
+
+"""
+'FastICA': Pipeline([
         ('sca', preprocessing.MaxAbsScaler()),
         ('clu', decomposition.FastICA(n_components=visdim)),
         ('sca2', preprocessing.MaxAbsScaler()),
     ])    
-}
+
+    'FA': Pipeline([                
+        ('sca', preprocessing.MaxAbsScaler()),
+        ('clu', decomposition.FactorAnalysis(n_components=visdim)),
+        ('sca2', preprocessing.MaxAbsScaler()),
+    ]),
+"""
 
 featuredim = 40
 decomp = decomposition.PCA(n_components=featuredim)
@@ -46,7 +50,7 @@ decomp = decomposition.PCA(n_components=featuredim)
 #decomp = decomposition.LatentDirichletAllocation(n_components=featuredim, learning_method='batch')
 #decomp = decomposition.NMF(n_components=featuredim, random_state=1, alpha=.1, l1_ratio=.5)
 
-clustercount = 15
+clustercount = 3
 cluster_pipelines = {            
     'Agglo': Pipeline([                                
         ('sca', preprocessing.MaxAbsScaler(copy=False)),

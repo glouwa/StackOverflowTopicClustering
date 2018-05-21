@@ -1,31 +1,39 @@
 import numpy as np
 import json
 import matplotlib.pyplot as plt
-from pprint import pprint
-from tfidf import StackoverflowCorpus
-from scipy.cluster.hierarchy import dendrogram, linkage, to_tree
-from plots import fancy_dendrogram
+from tools.tfidf import StackoverflowCorpus
+from tools.plots import fancy_dendrogram
 
+from scipy.cluster.hierarchy import dendrogram, linkage, to_tree
 from sklearn import preprocessing
 from sklearn import pipeline
 from sklearn import decomposition
+from sklearn.externals import joblib
 
+"""
 wordtype = 'lemma'
 topfeature = ['title', 'body']
 tfidfcfg= [3, 2] # 11 wolkig aber gelb, 32 beste klassifikations aber nix gelb, 00 separiert gut sonst bullshit
 corpus = StackoverflowCorpus('bag-of-words/stackoverflow-' + wordtype, topfeature, tfidfcfg[0], tfidfcfg[1])
 print("Corpus", len(corpus.documents), len(corpus.termssorted))
+"""
 
 #interndim = 100
 #algo = 'ward' # 'ward' 'single*' 'complete' 'average*''centroid ''median' 
+
+tfidf = "11_title"
+X_ = joblib.load('./dist/data/tf-idf/{}/nltk-X.pkl'.format(tfidf))
+XR = joblib.load('./dist/data/tf-idf/{}/nltk-XR.pkl'.format(tfidf))
+F = joblib.load('./dist/data/tf-idf/{}/nltk-F.pkl'.format(tfidf))
+
+#F = zip(F, np.sum(XR, axis=0)).items()
+#print(F)
 
 def top(component, feature_names, n_top_words):        
     #return " ".join([feature_names[i] for i in component.argsort()[:n_top_words]])
     return " ".join([feature_names[i] for i in component.argsort()[:-n_top_words - 1:-1]])    
 
-def createhierarchy(algo, preprocess, interndim):
-    X_ = np.matrix(corpus.w.T)
-
+def createhierarchy(algo, preprocess, interndim):    
     if preprocess == 'LDA':
         prepro = decomposition.LatentDirichletAllocation(n_components=interndim, learning_method='batch')
     elif preprocess == 'PCA':        
@@ -39,18 +47,18 @@ def createhierarchy(algo, preprocess, interndim):
         ('norm', preprocessing.MaxAbsScaler()) 
     ])
     X = p.fit_transform(X_)
-    F = corpus.termssorted
-    XL = corpus.doctermRaw.T
+    #F = corpus.termssorted
+    #L = corpus.doctermRaw.T
     Z = linkage(X, algo)
     n = len(Z)
     print("nltk reduced", X.shape)
 
-    nodeMat = np.zeros((n+1, len(corpus.termssorted)))
+    nodeMat = np.zeros((n+1, len(F)))
     print("nodemat", nodeMat.shape)
-    print("XL", XL.shape)
+    print("XL", XR.shape)
     print("zlen", n, Z.shape)
     
-    allterms = sum(XL)
+    allterms = sum(XR)
     print("all terms shape", allterms.shape)
     print("all terms sum:", top(allterms, F, 10))
     def visit(node):    
@@ -60,8 +68,8 @@ def createhierarchy(algo, preprocess, interndim):
             lid = node.get_left().get_id()
             rid = node.get_right().get_id()
             assert(lid >= 0 and rid >= 0)
-            left  = XL[lid] if lid < n else nodeMat[lid-n]
-            right = XL[rid] if rid < n else nodeMat[rid-n]        
+            left  = XR[lid] if lid < n else nodeMat[lid-n]
+            right = XR[rid] if rid < n else nodeMat[rid-n]        
             #nodeMat[id-n-1] = np.add(left, right)
             nodeMat[id-n] = left + right
 

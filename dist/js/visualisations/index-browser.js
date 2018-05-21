@@ -38,15 +38,15 @@ document.body.onload = function init() {
         parent: document.body,
         name: `Code`,
     });
-    const termsraw = new TermformatView({ format: 'Plain' });
-    const termsstem = new TermformatView({ format: 'Stem' });
+    //const termsraw = new TermformatView({ format:'Plain' })
+    //const termsstem = new TermformatView({ format:'Stem' })
     const termslem = new TermformatView({ format: 'Lemma' });
     const ngram2 = new TermformatView({ format: '2Grams' });
-    const ngram3 = new TermformatView({ format: '3Grams' });
+    //const ngram3 = new TermformatView({ format:'3Grams' })
     d3.json("data/bag-of-words/stackoverflow-raw-meta.json")
         .then((datasetmeta) => {
         dataset.update(datasetmeta);
-        termsraw.update(datasetmeta.distributions.terms);
+        //termsraw.update(datasetmeta.distributions.terms)            
         plaininlinecode.update({
             name: `Inline Code`,
             data: datasetmeta.distributions.terms.inlinecode
@@ -56,10 +56,11 @@ document.body.onload = function init() {
             data: datasetmeta.distributions.terms.code
         });
     });
-    d3.json("data/bag-of-words/stackoverflow-stem-meta.json")
-        .then((datasetmeta) => {
-        termsstem.update(datasetmeta.distributions.terms);
-    });
+    /*
+        d3.json("data/bag-of-words/stackoverflow-stem-meta.json")
+          .then((datasetmeta:StackOverflowMeta)=> {
+                termsstem.update(datasetmeta.distributions.terms)
+          })*/
     d3.json("data/bag-of-words/stackoverflow-lemma-meta.json")
         .then((datasetmeta) => {
         termslem.update(datasetmeta.distributions.terms);
@@ -67,9 +68,9 @@ document.body.onload = function init() {
     d3.json("data/ngrams/stackoverflow-2gram-stem-meta.json")
         .then((datasetmeta) => {
         ngram2.update(datasetmeta.distributions.terms);
-    });
-    d3.json("data/ngrams/stackoverflow-3gram-stem-meta.json")
-        .then((datasetmeta) => {
-        ngram3.update(datasetmeta.distributions.terms);
-    });
+    }); /*
+  d3.json("data/ngrams/stackoverflow-3gram-stem-meta.json")
+    .then((datasetmeta:StackOverflowMeta)=> {
+          ngram3.update(datasetmeta.distributions.terms)
+    })*/
 };
