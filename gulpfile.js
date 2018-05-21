@@ -110,7 +110,7 @@ exports.sentence =      gulp.series(
                         )
 exports.word =          gulp.series(
                             //run('python3 src/model/bag-of-sentences/sentences.py'),
-                            gulp.parallel(
+                            gulp.series(
                                 run('python3 src/model/bag-of-words/stemming.py'),
                                 run('python3 src/model/bag-of-words/lemming.py'),
                                 run('python3 src/model/bag-of-words/terms.py')
@@ -132,6 +132,7 @@ exports.ngram =         gulp.series(
 exports.stats =         stats.calc('stackoverflow')
 
 exports.all =           gulp.series(exports.text, exports.sentence, exports.word, exports.ngram, exports.stats)
+exports.term =          gulp.series(exports.word, exports.ngram, exports.stats)
 
 exports.classify =      gulp.series(
                             run('python3 src/algo/main.py'),

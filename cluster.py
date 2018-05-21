@@ -15,8 +15,9 @@ from IPython.display import display
 cols = 6
 rows = 4
 def createProjectionsAndShowTruth(fig, X, Y, F, T):    
-    for pojidx, label in enumerate(clustervis_pipelines.keys()):        
-        pipeline = clustervis_pipelines[label]
+    clu_pipelines = clustervis_pipelines(3)
+    for pojidx, label in enumerate(clu_pipelines.keys()):        
+        pipeline = clu_pipelines[label]
         T[label] = {}
         T[label]['projected'] = pipeline.fit_transform(X)    
         T[label]['pipeline'] = pipeline
@@ -24,28 +25,29 @@ def createProjectionsAndShowTruth(fig, X, Y, F, T):
 
         ax = fig.add_subplot(rows, cols, pojidx*cols+1)        #, projection='3d'           
         ax.set_title(label, loc='left')
-        fig.suptitle('clusterd ({})'.format(label))
+        #fig.suptitle('clusterd ({})'.format(label))
         plots.clustervisTrue(ax, label, pipeline, T[label]['projected'], F, Y)        
 
-def runClusterAlgosAndPlotForEachProjection(f, fig, X, Ts, F):    
-    for algoidx, label in enumerate(cluster_pipelines.keys()):
-        pipeline = cluster_pipelines[label]
-        if hasattr(pipeline, 'predict'):
-            Y_pred = pipeline.fit(X).predict(X)
-        else:
-            Y_pred = pipeline.fit_predict(X)   
+def runClusterAlgosAndPlotForEachProjection(f, fig, X, Ts, F):        
+    for algoidx, label in enumerate(cluster_pipelines(0, 0, 'PCA').keys()):
+        for pidx, p in enumerate(clustervis_pipelines(0).keys()):
+            clu_pipelines = cluster_pipelines(5, 4 if label == 'DBScan' else 25, p)
+            pipeline = clu_pipelines[label]
+            if hasattr(pipeline, 'predict'):
+                Y_pred = pipeline.fit(X).predict(X)
+            else:
+                Y_pred = pipeline.fit_predict(X)   
 
-        for pidx, p in enumerate(clustervis_pipelines.keys()):
             ax = fig.add_subplot(rows, cols, pidx*cols+algoidx+2) # projection='3d'    
             if pidx == 0:
                 ax.set_title(label)
-            fig.suptitle(label)    
+            #fig.suptitle(label)    
             plots.clustervis(ax, label, Ts[p]['pipeline'], Ts[p]['projected'], Ts[p]['features'], Y_pred)  
         f.value += 1
 
 
 def run(tag):        
-    f = FloatProgress(min=0, max=len(cluster_pipelines)) 
+    f = FloatProgress(min=0, max=len(cluster_pipelines(0, 0, 'PCA'))) 
     display(f) 
 
     samples = 2000                

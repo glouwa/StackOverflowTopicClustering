@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 #from mpl_toolkits.mplot3d import Axes3D
 
 def precisionRecallPlot(ax, label, Y_test, Y_pred, defun):
+    ax.set_title(label)
     f1 = metrics.f1_score(Y_test, Y_pred)
     pr = metrics.precision_score(Y_test, Y_pred)
     rc = metrics.recall_score(Y_test, Y_pred)
@@ -25,7 +26,7 @@ def precisionRecallPlot(ax, label, Y_test, Y_pred, defun):
     #ax.text(0.9, 0.9, ('%.2f' % pr).lstrip('0'), size=15, horizontalalignment='right')
 
 def clustervis_(ax, label, pipeline, projected, termvec, colors):
-    ax.set_title(label)
+    #ax.set_title(label)
     #ax.set_xticks(())
     #ax.set_yticks(())
     #ax.set_zticks(())
@@ -38,7 +39,11 @@ def clustervis_(ax, label, pipeline, projected, termvec, colors):
 
 def clustervis(ax, label, pipeline, projected, termvec, colors):    
     ax.set_xticks(())
-    ax.set_yticks(())        
+    ax.set_yticks(())    
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)    
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)    
     ax.scatter(projected[:, 0], projected[:, 1], alpha=.5, c=colors)
     #ax.scatter(projected[:, 0], projected[:, 1], alpha=.1, c=colorset)
 

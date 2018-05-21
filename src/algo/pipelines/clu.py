@@ -6,29 +6,30 @@ from sklearn import cluster
 from sklearn import mixture
 from sklearn import neighbors
 
-visdim = 4
-clustervis_pipelines = {
-    'PCA': Pipeline([
-        ('sca', preprocessing.MaxAbsScaler()),
-        ('clu', decomposition.PCA(n_components=visdim)),
-        ('sca2', preprocessing.MaxAbsScaler()),
-    ]),
-    'NMF': Pipeline([                
-        ('sca', preprocessing.MaxAbsScaler()),
-        ('clu', decomposition.NMF(n_components=visdim, random_state=1, alpha=.1, l1_ratio=.5)),
-        ('sca2', preprocessing.MaxAbsScaler()),
-    ]),    
-    'LatentDA': Pipeline([                
-        ('sca', preprocessing.MaxAbsScaler()),
-        ('clu', decomposition.LatentDirichletAllocation(n_components=visdim, learning_method='online')),
-        ('sca2', preprocessing.MaxAbsScaler()),
-    ]),
-    'SVD': Pipeline([                
-        ('sca', preprocessing.MaxAbsScaler()),
-        ('clu', decomposition.TruncatedSVD(n_components=visdim)),
-        ('sca2', preprocessing.MaxAbsScaler()),
-    ])    
-}
+
+def clustervis_pipelines(visdim):
+    return {
+        'PCA': Pipeline([
+            ('sca', preprocessing.MaxAbsScaler()),
+            ('clu', decomposition.PCA(n_components=visdim)),
+            ('sca2', preprocessing.MaxAbsScaler()),
+        ]),
+        'NMF': Pipeline([                
+            ('sca', preprocessing.MaxAbsScaler()),
+            ('clu', decomposition.NMF(n_components=visdim, random_state=1, alpha=.1, l1_ratio=.5)),
+            ('sca2', preprocessing.MaxAbsScaler()),
+        ]),    
+        'LDA': Pipeline([                
+            ('sca', preprocessing.MaxAbsScaler()),
+            ('clu', decomposition.LatentDirichletAllocation(n_components=visdim, learning_method='online')),
+            ('sca2', preprocessing.MaxAbsScaler()),
+        ]),
+        'SVD': Pipeline([                
+            ('sca', preprocessing.MaxAbsScaler()),
+            ('clu', decomposition.TruncatedSVD(n_components=visdim)),
+            ('sca2', preprocessing.MaxAbsScaler()),
+        ])    
+    }
 
 """
 'FastICA': Pipeline([
@@ -44,47 +45,36 @@ clustervis_pipelines = {
     ]),
 """
 
-featuredim = 40
-decomp = decomposition.PCA(n_components=featuredim)
 #decomp = decomposition.TruncatedSVD(featuredim)
 #decomp = decomposition.LatentDirichletAllocation(n_components=featuredim, learning_method='batch')
 #decomp = decomposition.NMF(n_components=featuredim, random_state=1, alpha=.1, l1_ratio=.5)
 
-clustercount = 3
-cluster_pipelines = {            
-    'Agglo': Pipeline([                                
-        ('sca', preprocessing.MaxAbsScaler(copy=False)),
-        ('pca', decomp),
-        ('norm', preprocessing.MaxAbsScaler(copy=False)),
-        ('clu', cluster.AgglomerativeClustering(n_clusters=clustercount, linkage='ward')),
-    ]),    
-    'Kmeans': Pipeline([                
-        ('sca', preprocessing.MaxAbsScaler(copy=False)),
-        ('decomp', decomp),
-        ('norm', preprocessing.MaxAbsScaler(copy=False)),
-        ('clu', cluster.KMeans(n_clusters=clustercount, init='k-means++', max_iter=100, n_init=1)),
-    ]),
-    'LDA': Pipeline([                
-        ('sca', preprocessing.MaxAbsScaler(copy=False)),        
-        ('lda', decomp),
-        ('norm', preprocessing.MaxAbsScaler(copy=False)),
-        ('clu', cluster.KMeans(n_clusters=clustercount, init='k-means++')),
-        #('clu', neighbors.NearestNeighbors()),
-    ]),
-    'GMM': Pipeline([                        
-        ('sca', preprocessing.MaxAbsScaler(copy=False)),
-        ('pca', decomposition.PCA(n_components=featuredim)),
-        ('norm', preprocessing.MaxAbsScaler(copy=False)),
-        ('clu', mixture.GaussianMixture(n_components=clustercount)),
-    ]),
-    'DBScan': Pipeline([          
-        ('sca', preprocessing.MaxAbsScaler(copy=False)),
-        ('pca', decomposition.PCA(n_components=4)),
-        ('norm', preprocessing.MaxAbsScaler(copy=False)),
-        ('clu', cluster.DBSCAN(eps=0.1, min_samples=20)),
-    ]), 
-    
-}
+def cluster_pipelines(clustercount, featuredim, decompstr):
+    decomp = clustervis_pipelines(featuredim)[decompstr]    
+    return {            
+        'Agglomerative': Pipeline([                                
+            ('decomp', decomp),
+            ('clu', cluster.AgglomerativeClustering(n_clusters=clustercount, linkage='ward')),
+        ]),    
+        'K-Means': Pipeline([                
+            ('decomp', decomp),
+            ('clu', cluster.KMeans(n_clusters=clustercount, init='k-means++', max_iter=100, n_init=1)),
+        ]),
+        'LDA': Pipeline([                
+            ('decomp', decomp),
+            ('clu', cluster.KMeans(n_clusters=clustercount, init='k-means++')),
+            #('clu', neighbors.NearestNeighbors()),
+        ]),
+        'GMM': Pipeline([                        
+            ('decomp', decomp),
+            ('clu', mixture.GaussianMixture(n_components=clustercount)),
+        ]),
+        'DBScan': Pipeline([          
+            ('decomp', decomp),
+            ('clu', cluster.DBSCAN(eps=0.1, min_samples=20)),
+        ]), 
+        
+    }
 """
    'AffPro': Pipeline([                                
         ('sca', preprocessing.MaxAbsScaler()),
