@@ -12,10 +12,10 @@ from src.algo.pipelines.clu import clustervis_pipelines, cluster_pipelines
 from ipywidgets import FloatProgress
 from IPython.display import display
 
-cols = 6
+cols = 5
 rows = 4
 def createProjectionsAndShowTruth(fig, X, Y, F, T):    
-    clu_pipelines = clustervis_pipelines(3)
+    clu_pipelines = clustervis_pipelines(5)
     for pojidx, label in enumerate(clu_pipelines.keys()):        
         pipeline = clu_pipelines[label]
         T[label] = {}
@@ -24,8 +24,7 @@ def createProjectionsAndShowTruth(fig, X, Y, F, T):
         T[label]['features'] = F     
 
         ax = fig.add_subplot(rows, cols, pojidx*cols+1)        #, projection='3d'           
-        ax.set_title(label, loc='left')
-        #fig.suptitle('clusterd ({})'.format(label))
+        ax.set_title(label, loc='left')        
         plots.clustervisTrue(ax, label, pipeline, T[label]['projected'], F, Y)        
 
 def runClusterAlgosAndPlotForEachProjection(f, fig, X, Ts, F):        
@@ -40,8 +39,7 @@ def runClusterAlgosAndPlotForEachProjection(f, fig, X, Ts, F):
 
             ax = fig.add_subplot(rows, cols, pidx*cols+algoidx+2) # projection='3d'    
             if pidx == 0:
-                ax.set_title(label)
-            #fig.suptitle(label)    
+                ax.set_title(label)            
             plots.clustervis(ax, label, Ts[p]['pipeline'], Ts[p]['projected'], Ts[p]['features'], Y_pred)  
         f.value += 1
 
@@ -57,7 +55,7 @@ def run(tag):
     Y = joblib.load('./dist/data/tf-idf/{}/nltk-Y-{}.pkl'.format(tfidf, tag))
     Ts = {}    
     
-    fig = plt.figure(figsize=(20, 14))   
+    fig = plt.figure(figsize=(20, 16))   
     
     _, X_test, _, Y_test = train_test_split(X, Y, test_size=.3, random_state=0)        
     createProjectionsAndShowTruth(fig, X_test[:samples], Y_test[:samples], F, Ts)    

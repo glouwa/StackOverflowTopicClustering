@@ -1,6 +1,6 @@
 import numpy as np
-from tools.tfidf import StackoverflowCorpus
-from tools.sparse2dense import DenseTransformer
+from src.algo.tfidf import StackoverflowCorpus
+from src.algo.tools.sparse2dense import DenseTransformer
 from sklearn import feature_selection
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction import text
@@ -18,7 +18,7 @@ def writetopfeatureblock(wordtype, topfeature, tfidfcfg, mindf, mintf):
     print("nltk reduced", X.shape)
 
     def savetfidf(X, Yf, F, name):
-        fselsamples = 1000
+        fselsamples = 10000
         tags = ['python', 'php', 'html', 'android', 'javascript', 'sql']    
         joblib.dump(X,                            './dist/data/tf-idf/{}/{}-X.pkl'.format(tfidfcfgSTR, name))
         joblib.dump(XR,                           './dist/data/tf-idf/{}/{}-XR.pkl'.format(tfidfcfgSTR, name))
@@ -36,14 +36,23 @@ def writetopfeatureblock(wordtype, topfeature, tfidfcfg, mindf, mintf):
     savetfidf(X,  corpus.labels_, F,  'nltk')
     #savetfidf(X2, corpus.labels,  F2, 'sklearn')
 
-"""
+
 writetopfeatureblock('lemma', ['title'],         [3, 2], 3, 15)
 writetopfeatureblock('lemma', ['title', 'code'], [3, 2], 5, 25) # 11 wolkig aber gelb, 32 beste klassifikations aber nix gelb, 00 separiert gut sonst bullshit
 writetopfeatureblock('lemma', ['title', 'body'], [3, 2], 5, 25)
 writetopfeatureblock('lemma', ['code', 'body'],  [3, 2], 7, 50)
-"""
 
 writetopfeatureblock('lemma', ['title'],         [1, 1], 3, 15)
 writetopfeatureblock('lemma', ['title', 'code'], [1, 1], 5, 25)
 writetopfeatureblock('lemma', ['title', 'body'], [1, 1], 5, 25)
 writetopfeatureblock('lemma', ['code', 'body'],  [1, 1], 7, 50)
+
+writetopfeatureblock('lemma', ['title'],         [0, 0], 3, 15)
+writetopfeatureblock('lemma', ['title', 'code'], [0, 0], 5, 25)
+writetopfeatureblock('lemma', ['title', 'body'], [0, 0], 5, 25)
+writetopfeatureblock('lemma', ['code', 'body'],  [0, 0], 7, 50)
+
+writetopfeatureblock('lemma', ['title'],         [0, 1], 3, 15)
+writetopfeatureblock('lemma', ['title', 'code'], [0, 1], 5, 25)
+writetopfeatureblock('lemma', ['title', 'body'], [0, 1], 5, 25)
+writetopfeatureblock('lemma', ['code', 'body'],  [0, 1], 7, 50)

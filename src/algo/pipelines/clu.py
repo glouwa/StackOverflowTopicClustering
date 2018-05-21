@@ -52,19 +52,14 @@ def clustervis_pipelines(visdim):
 def cluster_pipelines(clustercount, featuredim, decompstr):
     decomp = clustervis_pipelines(featuredim)[decompstr]    
     return {            
-        'Agglomerative': Pipeline([                                
+        'Ward': Pipeline([                                
             ('decomp', decomp),
             ('clu', cluster.AgglomerativeClustering(n_clusters=clustercount, linkage='ward')),
         ]),    
         'K-Means': Pipeline([                
             ('decomp', decomp),
             ('clu', cluster.KMeans(n_clusters=clustercount, init='k-means++', max_iter=100, n_init=1)),
-        ]),
-        'LDA': Pipeline([                
-            ('decomp', decomp),
-            ('clu', cluster.KMeans(n_clusters=clustercount, init='k-means++')),
-            #('clu', neighbors.NearestNeighbors()),
-        ]),
+        ]),        
         'GMM': Pipeline([                        
             ('decomp', decomp),
             ('clu', mixture.GaussianMixture(n_components=clustercount)),
