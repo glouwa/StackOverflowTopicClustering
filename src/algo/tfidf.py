@@ -42,7 +42,7 @@ class DocumentSpace:
                 if t in self.termssorted:  
                     t_idx = self.termssorted.index(t)
                     self.doctermRaw[t_idx][didx] = self.doctermRaw[t_idx][didx] + 1
-        print(self.doctermRaw.T.shape, "rawdoctermshape")
+        #print(self.doctermRaw.T.shape, "rawdoctermshape")
         
         termfilter = (sum(self.doctermRaw.T > 0) > mindf) & (np.sum(self.doctermRaw, axis=1) > mintf) 
         #print("tfilter", len(termfilter))
