@@ -12,6 +12,9 @@ from src.algo.pipelines.clu import clustervis_pipelines, cluster_pipelines
 from ipywidgets import FloatProgress
 from IPython.display import display
 
+import warnings
+warnings.filterwarnings('ignore')
+
 def classifyAndPlotScore(f, ax, idx, title, X, Y, F):    
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=.1, random_state=0)            
     classify_pre_pipeline.fit(X_train, Y_train)
@@ -30,9 +33,7 @@ def classifyAndPlotScore(f, ax, idx, title, X, Y, F):
         plots.precisionRecallPlot(ax, label, Y_test, Y_pred, Z)
         f.value += 1
 
-def run(tags):        
-    tfidf = "32_title_body"
-    fsel = "chi2"
+def run(tfidf, fsel, tags):    
     f1 = plt.figure(figsize=(20, 10))            
     f = FloatProgress(min=0, max=len(tags)*len(classify_pipelines))
     display(f)    
@@ -51,4 +52,4 @@ def run(tags):
     f1.show()    
 
 if __name__ == "__main__":
-    run(['python', 'android', 'html', 'sql']) #,, , 'python', 'php',  , 'javascript',  
+    run('00_title_body', 'chi2', ['python', 'android', 'html', 'sql']) #,, , 'python', 'php',  , 'javascript',  

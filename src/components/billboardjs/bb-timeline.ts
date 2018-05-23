@@ -14,8 +14,8 @@ export class BillboardTimeline
                 height: this.args.height,                    
             },
             padding: {    
-                left: 70,
-                right: 70, 
+                left: 45,
+                right: 10, 
             },  
             legend: {
                 show: false

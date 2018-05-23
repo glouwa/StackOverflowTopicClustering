@@ -11,8 +11,8 @@ export class BillboardBar
         this.chart = bb.generate({
             bindto: this.args.parent,
             padding: {    
-                left: 70,
-                right: 70, 
+                left: 45,
+                right: 10,             
             },  
             legend: {
                 show: this.args.legend?true:false
@@ -43,7 +43,7 @@ export class BillboardBar
                     }, 
                 },
                 y: {
-                    max: 2100,
+                    max: 2500,
                     label: {
                          text: 'Posts',
                          //position: "outer-middle"

@@ -22114,11 +22114,13 @@ const tools_1 = __webpack_require__(178);
 const stats_vector_1 = __webpack_require__(510);
 const html = `
     <div>
+        <!--
         <div class="header">
             <span class="title"></span>
             <span class="desc"></span>
         </div>    
-        <br>                
+        <br>
+        -->                
         <div class="cloud" id="XTTFcloud"></div>
         <div class="right">                      
             <div id="tagdist" class="alphadist"></div>
@@ -22140,29 +22142,29 @@ class TagDistribution {
             return;
         const keyvaluepairs = this.convert(this.args.data.key);
         this.stats = new stats_vector_1.Stats(keyvaluepairs.map(e => e[1]));
-        this.view.querySelector(".header > .title").innerText = args.name;
-        this.view.querySelector(".header > .desc").innerText = this.stats;
+        //this.view.querySelector<HTMLElement>(".header > .title").innerText = args.name
+        //this.view.querySelector<HTMLElement>(".header > .desc").innerText = this.stats
         this.bb = new bb_counter_1.BillboardCounter({
             parent: this.view.querySelector("#tagdist"),
-            data: keyvaluepairs.slice(0, 120),
+            data: keyvaluepairs.slice(0, 60),
             title: "Tag frequency"
         });
         this.bb = new bb_counter_1.BillboardCounter({
             parent: this.view.querySelector("#chardist"),
-            data: this.convert(this.args.data.chars).slice(0, 60),
+            data: this.convert(this.args.data.chars).slice(0, 30),
             title: "Char frequency",
             height: 100,
         });
         this.bb = new bb_counter_1.BillboardCounter({
             parent: this.view.querySelector("#textsize"),
-            data: Object.entries(this.args.data.sentencecount).slice(0, 100),
+            data: Object.entries(this.args.data.sentencecount).slice(0, 50),
             title: "Sentence count frequency",
             height: 100,
             tickcount: 20,
         });
         this.bb = new bb_counter_1.BillboardCounter({
             parent: this.view.querySelector("#sentencecount"),
-            data: Object.entries(this.args.data.sentencelength).slice(0, 100),
+            data: Object.entries(this.args.data.sentencelength).slice(0, 99),
             title: "Sentence length frequency",
             height: 100,
             tickcount: 20,
@@ -22203,8 +22205,8 @@ class BillboardCounter {
         this.chart = billboard_js_1.bb.generate({
             bindto: this.args.parent,
             padding: {
-                left: 70,
-                right: 70,
+                left: 45,
+                right: 10,
             },
             legend: {
                 show: false
@@ -22299,7 +22301,10 @@ class TermformatView {
         });
     }
 }
-document.body.onload = function init() {
+window.d3 = d3;
+window.TagDistribution = tagdistribution_1.TagDistribution;
+window.StackoverflowDatasetView = stackexchange_view_1.StackoverflowDatasetView;
+window.showAll = function () {
     const dataset = new stackexchange_view_1.StackoverflowDatasetView({
         parent: document.body
     });
@@ -22316,7 +22321,7 @@ document.body.onload = function init() {
     const termslem = new TermformatView({ format: 'Lemma' });
     const ngram2 = new TermformatView({ format: '2Grams' });
     //const ngram3 = new TermformatView({ format:'3Grams' })
-    d3.json("data/bag-of-words/stackoverflow-raw-meta.json")
+    d3.json("/dist/data/bag-of-words/stackoverflow-raw-meta.json")
         .then((datasetmeta) => {
         dataset.update(datasetmeta);
         //termsraw.update(datasetmeta.distributions.terms)            
@@ -22334,11 +22339,11 @@ document.body.onload = function init() {
           .then((datasetmeta:StackOverflowMeta)=> {
                 termsstem.update(datasetmeta.distributions.terms)
           })*/
-    d3.json("data/bag-of-words/stackoverflow-lemma-meta.json")
+    d3.json("/dist/data/bag-of-words/stackoverflow-lemma-meta.json")
         .then((datasetmeta) => {
         termslem.update(datasetmeta.distributions.terms);
     });
-    d3.json("data/ngrams/stackoverflow-2gram-stem-meta.json")
+    d3.json("/dist/data/ngrams/stackoverflow-2gram-stem-meta.json")
         .then((datasetmeta) => {
         ngram2.update(datasetmeta.distributions.terms);
     }); /*
@@ -36956,16 +36961,19 @@ const tools_1 = __webpack_require__(178);
 const tagdistribution_1 = __webpack_require__(176);
 const html = `
     <div>
+        <!--
         <div id="downloadheader" class="header">Stackoverflow</div>     
         <div id="mergeheader" class="header">Merged</div>    
-        <br>        
+        <br>
+        -->        
         <div id="TimeChart"></div>
         <br><br>                
         <div id="SCOChart" style="width:42%;float:left;"></div>
         <div id="ANCChart" style="width:42%;float:left;"></div>    
         <div id="ISAChart" style="width:16%;float:left;"></div>
-        <br style="clear:both;"><br>
-        <div id="SizeChart"></div>        
+        <br style="clear:both;"><br>        
+        <div id="SizeChart"></div>  
+        <br>                      
     </div>`;
 class StackoverflowDatasetView {
     constructor(args) {
@@ -37018,10 +37026,12 @@ class StackoverflowDatasetView {
         });
     }
     update(datasetmeta) {
-        document.querySelector("#downloadheader").innerText =
-            `Stackoverflow: ${(datasetmeta.datasource.size / 1024 / 1024).toFixed(0)}MB, ${datasetmeta.datasource.filecount} Files, ${datasetmeta.datasource.rawquestions} Raw-Questions, ${datasetmeta.datasource.dupquestions} duplicate, ${datasetmeta.datasource.errquestions} invalid`;
-        document.querySelector("#mergeheader").innerText =
-            `Merged: ${(datasetmeta.data.size / 1024 / 1024).toFixed(0)}MB, ${datasetmeta.index.id.length} Valid-Questions,`; // ${mergemeta.tagcount} Tags`        
+        /*
+        document.querySelector<HTMLElement>("#downloadheader").innerText =
+            `Stackoverflow: ${(datasetmeta.datasource.size/1024/1024).toFixed(0)}MB, ${datasetmeta.datasource.filecount} Files, ${datasetmeta.datasource.rawquestions} Raw-Questions, ${datasetmeta.datasource.dupquestions} duplicate, ${datasetmeta.datasource.errquestions} invalid`
+        document.querySelector<HTMLElement>("#mergeheader").innerText =
+            `Merged: ${(datasetmeta.data.size/1024/1024).toFixed(0)}MB, ${datasetmeta.index.id.length} Valid-Questions,` // ${mergemeta.tagcount} Tags`
+        */
         this.timeline.update({
             labels: datasetmeta.index.created
                 .map(e => e.key),
@@ -37108,8 +37118,8 @@ class BillboardBar {
         this.chart = billboard_js_1.bb.generate({
             bindto: this.args.parent,
             padding: {
-                left: 70,
-                right: 70,
+                left: 45,
+                right: 10,
             },
             legend: {
                 show: this.args.legend ? true : false
@@ -37139,7 +37149,7 @@ class BillboardBar {
                     },
                 },
                 y: {
-                    max: 2100,
+                    max: 2500,
                     label: {
                         text: 'Posts',
                     },
@@ -37213,8 +37223,8 @@ class BillboardTimeline {
                 height: this.args.height,
             },
             padding: {
-                left: 70,
-                right: 70,
+                left: 45,
+                right: 10,
             },
             legend: {
                 show: false

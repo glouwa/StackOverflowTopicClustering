@@ -10,11 +10,11 @@ outputfeature = 'sentences'
 def splitone(result, qkey, tkey, block):
     if tkey != 'code' and tkey != 'inlinecode':
         tockens = sent_tokenize(block)
-        for sentence in tockens:
-            sentence.replace('c#', 'csharp')
-            sentence.replace('C#', 'csharp')
         if len(tockens) > 0:
-            result[qkey][outputfeature][tkey].extend(tockens)
+            for sentence in tockens:
+                tmp = sentence.replace('c#', 'csharp')
+                tmp2 = tmp.replace('C#', 'csharp')
+                result[qkey][outputfeature][tkey].append(tmp2)
     else: 
         result[qkey][outputfeature][tkey].append(block)
 

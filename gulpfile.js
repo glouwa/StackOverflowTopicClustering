@@ -60,8 +60,8 @@ const build = gulp.series(gulp.parallel(html, gulp.series(tsc, web)), bs)
 
 function watch() {
     browserSync.init({
-        index: files.mainhtml,
-        server: { baseDir: paths.dist }
+        index: './',
+        server: { baseDir: './' }
     })
         
     gulp.watch(paths.src + '**/*.ts',   build)

@@ -6,11 +6,13 @@ const tools_1 = require("../../visualisations/tools");
 const stats_vector_1 = require("../../model/stats-vector");
 const html = `
     <div>
+        <!--
         <div class="header">
             <span class="title"></span>
             <span class="desc"></span>
         </div>    
-        <br>                
+        <br>
+        -->                
         <div class="cloud" id="XTTFcloud"></div>
         <div class="right">                      
             <div id="tagdist" class="alphadist"></div>
@@ -32,29 +34,29 @@ class TagDistribution {
             return;
         const keyvaluepairs = this.convert(this.args.data.key);
         this.stats = new stats_vector_1.Stats(keyvaluepairs.map(e => e[1]));
-        this.view.querySelector(".header > .title").innerText = args.name;
-        this.view.querySelector(".header > .desc").innerText = this.stats;
+        //this.view.querySelector<HTMLElement>(".header > .title").innerText = args.name
+        //this.view.querySelector<HTMLElement>(".header > .desc").innerText = this.stats
         this.bb = new bb_counter_1.BillboardCounter({
             parent: this.view.querySelector("#tagdist"),
-            data: keyvaluepairs.slice(0, 120),
+            data: keyvaluepairs.slice(0, 60),
             title: "Tag frequency"
         });
         this.bb = new bb_counter_1.BillboardCounter({
             parent: this.view.querySelector("#chardist"),
-            data: this.convert(this.args.data.chars).slice(0, 60),
+            data: this.convert(this.args.data.chars).slice(0, 30),
             title: "Char frequency",
             height: 100,
         });
         this.bb = new bb_counter_1.BillboardCounter({
             parent: this.view.querySelector("#textsize"),
-            data: Object.entries(this.args.data.sentencecount).slice(0, 100),
+            data: Object.entries(this.args.data.sentencecount).slice(0, 50),
             title: "Sentence count frequency",
             height: 100,
             tickcount: 20,
         });
         this.bb = new bb_counter_1.BillboardCounter({
             parent: this.view.querySelector("#sentencecount"),
-            data: Object.entries(this.args.data.sentencelength).slice(0, 100),
+            data: Object.entries(this.args.data.sentencelength).slice(0, 99),
             title: "Sentence length frequency",
             height: 100,
             tickcount: 20,

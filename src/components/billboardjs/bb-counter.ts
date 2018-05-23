@@ -20,8 +20,8 @@ export class BillboardCounter
         this.chart = bb.generate({
             bindto: this.args.parent,
             padding: {    
-                left: 70,
-                right: 70, 
+                left: 45,
+                right: 10,                 
             },  
             legend: {
                 show: false

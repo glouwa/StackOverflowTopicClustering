@@ -5,54 +5,56 @@ from sklearn import feature_selection
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction import text
 from sklearn.externals import joblib
+from sklearn import model_selection
+import os
 
+def save(name, M, D):
+        if not os.path.exists(D):
+            os.makedirs(D)       
+            print("makedir", D)        
+        filename = D+'{}-{}.pkl'.format(M.shape, name)
+        joblib.dump(M, filename)    
+        print(filename)
+    
 def writetopfeatureblock(wordtype, topfeature, tfidfcfg, mindf, mintf):    
+    implname = 'stackoverflow/nltk/lemmatized'
     topfeatureSTR = '_'.join(topfeature)     
     tfidfcfgSTR = '{}{}_{}'.format(tfidfcfg[0], tfidfcfg[1], topfeatureSTR)
-    corpus = StackoverflowCorpus('bag-of-words/stackoverflow-' + wordtype, topfeature, tfidfcfg[0], tfidfcfg[1], mindf, mintf)
-    print("\n")
-
+    corpus = StackoverflowCorpus('bag-of-words/stackoverflow-' + wordtype, 
+        topfeature, tfidfcfg[0], tfidfcfg[1], mindf, mintf)
+    
     X = np.matrix(corpus.w.T)
     XR = np.matrix(corpus.doctermRaw.T)
-    F = corpus.termssorted
-    print("nltk reduced", X.shape)
+    F = corpus.termssorted    
+    Y = []
+    tags = ['python', 'php', 'html', 'android', 'javascript', 'sql'] 
+    for tag in tags:         
+        Y.append(corpus.labels_(tag))
 
-    def savetfidf(X, Yf, F, name):
-        fselsamples = 10000
-        tags = ['python', 'php', 'html', 'android', 'javascript', 'sql']    
-        joblib.dump(X,                            './dist/data/tf-idf/{}/{}-X.pkl'.format(tfidfcfgSTR, name))
-        joblib.dump(XR,                           './dist/data/tf-idf/{}/{}-XR.pkl'.format(tfidfcfgSTR, name))
-        joblib.dump(F,                            './dist/data/tf-idf/{}/{}-F.pkl'.format(tfidfcfgSTR, name))
-        for tag in tags:        
-            Y = Yf(tag)
-            joblib.dump(Y,                        './dist/data/tf-idf/{}/{}-Y-{}.pkl'.format(tfidfcfgSTR, name, tag))
-            fs = feature_selection.SelectKBest(feature_selection.mutual_info_classif, k=500).fit(X[:fselsamples], Y[:fselsamples])
-            joblib.dump(fs.transform(X),          './dist/data/tf-idf/{}/{}-X-{}-mi.pkl'.format(tfidfcfgSTR, name, tag))
-            joblib.dump(F[fs.get_support()],      './dist/data/tf-idf/{}/{}-F-{}-mi.pkl'.format(tfidfcfgSTR, name, tag))
-            fs2 = feature_selection.SelectKBest(feature_selection.chi2, k=500).fit(X[:fselsamples], Y[:fselsamples])
-            joblib.dump(fs2.transform(X),         './dist/data/tf-idf/{}/{}-X-{}-chi2.pkl'.format(tfidfcfgSTR, name, tag))
-            joblib.dump(F[fs2.get_support()],     './dist/data/tf-idf/{}/{}-F-{}-chi2.pkl'.format(tfidfcfgSTR, name, tag))
-        
-    savetfidf(X,  corpus.labels_, F,  'nltk')
-    #savetfidf(X2, corpus.labels,  F2, 'sklearn')
+    directory = './dist/data/{}/{}/'.format(implname, tfidfcfgSTR)        
+    save("X",  X,  directory)
+    save("XR", XR, directory)
+    save("F",  F,  directory)
+    save('Y', np.array(Y).T, directory)
+    save('T', np.array(tags), directory)
+    return X, Y
 
-
-writetopfeatureblock('lemma', ['title'],         [3, 2], 3, 15)
-writetopfeatureblock('lemma', ['title', 'code'], [3, 2], 5, 25) # 11 wolkig aber gelb, 32 beste klassifikations aber nix gelb, 00 separiert gut sonst bullshit
-writetopfeatureblock('lemma', ['title', 'body'], [3, 2], 5, 25)
-writetopfeatureblock('lemma', ['code', 'body'],  [3, 2], 7, 50)
-
-writetopfeatureblock('lemma', ['title'],         [1, 1], 3, 15)
-writetopfeatureblock('lemma', ['title', 'code'], [1, 1], 5, 25)
-writetopfeatureblock('lemma', ['title', 'body'], [1, 1], 5, 25)
-writetopfeatureblock('lemma', ['code', 'body'],  [1, 1], 7, 50)
-
-writetopfeatureblock('lemma', ['title'],         [0, 0], 3, 15)
-writetopfeatureblock('lemma', ['title', 'code'], [0, 0], 5, 25)
-writetopfeatureblock('lemma', ['title', 'body'], [0, 0], 5, 25)
-writetopfeatureblock('lemma', ['code', 'body'],  [0, 0], 7, 50)
-
-writetopfeatureblock('lemma', ['title'],         [0, 1], 3, 15)
-writetopfeatureblock('lemma', ['title', 'code'], [0, 1], 5, 25)
-writetopfeatureblock('lemma', ['title', 'body'], [0, 1], 5, 25)
-writetopfeatureblock('lemma', ['code', 'body'],  [0, 1], 7, 50)
+def runTfidf(wordtype, htmlfeatuercombo, htmlfeatuercomboDfTf, tfidfs):    
+    htmlfeatuercomboDfTf = [ (3,15),    
+                         (5,15),
+                         (5,25),
+                         (5,25),
+                         (7,50) ] 
+    assert(len(htmlfeatuercomboDfTf) == len(htmlfeatuercombo))
+    for wt in wordtype:        
+        for hfidx, hfeature in enumerate(htmlfeatuercombo):
+            for  tfidf in tfidfs:
+                writetopfeatureblock(wt, hfeature, tfidf, htmlfeatuercomboDfTf[hfidx][0], htmlfeatuercomboDfTf[hfidx][1])
+ 
+if __name__ == "__main__":  
+    wordtype =             [ 'lemma' ]
+    htmlfeatuercombo =     [ ['title'], ['title', 'inlinecode'], ['title', 'body'], ['title', 'code'], ['title', 'inlinecode', 'code', 'body']] 
+    htmlfeatuercomboDfTf = [ (3,10),    (4,15),                  (5,25),            (5,25),            (7,50) ] 
+    tfidfs =               [ [3, 2], [1, 1], [1, 0], [0, 1], [0, 0] ]       
+    
+    runTfidf(wordtype, htmlfeatuercombo, htmlfeatuercomboDfTf, tfidfs)

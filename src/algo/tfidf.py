@@ -42,16 +42,15 @@ class DocumentSpace:
                 if t in self.termssorted:  
                     t_idx = self.termssorted.index(t)
                     self.doctermRaw[t_idx][didx] = self.doctermRaw[t_idx][didx] + 1
-        print("doctermshape", self.doctermRaw.shape)
-
+        print(self.doctermRaw.T.shape, "rawdoctermshape")
         
         termfilter = (sum(self.doctermRaw.T > 0) > mindf) & (np.sum(self.doctermRaw, axis=1) > mintf) 
-        print("tfilter", len(termfilter))
+        #print("tfilter", len(termfilter))
         self.doctermRaw = self.doctermRaw[termfilter]
-        print("doctermshape", self.doctermRaw.shape)
+        #print("doctermshape", self.doctermRaw.shape)
                 
         docfilter = (sum(self.doctermRaw > 0) > mindf) #np.sum(self.doctermRaw, axis=0) > 5 # sum(self.doctermRaw.T > 0) > 5
-        print("dfilter", len(docfilter))
+        #print("dfilter", len(docfilter))
         self.doctermRaw = self.doctermRaw[:,docfilter]
         self.documentsraw_ = np.array(docraw)[docfilter]
         #self.documentsstr = np.array(docstr)[docfilter]
@@ -64,7 +63,7 @@ class DocumentSpace:
         self.maxTermOccurence = np.max(self.doctermRaw.T, axis=1)  
         #print("strange", self.doctermRaw.T > 0)      
         self.doctermMax = sum(self.doctermRaw.T > 0)
-        print("self.doctermMax", self.doctermMax.shape)
+        #print("self.doctermMax", self.doctermMax.shape)
         #print("max", self.doctermMax)
         self.setTfIdfMode(tfmode, idfmode)
 
@@ -72,7 +71,7 @@ class DocumentSpace:
         return []
 
     def setTfIdfMode(self, tfmode, idfmode):
-        print('# CalcWeights: {}, {}'.format(tfmode, idfmode)) 
+        #print('# CalcWeights: {}, {}'.format(tfmode, idfmode)) 
         logbase = 10
         dz = 1
         tfx = [

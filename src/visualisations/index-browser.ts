@@ -35,7 +35,10 @@ class TermformatView
     }
 }
 
-document.body.onload = function init()
+window.d3 = d3
+window.TagDistribution = TagDistribution
+window.StackoverflowDatasetView = StackoverflowDatasetView
+window.showAll = function()
 {
     const dataset = new StackoverflowDatasetView({
         parent: document.body
@@ -49,14 +52,14 @@ document.body.onload = function init()
         parent: document.body,
         name: `Code`,
     })
-
+ 
     //const termsraw = new TermformatView({ format:'Plain' })
     //const termsstem = new TermformatView({ format:'Stem' })
     const termslem = new TermformatView({ format:'Lemma' })
     const ngram2 = new TermformatView({ format:'2Grams' })
     //const ngram3 = new TermformatView({ format:'3Grams' })
     
-    d3.json("data/bag-of-words/stackoverflow-raw-meta.json")
+    d3.json("/dist/data/bag-of-words/stackoverflow-raw-meta.json")
       .then((datasetmeta:StackOverflowMeta)=> { 
             dataset.update(datasetmeta)
             //termsraw.update(datasetmeta.distributions.terms)            
@@ -74,11 +77,11 @@ document.body.onload = function init()
       .then((datasetmeta:StackOverflowMeta)=> { 
             termsstem.update(datasetmeta.distributions.terms)
       })*/
-    d3.json("data/bag-of-words/stackoverflow-lemma-meta.json")
+    d3.json("/dist/data/bag-of-words/stackoverflow-lemma-meta.json")
       .then((datasetmeta:StackOverflowMeta)=> { 
             termslem.update(datasetmeta.distributions.terms)
       })
-    d3.json("data/ngrams/stackoverflow-2gram-stem-meta.json")
+    d3.json("/dist/data/ngrams/stackoverflow-2gram-stem-meta.json")
       .then((datasetmeta:StackOverflowMeta)=> { 
             ngram2.update(datasetmeta.distributions.terms)
       })/*

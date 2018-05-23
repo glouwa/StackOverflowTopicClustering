@@ -11,16 +11,19 @@ import { TagDistribution } from '../tagdistribution/tagdistribution'
 
 const html = `
     <div>
+        <!--
         <div id="downloadheader" class="header">Stackoverflow</div>     
         <div id="mergeheader" class="header">Merged</div>    
-        <br>        
+        <br>
+        -->        
         <div id="TimeChart"></div>
         <br><br>                
         <div id="SCOChart" style="width:42%;float:left;"></div>
         <div id="ANCChart" style="width:42%;float:left;"></div>    
         <div id="ISAChart" style="width:16%;float:left;"></div>
-        <br style="clear:both;"><br>
-        <div id="SizeChart"></div>        
+        <br style="clear:both;"><br>        
+        <div id="SizeChart"></div>  
+        <br>                      
     </div>`
 
 export class StackoverflowDatasetView
@@ -90,11 +93,12 @@ export class StackoverflowDatasetView
     }
 
     public update(datasetmeta:StackOverflowMeta) {
+        /*
         document.querySelector<HTMLElement>("#downloadheader").innerText = 
             `Stackoverflow: ${(datasetmeta.datasource.size/1024/1024).toFixed(0)}MB, ${datasetmeta.datasource.filecount} Files, ${datasetmeta.datasource.rawquestions} Raw-Questions, ${datasetmeta.datasource.dupquestions} duplicate, ${datasetmeta.datasource.errquestions} invalid`
         document.querySelector<HTMLElement>("#mergeheader").innerText = 
             `Merged: ${(datasetmeta.data.size/1024/1024).toFixed(0)}MB, ${datasetmeta.index.id.length} Valid-Questions,` // ${mergemeta.tagcount} Tags`        
-
+        */
         this.timeline.update({
             labels: datasetmeta.index.created
                 .map(e=> e.key),
