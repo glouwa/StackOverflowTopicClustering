@@ -20,6 +20,7 @@ def classifyAndPlotScore(f, ax, idx, title, X, Y, F):
     classify_pre_pipeline.fit(X_train, Y_train)
     X_train_ = classify_pre_pipeline.transform(X_train) 
     X_test_ = classify_pre_pipeline.transform(X_test)         
+    ax.set_title(title)
     for label, pipeline in classify_pipelines.items():        
         pipeline.fit(X_train_, Y_train)
         Y_pred = pipeline.predict(X_test_)
@@ -30,7 +31,7 @@ def classifyAndPlotScore(f, ax, idx, title, X, Y, F):
         else:
             Z = Y_pred
         
-        plots.precisionRecallPlot(ax, label, Y_test, Y_pred, Z)
+        plots.precisionRecallPlot(ax, title, label, Y_test, Y_pred, Z)
         f.value += 1
 
 def run(tfidf, fsel, tags):    

@@ -46,14 +46,21 @@ def runClusterAlgosAndPlotForEachProjection(f, fig, X, Ts, F):
             plots.clustervis(ax, label, Ts[p]['pipeline'], Ts[p]['projected'], Ts[p]['features'], Y_pred)  
         f.value += 1
 
-def run(tfidf, decompskeys, algokeys, samples, tag):        
+from src.algo import frames
+def DecompositionFrame(cellinit):
+    return frames.DecompositionFrame(cellinit)
+
+def run(path, decompskeys, algokeys, samples, tag):        
     f = FloatProgress(min=0, max=len(cluster_pipelines(0, 0, 'PCA'))) 
     display(f) 
 
-    X = joblib.load('./dist/data/tf-idf/{}/nltk-X.pkl'.format(tfidf))
-    F = joblib.load('./dist/data/tf-idf/{}/nltk-F.pkl'.format(tfidf))
-    Y = joblib.load('./dist/data/tf-idf/{}/nltk-Y-{}.pkl'.format(tfidf, tag))
+    path = './dist/data/'+path    
+    C = joblib.load(path+'C.pkl')    
+    X = joblib.load(path+'X.pkl')
+    F = joblib.load(path+'F.pkl')
+    Y = joblib.load(path+'Y.pkl')[:,list(C).index(tag)]
     Ts = {}    
+    print(X.shape, Y.shape, F.shape)
     
     fig = plt.figure(figsize=(20, 16))   
     
@@ -69,6 +76,30 @@ def runPlotly(tfidf, decompskeys, algokeys, samples, tag):
     import plotly.plotly as py
     import plotly.graph_objs as go
     import numpy as np
+    """
+    name = 'eye = (x:2, y:2, z:0.1)'
+    camera = dict(
+        up=dict(x=0, y=0, z=1),
+        center=dict(x=0, y=0, z=0),
+        eye=dict(x=2, y=2, z=0.1)
+    )
+
+    fig['layout'].update(
+        scene=dict(camera=camera),
+        title=name
+    )
+    py.iplot(fig, validate=False, filename=name)
+
+
+    myDiv.on('plotly_relayout',
+    function(eventdata){  
+        alert( 'ZOOM!' + '\n\n' +
+            'Event data:' + '\n' + 
+             JSON.stringify(eventdata) + '\n\n' +
+            'x-axis start:' + eventdata['xaxis.range[0]'] + '\n' +
+            'x-axis end:' + eventdata['xaxis.range[1]'] );
+    });
+    """
 
     marker=dict(
         size=5,        
@@ -102,4 +133,4 @@ def runPlotly(tfidf, decompskeys, algokeys, samples, tag):
     return py.iplot(fig, filename='simple-3d-scatter')
 
 if __name__ == "__main__":    
-    run('32_title_body', ['PCA', 'NMF', 'LDA', 'SVD'], ['Ward', 'K-Means', 'GMM', 'DBScan'], 2000, 'android')    
+    run('stackoverflow/lemma/nltk/11/TB/', ['PCA', 'NMF', 'LDA', 'SVD'], ['Ward', 'K-Means', 'GMM', 'DBScan'], 2000, 'android')    

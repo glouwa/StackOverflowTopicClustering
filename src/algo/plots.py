@@ -5,8 +5,7 @@ from matplotlib.colors import to_rgba
 import matplotlib.pyplot as plt
 #from mpl_toolkits.mplot3d import Axes3D
 
-def precisionRecallPlot(ax, label, Y_test, Y_pred, defun):
-    ax.set_title(label)
+def precisionRecallPlot(ax, title, label, Y_test, Y_pred, defun):    
     f1 = metrics.f1_score(Y_test, Y_pred)
     pr = metrics.precision_score(Y_test, Y_pred)
     rc = metrics.recall_score(Y_test, Y_pred)

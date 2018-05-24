@@ -6,6 +6,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction import text
 from sklearn.externals import joblib
 from sklearn import model_selection
+
 def savefeatures(X, Yf, F, name):            
     X, Yf, F, =load (X, Yf, F,)
     for tag in tags: 
@@ -37,7 +38,13 @@ def savefeatures(X, Yf, F, name):
 def runFeatureSelect():
     tags = ['python', 'php', 'html', 'android', 'javascript', 'sql']    
 
-tags = ['python', 'php', 'html', 'android', 'javascript', 'sql']    
+
+from src.algo import frames
+def FeatureFrame(cellinit):
+    return frames.FeatureFrame(cellinit)
+
+"""
+    tags = ['python', 'php', 'html', 'android', 'javascript', 'sql']    
     writetopfeatureblock('lemma', ['title'],         [3, 2], 3, 15)
     writetopfeatureblock('lemma', ['title', 'code'], [3, 2], 5, 25) # 11 wolkig aber gelb, 32 beste klassifikations aber nix gelb, 00 separiert gut sonst bullshit
     writetopfeatureblock('lemma', ['title', 'body'], [3, 2], 5, 25)
@@ -57,3 +64,5 @@ tags = ['python', 'php', 'html', 'android', 'javascript', 'sql']
     writetopfeatureblock('lemma', ['title', 'code'], [0, 1], 5, 25)
     writetopfeatureblock('lemma', ['title', 'body'], [0, 1], 5, 25)
     writetopfeatureblock('lemma', ['code', 'body'],  [0, 1], 7, 50)
+
+"""

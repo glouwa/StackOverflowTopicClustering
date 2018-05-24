@@ -11,7 +11,13 @@ from sklearn.externals import joblib
 
 def top(component, feature_names, n_top_words):        
     #return " ".join([feature_names[i] for i in component.argsort()[:n_top_words]])
-    return " ".join([feature_names[i] for i in component.argsort()[:-n_top_words - 1:-1]])    
+    return " ".join([str(feature_names[i]) for i in component.argsort()[:-n_top_words - 1:-1]])
+
+def preorder(node, visit):
+    visit(node)    
+    if not node.is_leaf():        
+        postorder(node.get_right(), visit)	
+        postorder(node.get_left(), visit) 
 
 def postorder(node, visit):
     if not node.is_leaf():        
@@ -37,15 +43,18 @@ def calc(X_, algo, preprocess, interndim):
     n = len(Z)
     return Z, n
 
-def getRawCountMat(Z, XR, n, F):
-    nodeMat = np.zeros((n+1, len(F)))
-    print("nodemat", nodeMat.shape)
-    print("XL", XR.shape)
-    print("zlen", n, Z.shape)
+def getRawCountMat(Z, XR, n, F):    
+    #allterms = np.sum(XR, axis=0)
     
-    allterms = sum(XR)
-    print("all terms shape", allterms.shape)
-    print("all terms sum:", top(allterms, F, 10))
+    #print("XL", XR.shape)
+    #print("zlen", n, Z.shape)
+    #print("all terms shape", allterms.shape)
+    #print("F", F.shape)
+   # print("all terms sum:", top(allterms, F, 10))
+
+    nodeMat = np.zeros((n+1, len(F)))
+    #print("nodemat", nodeMat.shape)
+    
     def visit(node):    
         if not node.is_leaf():        
             id = node.get_id()
@@ -56,13 +65,31 @@ def getRawCountMat(Z, XR, n, F):
             left  = XR[lid] if lid < n else nodeMat[lid-n]
             right = XR[rid] if rid < n else nodeMat[rid-n]        
             #nodeMat[id-n-1] = np.add(left, right)
-            nodeMat[id-n] = left + right
+            nodeMat[id-n] = np.add(left, right)
 
     tree = to_tree(Z)
     postorder(tree, visit)
     rootid = tree.get_id()-n
-    print("rootid", rootid)
-    print("rootid", top(nodeMat[rootid], F, 10))
+    #print("rootid", rootid)
+    #print("rootid", top(nodeMat[rootid], F, 10))
+    return nodeMat, tree
+
+def getDampedCountMat(Z, XR, n, F, nodeMat):        
+    def visit(node):    
+        if not node.is_leaf():        
+            id = node.get_id()
+            assert(id > n)
+            lid = node.get_left().get_id()
+            rid = node.get_right().get_id()
+            assert(lid >= 0 and rid >= 0)
+            left  = XR[lid] if lid < n else nodeMat[lid-n]
+            right = XR[rid] if rid < n else nodeMat[rid-n]
+            nodeMat[id-n] = np.add(left, right)
+            #nodeMat[id-n] = left + right
+
+    tree = to_tree(Z)
+    preorder(tree, visit)
+    rootid = tree.get_id()-n
     return nodeMat, tree
 
 def convertd3json(XR, n, F, nodeMat, tree):
@@ -72,7 +99,7 @@ def convertd3json(XR, n, F, nodeMat, tree):
         if node.is_leaf():    
             id = node.get_id()      
             nodemap[id] = {
-                "name": top(XR[id], F, 3),
+                "name": top(XR[id,:], F, 3),
                 "numLeafs": node.get_count()-1
             }
         else:        
@@ -93,24 +120,26 @@ def convertd3json(XR, n, F, nodeMat, tree):
 def createhierarchy(X_, XR, F, algo, preprocess, interndim):        
     Z, n = calc(X_, algo, preprocess, interndim)
     nodeMat, tree = getRawCountMat(Z, XR, n, F)    
+    #nodeMat, tree = getDampedCountMat(Z, XR, n, F, nodeMat)    
     jsonroot = convertd3json(XR, n, F, nodeMat, tree)
 
-    path = '../../proj10/hypertree-of-life/dist/hierarchies/Open-Tree-of-Life/'    
-    with open("{}{}{}-{}.d3.json".format(path, preprocess, interndim, algo), 'w') as outfile:
+    path = 'dist/visualisations/hierarchies/'    
+    file = "{}{}{}-{}.d3.json".format(path, preprocess, interndim, algo)
+    print(file)
+    with open(file, 'w') as outfile:
         json.dump(jsonroot, outfile, indent=4)
     
-def run(tfidf, comp, dims, highlight):    
-    X_ = joblib.load('./dist/data/tf-idf/{}/nltk-X.pkl'.format(tfidf))
-    XR = joblib.load('./dist/data/tf-idf/{}/nltk-XR.pkl'.format(tfidf))
-    F  = joblib.load('./dist/data/tf-idf/{}/nltk-F.pkl'.format(tfidf))
-    print("F", F.shape, F)
+def run(path, comp, dims, highlight):        
+    path = './dist/data/'+path+'/'
+    X = joblib.load(path+'X.pkl')
+    R = joblib.load(path+'R.pkl')
+    F = joblib.load(path+'F.pkl')
 
-    createhierarchy(X_, XR, F, 'ward', 'SVD', 10)
-    createhierarchy(X_, XR, F, 'ward', 'SVD', 20)
-    createhierarchy(X_, XR, F, 'ward', 'LDA', 10)
-    createhierarchy(X_, XR, F, 'ward', 'LDA', 20)
-    createhierarchy(X_, XR, F, 'ward', 'PCA', 10)
-
+    #createhierarchy(X, R, F, 'ward', 'SVD', 10)    
+    #createhierarchy(X, R, F, 'ward', 'SVD', 20)
+    #createhierarchy(X, R, F, 'ward', 'LDA', 10)
+    createhierarchy(X, R, F, 'ward', 'LDA', 20)
+    #createhierarchy(X, R, F, 'ward', 'PCA', 10)    
 """
 def llf(id):
     if id < n:

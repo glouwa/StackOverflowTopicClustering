@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd    
+import plotly.plotly as py
+import plotly.graph_objs as go
 from src.algo.tfidf import StackoverflowCorpus
 from src.algo.tools.sparse2dense import DenseTransformer
 from sklearn import feature_selection
@@ -46,7 +48,7 @@ def tfidfframe():
         [ ['stackoverflow'],           
           ['stem', 'lemma', 'raw'],
           ['nltk', 'sklearn'], 
-          ['32', '00', '11'], #combine("BLMR", "RCS")
+          ['32', '00', '11', '10', '01'], #combine("BLMR", "RCS")
           ['T', 'TB', 'TC', 'TBC']  #noreuse("TBCI")
         ],
         names=['source', 'wordtype', 'vecimpl', 'tf-idf', 'htmlfeature']
@@ -57,8 +59,64 @@ def tfidfframe():
     cells = np.zeros((len(miindex), len(columns)))
     return pd.DataFrame(cells,index=miindex, columns=columns).sort_index().sort_index(axis=1)
 
+def plot(path):
+
+    path = './dist/data/'+path+'/'   
+
+    #y = samples
+    #x = terms
+    #z = count | tfidf
+
+
+    C = joblib.load(path+'C.pkl')    
+    X = joblib.load(path+'X.pkl')
+    #R
+    F = joblib.load(path+'F.pkl')
+    """
+    IDF = 
+    S = 
+    df = pandas.DataFrame(X, index=, columns=)
+    """
+    
+    
+
+    
+
+    print(X[:,1].shape)    
+    print(X[:,2].shape)    
+    print(X[:,3].shape)    
+
+    """
+    go.Scatter3d(        
+        z=[:300], # dfXX[:300]            
+    )
+    """
+    
+
+    data = [
+        go.Surface(            
+            z= X[:300], # dfXX[:300]                        
+        )
+    ]
+    layout = go.Layout(
+        title='Mt Bruno Elevation',        
+        autosize=True,        
+        margin=dict(
+            l=5,
+            r=0,
+            b=0,
+            t=0
+        ),
+        scene=dict(            
+            aspectratio = dict( x=1, y=1.7, z=0.2 ),
+            aspectmode = 'manual'
+        )
+    )
+    fig = go.Figure(data=data, layout=layout)
+    return py.iplot(fig, filename='elevations-3d-surface')
+
 def run(frame):    
-    print("select",frame.shape)
+    print("select", frame.shape)
     #print("select.index", frame.index.shape)
     #print("select.index", frame.index.values)
     
@@ -113,7 +171,7 @@ def plan(s):
     def timediff(file):
         return str(time.ctime(os.path.getmtime(file))) if os.path.exists(file) else '-'
 
-    for task in frame.index.values:
+    for task in select.index.values:
         path = './dist/data/'+'/'.join(task) + '/'        
         # modified = time.ctime(os.path.getctime(file)))
         
