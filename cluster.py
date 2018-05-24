@@ -47,8 +47,8 @@ def runClusterAlgosAndPlotForEachProjection(f, fig, X, Ts, F):
         f.value += 1
 
 from src.algo import frames
-def DecompositionFrame(cellinit):
-    return frames.DecompositionFrame(cellinit)
+def DecompositionFrame():
+    return frames.DecompositionFrame()
 
 def run(path, decompskeys, algokeys, samples, tag):        
     f = FloatProgress(min=0, max=len(cluster_pipelines(0, 0, 'PCA'))) 

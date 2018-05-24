@@ -1,11 +1,15 @@
 import numpy as np
 import pandas as pd
 import itertools
+import os
+from sklearn.externals import joblib
+import src.algo.cell2string 
 
-columns = ['$r_{c}$', '$r_{s}$', 's', 'f', '$r_{f}$', 'c', 'X','R','F', 'Y', 'C']    
+cell2string = src.algo.cell2string 
 
 ##################################################################################################
 
+wordveccolumns = ['$r_{c}$', '$r_{s}$', 's', 'f', '$r_{f}$', 'c', 'X','R','F', 'Y', 'C']    
 wordvecpathnames=['source', 'wordtype', 'vecimpl', 'tf-idf', 'htmlfeature']
 wordvecpath = [
     ['stackoverflow'],           
@@ -15,33 +19,32 @@ wordvecpath = [
     ['T', 'TB', 'TC', 'TBC'],  #noreuse("TBCI")
 ]
 
-def WordVecFrame(initcell):    
+def WordVecFrame():    
     miindex = pd.MultiIndex.from_product(
         wordvecpath,
         names=wordvecpathnames
     )            
-    cells = np.empty((len(miindex), len(columns)), dtype=str)
-    cells[:] = initcell
-    return pd.DataFrame(cells, index=miindex, columns=columns)
+    cells = np.empty((len(miindex), len(wordveccolumns)), dtype=str)
+    return pd.DataFrame(cells, index=miindex, columns=wordveccolumns)
 
 ##################################################################################################
 
+featurecolumns = ['X', 'Mask', 'Indices', 'Scores', 'Pvalue', 'assertF', 'assertY']    
 featurepathnames = ['class', 'scorefunc']
 featurepath = [
     ['android', 'javascript', 'java', 'php'],
-    ['chi2', 'mi', 'f_classif', 'mutual_info_classif']
+    ['chi2', 'f_classif', 'mutual_info_classif']
 ]
 featurepath = list(itertools.chain(*[wordvecpath, featurepath]))
 featurepathnames = list(itertools.chain(*[wordvecpathnames, featurepathnames]))
 
-def FeatureFrame(initcell):    
+def FeatureFrame():    
     miindex = pd.MultiIndex.from_product(
         featurepath,
         names=featurepathnames
     )            
-    cells = np.empty((len(miindex), len(columns)), dtype=str)
-    cells[:] = initcell
-    return pd.DataFrame(cells, index=miindex, columns=columns)
+    cells = np.empty((len(miindex), len(featurecolumns)), dtype=str)
+    return pd.DataFrame(cells, index=miindex, columns=featurecolumns)
 
 ##################################################################################################
 
@@ -53,11 +56,22 @@ decomppath = [
 decomppath = list(itertools.chain(*[wordvecpath, decomppath]))
 decomppathnames = list(itertools.chain(*[wordvecpathnames, decomppathnames]))
 
-def DecompositionFrame(initcell):    
+def DecompositionFrame():    
     miindex = pd.MultiIndex.from_product(
         decomppath,
         names=decomppathnames
     )            
-    cells = np.empty((len(miindex), len(columns)), dtype=str)
-    cells[:] = initcell
-    return pd.DataFrame(cells, index=miindex, columns=columns)
+    cells = np.empty((len(miindex), len(wordveccolumns)), dtype=str)
+    return pd.DataFrame(cells, index=miindex, columns=wordveccolumns)
+
+##################################################################################################
+
+def load(path, namearr):
+    return ( joblib.load(path+'/'+name+'.pkl') for name in namearr )
+
+def save(path, name, M):
+    if not os.path.exists(path):
+        os.makedirs(path)       
+        print("makedir", path)        
+    filename = path + '{}.pkl'.format(name)
+    joblib.dump(M, filename)  
