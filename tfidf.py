@@ -51,14 +51,14 @@ def run(frame):
         'TBC':  (7,50), 
     }
     htmlfeatureMap = {
-        'T': ['title'], 
-        'TI': ['title', 'inlinecode'],                
-        'TIB': ['title', 'inlinecode', 'body'],        
-        'TIC': ['title', 'inlinecode', 'code'],
+        'T':    ['title'], 
+        'TI':   ['title', 'inlinecode'],                
+        'TIB':  ['title', 'inlinecode', 'body'],        
+        'TIC':  ['title', 'inlinecode', 'code'],
         'TIBC': ['title', 'inlinecode', 'body', 'code'],
-        'TB': ['title', 'body'],
-        'TC': ['title', 'code'],        
-        'TBC': ['title', 'body', 'code']
+        'TB':   ['title', 'body'],
+        'TC':   ['title', 'code'],        
+        'TBC':  ['title', 'body', 'code']
     }
     #tfidfMap = lambda str: map(list(str), lambda e: int(e))
     tfidfMap = {
