@@ -15,8 +15,8 @@ wordvecpath = [
     ['stackoverflow'],           
     ['stem', 'lemma', 'raw'],
     ['nltk', 'sklearn'], 
-    ['32', '00', '11', '10', '01'], #combine("BLMR", "RCS")
-    ['T', 'TB', 'TC', 'TBC'],  #noreuse("TBCI")
+    ['32', '00', '11', '10', '01', '31', '30'], #combine("BLMR", "RCS")
+    ['T', 'TI', 'TIB', 'TIC', 'TIBC' 'TB', 'TC', 'TBC'],  #noreuse("TBCI")
 ]
 
 def WordVecFrame():    
