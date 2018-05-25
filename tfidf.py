@@ -63,6 +63,8 @@ def run(frame):
     #tfidfMap = lambda str: map(list(str), lambda e: int(e))
     tfidfMap = {
         '32': [3,2],
+        '31': [3,1],
+        '30': [3,0],
         '11': [1,1],
         '00': [0,0],
         '10': [1,0],
