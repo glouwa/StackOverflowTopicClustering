@@ -51,7 +51,7 @@ def run(tfidf, fsel, tags):
     f1.savefig('img/classify.png')
     f1.show()    
 """
-def run2(path, algo, tags):    
+def run(path, algo, tags):    
     f1 = plt.figure(figsize=(20, 10))            
     f = FloatProgress(min=0, max=len(tags)*len(classify_pipelines))
     display(f)    
@@ -104,6 +104,7 @@ def plotselection(path, tags, scorefunc):
         ),        
         yaxis2=dict(                        
             fixedrange=True
+            tick
         ),
         yaxis3=dict(                        
             fixedrange=True

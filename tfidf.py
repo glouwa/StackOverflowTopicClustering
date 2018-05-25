@@ -28,11 +28,11 @@ def loadCounter(wordtype, topfeature, tfidfcfg, mindf, mintf):
 def writetopfeatureblock(outpath, wordtype, vecimpl, topfeature, tfidfcfg, mindf, mintf):    
     X, R, F, Y, C = loadCounter(wordtype, topfeature, tfidfcfg, mindf, mintf)
     directory = './dist/data/'+outpath+'/'        
-    frames.save("X",  X,  directory)
-    frames.save("R", R, directory)
-    frames.save("F",  F,  directory)
-    frames.save('Y', Y, directory)
-    frames.save('C', C, directory)
+    frames.save(directory, "X", X)
+    frames.save(directory, "R", R)
+    frames.save(directory, "F", F)
+    frames.save(directory, 'Y', Y)
+    frames.save(directory, 'C', C)
     return X, R, F, Y, C
 
 def run(frame):    
@@ -41,16 +41,23 @@ def run(frame):
     #print("select.index", frame.index.values)
     
     minDfTfMap = {
-        'T': (3,15),    
-        'TI': (5,15),
-        'TB': (5,25),
-        'TC': (5,25),
-        'TBC': (7,50) 
+        'T':    (2,10),    
+        'TI':   (5,15),
+        'TIB':  (5,25),
+        'TIC':  (5,25),
+        'TIBC': (7,50),
+        'TB':   (5,25),
+        'TC':   (5,25),
+        'TBC':  (7,50), 
     }
     htmlfeatureMap = {
         'T': ['title'], 
+        'TI': ['title', 'inlinecode'],                
+        'TIB': ['title', 'inlinecode', 'body'],        
+        'TIC': ['title', 'inlinecode', 'code'],
+        'TIBC': ['title', 'inlinecode', 'body', 'code'],
         'TB': ['title', 'body'],
-        'TC': ['title', 'code'],
+        'TC': ['title', 'code'],        
         'TBC': ['title', 'body', 'code']
     }
     #tfidfMap = lambda str: map(list(str), lambda e: int(e))
@@ -58,7 +65,8 @@ def run(frame):
         '32': [3,2],
         '11': [1,1],
         '00': [0,0],
-        '10': [1,0]
+        '10': [1,0],
+        '01': [0,1]
     }
     for task in frame.index.values:
         #print("path", '/'.join(task))

@@ -69,7 +69,7 @@ def DecompositionFrame():
 def load(path, namearr):
     return ( joblib.load(path+'/'+name+'.pkl') for name in namearr )
 
-def save(path, name, M):
+def save(path, name, M):    
     if not os.path.exists(path):
         os.makedirs(path)       
         print("makedir", path)        
