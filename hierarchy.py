@@ -129,35 +129,12 @@ def createhierarchy(X_, XR, F, algo, preprocess, interndim):
     with open(file, 'w') as outfile:
         json.dump(jsonroot, outfile, indent=4)
     
-def run(path, comp, dims, highlight):        
+def run(path, comps, dims, highlight):        
     path = './dist/data/'+path+'/'
     X = joblib.load(path+'X.pkl')
     R = joblib.load(path+'R.pkl')
     F = joblib.load(path+'F.pkl')
 
-    #createhierarchy(X, R, F, 'ward', 'SVD', 10)    
-    #createhierarchy(X, R, F, 'ward', 'SVD', 20)
-    #createhierarchy(X, R, F, 'ward', 'LDA', 10)
-    createhierarchy(X, R, F, 'ward', 'LDA', 20)
-    #createhierarchy(X, R, F, 'ward', 'PCA', 10)    
-"""
-def llf(id):
-    if id < n:
-        return top(XL[id], F, 3)
-    else:
-        return top(nodeMat[id-n-1], F, 3)
-
-print("nodemat done")
-fancy_dendrogram(
-    Z,
-    truncate_mode='level', #lastp level
-    p=8,
-    leaf_rotation=90.,    
-    leaf_font_size=8.,
-    show_contracted=False,
-    annotate_above=0,  # useful in small plots so annotations don't overlap 
-    max_d=max_d,
-    leaf_label_func=llf
-)
-plt.show()
-"""
+    for decomp in comps:
+        for dim in dims:
+            createhierarchy(X, R, F, 'ward', decomp, dim)
