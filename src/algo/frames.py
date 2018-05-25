@@ -32,7 +32,7 @@ def WordVecFrame():
 featurecolumns = ['X', 'Mask', 'Indices', 'Scores', 'Pvalue', 'assertF', 'assertY']    
 featurepathnames = ['class', 'scorefunc']
 featurepath = [
-    ['android', 'javascript', 'java', 'php'],
+    ['python', 'android', 'javascript', 'java', 'php', 'c++', 'spring', 'pandas', 'html', 'sql'],
     ['chi2', 'f_classif', 'mutual_info_classif']
 ]
 featurepath = list(itertools.chain(*[wordvecpath, featurepath]))

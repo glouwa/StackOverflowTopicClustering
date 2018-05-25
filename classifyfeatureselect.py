@@ -20,11 +20,7 @@ def featuretranform(srcpath, destpath, algo, X, Y, k):
     else:
         assert(False)
 
-    frames.save(destpath, 'X',      fs.transform(X))
-    frames.save(destpath, 'Mask',   fs.get_support())
-    frames.save(destpath, 'Indices',fs.get_support(indices=True))    
-    frames.save(destpath, 'Scores', fs.scores_)
-    frames.save(destpath, 'Pvalue', fs.pvalues_)    
+    return fs.get_support(), fs.get_support(indices=True), fs.scores_, fs.pvalues_
 
 def savefeatures(srcpath, destpath, tag, algo, nsamples, k):       
     #X, Y, F = joblib.load(srcpath, 'X', 'Y','F') 
@@ -45,7 +41,13 @@ def savefeatures(srcpath, destpath, tag, algo, nsamples, k):
     Y_ = Y_train[:fselsamples]
     assert(len(X_) > 500)
     
-    featuretranform(srcpath, destpath, algo, X_, Y_, k)
+    mask, indices, scores, pvalues = featuretranform(srcpath, destpath, algo, X_, Y_, k)
+        
+    frames.save(destpath, 'X',       X[:, mask])
+    frames.save(destpath, 'Mask',    mask)
+    frames.save(destpath, 'Indices', indices)    
+    frames.save(destpath, 'Scores',  scores)
+    frames.save(destpath, 'Pvalue',  pvalues)    
 
 def FeatureFrame():
     return frames.FeatureFrame()
