@@ -42,7 +42,7 @@ def run(frame):
     
     minDfTfMap = {
         'T':    (2,10),    
-        'TI':   (5,15),
+        'TI':   (3,12),
         'TIB':  (5,25),
         'TIC':  (5,25),
         'TIBC': (7,50),

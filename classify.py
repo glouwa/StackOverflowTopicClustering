@@ -103,23 +103,31 @@ def plotselection(path, tags, scorefunc):
             fixedrange=True
         ),        
         yaxis2=dict(                        
-            fixedrange=True
-            tick
+            fixedrange=True            
         ),
         yaxis3=dict(                        
             fixedrange=True
         ),
         xaxis1=dict(            
             #domain=[0, .01]            
-            range=[-1, 50]
+            range=[-1, 50],
+            tickfont=dict(          
+                size=10,          
+            ),
         ),
         xaxis2=dict(            
             #domain=[0, .01]            
-            range=[-1, 50]
+            range=[-1, 50],
+            tickfont=dict(          
+                size=10,          
+            ),
         ),
         xaxis3=dict(            
             #domain=[0, .01]            
-            range=[-1, 50]
+            range=[-1, 50],
+            tickfont=dict(          
+                size=10,
+            ),
         ),
     )
     return py.iplot(fig, filename='make-subplots-multiple-with-titles')    
