@@ -115,7 +115,7 @@ def convertd3json(XR, n, F, nodeMat, tree):
                 "children": [ left, right ]
             }
     postorder(tree, visitjson)
-    return nodemap[ tree.get_id()-n]    
+    return nodemap[tree.get_id()-n]    
     
 def createhierarchy(X_, XR, F, algo, preprocess, interndim):        
     Z, n = calc(X_, algo, preprocess, interndim)

@@ -115,6 +115,7 @@ def plot(path):
     data = [
         go.Surface(            
             z= X[:300], # dfXX[:300],
+            showscale= False,
             colorscale= [
                 # Let first 10% (0.1) of the values have color rgb(0, 0, 0)
                 [0, 'gba(1, 1, 1)'],

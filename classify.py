@@ -34,24 +34,28 @@ def classifyAndPlotScore(f, ax, idx, title, X, Y):
         plots.precisionRecallPlot(ax, title, label, Y_test, Y_pred, Z)
         f.value += 1
 
-def run(path, algo, tags, nfeatures):    
+def run(path, algo, nfeatures, tags):    
     f1 = plt.figure(figsize=(20, 10))            
     f = FloatProgress(min=0, max=len(tags)*len(classify_pipelines))
     display(f)    
-    for idx, tag in enumerate(tags):        
-        #X = joblib.load('./dist/data/{}/{}/{}/X.pkl'.format(path, tag, algo))        
-        #Y = joblib.load('./dist/data/{}/{}/{}/assertY.pkl'.format(path, tag, algo))
+    path_ = './dist/data/{}/'.format(path)
+    X, Y, F, C = frames.load(path_, ['X', 'Y', 'F', 'C'])
+    Xpd = pd.DataFrame(X, columns=F)
+    Ydf = pd.DataFrame(Y, columns=C)    
 
-        path = './dist/data/{}/'.format(path)
-        X, Y, F = frames.load(path, ['X', 'Y', 'F'])
+    for idx, tag in enumerate(tags):                        
+        pathfs = '{}/{}/{}/'.format(path_, tag, algo)        
+        scores, pvalues, assertY, assertF = frames.load(pathfs, ['Scores', 'Pvalue', 'assertY', 'assertF'])
+        
+        Yc = Ydf.loc[:, tag]
+        np.testing.assert_array_equal(Yc, assertY)
+        np.testing.assert_array_equal(F, assertF)
 
-        pathfs = './dist/data/{}/{}/{}/'.format(path, tag, algo)
-        scores, pvalues, assertY, assertF = frames.load(fspath, ['Scores', 'Pvalue', 'assertY', 'assertF'])
-
-        Xs = selectTopN(X, scores, nfeatures)
-        Yc = Y[:, tag]
-        assert(Yc == assertY)
-        assert(F == assertF)
+        scoreDf = pd.DataFrame({ 'terms':F, 'scores':scores })
+        scoreSorted = scoreDf.sort_values(by=['scores'], ascending=False)        
+        scoreSortedterms = scoreSorted['terms']        
+        scoreSortedtermscut = scoreSortedterms[:nfeatures]                
+        Xs = Xpd.loc[:, scoreSortedtermscut]
 
         ax = f1.add_subplot(2, 2, idx+1)        
         #fig.suptitle('clusterd ({})'.format(label))
@@ -70,15 +74,15 @@ import plotly.graph_objs as go
 from src.algo import frames
 from plotly import tools
 import pandas as pd
-def plotTopFeatures(path, tags, scorefunc):
+def plotTopFeatures(path, scorefunc, tags):
 
     fig = tools.make_subplots(rows=1, cols=len(tags), horizontal_spacing=0.1)
     #horizontal_spacing=0.05,vertical_spacing=0.1, shared_yaxes=True
 
     for idx, tag in enumerate(tags):
-        mask, indices, scores, pvalues = frames.load('./dist/data/'+path+'/'+tag+'/chi2', ['Mask', 'Indices', 'Scores', 'Pvalue'])
-        F = joblib.load('./dist/data/{}/{}/{}/assertF.pkl'.format(path, tag, scorefunc))
-        Y = joblib.load('./dist/data/{}/{}/{}/assertY.pkl'.format(path, tag, scorefunc))
+        #path_ = './dist/data/'+path+'/'+tag+'/'+scorefunc
+        path_ = './dist/data/{}/{}/{}/'.format(path, tag, scorefunc)
+        F, Y, scores, pvalues = frames.load(path_, ['assertF', 'assertY', 'Scores', 'Pvalue'])
         # assert assertY == Y aus tfidf
         # assert assertY == Y aus tfidf
 
