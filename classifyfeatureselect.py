@@ -43,7 +43,7 @@ def savefeatures(srcpath, destpath, tag, algo, nsamples, k):
     
     mask, indices, scores, pvalues = featuretranform(srcpath, destpath, algo, X_, Y_, k)
         
-    frames.save(destpath, 'X',       X[:, mask])
+    #frames.save(destpath, 'X',       X[:, mask])
     frames.save(destpath, 'Mask',    mask)
     frames.save(destpath, 'Indices', indices)    
     frames.save(destpath, 'Scores',  scores)

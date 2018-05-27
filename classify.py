@@ -33,35 +33,29 @@ def classifyAndPlotScore(f, ax, idx, title, X, Y):
         
         plots.precisionRecallPlot(ax, title, label, Y_test, Y_pred, Z)
         f.value += 1
-"""
-def run(tfidf, fsel, tags):    
+
+def run(path, algo, tags, nfeatures):    
     f1 = plt.figure(figsize=(20, 10))            
     f = FloatProgress(min=0, max=len(tags)*len(classify_pipelines))
     display(f)    
     for idx, tag in enumerate(tags):        
-        X = joblib.load('./dist/data/tf-idf/{}/nltk-X-{}-{}.pkl'.format(tfidf, tag, fsel))      
-        Y = joblib.load('./dist/data/tf-idf/{}/nltk-Y-{}.pkl'.format(tfidf, tag))
+        #X = joblib.load('./dist/data/{}/{}/{}/X.pkl'.format(path, tag, algo))        
+        #Y = joblib.load('./dist/data/{}/{}/{}/assertY.pkl'.format(path, tag, algo))
+
+        path = './dist/data/{}/'.format(path)
+        X, Y, F = frames.load(path, ['X', 'Y', 'F'])
+
+        pathfs = './dist/data/{}/{}/{}/'.format(path, tag, algo)
+        scores, pvalues, assertY, assertF = frames.load(fspath, ['Scores', 'Pvalue', 'assertY', 'assertF'])
+
+        Xs = selectTopN(X, scores, nfeatures)
+        Yc = Y[:, tag]
+        assert(Yc == assertY)
+        assert(F == assertF)
 
         ax = f1.add_subplot(2, 2, idx+1)        
         #fig.suptitle('clusterd ({})'.format(label))
-        classifyAndPlotScore(f, ax, idx, '{} nltk {}'.format(tag, tfidf), X, Y)
-        #f.value = idx+1
-
-    f1.tight_layout()
-    f1.savefig('img/classify.png')
-    f1.show()    
-"""
-def run(path, algo, tags):    
-    f1 = plt.figure(figsize=(20, 10))            
-    f = FloatProgress(min=0, max=len(tags)*len(classify_pipelines))
-    display(f)    
-    for idx, tag in enumerate(tags):        
-        X = joblib.load('./dist/data/{}/{}/{}/X.pkl'.format(path, tag, algo))        
-        Y = joblib.load('./dist/data/{}/{}/{}/assertY.pkl'.format(path, tag, algo))
-
-        ax = f1.add_subplot(2, 2, idx+1)        
-        #fig.suptitle('clusterd ({})'.format(label))
-        classifyAndPlotScore(f, ax, idx, tag, X, Y)
+        classifyAndPlotScore(f, ax, idx, tag, Xs, Yc)
         #f.value = idx+1
 
     f1.tight_layout()
@@ -76,59 +70,65 @@ import plotly.graph_objs as go
 from src.algo import frames
 from plotly import tools
 import pandas as pd
-def plotselection(path, tags, scorefunc):
+def plotTopFeatures(path, tags, scorefunc):
 
-    fig = tools.make_subplots(rows=len(tags), cols=1, subplot_titles=tuple(tags))
+    fig = tools.make_subplots(rows=1, cols=len(tags), horizontal_spacing=0.1)
+    #horizontal_spacing=0.05,vertical_spacing=0.1, shared_yaxes=True
 
     for idx, tag in enumerate(tags):
         mask, indices, scores, pvalues = frames.load('./dist/data/'+path+'/'+tag+'/chi2', ['Mask', 'Indices', 'Scores', 'Pvalue'])
         F = joblib.load('./dist/data/{}/{}/{}/assertF.pkl'.format(path, tag, scorefunc))
+        Y = joblib.load('./dist/data/{}/{}/{}/assertY.pkl'.format(path, tag, scorefunc))
         # assert assertY == Y aus tfidf
         # assert assertY == Y aus tfidf
 
-        df = pd.DataFrame({
-            'x':F,
-            'y':scores
-        })
+        classmembercount = int(np.count_nonzero(Y))
+        samples = int(len(Y)/1000)
+
+        df = pd.DataFrame({ 'x':F, 'y':scores })
         sorted = df.sort_values(by=['y'], ascending=False)
 
-        trace1 = go.Bar(x=sorted.x, y=sorted.y)        
-        fig.append_trace(trace1, idx+1, 1)
+        trace1 = go.Bar(
+            name = '{} <sub>{} / {}K</sub>'.format(tag, classmembercount, samples),
+            x=sorted.y, 
+            y=sorted.x,
+            orientation = 'h',            
+            #xaxis = "x2",
+            #yaxis ="y3",
+        )        
+        fig.append_trace(trace1, 1, idx+1)
     
+    def fixedrange(): 
+        return dict(                        
+            fixedrange=True
+        )
+
+    def top20(): 
+        return dict(            
+            #autorange='reversed',
+            #domain=['true', 'android'],
+            range=[50, -1],               
+            tickfont=dict(size=10)
+        )
+
     fig['layout'].update(
-        margin=dict(l=0, r=0, b=110, t=60),        
-        title='top 20 tags for android chi2',        
-        height=200*len(tags),
-        yaxis1=dict(                        
-            fixedrange=True
-        ),        
-        yaxis2=dict(                        
-            fixedrange=True            
-        ),
-        yaxis3=dict(                        
-            fixedrange=True
-        ),
-        xaxis1=dict(            
-            #domain=[0, .01]            
-            range=[-1, 50],
-            tickfont=dict(          
-                size=10,          
-            ),
-        ),
-        xaxis2=dict(            
-            #domain=[0, .01]            
-            range=[-1, 50],
-            tickfont=dict(          
-                size=10,          
-            ),
-        ),
-        xaxis3=dict(            
-            #domain=[0, .01]            
-            range=[-1, 50],
-            tickfont=dict(          
-                size=10,
-            ),
-        ),
+        #margin=dict(l=0, r=0, b=110, t=60),        
+        title='Top 50 terms sorted by '+ scorefunc +' score',
+        legend=dict(orientation="h", x=.07, y=1.07),
+        height=800,        
+        xaxis1=fixedrange(),   
+        xaxis2=fixedrange(),
+        xaxis3=fixedrange(),        
+        xaxis4=fixedrange(), 
+        xaxis5=fixedrange(), 
+        xaxis6=fixedrange(), 
+        
+        yaxis1=top20(),
+        yaxis2=top20(),
+        yaxis3=top20(),
+        yaxis4=top20(),
+        yaxis5=top20(),
+        yaxis6=top20(),
     )
     return py.iplot(fig, filename='make-subplots-multiple-with-titles')    
 

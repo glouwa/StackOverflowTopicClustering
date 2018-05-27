@@ -20,10 +20,17 @@ def loadCounter(wordtype, topfeature, tfidfcfg, mindf, mintf):
     XR = np.matrix(corpus.doctermRaw.T)
     F = corpus.termssorted    
     Y = []
-    tags = ['python', 'php', 'html', 'android', 'javascript', 'sql'] 
-    for tag in tags:         
+    Cdict = corpus.getClasses() #['python', 'php', 'html', 'android', 'javascript', 'sql'] 
+    tags = pd.DataFrame({ 
+        'tags': list(Cdict.keys()), 
+        'counts': list(Cdict.values()) 
+    })
+    sorted = tags.sort_values(by=['counts'], ascending=False)    
+    C_ = sorted.loc[:,'tags']    
+    C = C_[:200]
+    for tag in C:         
         Y.append(corpus.labels_(tag))
-    return X, XR, F, np.array(Y).T, np.array(tags)
+    return X, XR, F, np.array(Y).T, np.array(C)
 
 def writetopfeatureblock(outpath, wordtype, vecimpl, topfeature, tfidfcfg, mindf, mintf):    
     X, R, F, Y, C = loadCounter(wordtype, topfeature, tfidfcfg, mindf, mintf)

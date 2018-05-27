@@ -117,6 +117,7 @@ class DocumentSpace:
         print("Final weights", self.w)
 
 class StackoverflowCorpus(DocumentSpace):    
+    classes = {}
     def __init__(self, file, feature, tfmode, idfmode, mindf, mintf):       
         docmap = json.load(open('./dist/data/'+file+'.json'))        
         docarray = []        
@@ -124,6 +125,8 @@ class StackoverflowCorpus(DocumentSpace):
         docarraystr = []
         docid = 0
         for dkey, _ in docmap.items():
+            for tag in docmap[dkey]['terms']['tags'][0]:
+                self.classes[tag] = self.classes.get(tag, 0) + 1
             currentdocterms = []
             #currentdocstr = []
             for f in feature:
@@ -137,6 +140,9 @@ class StackoverflowCorpus(DocumentSpace):
             docid += 1
         
         DocumentSpace.__init__(self, docarray, docarrayraw, docarraystr, tfmode, idfmode, mindf, mintf)
+
+    def getClasses(self):
+        return self.classes
 
     def labelstr(self):
         return [1 if tag in doc['terms']['tags'][0] else 0 for doc in self.documentsraw_]

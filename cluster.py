@@ -30,10 +30,10 @@ def createProjectionsAndShowTruth(fig, X, Y, F, T):
         ax.set_title(label, loc='left')        
         plots.clustervisTrue(ax, label, pipeline, T[label]['projected'], F, Y)        
 
-def runClusterAlgosAndPlotForEachProjection(f, fig, X, Ts, F):        
+def runClusterAlgosAndPlotForEachProjection(f, fig, X, Ts, F, numclusters, interdim):        
     for algoidx, label in enumerate(cluster_pipelines(0, 0, 'PCA').keys()):
         for pidx, p in enumerate(clustervis_pipelines(0).keys()):
-            clu_pipelines = cluster_pipelines(5, 4 if label == 'DBScan' else 25, p)
+            clu_pipelines = cluster_pipelines(numclusters, 4 if label == 'DBScan' else interdim, p)
             pipeline = clu_pipelines[label]
             if hasattr(pipeline, 'predict'):
                 Y_pred = pipeline.fit(X).predict(X)
@@ -50,7 +50,7 @@ from src.algo import frames
 def DecompositionFrame():
     return frames.DecompositionFrame()
 
-def run(path, decompskeys, algokeys, samples, tag):        
+def run(path, decompskeys, algokeys, samples, numclusters, interdim, tag):        
     f = FloatProgress(min=0, max=len(cluster_pipelines(0, 0, 'PCA'))) 
     display(f) 
 
@@ -66,7 +66,7 @@ def run(path, decompskeys, algokeys, samples, tag):
     
     _, X_test, _, Y_test = train_test_split(X, Y, test_size=.3, random_state=0)        
     createProjectionsAndShowTruth(fig, X_test[:samples], Y_test[:samples], F, Ts)    
-    runClusterAlgosAndPlotForEachProjection(f, fig, X_test[:samples], Ts, F)
+    runClusterAlgosAndPlotForEachProjection(f, fig, X_test[:samples], Ts, F, numclusters, interdim)
     
     plt.tight_layout()
     fig.savefig('img/{}-cluster.png'.format('proj x clu'))
