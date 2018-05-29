@@ -6,7 +6,7 @@ from sklearn import ensemble
 from sklearn import svm
 from sklearn.tree import DecisionTreeClassifier, ExtraTreeClassifier
 from sklearn.linear_model import SGDClassifier
-from sklearn.naive_bayes import GaussianNB
+from sklearn.naive_bayes import GaussianNB, BernoulliNB, MultinomialNB
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis, LinearDiscriminantAnalysis
 from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KNeighborsClassifier
@@ -55,30 +55,14 @@ classify_pipelines = {
     ]),    
     'LinearDiscriminantAnalysis': Pipeline([                        
         ('clf', LinearDiscriminantAnalysis())
-    ]),
-    'DecisionTreeClassifier': Pipeline([                                
-        ('clf', DecisionTreeClassifier())        
     ]),    
     'RandomForestClassifier': Pipeline([                        
         ('clf', ensemble.RandomForestClassifier())
     ]),
     'AdaBoostClassifier': Pipeline([                        
         ('clf', ensemble.AdaBoostClassifier())        
-    ]),               
+    ]),             
+    'MultinomialNB': Pipeline([
+        ('clf', MultinomialNB())
+    ]),    
 }
-"""
-classify_pipelines = {    
-    'Linear SVM': Pipeline([        
-        ('nmf', decomp),
-        ('clf', svm.LinearSVC(C=1))
-    ])
-}
-
-
-"""
-
-"""
-vote = list(classify_pipelines.items())
-weights = [2, 2, 1, 1, 1, 1, 1]
-classify_pipelines['Vote'] = ensemble.VotingClassifier(estimators=vote, voting='soft', weights=weights, flatten_transform=True)
-"""

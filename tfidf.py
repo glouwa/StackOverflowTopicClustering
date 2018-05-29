@@ -81,10 +81,10 @@ def run(frame):
         #print("path", '/'.join(task))
         wordtype = task[1] 
         vecimpl = task[2] 
-        tfidfcfg = tfidfMap[task[3]]
-        topfeature = htmlfeatureMap[task[4]]        
-        mindf = minDfTfMap[task[4]][0]
-        mintf = minDfTfMap[task[4]][1]
+        tfidfcfg = tfidfMap[task[4]]
+        topfeature = htmlfeatureMap[task[3]]        
+        mindf = minDfTfMap[task[3]][0]
+        mintf = minDfTfMap[task[3]][1]
         X, R, F, Y, C = writetopfeatureblock('/'.join(task), wordtype, vecimpl, topfeature, tfidfcfg, mindf, mintf) 
         frame.loc[task,'R'] = str(R.shape)
         frame.loc[task,'X'] = str(X.shape)

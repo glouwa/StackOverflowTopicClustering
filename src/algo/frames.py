@@ -10,13 +10,13 @@ cell2string = src.algo.cell2string
 ##################################################################################################
 
 wordveccolumns = ['$r_{c}$', '$r_{s}$', 's', 'f', '$r_{f}$', 'c', 'X','R','F', 'Y', 'C']    
-wordvecpathnames=['source', 'wordtype', 'vecimpl', 'tf-idf', 'htmlfeature']
+wordvecpathnames=['source', 'wordtype', 'vecimpl', 'htmlfeature', 'tf-idf']
 wordvecpath = [
     ['stackoverflow'],           
     ['stem', 'lemma', 'raw'],
     ['nltk', 'sklearn'], 
-    ['32', '00', '11', '10', '01', '31', '30'], #combine("BLMR", "RCS")
     ['T', 'TI', 'TIB', 'TIC', 'TIBC', 'TB', 'TC', 'TBC'],  #noreuse("TBCI")
+    ['32', '00', '11', '10', '01', '31', '30'], #combine("BLMR", "RCS")    
 ]
 
 def WordVecFrame():    
@@ -30,10 +30,10 @@ def WordVecFrame():
 ##################################################################################################
 
 featurecolumns = ['X', 'Mask', 'Indices', 'Scores', 'Pvalue', 'assertF', 'assertY']    
-featurepathnames = ['class', 'scorefunc']
+featurepathnames = ['scorefunc', 'class']
 featurepath = [
-    ['python', 'android', 'javascript', 'java', 'php', 'c++', 'spring', 'pandas', 'html', 'sql', 'reactjs', 'c++', 'git', 'scala', 'oracle', 'csharp'],
-    ['chi2', 'f_classif', 'mutual_info_classif']
+    ['chi2', 'f_classif', 'mutual_info_classif'],
+    ['python', 'android', 'javascript', 'java', 'php', 'c++', 'spring', 'pandas', 'html', 'sql', 'reactjs', 'c++', 'git', 'scala', 'oracle', 'csharp'],    
 ]
 featurepath = list(itertools.chain(*[wordvecpath, featurepath]))
 featurepathnames = list(itertools.chain(*[wordvecpathnames, featurepathnames]))

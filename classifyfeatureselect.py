@@ -22,7 +22,7 @@ def featuretranform(srcpath, destpath, algo, X, Y, k):
 
     return fs.get_support(), fs.get_support(indices=True), fs.scores_, fs.pvalues_
 
-def savefeatures(srcpath, destpath, tag, algo, nsamples, k):       
+def savefeatures(srcpath, destpath, tag, algo, nsamples, k):    
     #X, Y, F = joblib.load(srcpath, 'X', 'Y','F') 
     X = joblib.load(srcpath+'X.pkl')
     F = joblib.load(srcpath+'F.pkl')
@@ -61,8 +61,8 @@ def run(frame, nsamples, k):
         destpath = './dist/data/'+'/'.join(task)+'/'        
         srcpath = './dist/data/'+'/'.join(task[:5])+'/'
         
-        tag = task[5]        
-        algo = task[6]        
+        algo = task[5]    
+        tag = task[6]        
         savefeatures(srcpath, destpath, tag, algo, nsamples, k)        
 
     return frames.cell2string.file2shape(frame)    

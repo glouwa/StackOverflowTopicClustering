@@ -36,6 +36,6 @@ def showFsTree():
         <iframe width="100%" 
                 height="700"
                 frameBorder="0" 
-                src="http://localhost:3002/dist/visualisations/tree.html?f=fstree"
+                src="http://localhost:3000/dist/visualisations/tree.html?f=fstree"
         </iframe>"""
     display(HTML(iframe))

@@ -44,8 +44,8 @@ def run(path, algo, nfeatures, tags):
     Ydf = pd.DataFrame(Y, columns=C)    
 
     for idx, tag in enumerate(tags):                        
-        pathfs = '{}/{}/{}/'.format(path_, tag, algo)        
-        scores, pvalues, assertY, assertF = frames.load(pathfs, ['Scores', 'Pvalue', 'assertY', 'assertF'])
+        pathfs = '{}/{}/{}/'.format(path_, algo, tag)        
+        scores, assertY, assertF = frames.load(pathfs, ['Scores', 'assertY', 'assertF'])
         
         Yc = Ydf.loc[:, tag]
         np.testing.assert_array_equal(Yc, assertY)
@@ -81,7 +81,7 @@ def plotTopFeatures(path, scorefunc, tags):
 
     for idx, tag in enumerate(tags):
         #path_ = './dist/data/'+path+'/'+tag+'/'+scorefunc
-        path_ = './dist/data/{}/{}/{}/'.format(path, tag, scorefunc)
+        path_ = './dist/data/{}/{}/{}/'.format(path, scorefunc, tag)
         F, Y, scores, pvalues = frames.load(path_, ['assertF', 'assertY', 'Scores', 'Pvalue'])
         # assert assertY == Y aus tfidf
         # assert assertY == Y aus tfidf
