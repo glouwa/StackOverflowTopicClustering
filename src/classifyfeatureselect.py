@@ -58,11 +58,12 @@ def run(frame, nsamples, k):
     
     for task in frame.index.values:
         f.value += 1
+        tfidfpos = frame.index.names.index('tf-idf')+1
         destpath = './dist/data/'+'/'.join(task)+'/'        
-        srcpath = './dist/data/'+'/'.join(task[:5])+'/'
+        srcpath = './dist/data/'+'/'.join(task[:tfidfpos])+'/'
         
-        algo = task[5]    
-        tag = task[6]        
+        algo = task[frame.index.names.index('scorefunc')]    
+        tag = task[frame.index.names.index('class')]
         savefeatures(srcpath, destpath, tag, algo, nsamples, k)        
 
     return frames.cell2string.file2shape(frame)    

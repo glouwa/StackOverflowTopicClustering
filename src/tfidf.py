@@ -12,13 +12,15 @@ from sklearn import model_selection
 import os, time
 from src.algo import frames
       
-def loadCounter(wordtype, topfeature, tfidfcfg, mindf, mintf):    
+def calcTfIdf(wordtype, topfeature, tfidfcfg, mindf, mintf):    
     corpus = StackoverflowCorpus('bag-of-words/stackoverflow-' + wordtype, 
         topfeature, tfidfcfg[0], tfidfcfg[1], mindf, mintf)
     
     X = np.matrix(corpus.w.T)
-    XR = np.matrix(corpus.doctermRaw.T)
+    R = np.matrix(corpus.doctermRaw.T)
     F = corpus.termssorted    
+    IDF = corpus.idf
+    TDOC = corpus.doctermMax
     Y = []
     Cdict = corpus.getClasses() #['python', 'php', 'html', 'android', 'javascript', 'sql'] 
     tags = pd.DataFrame({ 
@@ -30,14 +32,16 @@ def loadCounter(wordtype, topfeature, tfidfcfg, mindf, mintf):
     C = C_[:200]
     for tag in C:         
         Y.append(corpus.labels_(tag))
-    return X, XR, F, np.array(Y).T, np.array(C)
+    return X, R, F, IDF, TDOC, np.array(Y).T, np.array(C)
 
 def writetopfeatureblock(outpath, wordtype, vecimpl, topfeature, tfidfcfg, mindf, mintf):    
-    X, R, F, Y, C = loadCounter(wordtype, topfeature, tfidfcfg, mindf, mintf)
+    X, R, F, IDF, TDOC, Y, C = calcTfIdf(wordtype, topfeature, tfidfcfg, mindf, mintf)
     directory = './dist/data/'+outpath+'/'        
     frames.save(directory, "X", X)
-    frames.save(directory, "R", R)
+    frames.save(directory+'../', "R", R)
     frames.save(directory, "F", F)
+    frames.save(directory, "IDF", IDF)
+    frames.save(directory, "TDOC", TDOC)
     frames.save(directory, 'Y', Y)
     frames.save(directory, 'C', C)
     return X, R, F, Y, C
@@ -106,15 +110,19 @@ if __name__ == "__main__":
     s = plan(s)
     run(s)
 
-def plot(path):
-    path = './dist/data/'+path+'/'   
+def NlpVecPanda(path):
     C = joblib.load(path+'C.pkl')    
     X = joblib.load(path+'X.pkl')    
     F = joblib.load(path+'F.pkl')
+    IDF = joblib.load(path+'IDF.pkl')    
+    docsize = np.sum(X, axis=1).tolist()    
+    return pd.DataFrame(X, index=pd.Index(docsize), columns=IDF).sort_index(axis=1).sort_index(axis=0)
     
+def plot(path):    
+    tfidf = NlpVecPanda('./dist/data/'+path+'/')
     data = [
-        go.Surface(            
-            z= X[:300], # dfXX[:300],
+        go.Surface(
+            z= tfidf[::40].as_matrix(), # dfXX[:300],
             showscale= False,
             colorscale= [
                 # Let first 10% (0.1) of the values have color rgb(0, 0, 0)
@@ -158,7 +166,7 @@ def plot(path):
             t=0
         ),
         scene=dict(            
-            aspectratio = dict( x=1, y=1.7, z=0.2 ),
+            aspectratio = dict( x=1.7, y=1, z=0.2 ),
             aspectmode = 'manual'
         )
     )

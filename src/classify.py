@@ -38,6 +38,7 @@ def run(path, algo, nfeatures, tags):
     f1 = plt.figure(figsize=(20, 10))            
     f = FloatProgress(min=0, max=len(tags)*len(classify_pipelines))
     display(f)    
+
     path_ = './dist/data/{}/'.format(path)
     X, Y, F, C = frames.load(path_, ['X', 'Y', 'F', 'C'])
     Xpd = pd.DataFrame(X, columns=F)
@@ -75,13 +76,12 @@ from src.algo import frames
 from plotly import tools
 import pandas as pd
 def plotTopFeatures(path, scorefunc, tags):
-
     fig = tools.make_subplots(rows=1, cols=len(tags), horizontal_spacing=0.1)
     #horizontal_spacing=0.05,vertical_spacing=0.1, shared_yaxes=True
 
     for idx, tag in enumerate(tags):
         #path_ = './dist/data/'+path+'/'+tag+'/'+scorefunc
-        path_ = './dist/data/{}/{}/{}/'.format(path, scorefunc, tag)
+        path_ = './dist/data/{}/featureselect/{}/{}'.format(path, scorefunc, tag)
         F, Y, scores, pvalues = frames.load(path_, ['assertF', 'assertY', 'Scores', 'Pvalue'])
         # assert assertY == Y aus tfidf
         # assert assertY == Y aus tfidf
