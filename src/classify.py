@@ -3,11 +3,13 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from numpy.random import RandomState
 from sklearn.externals import joblib
+import pandas as pd
 
 from src.algo import plots 
 from src.algo.pipelines.cls import classify_pre_pipeline
 from src.algo.pipelines.cls import classify_pipelines
 from src.algo.pipelines.clu import clustervis_pipelines, cluster_pipelines
+from src.algo import frames
 
 from ipywidgets import FloatProgress
 from IPython.display import display
@@ -45,7 +47,7 @@ def run(path, algo, nfeatures, tags):
     Ydf = pd.DataFrame(Y, columns=C)    
 
     for idx, tag in enumerate(tags):                        
-        pathfs = '{}/{}/{}/'.format(path_, algo, tag)        
+        pathfs = '{}/featureselect/{}/{}'.format(path_, algo, tag)        
         scores, assertY, assertF = frames.load(pathfs, ['Scores', 'assertY', 'assertF'])
         
         Yc = Ydf.loc[:, tag]
@@ -69,71 +71,3 @@ def run(path, algo, nfeatures, tags):
 
 if __name__ == "__main__":
     run('00_title_body', 'chi2', ['python', 'android', 'html', 'java']) #,, , 'python', 'php',  , 'javascript',  
-
-import plotly.plotly as py
-import plotly.graph_objs as go
-from src.algo import frames
-from plotly import tools
-import pandas as pd
-def plotTopFeatures(path, scorefunc, tags):
-    fig = tools.make_subplots(rows=1, cols=len(tags), horizontal_spacing=0.1)
-    #horizontal_spacing=0.05,vertical_spacing=0.1, shared_yaxes=True
-
-    for idx, tag in enumerate(tags):
-        #path_ = './dist/data/'+path+'/'+tag+'/'+scorefunc
-        path_ = './dist/data/{}/featureselect/{}/{}'.format(path, scorefunc, tag)
-        F, Y, scores, pvalues = frames.load(path_, ['assertF', 'assertY', 'Scores', 'Pvalue'])
-        # assert assertY == Y aus tfidf
-        # assert assertY == Y aus tfidf
-
-        classmembercount = int(np.count_nonzero(Y))
-        samples = int(len(Y)/1000)
-
-        df = pd.DataFrame({ 'x':F, 'y':scores })
-        sorted = df.sort_values(by=['y'], ascending=False)
-
-        trace1 = go.Bar(
-            name = '{} <sub>{} / {}K</sub>'.format(tag, classmembercount, samples),
-            x=sorted.y, 
-            y=sorted.x,
-            orientation = 'h',            
-            #xaxis = "x2",
-            #yaxis ="y3",
-        )        
-        fig.append_trace(trace1, 1, idx+1)
-    
-    def fixedrange(): 
-        return dict(                        
-            fixedrange=True
-        )
-
-    def top20(): 
-        return dict(            
-            #autorange='reversed',
-            #domain=['true', 'android'],
-            range=[50, -1],               
-            tickfont=dict(size=10)
-        )
-
-    fig['layout'].update(
-        #margin=dict(l=0, r=0, b=110, t=60),        
-        title='Top 50 terms sorted by '+ scorefunc +' score',
-        legend=dict(orientation="h", x=.07, y=1.07),
-        height=800,        
-        xaxis1=fixedrange(),   
-        xaxis2=fixedrange(),
-        xaxis3=fixedrange(),        
-        xaxis4=fixedrange(), 
-        xaxis5=fixedrange(), 
-        xaxis6=fixedrange(), 
-        
-        yaxis1=top20(),
-        yaxis2=top20(),
-        yaxis3=top20(),
-        yaxis4=top20(),
-        yaxis5=top20(),
-        yaxis6=top20(),
-    )
-    return py.iplot(fig, filename='make-subplots-multiple-with-titles')    
-
-    

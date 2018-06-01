@@ -67,9 +67,30 @@ def cluster_pipelines(clustercount, featuredim, decompstr):
         'DBScan': Pipeline([          
             ('decomp', decomp),
             ('clu', cluster.DBSCAN(eps=0.1, min_samples=20)),
-        ]), 
-        
+        ]),         
     }
+
+def cluster_pipelines2(clustercount):
+    return {            
+        'Ward': Pipeline([                                
+            ('sca', preprocessing.MaxAbsScaler()),
+            ('clu', cluster.AgglomerativeClustering(n_clusters=clustercount, linkage='ward')),
+        ]),    
+        'K-Means': Pipeline([                
+            ('sca', preprocessing.MaxAbsScaler()),
+            ('clu', cluster.KMeans(n_clusters=clustercount, init='k-means++', max_iter=100, n_init=1)),
+        ]),        
+        'GMM': Pipeline([                        
+            ('sca', preprocessing.MaxAbsScaler()),
+            ('clu', mixture.GaussianMixture(n_components=clustercount)),
+        ]),
+        'DBScan': Pipeline([          
+            ('sca', preprocessing.MaxAbsScaler()),
+            ('clu', cluster.DBSCAN(eps=0.1, min_samples=20)),
+        ]),         
+    }
+
+
 """
    'AffPro': Pipeline([                                
         ('sca', preprocessing.MaxAbsScaler()),

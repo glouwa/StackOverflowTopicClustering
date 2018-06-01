@@ -54,7 +54,7 @@ decomppathnames = ['transformation', 'algo', 'dim']
 decomppath = [
     ['decomposition'],
     ['PCA', 'NMF', 'LDA', 'SVD'],
-    ['2', '3', '4', '6', '8', '10', '12', '16', '24', '50', '100']
+    ['2', '3', '4', '6', '8', '10', '12', '16', '24', '50', '100', '150', '200', '300']
 ]
 decomppath = list(itertools.chain(*[wordvecpath, decomppath]))
 decomppathnames = list(itertools.chain(*[wordvecpathnames, decomppathnames]))

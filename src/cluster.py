@@ -3,11 +3,13 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from numpy.random import RandomState
 from sklearn.externals import joblib
+from sklearn import metrics
 
 from src.algo import plots 
 from src.algo.pipelines.cls import classify_pre_pipeline
 from src.algo.pipelines.cls import classify_pipelines
-from src.algo.pipelines.clu import clustervis_pipelines, cluster_pipelines
+from src.algo.pipelines.clu import clustervis_pipelines, cluster_pipelines, cluster_pipelines2
+from src.algo import frames
 
 from ipywidgets import FloatProgress
 from IPython.display import display
@@ -46,92 +48,73 @@ def runClusterAlgosAndPlotForEachProjection(f, fig, X, Ts, F, numclusters, inter
             plots.clustervis(ax, label, Ts[p]['pipeline'], Ts[p]['projected'], Ts[p]['features'], Y_pred)  
         f.value += 1
 
-from src.algo import frames
-def DecompositionFrame():
-    return frames.DecompositionFrame()
+def cluster(path, decompositions, dimensions, algos, clustercounts):
+    runcount = len(decompositions) * len(dimensions) * len(algos) * len(clustercounts)
+    f = FloatProgress(min=0, max=runcount)
+    display(f)     
+    for composition in decompositions:
+        path_composition = './dist/data/' + path + 'decomposition/' + composition + '/'
+        for dimension in dimensions:
+            path_dimension = path_composition + str(dimension) + '/'
+            P = joblib.load(path_dimension + 'P.pkl')
+            for algo in algos:
+                path_algo = path_dimension + algo + '/'
+                for clustercount in clustercounts:
+                    path_algo_clustercount = path_algo + str(clustercount) + '/'
 
-def run2(frame):
-    f = FloatProgress(min=0, max=frame.shape[0]) 
-    display(f) 
+                    clu_pipelines = cluster_pipelines2(clustercount)
+                    pipeline = clu_pipelines[algo]
+                    if hasattr(pipeline, 'predict'):
+                        Y_pred = pipeline.fit(P).predict(P)
+                    else:
+                        Y_pred = pipeline.fit_predict(P)
 
-    def savefeatures(srcpath, destpath, algo, dim):    
-        #X, Y, F = joblib.load(srcpath, 'X', 'Y','F') 
-        X = joblib.load(srcpath+'X.pkl')
-        F = joblib.load(srcpath+'F.pkl')
-        Y = joblib.load(srcpath+'Y.pkl')
-        C = joblib.load(srcpath+'C.pkl')
+                    frames.save(path_algo_clustercount, 'Y_pred', Y_pred)                    
+                    f.value += 1
 
-        frames.save(destpath, 'assertF', F)
-    
-        clu_pipelines = clustervis_pipelines(int(dim))
-        pipeline = clu_pipelines[algo]        
-        P = pipeline.fit_transform(X)    
-        COMP = pipeline.named_steps['clu'].components_
-        
-        frames.save(destpath, 'P', P)
-        frames.save(destpath, 'COMP', COMP)
+def clusterScore(path, decompositions, dimensions, algos, clustercounts, tag):
+    runcount = len(decompositions) * len(dimensions) * len(algos) * len(clustercounts)
+    f = FloatProgress(min=0, max=runcount)
+    display(f)     
 
-    for task in frame.index.values:
-        f.value += 1
-        tfidfpos = frame.index.names.index('tf-idf')+1
-        destpath = './dist/data/'+'/'.join(task)+'/'        
-        srcpath = './dist/data/'+'/'.join(task[:tfidfpos])+'/'
-        
-        algo = task[frame.index.names.index('algo')]    
-        dim = task[frame.index.names.index('dim')]
-        savefeatures(srcpath, destpath, algo, dim)        
+    Yall, C = frames.load('./dist/data/' + path, ['Y', 'C'])    
+    Y = Yall[:, C.tolist().index(tag)]
+    print(Y.shape)
+    f1_bestcluster = 0
+    best_dim = 0
+    best_algo = ''
+    best_clustercount = 0
 
-    return frames.cell2string.file2shape(frame)    
+    for composition in decompositions:
+        path_composition = './dist/data/' + path + 'decomposition/' + composition + '/'
+        for dimension in dimensions:
+            path_dimension = path_composition + str(dimension) + '/'
+            for algo in algos:
+                path_algo = path_dimension + algo + '/'
+                for clustercount in clustercounts:
+                    path_algo_clustercount = path_algo + str(clustercount) + '/'
 
+                    Y_pred = joblib.load(path_algo_clustercount + 'Y_pred.pkl')                                        
 
-import plotly.plotly as py
-import plotly.graph_objs as go
-from plotly import tools
-import pandas as pd
-from src.algo import frames
-#def plotTopFeatures(path, scorefunc, tags):
-def plotComponents(path, algo, dim, crange):
-    
-    F = joblib.load('./dist/data/'+path+'/F.pkl')    
-    path_ = './dist/data/{}/decomposition/{}/{}'.format(path, algo, dim)
-    P, C, Fassert = frames.load(path_, ['P', 'COMP', 'assertF'])
-    np.testing.assert_array_equal(F, Fassert)
-    
-    componentsrange = list(range(*crange))
-    print(componentsrange)
-
-    fig = tools.make_subplots(rows=1, cols=len(componentsrange), horizontal_spacing=0.1)
-    #horizontal_spacing=0.05,vertical_spacing=0.1, shared_yaxes=True
-
-    for gidx, cidx in enumerate(componentsrange):
-        c = C[cidx]        
-        df = pd.DataFrame({ 'x':F, 'y':c })
-        sorted = df.sort_values(by=['y'], ascending=False)
-
-        trace1 = go.Bar(            
-            x=sorted.y, 
-            y=sorted.x,
-            orientation = 'h',            
-            #xaxis = "x2",
-            #yaxis ="y3",
-        )        
-        fig.append_trace(trace1, 1, gidx+1)
-        fig['layout']['xaxis{}'.format(gidx+1)].update(fixedrange=True)
-        fig['layout']['yaxis{}'.format(gidx+1)].update(range=[50, -1], tickfont=dict(size=10))
-    
-    fig['layout'].update(
-        #margin=dict(l=0, r=0, b=110, t=60),        
-        title='Top 50 component term weights '+ 'algo' +' score',
-        showlegend=False,
-        height=800
-    )    
-    return py.iplot(fig, filename='make-subplots-multiple-with-titles')    
+                    for clusternr in range(clustercount):
+                        Y_pred_tag_01 = Y_pred == clusternr                        
+                        f1_currentcluster = metrics.f1_score(Y, Y_pred_tag_01)
+                        
+                        if f1_currentcluster > f1_bestcluster:
+                            f1_bestcluster = f1_currentcluster
+                            best_dim = dimension
+                            best_algo = algo
+                            best_clustercount = clustercount
+                    
+                    f.value += 1
+        print(composition, best_dim, best_algo, best_clustercount, f1_bestcluster)
+        f1_bestcluster = 0        
 
 def run(path, decompskeys, algokeys, samples, numclusters, interdim, tag):
     f = FloatProgress(min=0, max=len(cluster_pipelines(0, 0, 'PCA'))) 
     display(f) 
 
-    path = './dist/data/'+path    
+    path = './dist/data/' + path    
     C = joblib.load(path+'C.pkl')    
     X = joblib.load(path+'X.pkl')
     F = joblib.load(path+'F.pkl')
@@ -158,7 +141,7 @@ def runPlotly(tfidf, decompskeys, algokeys, samples, tag):
         size=5,        
         opacity=0.99
     )
-    x, y, z = np.random.multivariate_normal(np.array([0,0,0]), np.eye(3), 200).transpose()
+    x, y, z = np.random.multivariate_normal(np.array([0,3,0]), np.eye(3), 400).transpose()
     trace1 = go.Scatter3d(
         x=x,
         y=y,
@@ -167,7 +150,7 @@ def runPlotly(tfidf, decompskeys, algokeys, samples, tag):
         marker=marker
     )
 
-    x2, y2, z2 = np.random.multivariate_normal(np.array([0,0,0]), np.eye(3), 50).transpose()
+    x2, y2, z2 = np.random.multivariate_normal(np.array([0,0,0]), np.eye(3), 100).transpose()
     marker.update(dict(color='red'))
     trace2 = go.Scatter3d(
         x=x2,
