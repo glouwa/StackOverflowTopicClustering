@@ -75,6 +75,6 @@ def load(path, namearr):
 def save(path, name, M):    
     if not os.path.exists(path):
         os.makedirs(path)       
-        print("makedir", path)        
+        #print("makedir", path)        
     filename = path + '{}.pkl'.format(name)
     joblib.dump(M, filename)  

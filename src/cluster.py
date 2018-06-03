@@ -80,13 +80,16 @@ def clusterScore(path, decompositions, dimensions, algos, clustercounts, tag):
     Yall, C = frames.load('./dist/data/' + path, ['Y', 'C'])    
     Y = Yall[:, C.tolist().index(tag)]
     print(Y.shape)
-    f1_bestcluster = 0
-    best_dim = 0
-    best_algo = ''
-    best_clustercount = 0
 
     for composition in decompositions:
         path_composition = './dist/data/' + path + 'decomposition/' + composition + '/'
+
+        f1_best_cluster = 0
+        f1_best_dim = 0
+        f1_best_algo = ''
+        f1_best_clustercount = 0
+        best_pr_set = []
+
         for dimension in dimensions:
             path_dimension = path_composition + str(dimension) + '/'
             for algo in algos:
@@ -94,21 +97,32 @@ def clusterScore(path, decompositions, dimensions, algos, clustercounts, tag):
                 for clustercount in clustercounts:
                     path_algo_clustercount = path_algo + str(clustercount) + '/'
 
-                    Y_pred = joblib.load(path_algo_clustercount + 'Y_pred.pkl')                                        
-
+                    Y_pred = joblib.load(path_algo_clustercount + 'Y_pred.pkl')
+                    high_pr_set = []
+                    mask = np.full(len(Y), False)
+                    
                     for clusternr in range(clustercount):
                         Y_pred_tag_01 = Y_pred == clusternr                        
-                        f1_currentcluster = metrics.f1_score(Y, Y_pred_tag_01)
-                        
-                        if f1_currentcluster > f1_bestcluster:
-                            f1_bestcluster = f1_currentcluster
-                            best_dim = dimension
-                            best_algo = algo
-                            best_clustercount = clustercount
+                        pr_currentcluster = metrics.precision_score(Y, Y_pred_tag_01)                        
+
+                        if pr_currentcluster > 0.5:
+                            mask |= Y_pred_tag_01
+                            high_pr_set.append(clusternr)
                     
+                    f1_currentcluster = metrics.f1_score(Y, mask)
+                    pr_currentcluster = metrics.precision_score(Y, mask)
+                    rc_currentcluster = metrics.recall_score(Y, mask)
+                    
+                    if f1_currentcluster > f1_best_cluster and len(high_pr_set) < 10:
+                        f1_best_cluster = f1_currentcluster
+                        f1_best_dim = dimension
+                        f1_best_algo = algo
+                        f1_best_clustercount = clustercount
+                        best_pr_set = high_pr_set
+    
                     f.value += 1
-        print(composition, best_dim, best_algo, best_clustercount, f1_bestcluster)
-        f1_bestcluster = 0        
+
+        print(composition, f1_best_dim, f1_best_algo, f1_best_clustercount, "f1#", f1_best_cluster, len(best_pr_set))        
 
 def run(path, decompskeys, algokeys, samples, numclusters, interdim, tag):
     f = FloatProgress(min=0, max=len(cluster_pipelines(0, 0, 'PCA'))) 
