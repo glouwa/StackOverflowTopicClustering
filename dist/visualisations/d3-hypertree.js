@@ -19659,14 +19659,22 @@ const hypertreehtml = `<div class="unitdisk-nav">
         <div class="preloader"></div>
 
     </div>`;
-function shuffleArray(array) {
-    /*
+function shuffleArray(array, n) {
     if (array)
-    for (let i = array.length - 1; i > 0; i--) {
-        let j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }*/
+        for (let i = array.length - 1; i > 0; i--) {
+            let r = (i * i + n.height) % array.length;
+            //let r = Math.random()
+            let j = Math.floor(r);
+            [array[i], array[j]] = [array[j], array[i]];
+        }
 }
+/*
+mach im moment
+- path
+- action buttons
+- path buttons
+- meta views
+*/
 /**
 * pipeline implementation:
 * ajax -> weights -> layout -> transformation -> unitdisk / langmaps
@@ -19727,7 +19735,7 @@ class Hypertree {
                 this.setPathHead(pathType, n);
                 this.update.pathes();
             },
-            selectQuery: (query) => {
+            selectQuery: (query, prop) => {
                 const lq = query ? query.toLowerCase() : null;
                 this.data.each(n => {
                     n.pathes.partof = [];
@@ -19911,7 +19919,7 @@ class Hypertree {
             n.layoutReference = null;
             n.pathes = {};
             n.globelhtid = globelhtid;
-            shuffleArray(n.children); // get index
+            shuffleArray(n.children, n); // get index
         });
         //.sum(this.args.weight) // this.updateWeights()
         const startAngle = 3 * π / 2;
@@ -19973,7 +19981,7 @@ class Hypertree {
         const color = ({
             'HoverPath': 'none',
             'Query': ducd_3.googlePalette(1)
-        })[pathType] || ducd_3.googlePalette(plidx) || 'red';
+        })[pathType] || ducd_3.googlePalette(plidx) || ducd_3.googlePalette(1);
         const newpath = {
             type: pathType,
             id: this.btnPathId(pathType, n),
@@ -19994,6 +20002,8 @@ class Hypertree {
             if (pathType !== 'HoverPath')
                 pn.pathes.finalcolor = newpath.color;
             pn.pathes[`isPartOfAny${pathType}`] = true;
+            //if (pathType === 'Query')
+            //    pn.pathes[`isPartOfAnySelectionPath`] = true;
         });
         if (pathType === 'Query')
             return;

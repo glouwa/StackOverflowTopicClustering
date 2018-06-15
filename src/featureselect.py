@@ -110,15 +110,15 @@ def plotTopFeatures(path, scorefunc, tags):
         return dict(            
             #autorange='reversed',
             #domain=['true', 'android'],
-            range=[50, -1],               
+            range=[15, -1],               
             tickfont=dict(size=10)
         )
 
     fig['layout'].update(
         #margin=dict(l=0, r=0, b=110, t=60),        
-        title='Top 50 terms sorted by '+ scorefunc +' score',
-        legend=dict(orientation="h", x=.07, y=1.07),
-        height=800,        
+        title='Top 15 terms sorted by '+ scorefunc +' score',
+        legend=dict(orientation="h", x=.07, y=1.18),
+        height=400,        
         xaxis1=fixedrange(),   
         xaxis2=fixedrange(),
         xaxis3=fixedrange(),        

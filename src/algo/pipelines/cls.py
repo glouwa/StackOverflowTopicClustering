@@ -66,3 +66,18 @@ classify_pipelines = {
         ('clf', MultinomialNB())
     ]),    
 }
+
+multi_classify_pipelines = {    
+    'MLPClassifier': Pipeline([                
+        ('clf', MLPClassifier(alpha=1))        
+    ]),
+    'Linear SVM': Pipeline([                   
+        ('clf', svm.LinearSVC(C=1, multi_class="crammer_singer"))
+    ]),    
+    'LinearDiscriminantAnalysis': Pipeline([                        
+        ('clf', LinearDiscriminantAnalysis())
+    ]),    
+    'RandomForestClassifier': Pipeline([                        
+        ('clf', ensemble.RandomForestClassifier())
+    ])      
+}

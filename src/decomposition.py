@@ -77,12 +77,12 @@ def plotComponents(path, algo, dim, crange):
         )        
         fig.append_trace(trace1, 1, gidx+1)
         fig['layout']['xaxis{}'.format(gidx+1)].update(fixedrange=True)
-        fig['layout']['yaxis{}'.format(gidx+1)].update(range=[50, -1], tickfont=dict(size=10))
+        fig['layout']['yaxis{}'.format(gidx+1)].update(range=[15, -1], tickfont=dict(size=10))
     
     fig['layout'].update(
         #margin=dict(l=0, r=0, b=110, t=60),        
-        title='Top 50 component term weights '+ 'algo' +' score',
+        title='Top 15 component term weights '+ 'algo' +' score',
         showlegend=False,
-        height=800
+        height=400
     )    
     return py.iplot(fig, filename='top-components')    

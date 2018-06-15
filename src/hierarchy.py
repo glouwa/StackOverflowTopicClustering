@@ -113,10 +113,9 @@ def run(path, decomp, dim, highlight):
         <iframe width="100%" 
                 height="900"
                 frameBorder="0" 
-                src="http://localhost:3000/dist/visualisations/tree.html?f={}"
-        </iframe>""".format(file)
+                src="http://localhost:3000/dist/visualisations/tree.html?f={}&q={}"
+        </iframe>""".format(file, highlight)
     display(HTML(iframe))
-
 
 
             
