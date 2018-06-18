@@ -14,12 +14,12 @@ export function download(source, amount)
         const resmetapath =    `./res/${source}/meta.json`
 
         const site = `${source}.com`
-        const client_id = '12241'
-        const client_secret = 'fARiV63SIlUxr*tpsrFXDw(('
-        const client_key = 'iBKWVDJ4ZBz4LF7EvTdLKA(('
+        const client_id = USER_ID
+        const client_secret = CLIENT_SECRET
+        const client_key = CLIENT_KEY
 
-        //https://stackexchange.com/oauth/dialog?client_id=12241&scope=no_expiry&redirect_uri=https://stackoverflow.com/oauth/login_success
-        const access_token = 'ss7QVLkuuRE6NZ77M(3B(A))'
+        //https://stackexchange.com/oauth/dialog?client_id=USER_ID&scope=no_expiry&redirect_uri=https://stackoverflow.com/oauth/login_success
+        const access_token = ACCESS_TOKEN
 
         //scope: no_expiry
         //redirect_uri: site

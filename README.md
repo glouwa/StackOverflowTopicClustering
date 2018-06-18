@@ -1,10 +1,12 @@
 # KDDM2
 
+
+This has not been updated for a while, please refer to the poster to get more infos :)
 ## Stackexchange Access
 https://api.stackexchange.com/docs
 
-User Authorized with account id = 11442814, 
-got access token = 7pv4lwwEzDqZsT5Z3ucn2g))
+User Authorized with account id = USER_ID, 
+got access token = ACCESS_TOKEN
 
 ##
 ``` 
@@ -102,21 +104,6 @@ Use root folder as working path:
 
 
 ### TODO
-
-Michi:
-gulp
-tagcloud
-cleaning fertig machen: documentieren 
- -encoding 
-
-
-Veri:
-remove stopword, change stemming tokenizer
-clean tokenizer(remove all single special characters)
-reaserch: was is a besserer lemma input: mit oder ohne stopwords
-what to do for evaluation? (precision, recall, accuracy)
-
-
 gulp download
 gulp convert
 python3 src/sentences.py
