@@ -81,7 +81,7 @@ def plotComponents(path, algo, dim, crange):
     
     fig['layout'].update(
         #margin=dict(l=0, r=0, b=110, t=60),        
-        title='Top 15 component term weights '+ 'algo' +' score',
+        title='Top 15 component term weights '+ algo +' score',
         showlegend=False,
         height=400
     )    
