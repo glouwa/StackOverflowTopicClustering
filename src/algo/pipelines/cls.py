@@ -43,6 +43,25 @@ classify_pre_pipeline = Pipeline([
     ('norm', preprocessing.MaxAbsScaler()),    
 ])
 
+classify_pipelines = {    
+    'SGDClassifier': Pipeline([             
+        ('clf', SGDClassifier(loss='hinge', penalty='l2', alpha=1e-3, random_state=42, max_iter=5, tol=None))    
+    ]),
+    'Linear SVM': Pipeline([                   
+        ('clf', svm.LinearSVC(C=1))
+    ]),
+    'LinearDiscriminantAnalysis': Pipeline([                        
+        ('clf', LinearDiscriminantAnalysis())
+    ]),    
+    'RandomForestClassifier': Pipeline([                        
+        ('clf', ensemble.RandomForestClassifier())
+    ]),
+    'MultinomialNB': Pipeline([
+        ('clf', MultinomialNB())
+    ]), 
+}
+
+"""
 classify_pipelines = {
     'SGDClassifier': Pipeline([             
         ('clf', SGDClassifier(loss='hinge', penalty='l2', alpha=1e-3, random_state=42, max_iter=5, tol=None))    
@@ -64,8 +83,9 @@ classify_pipelines = {
     ]),             
     'MultinomialNB': Pipeline([
         ('clf', MultinomialNB())
-    ]),    
+    ]),        
 }
+"""
 
 multi_classify_pipelines = {    
     'MLPClassifier': Pipeline([                
