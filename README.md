@@ -1,4 +1,4 @@
-# KDDM2
+# Stack Overflow Topic Clustering
 
 For a summary see [Info Poster](https://drive.google.com/file/d/1MVLcjVWxoR1Gj3BeBN4GMhDpZ4QqUS--/view?usp=sharing)
 
@@ -38,8 +38,8 @@ Use root folder as working path:
 | 5. lemmatizing.py |  htmlcleaned.json     | lemmatizing.json, lemmatizing-meta.json
 | 6. tfidf.py       |  lemmatizing.json     | itf.json,         doc-vecs.json
 | 7. ngram.py       |  ngrams.json          | ngram-itf.json,   doc-ngrams.json
-| 8. classification |  
-| 9. clusterning    |
+| 8. classification |  classify.ipynb
+| 9. clusterning    |  cluster.ipynb
 
 - Machine Learning Algorithms
 - Evaluation methods (especially for multi-classification)
