@@ -36,7 +36,6 @@ Use root folder as working path:
 | 3. htmlclean.py   |  merge.json           | htmlcleaned.json, htmlcleaned-meta.json
 | 4. stemming.py    |  htmlcleaned.json     | stemming.json,    stemming-meta.json
 | 5. lemmatizing.py |  htmlcleaned.json     | lemmatizing.json, lemmatizing-meta.json
-| ----------------- | --------------------- | -----------------:  |
 | 6. tfidf.py       |  lemmatizing.json     | itf.json,         doc-vecs.json
 | 7. ngram.py       |  ngrams.json          | ngram-itf.json,   doc-ngrams.json
 | 8. classification |  
