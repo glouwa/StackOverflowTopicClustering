@@ -52,6 +52,7 @@ The three major stemming algorithms in use today are Porter, Snowball(Porter2), 
 - Lancaster: Very aggressive stemming algorithm, sometimes to a fault. With porter and snowball, the stemmed representations are usually fairly intuitive to a reader, not so with Lancaster, as many shorter words will become totally obfuscated. The fastest algorithm here, and will reduce your working set of words hugely, but if you want more distinction, not the tool you would want.
 
 ## Gulp Pipeline Commands
+``` 
 gulp download
 gulp convert
 python3 src/sentences.py
@@ -60,3 +61,4 @@ python3 src/stemming.py
 python3 src/lemming.py
 python3 src/ngram.py 
 python3 src/ngram.py
+``` 
