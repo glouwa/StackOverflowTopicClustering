@@ -38,11 +38,9 @@ Use root folder as working path:
 | 5. lemmatizing.py |  htmlcleaned.json     | lemmatizing.json, lemmatizing-meta.json
 | 6. tfidf.py       |  lemmatizing.json     | itf.json,         doc-vecs.json
 | 7. ngram.py       |  ngrams.json          | ngram-itf.json,   doc-ngrams.json
-| 8. classification |  classify.ipynb
-| 9. clusterning    |  cluster.ipynb
+| 8. classification | | classify.ipynb
+| 9. clusterning    | | cluster.ipynb
 
-- Machine Learning Algorithms
-- Evaluation methods (especially for multi-classification)
 
 ### merge
 ```json
@@ -83,7 +81,7 @@ Use root folder as working path:
 }
 ```
 
-## Stemmer Algorithms Differences:
+### Stemmer Algorithms Differences:
 
 The three major stemming algorithms in use today are Porter, Snowball(Porter2), and Lancaster (Paice-Husk), with the aggressiveness continuum basically following along those same lines.
 
