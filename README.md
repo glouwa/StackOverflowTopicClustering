@@ -1,6 +1,6 @@
 # Stack Overflow Topic Clustering
 
-For a summary see [Info Poster](https://drive.google.com/file/d/1MVLcjVWxoR1Gj3BeBN4GMhDpZ4QqUS--/view?usp=sharing)
+For a summary see the [Info Poster](https://drive.google.com/file/d/1MVLcjVWxoR1Gj3BeBN4GMhDpZ4QqUS--/view?usp=sharing).
 
 ## Stackexchange Data Crawling
 https://api.stackexchange.com/docs
